@@ -37,3 +37,11 @@ export function getSummary(db: Db): Summary {
     { net: 0, inflow: 0, outflow: 0, count: 0 },
   );
 }
+
+// Truncate-then-insert: the Monefy import replaces the whole ledger from an immutable export.
+// ponytail: safe while there is no write path. When the add-entry slice lands, add a `source`
+// column and delete only where source='monefy' so hand-entered rows survive.
+export function replaceEntries(db: Db, rows: NewEntry[]): void {
+  db.delete(entries).run();
+  if (rows.length > 0) db.insert(entries).values(rows).run();
+}
