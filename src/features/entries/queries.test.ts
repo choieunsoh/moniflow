@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
-import { addEntries, getEntries, replaceEntries } from './queries';
+import {
+  addEntries,
+  getEntries,
+  replaceEntries,
+  getCycleSummary,
+  getCategoryBreakdown,
+  getAccountBreakdown,
+  getEntriesInRange,
+} from './queries';
 
 describe('replaceEntries', () => {
   it('wipes existing rows and inserts the new set', () => {
@@ -43,5 +51,45 @@ describe('replaceEntries', () => {
     }));
     replaceEntries(db, many);
     expect(getEntries(db)).toHaveLength(5000);
+  });
+});
+
+describe('cycle-scoped queries', () => {
+  function seed() {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      { date: '2026-07-17', account: 'visa', category: 'food', amount: -100 }, // before cycle
+      { date: '2026-07-18', account: 'visa', category: 'food', amount: -200 },
+      { date: '2026-07-20', account: 'cash', category: 'food', amount: -50 },
+      { date: '2026-08-01', account: 'visa', category: 'travel', amount: -300 },
+      { date: '2026-08-18', account: 'visa', category: 'food', amount: -999 }, // next cycle
+    ]);
+    return db;
+  }
+
+  it('summarizes only rows within [start, end]', () => {
+    const s = getCycleSummary(seed(), '2026-07-18', '2026-08-17');
+    expect(s).toEqual({ net: -550, inflow: 0, outflow: -550, count: 3 });
+  });
+
+  it('breaks down by category, largest magnitude first', () => {
+    const b = getCategoryBreakdown(seed(), '2026-07-18', '2026-08-17');
+    expect(b).toEqual([
+      { key: 'travel', total: -300 },
+      { key: 'food', total: -250 },
+    ]);
+  });
+
+  it('breaks down by account', () => {
+    const b = getAccountBreakdown(seed(), '2026-07-18', '2026-08-17');
+    expect(b).toEqual([
+      { key: 'visa', total: -500 },
+      { key: 'cash', total: -50 },
+    ]);
+  });
+
+  it('returns the raw entries in range', () => {
+    expect(getEntriesInRange(seed(), '2026-07-18', '2026-08-17')).toHaveLength(3);
   });
 });
