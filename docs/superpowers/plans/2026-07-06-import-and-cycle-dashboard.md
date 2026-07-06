@@ -426,13 +426,26 @@ Expected: FAIL — `replaceEntries` not exported.
 
 ```ts
 // Truncate-then-insert: the Monefy import replaces the whole ledger from an immutable export.
+// Chunked inside a transaction — a 10k-row export would blow past SQLite's bound-variable limit in
+// a single insert, and the delete + inserts must be atomic so a failure can't leave a half ledger.
 // ponytail: safe while there is no write path. When the add-entry slice lands, add a `source`
 // column and delete only where source='monefy' so hand-entered rows survive.
 export function replaceEntries(db: Db, rows: NewEntry[]): void {
-  db.delete(entries).run();
-  if (rows.length > 0) db.insert(entries).values(rows).run();
+  const chunkSize = 500; // 500 rows × 7 bound columns stays well under SQLite's variable cap
+  db.transaction((tx) => {
+    tx.delete(entries).run();
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      tx.insert(entries)
+        .values(rows.slice(i, i + chunkSize))
+        .run();
+    }
+  });
 }
 ```
+
+> **Scale note:** a single `insert().values(rows)` of the full ~10.7k-row export exceeds SQLite's
+> bound-variable limit ("too many SQL variables"). The chunked, transactional form above is required;
+> `queries.test.ts` includes a 1,500-row regression test proving it.
 
 - [ ] **Step 4: Run it, verify it passes**
 
