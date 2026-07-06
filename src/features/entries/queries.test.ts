@@ -24,4 +24,20 @@ describe('replaceEntries', () => {
     replaceEntries(db, []);
     expect(getEntries(db)).toHaveLength(0);
   });
+
+  it('inserts a large set without hitting SQLite variable limits', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    const many = Array.from({ length: 1500 }, () => ({
+      date: '2026-07-01',
+      account: 'visa',
+      category: 'food',
+      amount: -1,
+      currency: 'THB',
+      originalAmount: -1,
+      note: null,
+    }));
+    replaceEntries(db, many);
+    expect(getEntries(db)).toHaveLength(1500);
+  });
 });
