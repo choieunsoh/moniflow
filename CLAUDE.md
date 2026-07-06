@@ -44,24 +44,39 @@ failures surface individually. All three must pass before committing.
   Tailwind class sorting).
 - **better-sqlite3 is a native addon** — `next.config.ts` lists it in `serverExternalPackages`
   so Next never bundles it for the server.
-- **Schema is drizzle-first:** `src/db/schema.ts` is the single source of truth. The scaffold's
-  `initDb` bootstraps with `CREATE TABLE IF NOT EXISTS`; once the schema stops being trivial,
-  switch to committed migrations (`npm run db:generate` → replay via drizzle `migrate()`).
+- **Schema is drizzle-first:** each feature's `schema.ts` (e.g. `src/features/entries/schema.ts`)
+  is that feature's source of truth; `drizzle.config.ts` globs them via `./src/features/*/schema.ts`.
+  The scaffold's `ensureEntriesTable` bootstraps with `CREATE TABLE IF NOT EXISTS`; once a schema
+  stops being trivial, switch to committed migrations (`npm run db:generate` → replay at the
+  composition root via drizzle `migrate()`).
 
-## Architecture
+## Architecture — feature-based
+
+Organize by **domain, not technical layer**. A feature owns its schema, queries, hooks, and
+components; `db/` and `shared/` hold only cross-cutting infrastructure.
 
 ```
 src/
-├── app/            # Next 16 App Router — layout, pages, globals.css (Tailwind v4 @theme tokens)
+├── app/                    # Next 16 App Router — thin routes that delegate to features
+│   └── layout.tsx, page.tsx, globals.css   # Tailwind v4 @theme tokens
 ├── db/
-│   ├── schema.ts   # drizzle table defs + inferred Insert/Select types (source of truth)
-│   └── client.ts   # initDb(path): better-sqlite3 + drizzle wrap, WAL + busy_timeout
-├── features/       # (@features/*) feature-scoped modules — add as the app grows
-├── shared/         # (@shared/*) cross-feature utilities
-└── cli.ts          # commander entrypoint
+│   └── client.ts           # (@db) initDb(path): the SQLite connection ONLY — schema-agnostic
+├── features/
+│   └── entries/            # (@features/entries) the money-flow domain
+│       ├── schema.ts        # drizzle table + Insert/Select types + ensureEntriesTable(db)
+│       ├── queries.ts       # typed reads/writes (addEntries / getEntries / getNetFlow)
+│       └── entries.test.ts  # feature-level round-trip test
+├── shared/
+│   └── money.ts            # (@shared) cross-feature THB Intl formatter
+└── cli.ts                  # commander composition root — wires initDb → feature modules
 ```
 
 Path aliases: `@db/*`, `@features/*`, `@shared/*` (see `tsconfig.json`).
+
+**Dependency rule:** the arrow points **features → db/shared**, never back. `db/client.ts` must
+not import any feature (that's why it dropped drizzle's schema generic — we use the query builder,
+not the `db.query.*` relational API). Features may use `@shared/*`; shared code stays
+feature-agnostic. Cross-feature reuse graduates a module from `features/x/` to `shared/`.
 
 **Custom hooks are first-class.** Stateful/business logic in client components belongs in named
 custom hooks at `src/features/<domain>/use-*.ts` (kebab-case), each with a `renderHook` test —
