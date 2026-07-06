@@ -1,0 +1,5 @@
+# Non-source artifacts — excluded from formatting enforcement.
+# .impeccable/ is a local tool cache; docs/superpowers/ holds generated spec/plan
+# markdown whose embedded code blocks are the spec of record and must not be reflowed.
+.impeccable/
+docs/superpowers/
