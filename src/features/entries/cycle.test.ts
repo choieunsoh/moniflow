@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cycleOf, cycleFromKey, currentCycleKey, stepKey } from './cycle';
+import { cycleOf, cycleFromKey, currentCycleKey, stepKey, cycleProgress } from './cycle';
 
 describe('cycleOf (cutoff 18)', () => {
   it('a date on/after the 18th belongs to that month cycle', () => {
@@ -40,5 +40,18 @@ describe('cycleFromKey / stepKey / currentCycleKey', () => {
   it('derives the current cycle key from today', () => {
     expect(currentCycleKey('2026-07-06')).toBe('2026-06');
     expect(currentCycleKey('2026-07-18')).toBe('2026-07');
+  });
+});
+
+describe('cycleProgress', () => {
+  it('reports the 1-based day within the cycle and its length', () => {
+    expect(cycleProgress(cycleFromKey('2026-07'), '2026-07-18')).toEqual({ day: 1, total: 31 });
+    expect(cycleProgress(cycleFromKey('2026-07'), '2026-07-20')).toEqual({ day: 3, total: 31 });
+    expect(cycleProgress(cycleFromKey('2026-07'), '2026-08-17')).toEqual({ day: 31, total: 31 });
+  });
+
+  it('clamps a date outside the cycle into range', () => {
+    expect(cycleProgress(cycleFromKey('2026-07'), '2026-09-01').day).toBe(31);
+    expect(cycleProgress(cycleFromKey('2026-07'), '2026-01-01').day).toBe(1);
   });
 });

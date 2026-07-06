@@ -10,11 +10,12 @@ import {
   getAccountBreakdown,
   getEntriesInRange,
 } from '@features/entries/queries';
-import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
+import { cycleFromKey, currentCycleKey, cycleProgress } from '@features/entries/cycle';
 import { todayIso } from '@shared/date';
 import { SummaryBar } from '@features/entries/ui/SummaryBar';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
+import { CycleProgress } from '@features/entries/ui/CycleProgress';
 import { LedgerTable } from '@features/entries/ui/LedgerTable';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { FlowChart } from '@features/entries/ui/FlowChart';
@@ -43,6 +44,7 @@ export default async function DashboardPage({
       </header>
 
       <CycleSelector activeKey={activeKey} />
+      <CycleProgress progress={cycleProgress(cycle, todayIso())} />
 
       {summary.count > 0 ? (
         <>

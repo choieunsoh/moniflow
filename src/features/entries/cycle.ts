@@ -60,3 +60,19 @@ function stepYM(y: number, m: number, delta: number): [number, number] {
   const total = y * 12 + (m - 1) + delta;
   return [Math.floor(total / 12), (total % 12) + 1];
 }
+
+export type Progress = { day: number; total: number };
+
+const DAY_MS = 86_400_000;
+
+function daysBetween(aIso: string, bIso: string): number {
+  return Math.round((Date.parse(`${bIso}T00:00:00Z`) - Date.parse(`${aIso}T00:00:00Z`)) / DAY_MS);
+}
+
+// 1-based day of `todayIso` within the cycle, and the cycle's length in days. Clamped so an
+// out-of-range date (viewing a past/future cycle) still renders a sane meter.
+export function cycleProgress(cycle: Cycle, todayIso: string): Progress {
+  const total = daysBetween(cycle.start, cycle.end) + 1;
+  const raw = daysBetween(cycle.start, todayIso) + 1;
+  return { day: Math.min(total, Math.max(1, raw)), total };
+}
