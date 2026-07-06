@@ -1,8 +1,10 @@
+import { readFileSync } from 'node:fs';
 import 'dotenv/config';
 import { Command } from 'commander';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
-import { getEntries, getNetFlow } from '@features/entries/queries';
+import { parseMonefyCsv } from '@features/entries/import';
+import { getEntries, getNetFlow, replaceEntries } from '@features/entries/queries';
 import { seedEntries } from '@features/entries/seed';
 import { formatBaht } from '@shared/money';
 
@@ -31,6 +33,20 @@ program
     ensureEntriesTable(db);
     const n = seedEntries(db);
     console.log(`seeded ${n} demo entries — run \`npm run dev:web\` and open /dashboard`);
+  });
+
+program
+  .command('import <file>')
+  .description('Replace the ledger with a Monefy CSV export')
+  .option('--db <path>', 'SQLite path', process.env.MONIFLOW_DB ?? 'data/moniflow.db')
+  .action((file: string, opts: { db: string }) => {
+    const db = initDb(opts.db);
+    ensureEntriesTable(db);
+    const { entries, skipped } = parseMonefyCsv(readFileSync(file, 'utf8'));
+    replaceEntries(db, entries);
+    console.log(
+      `imported ${entries.length}, skipped ${skipped} — run \`npm run dev:web\` and open /dashboard`,
+    );
   });
 
 program.parse();
