@@ -8,6 +8,8 @@ const e = (id: number, date: string, amount: number): Entry => ({
   account: 'cash',
   category: 'x',
   amount,
+  currency: null,
+  originalAmount: null,
   note: null,
 });
 

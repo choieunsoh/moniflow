@@ -17,4 +17,23 @@ describe('entries feature (in-memory)', () => {
     expect(getEntries(db)).toHaveLength(2);
     expect(getNetFlow(db)).toBe(38000);
   });
+
+  it('stores original currency + amount alongside the THB amount', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      {
+        date: '2026-07-01',
+        account: 'jpy',
+        category: 'food',
+        amount: -230,
+        currency: 'JPY',
+        originalAmount: -1000,
+      },
+    ]);
+    const [row] = getEntries(db);
+    expect(row.currency).toBe('JPY');
+    expect(row.originalAmount).toBe(-1000);
+    expect(row.amount).toBe(-230); // THB, the rollup basis
+  });
 });

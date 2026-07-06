@@ -2,16 +2,18 @@ import { sqliteTable, integer, text, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import type { Db } from '@db/client';
 
-// The money-flow ledger — one row per inflow/outflow. amount is signed (+ inflow, - outflow),
-// in THB. Derived totals (balances, category rollups) are computed in queries, never stored.
-// This file is the schema source of truth for the `entries` feature; after any edit here,
-// re-run `npm run db:generate`.
+// The money-flow ledger — one row per inflow/outflow. `amount` is signed THB (the converted
+// value) and is the basis for every rollup. `currency` + `originalAmount` preserve the source
+// currency for non-THB rows (JPY/HKD) so the import is lossless; they are informational only.
+// This file is the schema source of truth; after any edit here, re-run `npm run db:generate`.
 export const entries = sqliteTable('entries', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(), // YYYY-MM-DD
   account: text('account').notNull(),
   category: text('category').notNull(),
-  amount: real('amount').notNull(), // signed THB
+  amount: real('amount').notNull(), // signed THB (converted)
+  currency: text('currency'), // original currency, e.g. 'THB' | 'JPY'
+  originalAmount: real('original_amount'), // signed amount in the original currency
   note: text('note'),
 });
 
@@ -29,6 +31,8 @@ export function ensureEntriesTable(db: Db): void {
       account TEXT NOT NULL,
       category TEXT NOT NULL,
       amount REAL NOT NULL,
+      currency TEXT,
+      original_amount REAL,
       note TEXT
     )
   `);
