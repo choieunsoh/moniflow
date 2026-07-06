@@ -19,7 +19,7 @@ A local-first money-flow dashboard: ingest signed inflow/outflow entries into SQ
 them back through Next.js Server Components as a net-flow summary, a flow-over-time chart, and a
 recent-entries ledger. Success is a UI that a user fluent in Linear/Stripe/Notion would trust at
 a glance and that a developer would be happy to inherit and rebrand. It ships as the reference
-implementation for the `local-first-web-app` scaffold.
+implementation for the `create-sqlite-next-app` scaffold.
 
 ## Brand Personality
 

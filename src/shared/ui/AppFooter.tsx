@@ -6,7 +6,7 @@ export function AppFooter() {
           Local-first · your data stays in a SQLite file on your machine.
         </p>
         <p className="tnum text-xs" style={{ color: 'var(--color-faint)' }}>
-          scaffolded on the local-first-web-app stack
+          scaffolded on the create-sqlite-next-app stack
         </p>
       </div>
     </footer>
