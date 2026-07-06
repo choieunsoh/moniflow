@@ -1,0 +1,22 @@
+# Moniflow
+
+Personal, local-first **money-flow dashboard**. SQLite storage, read through a Drizzle query
+layer by Next.js Server Components. Scaffolded on the `portfolio-dashboard` stack.
+
+## Stack
+
+Node 24 · TypeScript 5.9 (strict, ESM) · Next.js 16 (App Router) · React 19 · Tailwind CSS v4 ·
+Drizzle ORM + better-sqlite3 · ECharts 5 · commander (CLI) · Vitest · ESLint 10 (flat) · Prettier 3.
+
+## Getting started
+
+```bash
+npm install
+npm run dev:web     # web app → http://127.0.0.1:4001
+npm run dev -- summary   # CLI: net money flow
+npm test            # vitest
+```
+
+Quality gates (all must pass before commit): `npm run typecheck`, `npm run lint`, `npm test`.
+
+See [CLAUDE.md](./CLAUDE.md) for architecture and conventions.

@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Next.js (build output + generated env types)
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Playwright MCP verification artifacts
+.playwright-mcp/
+
+# Private financial data — never commit the source data or the built DB.
+/data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite*
+*-wal
+*-shm
+*.xlsx
+
+# Editor / OS
+.env
+.DS_Store
+
+# Claude Code — personal/local overrides stay out of git; settings.json (shared) is committed
+.claude/settings.local.json
