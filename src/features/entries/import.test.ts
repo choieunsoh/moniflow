@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCsv } from './import';
+import { parseCsv, parseMonefyCsv, SKIP_CATEGORIES } from './import';
 
 describe('parseCsv', () => {
   it('splits simple rows', () => {
@@ -15,5 +15,55 @@ describe('parseCsv', () => {
 
   it('handles a trailing empty field and ignores blank lines', () => {
     expect(parseCsv('a,b,\n\n')).toEqual([['a', 'b', '']]);
+  });
+});
+
+describe('parseMonefyCsv', () => {
+  const header = 'date,account,category,amount,currency,converted amount,currency,description';
+
+  it('maps a THB outflow row: DD/MM/YYYY date, cleaned amount, note', () => {
+    const csv = `${header}\n15/01/2016,#KTC X VISA,ช็อปปิ้ง,-637,THB,-637,THB,โลตัส`;
+    const { entries, skipped } = parseMonefyCsv(csv);
+    expect(skipped).toBe(0);
+    expect(entries).toEqual([
+      {
+        date: '2016-01-15',
+        account: '#KTC X VISA',
+        category: 'ช็อปปิ้ง',
+        amount: -637,
+        currency: 'THB',
+        originalAmount: -637,
+        note: 'โลตัส',
+      },
+    ]);
+  });
+
+  it('strips thousands commas and leaves an empty note as null', () => {
+    const csv = `${header}\n16/01/2016,#KTC X VISA,รักษาพยาบาล,"-3,960",THB,"-3,960",THB,`;
+    const [row] = parseMonefyCsv(csv).entries;
+    expect(row.amount).toBe(-3960);
+    expect(row.note).toBeNull();
+  });
+
+  it('keeps original currency + amount for a non-THB row', () => {
+    const csv = `${header}\n20/03/2019,เงินเยน,เยน อาหาร,-1000,JPY,-230,THB,ramen`;
+    const [row] = parseMonefyCsv(csv).entries;
+    expect(row.currency).toBe('JPY');
+    expect(row.originalAmount).toBe(-1000);
+    expect(row.amount).toBe(-230);
+  });
+
+  it('skips credit-card-payment and initial-balance rows', () => {
+    const csv =
+      `${header}\n` +
+      `16/01/2016,#KTC X VISA,บัตรเครดิท,"12,000",THB,"12,000",THB,\n` +
+      `01/01/2016,เงินเยน,Initial balance 'เงินเยน',5000,THB,5000,THB,`;
+    const { entries, skipped } = parseMonefyCsv(csv);
+    expect(entries).toHaveLength(0);
+    expect(skipped).toBe(2);
+  });
+
+  it('exposes the skip list for review', () => {
+    expect(SKIP_CATEGORIES).toContain('บัตรเครดิท');
   });
 });
