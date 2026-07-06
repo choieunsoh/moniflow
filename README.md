@@ -17,7 +17,9 @@ npm run dev -- summary   # CLI: net money flow
 npm test            # vitest
 ```
 
-Quality gates (all must pass before commit, run separately so failures surface individually):
-`npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test`.
+Quality gates — before every commit, format your changes then run the checks separately so
+failures surface individually:
+`npm run format:files <changed files>`, then `npm run typecheck`, `npm run lint`,
+`npm run format:check`, `npm test`.
 
 See [CLAUDE.md](./CLAUDE.md) for architecture and conventions.

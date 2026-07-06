@@ -31,8 +31,18 @@ npm run db:generate     # drizzle-kit generate — migration from schema.ts (onc
 npm run db:push         # drizzle-kit push — apply schema to a DB without a migration (dev only)
 ```
 
-Run quality gates **separately** (`npm run typecheck`, `npm run lint`, then `npm test`) so
-failures surface individually. All three must pass before committing.
+Before committing, **format the files you changed, then run the check gates separately** so
+failures surface individually:
+
+```bash
+npm run format:files <changed files>   # prettier --write on what you touched
+npm run typecheck
+npm run lint
+npm run format:check                    # backstop — verifies nothing is left unformatted
+npm test
+```
+
+All must pass before committing.
 
 ## Toolchain notes (inherited from portfolio-dashboard — keep these)
 
