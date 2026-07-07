@@ -2,6 +2,7 @@
 // live data), so opt out of static generation.
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import {
@@ -36,11 +37,16 @@ export default async function DashboardPage({
 
   return (
     <div className="mx-auto flex max-w-[1120px] flex-col gap-6 px-5 py-10">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Your money flow for the {cycle.label} billing cycle.
-        </p>
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            Your money flow for the {cycle.label} billing cycle.
+          </p>
+        </div>
+        <Link href="/entries/new" className="btn btn-primary">
+          ＋ Add entry
+        </Link>
       </header>
 
       <CycleSelector activeKey={activeKey} />
