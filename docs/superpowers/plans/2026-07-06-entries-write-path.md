@@ -85,6 +85,8 @@ import type { Db } from '@db/client';
 // value) and is the basis for every rollup. `currency` + `originalAmount` preserve the source
 // currency for non-THB rows (JPY/HKD) so the import is lossless; they are informational only.
 // `time` is a nullable 24h 'HH:MM' — imported rows rarely carry one, hand-entered rows may.
+// `source` distinguishes bulk-imported rows ('monefy') from hand-entered ones ('manual', the
+// default) so re-running the import only truncates imported rows — see replaceEntries (Task 9).
 // This file is the schema source of truth; after any edit here, re-run `npm run db:generate`.
 export const entries = sqliteTable('entries', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -96,6 +98,7 @@ export const entries = sqliteTable('entries', {
   currency: text('currency'), // original currency, e.g. 'THB' | 'JPY'
   originalAmount: real('original_amount'), // signed amount in the original currency
   note: text('note'),
+  source: text('source').notNull().default('manual'), // 'manual' | 'monefy'
 });
 
 export type Entry = typeof entries.$inferSelect;
@@ -115,11 +118,22 @@ export function ensureEntriesTable(db: Db): void {
       amount REAL NOT NULL,
       currency TEXT,
       original_amount REAL,
-      note TEXT
+      note TEXT,
+      source TEXT NOT NULL DEFAULT 'manual'
     )
   `);
 }
 ```
+
+> **`source` column note (added when promoting the anti-truncation guard into this slice):** the
+> column defaults to `'manual'`, so `insertEntry` and `parseEntryForm` never set it — only the
+> importer overrides it to `'monefy'` (Task 9). Adding a NOT NULL column makes `Entry.source: string`,
+> so any `Entry` literal in tests (e.g. the `e()` helper in `chart.test.ts`) must include
+> `source: 'manual'` — fix that when typecheck flags it, exactly as the `currency`/`originalAmount`
+> columns were handled in Slice 1. Existing local `data/moniflow.db` rows predate the column;
+> `CREATE TABLE IF NOT EXISTS` does not migrate, so after this slice re-run
+> `npm run dev -- import data/Monefy.Data.05-07-2026.csv` once (truncate-reload, no hand-entered rows
+> exist yet) to pick up `time` + `source`.
 
 - [ ] **Step 4: Run it, verify it passes**
 
@@ -1194,6 +1208,135 @@ git commit -m "feat(app): add entry-point link from the dashboard" -m "A '+ Add 
 
 ---
 
+## Task 9: `source` column preserves hand-entered rows on re-import
+
+The `source` column exists after Task 1 (default `'manual'`). This task makes the importer tag its
+rows `'monefy'` and narrows `replaceEntries` so re-running the Monefy import truncates ONLY imported
+rows — hand-entered (`'manual'`) rows survive. Depends only on Task 1; run it right after.
+
+**Files:**
+- Modify: `src/features/entries/import.ts`, `src/features/entries/import.test.ts`
+- Modify: `src/features/entries/queries.ts`, `src/features/entries/queries.test.ts`
+
+- [ ] **Step 1: Failing test — importer tags rows `'monefy'`** — in `import.test.ts`, add `source: 'monefy'` to the expected object in the existing `'maps a THB outflow row: DD/MM/YYYY date, cleaned amount, note'` test, so its `toEqual(...)` now expects:
+
+```ts
+    expect(entries).toEqual([
+      {
+        date: '2016-01-15',
+        account: '#KTC X VISA',
+        category: 'ช็อปปิ้ง',
+        amount: -637,
+        currency: 'THB',
+        originalAmount: -637,
+        note: 'โลตัส',
+        source: 'monefy',
+      },
+    ]);
+```
+
+- [ ] **Step 2: Run it, verify it fails**
+
+Run: `npm test -- src/features/entries/import.test.ts`
+Expected: FAIL — actual object is missing `source`.
+
+- [ ] **Step 3: Tag imported rows** — in `src/features/entries/import.ts`, add `source: 'monefy'` to the object pushed in `parseMonefyCsv`'s loop:
+
+```ts
+    entries.push({
+      date: toIsoDate(cols[0]),
+      account: cols[1],
+      category,
+      amount: cleanAmount(cols[5]),
+      currency: cols[4],
+      originalAmount: cleanAmount(cols[3]),
+      note: note === '' ? null : note,
+      source: 'monefy',
+    });
+```
+
+- [ ] **Step 4: Run it, verify it passes**
+
+Run: `npm test -- src/features/entries/import.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Failing test — `replaceEntries` preserves manual rows** — in `queries.test.ts`, REPLACE the two existing `it('wipes existing rows and inserts the new set', …)` and `it('clears to empty when given no rows', …)` cases inside `describe('replaceEntries', …)` with these two (keep the large-batch `it('inserts a set larger than the SQLite variable cap …')` test as-is):
+
+```ts
+  it('replaces monefy-sourced rows but keeps hand-entered (manual) ones', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      { date: '2020-01-01', account: 'a', category: 'imported-old', amount: -1, source: 'monefy' },
+      { date: '2026-07-01', account: 'me', category: 'hand-entered', amount: -9, source: 'manual' },
+    ]);
+    replaceEntries(db, [
+      { date: '2026-07-02', account: 'b', category: 'imported-new', amount: -2, source: 'monefy' },
+    ]);
+    const cats = getEntries(db)
+      .map((r) => r.category)
+      .sort();
+    expect(cats).toEqual(['hand-entered', 'imported-new']); // old monefy gone, manual kept, new added
+  });
+
+  it('with no rows, clears monefy rows but leaves manual ones', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      { date: '2020-01-01', account: 'a', category: 'imported', amount: -1, source: 'monefy' },
+      { date: '2026-07-01', account: 'me', category: 'manual', amount: -9, source: 'manual' },
+    ]);
+    replaceEntries(db, []);
+    expect(getEntries(db).map((r) => r.category)).toEqual(['manual']);
+  });
+```
+
+- [ ] **Step 6: Run it, verify it fails**
+
+Run: `npm test -- src/features/entries/queries.test.ts`
+Expected: FAIL — the current `replaceEntries` deletes ALL rows, so the manual row is wrongly removed.
+
+- [ ] **Step 7: Narrow `replaceEntries` to monefy rows** — in `src/features/entries/queries.ts`, add `eq` to the drizzle-orm import (`import { desc, and, eq, gte, lte, sql } from 'drizzle-orm';`) and replace the `replaceEntries` body + comment:
+
+```ts
+// Replace the imported ledger from an immutable Monefy export, leaving hand-entered ('manual')
+// rows untouched — only 'monefy'-sourced rows are cleared. Chunked inside a transaction: a single
+// insert of the ~10.7k-row export exceeds SQLite's bound-variable cap, and delete + inserts must
+// be atomic so a failure can't leave a half ledger.
+export function replaceEntries(db: Db, rows: NewEntry[]): void {
+  const chunkSize = 500; // 500 rows × bound columns stays well under SQLite's variable cap
+  db.transaction((tx) => {
+    tx.delete(entries).where(eq(entries.source, 'monefy')).run();
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      tx.insert(entries)
+        .values(rows.slice(i, i + chunkSize))
+        .run();
+    }
+  });
+}
+```
+
+- [ ] **Step 8: Run it, verify it passes**
+
+Run: `npm test -- src/features/entries/queries.test.ts`
+Expected: PASS (both new tests + the large-batch test).
+
+- [ ] **Step 9: Gates + commit**
+
+```bash
+npm run format:files src/features/entries/import.ts src/features/entries/import.test.ts src/features/entries/queries.ts src/features/entries/queries.test.ts
+npm run typecheck && npm run lint && npm run format:check && npm test
+git add src/features/entries/import.ts src/features/entries/import.test.ts src/features/entries/queries.ts src/features/entries/queries.test.ts
+git commit -m "feat(features): tag imported rows and preserve manual ones on re-import" -m "The importer now stamps source='monefy'; replaceEntries deletes only monefy-sourced rows, so re-running the Monefy import no longer truncates hand-entered entries. Closes the footgun flagged when the write path landed." -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>" -m "Claude-Session: https://claude.ai/code/session_01PqEBaVYHgYGEs9MaWtWaSm"
+```
+
+- [ ] **Step 10: Re-import the real DB once** (picks up the new `time` + `source` columns; `CREATE TABLE IF NOT EXISTS` does not migrate the existing local file):
+
+Run: `npm run dev -- import data/Monefy.Data.05-07-2026.csv`
+Expected: `imported 10682, skipped 4 …`, no "no column named …" error.
+
+---
+
 ## Done — definition of complete
 
 - `/entries/new` adds an entry (THB or a manual foreign-currency conversion) and redirects to
@@ -1210,7 +1353,10 @@ git commit -m "feat(app): add entry-point link from the dashboard" -m "A '+ Add 
 ## Deferred (explicitly not in this slice)
 
 Receipt scan / OCR import · recurring entries · bulk edit · category merge/alias tool (carried
-from Slice 1) · auto FX lookup (carried from Slice 1) · a `source` column so the Monefy import
-can stop truncating hand-entered rows (flagged as a pre-existing `ponytail` note in
-`replaceEntries`; still not fixed) · polished inline validation UI (validation failures currently
-throw and surface via Next's default error boundary).
+from Slice 1) · auto FX lookup (carried from Slice 1) · polished inline validation UI (validation
+failures currently throw and surface via Next's default error boundary) · a drizzle-kit migration
+runner (the `time`/`source` columns still rely on delete-and-re-import to update an existing local
+DB, since `CREATE TABLE IF NOT EXISTS` does not migrate).
+
+_(The `source` column that stops the Monefy import truncating hand-entered rows was promoted INTO
+this slice — see Task 9 — rather than deferred.)_
