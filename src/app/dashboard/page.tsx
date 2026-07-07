@@ -20,6 +20,10 @@ import { CycleProgress } from '@features/entries/ui/CycleProgress';
 import { LedgerTable } from '@features/entries/ui/LedgerTable';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { FlowChart } from '@features/entries/ui/FlowChart';
+import { ensureBudgetsTable } from '@features/budgets/schema';
+import { getBudgets } from '@features/budgets/queries';
+import { toBudgetRows, totalBudgetRow } from '@features/budgets/budget';
+import { BudgetTracker } from '@features/budgets/ui/BudgetTracker';
 
 export default async function DashboardPage({
   searchParams,
@@ -29,11 +33,18 @@ export default async function DashboardPage({
   const { cycle: cycleParam } = await searchParams;
   const db = initDb();
   ensureEntriesTable(db);
+  ensureBudgetsTable(db);
 
   const activeKey = cycleParam ?? currentCycleKey(todayIso());
   const cycle = cycleFromKey(activeKey);
   const summary = getCycleSummary(db, cycle.start, cycle.end);
   const entriesInCycle = getEntriesInRange(db, cycle.start, cycle.end);
+  const categoryBreakdown = getCategoryBreakdown(db, cycle.start, cycle.end);
+  const progress = cycleProgress(cycle, todayIso());
+  const progressPct = (progress.day / progress.total) * 100;
+  const budgets = getBudgets(db);
+  const budgetRows = toBudgetRows(categoryBreakdown, budgets, progressPct);
+  const total = totalBudgetRow(Math.abs(summary.outflow), budgets, progressPct);
 
   return (
     <div className="mx-auto flex max-w-[1120px] flex-col gap-6 px-5 py-10">
@@ -50,16 +61,14 @@ export default async function DashboardPage({
       </header>
 
       <CycleSelector activeKey={activeKey} />
-      <CycleProgress progress={cycleProgress(cycle, todayIso())} />
+      <CycleProgress progress={progress} />
 
       {summary.count > 0 ? (
         <>
           <SummaryBar summary={summary} />
+          <BudgetTracker rows={budgetRows} total={total} />
           <div className="grid gap-6 md:grid-cols-2">
-            <Breakdown
-              title="By category"
-              rows={getCategoryBreakdown(db, cycle.start, cycle.end)}
-            />
+            <Breakdown title="By category" rows={categoryBreakdown} />
             <Breakdown title="By account" rows={getAccountBreakdown(db, cycle.start, cycle.end)} />
           </div>
           <section className="panel p-5">
