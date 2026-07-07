@@ -135,3 +135,18 @@ export function getDistinctAccounts(db: Db): string[] {
     .all()
     .map((r) => r.account);
 }
+
+export type CategoryCount = { category: string; count: number };
+
+// Category cleanup surface: how many rows sit in each category, so the biggest fragments are
+// obvious before a rename/merge. Grouped in SQL; sorted by count in JS — same pattern as
+// groupSum above, since the result set is at most one row per distinct category, tiny even over
+// a decade of data.
+export function getCategoryCounts(db: Db): CategoryCount[] {
+  return db
+    .select({ category: entries.category, count: sql<number>`count(*)` })
+    .from(entries)
+    .groupBy(entries.category)
+    .all()
+    .sort((a, b) => b.count - a.count);
+}

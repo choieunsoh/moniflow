@@ -16,6 +16,7 @@ import {
   getEntryById,
   getDistinctCategories,
   getDistinctAccounts,
+  getCategoryCounts,
 } from './queries';
 
 describe('replaceEntries', () => {
@@ -204,5 +205,27 @@ describe('getDistinctCategories / getDistinctAccounts', () => {
     ]);
     expect(getDistinctCategories(db)).toEqual(['food', 'travel']);
     expect(getDistinctAccounts(db)).toEqual(['cash', 'visa']);
+  });
+});
+
+describe('getCategoryCounts', () => {
+  it('groups by category and counts rows, largest count first', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      { date: '2026-07-01', account: 'a', category: 'ช็อปปิ้ง', amount: -100 },
+      { date: '2026-07-02', account: 'a', category: 'ช็อปปิ้ง', amount: -50 },
+      { date: '2026-07-03', account: 'a', category: 'อาหาร', amount: -30 },
+    ]);
+    expect(getCategoryCounts(db)).toEqual([
+      { category: 'ช็อปปิ้ง', count: 2 },
+      { category: 'อาหาร', count: 1 },
+    ]);
+  });
+
+  it('returns an empty array for an empty ledger', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    expect(getCategoryCounts(db)).toEqual([]);
   });
 });
