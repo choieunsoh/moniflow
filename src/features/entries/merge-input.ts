@@ -9,8 +9,12 @@ export function parseMergeInput(formData: FormData): MergeInput | null {
   const from = formData.get('from');
   const to = formData.get('to');
   if (typeof from !== 'string' || typeof to !== 'string') return null;
-  const trimmedFrom = from.trim();
+  // `from` is the exact stored category key (a hidden field bound verbatim from the DB), so it must
+  // match byte-for-byte and is NOT trimmed — the Monefy import stores categories un-trimmed, so a
+  // whitespace fragment like 'อาหาร ' is a real, distinct key. Trimming it here would make the
+  // rename target the WRONG rows, or make a fragment→clean rename look like a no-op. Only `to`
+  // (free user text) is trimmed. The equality guard compares the raw `from` to the trimmed `to`.
   const trimmedTo = to.trim();
-  if (trimmedFrom === '' || trimmedTo === '' || trimmedFrom === trimmedTo) return null;
-  return { from: trimmedFrom, to: trimmedTo };
+  if (from === '' || trimmedTo === '' || from === trimmedTo) return null;
+  return { from, to: trimmedTo };
 }
