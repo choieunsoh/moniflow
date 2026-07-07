@@ -11,7 +11,7 @@ type EntryFormProps = {
   entry?: Entry;
 };
 
-const fieldClass = 'rounded-[var(--radius-sm)] border px-3 py-2';
+const fieldClass = 'min-h-11 rounded-[var(--radius-sm)] border px-3 py-2 text-base';
 const fieldStyle = { borderColor: 'var(--color-border)', background: 'var(--color-surface-2)' };
 
 // Add/edit form for a single ledger row, reused by both routes. Controlled only where behavior
@@ -108,6 +108,7 @@ export function EntryForm({ action, accounts, categories, entry }: EntryFormProp
             type="number"
             step="0.01"
             min="0"
+            inputMode="decimal"
             defaultValue={entry ? Math.abs(entry.originalAmount ?? entry.amount) : undefined}
             required
             className={`tnum ${fieldClass}`}
@@ -123,6 +124,7 @@ export function EntryForm({ action, accounts, categories, entry }: EntryFormProp
               type="number"
               step="0.01"
               min="0"
+              inputMode="decimal"
               defaultValue={entry ? Math.abs(entry.amount) : undefined}
               required
               className={`tnum ${fieldClass}`}

@@ -32,9 +32,10 @@ export default function SettingsPage() {
             type="number"
             min={1}
             max={28}
+            inputMode="numeric"
             defaultValue={cutoff}
             required
-            className="w-24 rounded-[var(--radius-sm)] border px-3 py-2 text-sm"
+            className="min-h-11 w-24 rounded-[var(--radius-sm)] border px-3 py-2 text-base"
             style={{ borderColor: 'var(--color-border)' }}
           />
           <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
