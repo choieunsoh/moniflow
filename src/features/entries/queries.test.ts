@@ -4,6 +4,7 @@ import { ensureEntriesTable } from './schema';
 import {
   addEntries,
   getEntries,
+  getRecentEntries,
   replaceEntries,
   getCycleSummary,
   getCategoryBreakdown,
@@ -91,5 +92,25 @@ describe('cycle-scoped queries', () => {
 
   it('returns the raw entries in range', () => {
     expect(getEntriesInRange(seed(), '2026-07-18', '2026-08-17')).toHaveLength(3);
+  });
+});
+
+describe('getRecentEntries', () => {
+  it('orders by date desc, then time desc, then id desc — untimed rows sort last', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      { date: '2026-07-01', time: '09:00', account: 'cash', category: 'food', amount: -10 },
+      { date: '2026-07-01', time: '18:30', account: 'cash', category: 'food', amount: -20 },
+      { date: '2026-07-01', account: 'cash', category: 'food', amount: -5 }, // no time
+      { date: '2026-07-02', account: 'cash', category: 'food', amount: -1 }, // no time
+    ]);
+    const rows = getRecentEntries(db, 10);
+    expect(rows.map((r) => [r.date, r.time])).toEqual([
+      ['2026-07-02', null],
+      ['2026-07-01', '18:30'],
+      ['2026-07-01', '09:00'],
+      ['2026-07-01', null],
+    ]);
   });
 });

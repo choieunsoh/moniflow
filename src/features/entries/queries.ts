@@ -13,7 +13,12 @@ export function getEntries(db: Db): Entry[] {
 }
 
 export function getRecentEntries(db: Db, limit = 8): Entry[] {
-  return db.select().from(entries).orderBy(desc(entries.date), desc(entries.id)).limit(limit).all();
+  return db
+    .select()
+    .from(entries)
+    .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
+    .limit(limit)
+    .all();
 }
 
 // ponytail: nets in JS over the full table — fine at scaffold scale. Upgrade to SQL aggregates

@@ -36,4 +36,16 @@ describe('entries feature (in-memory)', () => {
     expect(row.originalAmount).toBe(-1000);
     expect(row.amount).toBe(-230); // THB, the rollup basis
   });
+
+  it('stores an optional time alongside the date', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      { date: '2026-07-06', time: '08:15', account: 'cash', category: 'coffee', amount: -80 },
+      { date: '2026-07-06', account: 'cash', category: 'coffee', amount: -60 }, // no time
+    ]);
+    const [withTime, withoutTime] = getEntries(db);
+    expect(withTime.time).toBe('08:15');
+    expect(withoutTime.time).toBeNull();
+  });
 });

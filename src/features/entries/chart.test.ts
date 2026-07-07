@@ -5,12 +5,14 @@ import type { Entry } from './schema';
 const e = (id: number, date: string, amount: number): Entry => ({
   id,
   date,
+  time: null,
   account: 'cash',
   category: 'x',
   amount,
   currency: null,
   originalAmount: null,
   note: null,
+  source: 'manual',
 });
 
 describe('toCumulativeBalance', () => {
