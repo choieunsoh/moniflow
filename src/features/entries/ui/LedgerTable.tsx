@@ -1,10 +1,13 @@
+import Link from 'next/link';
 import { formatSignedBaht } from '@shared/money';
 import { formatDay } from '@shared/date';
+import { deleteEntryAction } from '../actions';
 import type { Entry } from '../schema';
 
 // Recent entries, densest-legible. Amount is mono, right-aligned, signed AND colored so meaning
 // survives grayscale. The panel clips the horizontal scroll on narrow viewports (structural
-// responsive, not fluid type).
+// responsive, not fluid type). Actions column: Edit navigates to the edit route; Delete posts
+// straight to deleteEntryAction — both work without any client JS of their own.
 export function LedgerTable({ entries }: { entries: Entry[] }) {
   return (
     <section className="panel overflow-hidden">
@@ -20,6 +23,7 @@ export function LedgerTable({ entries }: { entries: Entry[] }) {
               <Th className="text-left">Category</Th>
               <Th className="text-left">Account</Th>
               <Th className="text-right">Amount</Th>
+              <Th className="text-right">Actions</Th>
             </tr>
           </thead>
           <tbody>
@@ -45,6 +49,27 @@ export function LedgerTable({ entries }: { entries: Entry[] }) {
                   style={{ color: e.amount < 0 ? 'var(--color-loss)' : 'var(--color-gain)' }}
                 >
                   {formatSignedBaht(e.amount)}
+                </td>
+                <td className="px-5 py-3 text-right whitespace-nowrap">
+                  <div className="flex items-center justify-end gap-3 text-xs">
+                    <Link
+                      href={`/entries/${e.id}/edit`}
+                      className="hover:underline"
+                      style={{ color: 'var(--color-accent-text)' }}
+                    >
+                      Edit
+                    </Link>
+                    <form action={deleteEntryAction}>
+                      <input type="hidden" name="id" value={e.id} />
+                      <button
+                        type="submit"
+                        className="hover:underline"
+                        style={{ color: 'var(--color-loss)' }}
+                      >
+                        Delete
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             ))}
