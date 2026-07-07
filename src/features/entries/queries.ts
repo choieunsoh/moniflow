@@ -1,4 +1,4 @@
-import { desc, and, eq, gte, lte, sql } from 'drizzle-orm';
+import { desc, and, eq, gte, lte, sql, isNotNull, ne } from 'drizzle-orm';
 import type { Db } from '@db/client';
 import { entries, type Entry, type NewEntry } from './schema';
 
@@ -156,4 +156,16 @@ export function getCategoryCounts(db: Db): CategoryCount[] {
 // touched, so renaming a category that doesn't exist updates zero rows.
 export function renameCategory(db: Db, from: string, to: string): void {
   db.update(entries).set({ category: to }).where(eq(entries.category, from)).run();
+}
+
+// Foreign-currency rows for the trip view — anything not THB (and not null, which covers legacy
+// or bad-import rows). Ordered by date then id so groupIntoTrips can walk it as one chronological
+// pass without needing to trust the caller's ordering.
+export function getForeignEntries(db: Db): Entry[] {
+  return db
+    .select()
+    .from(entries)
+    .where(and(isNotNull(entries.currency), ne(entries.currency, 'THB')))
+    .orderBy(entries.date, entries.id)
+    .all();
 }

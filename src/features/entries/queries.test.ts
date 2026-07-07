@@ -18,6 +18,7 @@ import {
   getDistinctAccounts,
   getCategoryCounts,
   renameCategory,
+  getForeignEntries,
 } from './queries';
 
 describe('replaceEntries', () => {
@@ -261,5 +262,59 @@ describe('renameCategory', () => {
     addEntries(db, [{ date: '2026-07-01', account: 'a', category: 'อาหาร', amount: -100 }]);
     renameCategory(db, 'ไม่มีอยู่จริง', 'อาหาร');
     expect(getCategoryCounts(db)).toEqual([{ category: 'อาหาร', count: 1 }]);
+  });
+});
+
+describe('getForeignEntries', () => {
+  it('returns only non-THB rows, ordered by date then id', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      {
+        date: '2019-03-02',
+        account: 'jpy',
+        category: 'food',
+        amount: -230,
+        currency: 'JPY',
+        originalAmount: -1000,
+      },
+      { date: '2019-03-01', account: 'cash', category: 'food', amount: -50 }, // THB, excluded
+      {
+        date: '2019-03-01',
+        account: 'cash',
+        category: 'misc',
+        amount: -10,
+        currency: null,
+        originalAmount: null,
+      }, // null currency, excluded
+      {
+        date: '2019-03-01',
+        account: 'jpy',
+        category: 'transport',
+        amount: -100,
+        currency: 'JPY',
+        originalAmount: -400,
+      },
+    ]);
+    const rows = getForeignEntries(db);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].category).toBe('transport'); // 03-01, sorts before the 03-02 row
+    expect(rows[1].category).toBe('food');
+  });
+
+  it('excludes rows whose currency is explicitly THB', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      {
+        date: '2020-01-01',
+        account: 'cash',
+        category: 'food',
+        amount: -50,
+        currency: 'THB',
+        originalAmount: -50,
+      },
+    ]);
+    expect(getForeignEntries(db)).toHaveLength(0);
   });
 });
