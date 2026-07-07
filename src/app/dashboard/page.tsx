@@ -12,6 +12,8 @@ import {
   getEntriesInRange,
 } from '@features/entries/queries';
 import { cycleFromKey, currentCycleKey, cycleProgress } from '@features/entries/cycle';
+import { ensureSettingsTable } from '@features/settings/schema';
+import { getCutoff } from '@features/settings/queries';
 import { todayIso } from '@shared/date';
 import { SummaryBar } from '@features/entries/ui/SummaryBar';
 import { Breakdown } from '@features/entries/ui/Breakdown';
@@ -34,9 +36,11 @@ export default async function DashboardPage({
   const db = initDb();
   ensureEntriesTable(db);
   ensureBudgetsTable(db);
+  ensureSettingsTable(db);
 
-  const activeKey = cycleParam ?? currentCycleKey(todayIso());
-  const cycle = cycleFromKey(activeKey);
+  const cutoff = getCutoff(db);
+  const activeKey = cycleParam ?? currentCycleKey(todayIso(), cutoff);
+  const cycle = cycleFromKey(activeKey, cutoff);
   const summary = getCycleSummary(db, cycle.start, cycle.end);
   const entriesInCycle = getEntriesInRange(db, cycle.start, cycle.end);
   const categoryBreakdown = getCategoryBreakdown(db, cycle.start, cycle.end);
@@ -60,7 +64,7 @@ export default async function DashboardPage({
         </Link>
       </header>
 
-      <CycleSelector activeKey={activeKey} />
+      <CycleSelector activeKey={activeKey} cutoff={cutoff} />
       <CycleProgress progress={progress} />
 
       {summary.count > 0 ? (
