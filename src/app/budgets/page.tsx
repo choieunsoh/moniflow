@@ -73,17 +73,18 @@ function BudgetFormRow({
   showDelete: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <form action={setBudgetAction} className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <form action={setBudgetAction} className="flex flex-1 items-center gap-2">
         <input type="hidden" name="category" value={category} />
         <input
           type="number"
           name="amount"
           step="1"
           min="0"
+          inputMode="numeric"
           defaultValue={amount ?? ''}
           placeholder="Amount (฿)"
-          className="w-32 rounded px-2 py-1 text-sm"
+          className="min-h-11 min-w-0 flex-1 rounded px-3 text-base sm:w-32 sm:flex-none"
           style={{
             border: '1px solid var(--color-border)',
             background: 'var(--color-surface-2)',
