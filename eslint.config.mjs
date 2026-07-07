@@ -56,6 +56,18 @@ export default defineConfig([
     },
   },
 
+  {
+    // Server Action modules ('use server'): Next.js requires every exported function to be
+    // `async` so it can compile the file into server-only RPC endpoints, but this codebase's
+    // actions wrap synchronous better-sqlite3 calls with no `await` of their own — so
+    // require-await would flag every action. The `async` keyword here is a Next.js contract,
+    // not a signal of missing awaits.
+    files: ['**/actions.ts'],
+    rules: {
+      '@typescript-eslint/require-await': 'off',
+    },
+  },
+
   // Must be last: disables stylistic rules that would conflict with Prettier.
   prettier,
 ]);
