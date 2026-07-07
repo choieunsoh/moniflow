@@ -153,7 +153,8 @@ p {
   font-weight: 500;
 }
 
-/* 44px tap target for link-style controls (nav items, table-row actions) that aren't .btn. */
+/* 44px tap target for link-style controls (nav items, table-row actions) that aren't .btn.
+   (min-height needs a non-inline display to take effect — hence inline-flex.) */
 .tap {
   display: inline-flex;
   align-items: center;
