@@ -30,51 +30,85 @@ export default function CategoriesPage() {
             No categories yet — import or add some entries first.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: 'var(--color-surface-2)', color: 'var(--color-muted)' }}>
-                  <Th className="text-left">Category</Th>
-                  <Th className="text-right">Entries</Th>
-                  <Th className="text-left">Rename / merge into</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {counts.map((c) => (
-                  <tr key={c.category} className="border-t">
-                    <td className="px-5 py-3">
-                      <span className="chip">{c.category}</span>
-                    </td>
-                    <td
-                      className="tnum px-5 py-3 text-right"
-                      style={{ color: 'var(--color-muted)' }}
-                    >
+          <>
+            {/* Mobile: cards */}
+            <ul className="flex flex-col sm:hidden">
+              {counts.map((c) => (
+                <li
+                  key={c.category}
+                  className="flex flex-col gap-2 border-t px-4 py-3 first:border-t-0"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="chip">{c.category}</span>
+                    <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
                       {c.count}
-                    </td>
-                    <td className="px-5 py-3">
-                      <form action={mergeCategoryAction} className="flex items-center gap-2">
-                        <input type="hidden" name="from" value={c.category} />
-                        <input
-                          name="to"
-                          list="category-options"
-                          placeholder="new or existing name…"
-                          required
-                          className="min-w-0 flex-1 rounded-[var(--radius-sm)] border px-3 py-1.5 text-sm"
-                          style={{
-                            background: 'var(--color-surface-2)',
-                            color: 'var(--color-text)',
-                          }}
-                        />
-                        <button type="submit" className="btn btn-ghost">
-                          Apply
-                        </button>
-                      </form>
-                    </td>
+                    </span>
+                  </div>
+                  <form action={mergeCategoryAction} className="flex items-center gap-2">
+                    <input type="hidden" name="from" value={c.category} />
+                    <input
+                      name="to"
+                      list="category-options"
+                      placeholder="new or existing name…"
+                      required
+                      className="min-h-11 min-w-0 flex-1 rounded-[var(--radius-sm)] border px-3 text-base"
+                      style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
+                    />
+                    <button type="submit" className="btn btn-ghost">
+                      Apply
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+
+            {/* ≥sm: table */}
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ background: 'var(--color-surface-2)', color: 'var(--color-muted)' }}>
+                    <Th className="text-left">Category</Th>
+                    <Th className="text-right">Entries</Th>
+                    <Th className="text-left">Rename / merge into</Th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {counts.map((c) => (
+                    <tr key={c.category} className="border-t">
+                      <td className="px-5 py-3">
+                        <span className="chip">{c.category}</span>
+                      </td>
+                      <td
+                        className="tnum px-5 py-3 text-right"
+                        style={{ color: 'var(--color-muted)' }}
+                      >
+                        {c.count}
+                      </td>
+                      <td className="px-5 py-3">
+                        <form action={mergeCategoryAction} className="flex items-center gap-2">
+                          <input type="hidden" name="from" value={c.category} />
+                          <input
+                            name="to"
+                            list="category-options"
+                            placeholder="new or existing name…"
+                            required
+                            className="min-w-0 flex-1 rounded-[var(--radius-sm)] border px-3 py-1.5 text-sm"
+                            style={{
+                              background: 'var(--color-surface-2)',
+                              color: 'var(--color-text)',
+                            }}
+                          />
+                          <button type="submit" className="btn btn-ghost">
+                            Apply
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
 
