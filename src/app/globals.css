@@ -106,12 +106,15 @@ p {
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   font-weight: 600;
   font-size: 0.9375rem;
   line-height: 1;
+  min-height: 44px; /* touch target — WCAG 2.5.5 / Apple HIG 44pt */
   padding: 0.625rem 1rem;
   border-radius: var(--radius-md);
+  touch-action: manipulation; /* remove the 300ms tap delay */
   transition:
     background var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
@@ -148,6 +151,14 @@ p {
   color: var(--color-muted);
   font-size: 0.75rem;
   font-weight: 500;
+}
+
+/* 44px tap target for link-style controls (nav items, table-row actions) that aren't .btn. */
+.tap {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 /* Reduced motion: keep meaning, drop movement. */
