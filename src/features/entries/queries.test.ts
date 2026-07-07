@@ -17,6 +17,7 @@ import {
   getDistinctCategories,
   getDistinctAccounts,
   getCategoryCounts,
+  renameCategory,
 } from './queries';
 
 describe('replaceEntries', () => {
@@ -227,5 +228,38 @@ describe('getCategoryCounts', () => {
     const db = initDb(':memory:');
     ensureEntriesTable(db);
     expect(getCategoryCounts(db)).toEqual([]);
+  });
+});
+
+describe('renameCategory', () => {
+  it('renames every row in a category to a brand-new name', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      { date: '2026-07-01', account: 'a', category: 'ช็อปปิ้ง ชมพู่', amount: -100 },
+      { date: '2026-07-02', account: 'a', category: 'ช็อปปิ้ง ชมพู่', amount: -50 },
+    ]);
+    renameCategory(db, 'ช็อปปิ้ง ชมพู่', 'ช็อปปิ้ง');
+    expect(getCategoryCounts(db)).toEqual([{ category: 'ช็อปปิ้ง', count: 2 }]);
+  });
+
+  it('merges into an existing target category — counts sum, source disappears', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      { date: '2026-07-01', account: 'a', category: 'ช็อปปิ้ง', amount: -100 },
+      { date: '2026-07-02', account: 'a', category: 'เยน ชอปปิ้ง', amount: -230 },
+      { date: '2026-07-03', account: 'a', category: 'เยน ชอปปิ้ง', amount: -20 },
+    ]);
+    renameCategory(db, 'เยน ชอปปิ้ง', 'ช็อปปิ้ง');
+    expect(getCategoryCounts(db)).toEqual([{ category: 'ช็อปปิ้ง', count: 3 }]);
+  });
+
+  it('is a no-op when the source category does not exist', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [{ date: '2026-07-01', account: 'a', category: 'อาหาร', amount: -100 }]);
+    renameCategory(db, 'ไม่มีอยู่จริง', 'อาหาร');
+    expect(getCategoryCounts(db)).toEqual([{ category: 'อาหาร', count: 1 }]);
   });
 });

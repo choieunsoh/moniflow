@@ -150,3 +150,10 @@ export function getCategoryCounts(db: Db): CategoryCount[] {
     .all()
     .sort((a, b) => b.count - a.count);
 }
+
+// Whole-ledger category rename. If `to` already exists, matching rows fold into it automatically
+// — a merge, not a separate code path. No-op-safe: only rows where category = `from` are
+// touched, so renaming a category that doesn't exist updates zero rows.
+export function renameCategory(db: Db, from: string, to: string): void {
+  db.update(entries).set({ category: to }).where(eq(entries.category, from)).run();
+}
