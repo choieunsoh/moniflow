@@ -13,25 +13,31 @@ import {
 } from './queries';
 
 describe('replaceEntries', () => {
-  it('wipes existing rows and inserts the new set', () => {
+  it('replaces monefy-sourced rows but keeps hand-entered (manual) ones', () => {
     const db = initDb(':memory:');
     ensureEntriesTable(db);
-    addEntries(db, [{ date: '2020-01-01', account: 'a', category: 'old', amount: -1 }]);
-    replaceEntries(db, [
-      { date: '2026-07-01', account: 'b', category: 'new', amount: -2 },
-      { date: '2026-07-02', account: 'b', category: 'new', amount: -3 },
+    addEntries(db, [
+      { date: '2020-01-01', account: 'a', category: 'imported-old', amount: -1, source: 'monefy' },
+      { date: '2026-07-01', account: 'me', category: 'hand-entered', amount: -9, source: 'manual' },
     ]);
-    const rows = getEntries(db);
-    expect(rows).toHaveLength(2);
-    expect(rows.every((r) => r.category === 'new')).toBe(true);
+    replaceEntries(db, [
+      { date: '2026-07-02', account: 'b', category: 'imported-new', amount: -2, source: 'monefy' },
+    ]);
+    const cats = getEntries(db)
+      .map((r) => r.category)
+      .sort();
+    expect(cats).toEqual(['hand-entered', 'imported-new']); // old monefy gone, manual kept, new added
   });
 
-  it('clears to empty when given no rows', () => {
+  it('with no rows, clears monefy rows but leaves manual ones', () => {
     const db = initDb(':memory:');
     ensureEntriesTable(db);
-    addEntries(db, [{ date: '2020-01-01', account: 'a', category: 'old', amount: -1 }]);
+    addEntries(db, [
+      { date: '2020-01-01', account: 'a', category: 'imported', amount: -1, source: 'monefy' },
+      { date: '2026-07-01', account: 'me', category: 'manual', amount: -9, source: 'manual' },
+    ]);
     replaceEntries(db, []);
-    expect(getEntries(db)).toHaveLength(0);
+    expect(getEntries(db).map((r) => r.category)).toEqual(['manual']);
   });
 
   // 5000 rows × 7 bound columns = 35,000 params — over SQLite's 32,766 variable cap. This size is

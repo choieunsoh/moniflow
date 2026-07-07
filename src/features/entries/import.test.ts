@@ -34,6 +34,7 @@ describe('parseMonefyCsv', () => {
         currency: 'THB',
         originalAmount: -637,
         note: 'โลตัส',
+        source: 'monefy',
       },
     ]);
   });

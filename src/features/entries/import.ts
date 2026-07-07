@@ -88,6 +88,7 @@ export function parseMonefyCsv(text: string): ImportResult {
       currency: cols[4],
       originalAmount: cleanAmount(cols[3]),
       note: note === '' ? null : note,
+      source: 'monefy',
     });
   }
   return { entries, skipped };

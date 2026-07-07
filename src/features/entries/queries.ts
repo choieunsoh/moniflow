@@ -1,4 +1,4 @@
-import { desc, and, gte, lte, sql } from 'drizzle-orm';
+import { desc, and, eq, gte, lte, sql } from 'drizzle-orm';
 import type { Db } from '@db/client';
 import { entries, type Entry, type NewEntry } from './schema';
 
@@ -47,15 +47,14 @@ export function getSummary(db: Db): Summary {
   return summarize(getEntries(db));
 }
 
-// Truncate-then-insert: the Monefy import replaces the whole ledger from an immutable export.
-// Chunked inside a transaction — a 10k-row export would blow past SQLite's bound-variable limit in
-// a single insert, and the delete + inserts must be atomic so a failure can't leave a half ledger.
-// ponytail: safe while there is no write path. When the add-entry slice lands, add a `source`
-// column and delete only where source='monefy' so hand-entered rows survive.
+// Replace the imported ledger from an immutable Monefy export, leaving hand-entered ('manual')
+// rows untouched — only 'monefy'-sourced rows are cleared. Chunked inside a transaction: a single
+// insert of the ~10.7k-row export exceeds SQLite's bound-variable cap, and delete + inserts must
+// be atomic so a failure can't leave a half ledger.
 export function replaceEntries(db: Db, rows: NewEntry[]): void {
-  const chunkSize = 500; // 500 rows × 7 bound columns stays well under SQLite's variable cap
+  const chunkSize = 500; // 500 rows × bound columns stays well under SQLite's variable cap
   db.transaction((tx) => {
-    tx.delete(entries).run();
+    tx.delete(entries).where(eq(entries.source, 'monefy')).run();
     for (let i = 0; i < rows.length; i += chunkSize) {
       tx.insert(entries)
         .values(rows.slice(i, i + chunkSize))
