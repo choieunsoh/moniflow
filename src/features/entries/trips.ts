@@ -42,3 +42,29 @@ export function groupIntoTrips(entries: Entry[], gapDays = 5): Trip[] {
   }
   return trips;
 }
+
+// Small currency-agnostic money formatter for foreign-currency totals: mirrors formatBaht's shape
+// (no fraction digits — this ledger treats money as whole units) but takes the ISO 4217 code as a
+// parameter so each trip renders in its own currency's symbol (¥, HK$, ...). Built fresh per call
+// rather than cached, since the currency varies per call and trip lists are small — not a hot path.
+export function formatForeign(amount: number, currency: string): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+const dmUtc = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+
+// Trip date-range label, e.g. "01 Mar – 05 Mar 2019" (same year) or "28 Dec 2019 – 03 Jan 2020"
+// (crosses year) — mirrors cycle.ts's (unexported) formatRange so cycle and trip labels read
+// consistently.
+export function formatTripRange(trip: Trip): string {
+  const start = new Date(`${trip.start}T00:00:00Z`);
+  const end = new Date(`${trip.end}T00:00:00Z`);
+  const sy = start.getUTCFullYear();
+  const ey = end.getUTCFullYear();
+  const startStr = sy === ey ? dmUtc.format(start) : `${dmUtc.format(start)} ${sy}`;
+  return `${startStr} – ${dmUtc.format(end)} ${ey}`;
+}

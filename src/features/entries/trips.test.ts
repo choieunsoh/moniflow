@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupIntoTrips } from './trips';
+import { groupIntoTrips, formatForeign, formatTripRange } from './trips';
 import type { Entry } from './schema';
 
 // Builds a full Entry row from the fields a test cares about; the shape is fixed but each test
@@ -76,5 +76,41 @@ describe('groupIntoTrips', () => {
 
   it('returns an empty array for no entries', () => {
     expect(groupIntoTrips([])).toEqual([]);
+  });
+});
+
+describe('formatForeign', () => {
+  it('formats an amount with the currency’s own symbol and no fraction digits', () => {
+    expect(formatForeign(12345, 'JPY')).toBe('¥12,345');
+  });
+
+  it('works for a different currency (HKD)', () => {
+    expect(formatForeign(500, 'HKD')).toBe('HK$500');
+  });
+});
+
+describe('formatTripRange', () => {
+  it('omits the year at the start when the trip stays within one year', () => {
+    const trip = {
+      currency: 'JPY',
+      start: '2019-03-01',
+      end: '2019-03-05',
+      count: 1,
+      originalTotal: 0,
+      thbTotal: 0,
+    };
+    expect(formatTripRange(trip)).toBe('01 Mar – 05 Mar 2019');
+  });
+
+  it('shows both years when the trip crosses a year boundary', () => {
+    const trip = {
+      currency: 'JPY',
+      start: '2019-12-28',
+      end: '2020-01-03',
+      count: 1,
+      originalTotal: 0,
+      thbTotal: 0,
+    };
+    expect(formatTripRange(trip)).toBe('28 Dec 2019 – 03 Jan 2020');
   });
 });
