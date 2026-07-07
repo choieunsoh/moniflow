@@ -17,11 +17,11 @@ export function SummaryBar({ summary }: { summary: Summary }) {
   return (
     <dl className="panel grid grid-cols-2 divide-x divide-y sm:grid-cols-4 sm:divide-y-0">
       {stats.map((s) => (
-        <div key={s.label} className="flex flex-col gap-1.5 p-5">
+        <div key={s.label} className="flex flex-col gap-1.5 p-4 sm:p-5">
           <dt className="text-sm" style={{ color: 'var(--color-muted)' }}>
             {s.label}
           </dt>
-          <dd className="tnum text-2xl font-semibold" style={{ color: s.color }}>
+          <dd className="tnum text-xl font-semibold sm:text-2xl" style={{ color: s.color }}>
             {s.value}
           </dd>
         </div>

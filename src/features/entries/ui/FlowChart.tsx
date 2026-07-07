@@ -36,5 +36,7 @@ export function FlowChart({ entries }: { entries: Entry[] }) {
     };
   }, [entries]);
 
-  return <div ref={ref} className="h-[260px] w-full" role="img" aria-label="Balance over time" />;
+  return (
+    <div ref={ref} className="h-56 w-full sm:h-[260px]" role="img" aria-label="Balance over time" />
+  );
 }

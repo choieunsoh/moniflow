@@ -53,14 +53,14 @@ export default async function DashboardPage({
 
   return (
     <PageContainer size="full">
-      <header className="flex items-center justify-between gap-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
             Your money flow for the {cycle.label} billing cycle.
           </p>
         </div>
-        <Link href="/entries/new" className="btn btn-primary">
+        <Link href="/entries/new" className="btn btn-primary w-full sm:w-auto">
           ＋ Add entry
         </Link>
       </header>
