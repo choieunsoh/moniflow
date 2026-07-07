@@ -5,7 +5,8 @@ import { redirect } from 'next/navigation';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { parseEntryForm } from './entry-form';
-import { insertEntry, updateEntry, deleteEntry } from './queries';
+import { insertEntry, updateEntry, deleteEntry, renameCategory } from './queries';
+import { parseMergeInput } from './merge-input';
 
 // The only feature module allowed to import Next's mutation APIs. Each action: open the DB,
 // parse + validate the form, write, invalidate the dashboard's cache, and (for add/edit)
@@ -41,5 +42,16 @@ export async function deleteEntryAction(formData: FormData): Promise<void> {
   ensureEntriesTable(db);
   const id = Number(formData.get('id'));
   deleteEntry(db, id);
+  revalidatePath('/dashboard');
+}
+
+export async function mergeCategoryAction(formData: FormData): Promise<void> {
+  const input = parseMergeInput(formData);
+  if (input === null) return;
+
+  const db = initDb();
+  ensureEntriesTable(db);
+  renameCategory(db, input.from, input.to);
+  revalidatePath('/categories');
   revalidatePath('/dashboard');
 }
