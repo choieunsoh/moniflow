@@ -101,3 +101,37 @@ export function getCategoryBreakdown(db: Db, start: string, end: string): Breakd
 export function getAccountBreakdown(db: Db, start: string, end: string): Breakdown[] {
   return groupSum(db, entries.account, start, end);
 }
+
+export function insertEntry(db: Db, entry: NewEntry): void {
+  db.insert(entries).values(entry).run();
+}
+
+export function updateEntry(db: Db, id: number, entry: NewEntry): void {
+  db.update(entries).set(entry).where(eq(entries.id, id)).run();
+}
+
+export function deleteEntry(db: Db, id: number): void {
+  db.delete(entries).where(eq(entries.id, id)).run();
+}
+
+export function getEntryById(db: Db, id: number): Entry | undefined {
+  return db.select().from(entries).where(eq(entries.id, id)).get();
+}
+
+export function getDistinctCategories(db: Db): string[] {
+  return db
+    .selectDistinct({ category: entries.category })
+    .from(entries)
+    .orderBy(entries.category)
+    .all()
+    .map((r) => r.category);
+}
+
+export function getDistinctAccounts(db: Db): string[] {
+  return db
+    .selectDistinct({ account: entries.account })
+    .from(entries)
+    .orderBy(entries.account)
+    .all()
+    .map((r) => r.account);
+}

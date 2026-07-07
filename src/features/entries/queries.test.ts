@@ -10,6 +10,12 @@ import {
   getCategoryBreakdown,
   getAccountBreakdown,
   getEntriesInRange,
+  insertEntry,
+  updateEntry,
+  deleteEntry,
+  getEntryById,
+  getDistinctCategories,
+  getDistinctAccounts,
 } from './queries';
 
 describe('replaceEntries', () => {
@@ -118,5 +124,85 @@ describe('getRecentEntries', () => {
       ['2026-07-01', '09:00'],
       ['2026-07-01', null],
     ]);
+  });
+});
+
+describe('single-row write queries', () => {
+  it('inserts, then reads the row back by id (including time + currency)', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    insertEntry(db, {
+      date: '2026-07-06',
+      time: '08:15',
+      account: 'cash',
+      category: 'coffee',
+      amount: -80,
+      currency: 'THB',
+      originalAmount: -80,
+      note: 'morning latte',
+    });
+    const [row] = getEntries(db);
+    const found = getEntryById(db, row.id);
+    expect(found).toEqual(row);
+    expect(found?.time).toBe('08:15');
+    expect(found?.currency).toBe('THB');
+  });
+
+  it('returns undefined for a missing id', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    expect(getEntryById(db, 999)).toBeUndefined();
+  });
+
+  it('updates every column of an existing row', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    insertEntry(db, { date: '2026-07-06', account: 'cash', category: 'coffee', amount: -80 });
+    const [row] = getEntries(db);
+    updateEntry(db, row.id, {
+      date: '2026-07-07',
+      time: '09:00',
+      account: 'visa',
+      category: 'brunch',
+      amount: -450,
+      currency: 'THB',
+      originalAmount: -450,
+      note: 'updated',
+    });
+    expect(getEntryById(db, row.id)).toEqual({
+      id: row.id,
+      date: '2026-07-07',
+      time: '09:00',
+      account: 'visa',
+      category: 'brunch',
+      amount: -450,
+      currency: 'THB',
+      originalAmount: -450,
+      note: 'updated',
+      source: 'manual',
+    });
+  });
+
+  it('deletes a row by id', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    insertEntry(db, { date: '2026-07-06', account: 'cash', category: 'coffee', amount: -80 });
+    const [row] = getEntries(db);
+    deleteEntry(db, row.id);
+    expect(getEntries(db)).toHaveLength(0);
+  });
+});
+
+describe('getDistinctCategories / getDistinctAccounts', () => {
+  it('returns sorted, de-duplicated lists', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      { date: '2026-07-01', account: 'visa', category: 'food', amount: -1 },
+      { date: '2026-07-02', account: 'cash', category: 'food', amount: -1 },
+      { date: '2026-07-03', account: 'visa', category: 'travel', amount: -1 },
+    ]);
+    expect(getDistinctCategories(db)).toEqual(['food', 'travel']);
+    expect(getDistinctAccounts(db)).toEqual(['cash', 'visa']);
   });
 });
