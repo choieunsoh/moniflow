@@ -5,6 +5,7 @@ import { initDb } from '@db/client';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff } from '@features/settings/queries';
 import { setCutoffAction } from '@features/settings/actions';
+import { PageContainer } from '@shared/ui/PageContainer';
 
 export default function SettingsPage() {
   const db = initDb();
@@ -12,7 +13,7 @@ export default function SettingsPage() {
   const cutoff = getCutoff(db);
 
   return (
-    <div className="mx-auto flex max-w-[640px] flex-col gap-6 px-5 py-10">
+    <PageContainer size="form">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
@@ -46,6 +47,6 @@ export default function SettingsPage() {
           </button>
         </form>
       </section>
-    </div>
+    </PageContainer>
   );
 }

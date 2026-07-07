@@ -30,7 +30,7 @@ const STACK = [
 
 export default function Home() {
   return (
-    <div className="mx-auto max-w-[1120px] px-5">
+    <div className="mx-auto max-w-[1120px] px-4 sm:px-5">
       {/* Hero — a calm brand moment. The radial glow is ambient, low-opacity, purposeful. */}
       <section className="relative isolate flex flex-col items-center gap-7 pt-24 pb-20 text-center">
         <div

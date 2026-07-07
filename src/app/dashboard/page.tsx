@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
+import { PageContainer } from '@shared/ui/PageContainer';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import {
@@ -51,7 +52,7 @@ export default async function DashboardPage({
   const total = totalBudgetRow(Math.abs(summary.outflow), budgets, progressPct);
 
   return (
-    <div className="mx-auto flex max-w-[1120px] flex-col gap-6 px-5 py-10">
+    <PageContainer size="full">
       <header className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">Dashboard</h1>
@@ -84,6 +85,6 @@ export default async function DashboardPage({
       ) : (
         <EmptyLedger />
       )}
-    </div>
+    </PageContainer>
   );
 }

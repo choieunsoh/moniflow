@@ -6,6 +6,7 @@ import { ensureEntriesTable } from '@features/entries/schema';
 import { getDistinctAccounts, getDistinctCategories } from '@features/entries/queries';
 import { addEntryAction } from '@features/entries/actions';
 import { EntryForm } from '@features/entries/ui/EntryForm';
+import { PageContainer } from '@shared/ui/PageContainer';
 
 export default function NewEntryPage() {
   const db = initDb();
@@ -14,7 +15,7 @@ export default function NewEntryPage() {
   const categories = getDistinctCategories(db);
 
   return (
-    <div className="mx-auto flex max-w-[640px] flex-col gap-6 px-5 py-10">
+    <PageContainer size="form">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Add entry</h1>
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
@@ -22,6 +23,6 @@ export default function NewEntryPage() {
         </p>
       </header>
       <EntryForm action={addEntryAction} accounts={accounts} categories={categories} />
-    </div>
+    </PageContainer>
   );
 }

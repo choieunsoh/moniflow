@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
-      <body className="flex min-h-screen flex-col">
+      <body className="flex min-h-dvh flex-col">
         <AppHeader />
         <main className="flex-1">{children}</main>
         <AppFooter />

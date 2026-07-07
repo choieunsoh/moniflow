@@ -11,6 +11,7 @@ import {
 } from '@features/entries/queries';
 import { editEntryAction } from '@features/entries/actions';
 import { EntryForm } from '@features/entries/ui/EntryForm';
+import { PageContainer } from '@shared/ui/PageContainer';
 
 export default async function EditEntryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,7 +25,7 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
   const categories = getDistinctCategories(db);
 
   return (
-    <div className="mx-auto flex max-w-[640px] flex-col gap-6 px-5 py-10">
+    <PageContainer size="form">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Edit entry</h1>
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
@@ -37,6 +38,6 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
         categories={categories}
         entry={entry}
       />
-    </div>
+    </PageContainer>
   );
 }

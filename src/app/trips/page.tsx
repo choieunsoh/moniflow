@@ -7,6 +7,7 @@ import { ensureEntriesTable } from '@features/entries/schema';
 import { getForeignEntries } from '@features/entries/queries';
 import { groupIntoTrips, formatForeign, formatTripRange } from '@features/entries/trips';
 import { formatBaht } from '@shared/money';
+import { PageContainer } from '@shared/ui/PageContainer';
 
 export default function TripsPage() {
   const db = initDb();
@@ -14,7 +15,7 @@ export default function TripsPage() {
   const trips = groupIntoTrips(getForeignEntries(db));
 
   return (
-    <div className="mx-auto flex max-w-[1120px] flex-col gap-6 px-5 py-10">
+    <PageContainer size="full">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Trips</h1>
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
@@ -57,6 +58,6 @@ export default function TripsPage() {
           ))}
         </ul>
       )}
-    </div>
+    </PageContainer>
   );
 }

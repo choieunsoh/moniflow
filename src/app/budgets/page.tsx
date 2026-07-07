@@ -7,6 +7,7 @@ import { getDistinctCategories } from '@features/entries/queries';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { getBudgets } from '@features/budgets/queries';
 import { setBudgetAction, deleteBudgetAction } from '@features/budgets/actions';
+import { PageContainer } from '@shared/ui/PageContainer';
 
 export default function BudgetsPage() {
   const db = initDb();
@@ -21,7 +22,7 @@ export default function BudgetsPage() {
   const total = allBudgets.find((b) => b.category === null) ?? null;
 
   return (
-    <div className="mx-auto flex max-w-[720px] flex-col gap-6 px-5 py-10">
+    <PageContainer size="narrow">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Budgets</h1>
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
@@ -58,7 +59,7 @@ export default function BudgetsPage() {
           </ul>
         )}
       </section>
-    </div>
+    </PageContainer>
   );
 }
 
