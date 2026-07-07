@@ -20,7 +20,7 @@ stack.
 
 ```bash
 npm run dev             # commander CLI entrypoint (tsx src/cli.ts) — e.g. `npm run dev -- summary`
-npm run dev:web         # Next.js dev server (127.0.0.1:4001, Turbopack)
+npm run dev:web         # Next.js dev server (127.0.0.1:4010, Turbopack)
 npm run build:web       # next build — production web build
 npm run typecheck       # tsc --noEmit (strict)
 npm run lint            # eslint . (flat config, type-aware)

@@ -998,7 +998,7 @@ Run: `npm run build:web`
 Expected: build succeeds, compiling `/entries/new` and `/entries/[id]/edit`, no type errors.
 
 - [ ] **Step 4: Verify in the running app** — `npm run dev:web`, then in a browser:
-  1. Open `http://127.0.0.1:4001/entries/new`. Fill in account, category, a THB amount, date;
+  1. Open `http://127.0.0.1:4010/entries/new`. Fill in account, category, a THB amount, date;
      submit. Expected: redirected to `/dashboard`; the new entry's totals/breakdowns reflect it
      (open the cycle it falls into if it isn't the current one).
   2. Change the currency to `JPY` on a fresh visit to `/entries/new`. Expected: a second

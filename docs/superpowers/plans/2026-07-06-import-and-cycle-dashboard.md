@@ -1062,7 +1062,7 @@ Expected: build succeeds (compiles `/dashboard`), no type errors.
 
 - [ ] **Step 3: Verify in the running app** — with the import already loaded (Task 5):
 
-Run: `npm run dev:web` (then, in another shell or a browser) open `http://127.0.0.1:4001/dashboard`
+Run: `npm run dev:web` (then, in another shell or a browser) open `http://127.0.0.1:4010/dashboard`
 Expected: the current cycle shows a SummaryBar with a non-zero outflow, By-category and By-account bars, a balance chart, and a recent-entries table. Click the prev/next links — the label changes to `18 <Mon> – 17 <Mon> <year>` and the figures change. Try `?cycle=2019-03` (a JPY-trip month) — Japan categories appear. Stop the dev server when done.
 
 - [ ] **Step 4: Commit**

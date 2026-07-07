@@ -423,7 +423,7 @@ Expected: build succeeds (compiles `/categories`), no type errors.
 
 - [ ] **Step 3: Verify in the running app**
 
-Run: `npm run dev:web`, then open `http://127.0.0.1:4001/categories`.
+Run: `npm run dev:web`, then open `http://127.0.0.1:4010/categories`.
 Expected: every distinct category in the ledger appears with a count, sorted largest-first. Pick
 a small fragment (e.g. a JPY-trip shopping category) and type an existing bigger category's exact
 name into its "to" field — the `<datalist>` should suggest existing names as you type. Submit.

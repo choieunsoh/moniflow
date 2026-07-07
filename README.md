@@ -12,7 +12,7 @@ Drizzle ORM + better-sqlite3 · ECharts 6 · commander (CLI) · Vitest · ESLint
 
 ```bash
 npm install
-npm run dev:web     # web app → http://127.0.0.1:4001
+npm run dev:web     # web app → http://127.0.0.1:4010
 npm run dev -- summary   # CLI: net money flow
 npm test            # vitest
 ```

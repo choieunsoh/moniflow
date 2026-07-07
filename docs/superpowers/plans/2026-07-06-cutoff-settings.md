@@ -443,7 +443,7 @@ Expected: PASS — the `CycleSelector` prop error from Task 4 is now resolved.
 
 - [ ] **Step 3: Verify in the running app**
 
-Run: `npm run dev:web`, open `http://127.0.0.1:4001/dashboard`. Expected: renders exactly as
+Run: `npm run dev:web`, open `http://127.0.0.1:4010/dashboard`. Expected: renders exactly as
 before (cutoff still resolves to 18 — no settings row exists yet, so `getCutoff` falls back to the
 default). Stop the dev server when done.
 
@@ -537,7 +537,7 @@ Expected: PASS — compiles `/settings` with no type errors.
 
 - [ ] **Step 4: Verify end-to-end**
 
-Run: `npm run dev:web`, open `http://127.0.0.1:4001/settings`. Expected: input prefilled with
+Run: `npm run dev:web`, open `http://127.0.0.1:4010/settings`. Expected: input prefilled with
 `18`. Change it to e.g. `25`, click Save. Expected: page re-renders (or reload manually) with the
 input now showing `25`. Open `/dashboard` — expected: the current-cycle label and range have
 shifted to start on the 25th instead of the 18th, and the figures re-bucket accordingly (same
