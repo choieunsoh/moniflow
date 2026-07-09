@@ -53,9 +53,14 @@ export default async function HomePage({
             Your money flow for the {cycle.label} cycle.
           </p>
         </div>
-        <Link href="/entries/new" className="btn btn-primary hidden sm:inline-flex">
-          ＋ Add entry
-        </Link>
+        {/* Desktop-only: on mobile the bottom-bar FAB covers add. `hidden` must sit on a plain
+            wrapper, not the .btn — .btn is unlayered CSS and its display beats Tailwind's layered
+            .hidden, so `btn hidden` would still show. */}
+        <div className="hidden sm:block">
+          <Link href="/entries/new" className="btn btn-primary">
+            ＋ Add entry
+          </Link>
+        </div>
       </header>
 
       <CycleSelector activeKey={activeKey} cutoff={cutoff} />

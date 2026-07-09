@@ -165,10 +165,11 @@ p {
 /* Bottom sheet built on the native <dialog>. showModal() gives focus-trap, Esc, ::backdrop and
    top-layer stacking for free; we only style position + entrance. */
 .more-sheet {
+  position: fixed;
+  inset: auto 0 0 0; /* pin to the bottom edge, full width (beats the UA dialog centering) */
   width: 100%;
   max-width: 100%;
-  margin-inline: auto;
-  margin-block: auto 0; /* pin to the bottom edge of the viewport */
+  margin: 0;
   padding: 0;
   padding-bottom: env(safe-area-inset-bottom);
   border: none;
