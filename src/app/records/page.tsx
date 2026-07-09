@@ -9,11 +9,11 @@ import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff } from '@features/settings/queries';
 import { todayIso } from '@shared/date';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
-import { LedgerTable } from '@features/entries/ui/LedgerTable';
+import { SwipeRow } from '@features/entries/ui/SwipeRow';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
-// Records = the full chronological log for the cycle (newest first). Phase 2 upgrades this to
-// grouped-by-day with notes-first rows; for now it reuses LedgerTable over the whole cycle.
+// Records = the full chronological log for the cycle (newest first). Each row swipes to reveal
+// Edit / Delete. Phase 2 upgrades this to grouped-by-day with notes-first rows.
 export default async function RecordsPage({
   searchParams,
 }: {
@@ -32,7 +32,24 @@ export default async function RecordsPage({
   return (
     <PageContainer size="full">
       <CycleSelector activeKey={activeKey} cutoff={cutoff} />
-      {entries.length > 0 ? <LedgerTable entries={[...entries].reverse()} /> : <EmptyLedger />}
+      {entries.length > 0 ? (
+        <section className="panel overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-4">
+            <h2 className="text-base font-semibold">Records</h2>
+            <span className="chip">{entries.length}</span>
+          </div>
+          <ul className="flex flex-col">
+            {[...entries].reverse().map((entry) => (
+              <SwipeRow key={entry.id} entry={entry} />
+            ))}
+          </ul>
+          <p className="px-4 py-3 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
+            Swipe a row left to delete · right to edit
+          </p>
+        </section>
+      ) : (
+        <EmptyLedger />
+      )}
     </PageContainer>
   );
 }
