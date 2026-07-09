@@ -58,14 +58,14 @@ export function SwipeRow({ entry }: { entry: Entry }) {
         href={`/entries/${entry.id}/edit`}
         aria-label={`Edit ${entry.category}`}
         onClick={() => setSide(0)}
-        className="absolute inset-y-0 left-0 flex items-center justify-center text-sm font-semibold"
+        className="absolute inset-y-0 left-0 flex items-center justify-center"
         style={{
           width: ACTION_W,
           background: 'var(--color-accent)',
           color: 'var(--color-on-accent)',
         }}
       >
-        Edit
+        <PencilIcon />
       </Link>
 
       {/* Delete — revealed on a left swipe (row slides left). */}
@@ -78,10 +78,10 @@ export function SwipeRow({ entry }: { entry: Entry }) {
         <button
           type="submit"
           aria-label={`Delete ${entry.category}`}
-          className="flex h-full w-full items-center justify-center text-sm font-semibold"
+          className="flex h-full w-full items-center justify-center"
           style={{ background: 'var(--color-loss)', color: 'var(--color-on-accent)' }}
         >
-          Delete
+          <TrashIcon />
         </button>
       </form>
 
@@ -123,5 +123,33 @@ export function SwipeRow({ entry }: { entry: Entry }) {
         ) : null}
       </div>
     </li>
+  );
+}
+
+// Action icons (stroke=currentColor → inherit the panel's on-accent white). Simple, familiar glyphs.
+function PencilIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M10.5 3 13 5.5 M3 13v-2.2l7.3-7.3 2.2 2.2L5.2 13H3z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M3 4.5h10 M6 4.5V3.2h4v1.3 M4.7 4.5 5.2 13h5.6l.5-8.5 M6.6 6.8v3.8 M9.4 6.8v3.8"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
