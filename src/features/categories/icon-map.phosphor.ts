@@ -57,6 +57,8 @@ import {
   Island,
   DesktopTower,
   Folder,
+  Tag,
+  Lego,
 } from '@phosphor-icons/react/ssr';
 
 // Phosphor equivalents for each picker emoji. Phosphor covers the food/beauty specifics lucide
@@ -115,4 +117,6 @@ export const PHOSPHOR_ICONS: Record<string, Icon> = {
   '💲': CurrencyCircleDollar,
   '💴': CurrencyJpy,
   '🇰🇷': CurrencyKrw,
+  '🧸': Lego,
+  '🏷️': Tag,
 };

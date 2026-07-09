@@ -63,6 +63,7 @@ export const EMOJI_CHOICES = [
   '🧸',
   '🚰',
   '🔧',
+  '🏷️',
 ] as const;
 
 // Human names for the picker tooltips / aria-labels — one per EMOJI_CHOICES entry. A bare-emoji
@@ -125,6 +126,7 @@ export const EMOJI_LABELS: Record<string, string> = {
   '💲': 'Dollar',
   '💴': 'Yen',
   '🇰🇷': 'Won',
+  '🏷️': 'Tag',
 };
 
 export function getEmojiMap(db: Db): Record<string, string> {

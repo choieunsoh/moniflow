@@ -48,6 +48,7 @@ import {
   TreePalm,
   Monitor,
   Folder,
+  Tag,
 } from 'lucide-react';
 
 // Maps each picker emoji to its lucide equivalent. Emoji left out here (bento 🍱, makeup 💄,
@@ -102,4 +103,5 @@ export const LUCIDE_ICONS: Record<string, LucideIcon> = {
   '🏝️': TreePalm,
   '💲': CircleDollarSign,
   '💴': JapaneseYen,
+  '🏷️': Tag,
 };
