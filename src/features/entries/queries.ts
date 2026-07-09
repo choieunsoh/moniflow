@@ -1,4 +1,4 @@
-import { desc, and, eq, gte, lte, sql, isNotNull, ne } from 'drizzle-orm';
+import { desc, and, eq, gte, lte, lt, sql, isNotNull, ne } from 'drizzle-orm';
 import type { Db } from '@db/client';
 import { entries, type Entry, type NewEntry } from './schema';
 
@@ -65,11 +65,15 @@ export function replaceEntries(db: Db, rows: NewEntry[]): void {
 
 export type Breakdown = { key: string; total: number };
 
+// moniflow is a spending tracker: cycle reads return expenses only (amount < 0), so the rare income
+// row never lands in the summary, donut, records or day totals. Income stays in the DB (lossless
+// import) but is out of scope for every UI surface. getCycleSummary derives from this, so it too is
+// spending-only.
 export function getEntriesInRange(db: Db, start: string, end: string): Entry[] {
   return db
     .select()
     .from(entries)
-    .where(and(gte(entries.date, start), lte(entries.date, end)))
+    .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
     .all();
 }
 
@@ -88,7 +92,7 @@ function groupSum(
   return db
     .select({ key: column, total: sql<number>`sum(${entries.amount})` })
     .from(entries)
-    .where(and(gte(entries.date, start), lte(entries.date, end)))
+    .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
     .groupBy(column)
     .all()
     .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
