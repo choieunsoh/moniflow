@@ -67,6 +67,15 @@
   border-color: var(--color-border);
 }
 
+/* Always show the vertical scrollbar track so navigating between a short page (no scrollbar) and a
+   long one (scrollbar) doesn't change the viewport width and shift the centered app column.
+   `overflow-y: scroll` reserves it reliably where `scrollbar-gutter` doesn't (root overflow is
+   visible). No-op on mobile overlay scrollbars. */
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--color-bg);
   color: var(--color-text);
