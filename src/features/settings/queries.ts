@@ -32,3 +32,28 @@ export function setCutoff(db: Db, day: number): void {
 export function isValidCutoffDay(day: number): boolean {
   return Number.isInteger(day) && day >= 1 && day <= 28;
 }
+
+// Which icon style renders category markers app-wide. 'emoji' keeps the native glyph; the others
+// map each category's stored emoji to a line-icon component (see categories/icon-map.*). Reuses the
+// generic settings table — no new migration, as the table's own comment anticipated.
+const ICON_SET_KEY = 'icon_set';
+export const ICON_SETS = ['emoji', 'phosphor', 'lucide'] as const;
+export type IconSet = (typeof ICON_SETS)[number];
+const DEFAULT_ICON_SET: IconSet = 'emoji';
+
+export function isIconSet(value: unknown): value is IconSet {
+  return typeof value === 'string' && ICON_SETS.some((s) => s === value);
+}
+
+// Falls back to emoji for a fresh DB or one that predates this setting.
+export function getIconSet(db: Db): IconSet {
+  const [row] = db.select().from(settings).where(eq(settings.key, ICON_SET_KEY)).all();
+  return row !== undefined && isIconSet(row.value) ? row.value : DEFAULT_ICON_SET;
+}
+
+export function setIconSet(db: Db, value: IconSet): void {
+  db.transaction((tx) => {
+    tx.delete(settings).where(eq(settings.key, ICON_SET_KEY)).run();
+    tx.insert(settings).values({ key: ICON_SET_KEY, value }).run();
+  });
+}

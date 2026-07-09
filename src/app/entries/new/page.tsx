@@ -6,6 +6,8 @@ import { ensureEntriesTable } from '@features/entries/schema';
 import { getDistinctAccounts, getCategoryCounts } from '@features/entries/queries';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor } from '@features/categories/queries';
+import { ensureSettingsTable } from '@features/settings/schema';
+import { getIconSet } from '@features/settings/queries';
 import { Keypad } from '@features/entries/ui/Keypad';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { todayIso } from '@shared/date';
@@ -14,8 +16,10 @@ export default function NewEntryPage() {
   const db = initDb();
   ensureEntriesTable(db);
   ensureCategoryMetaTable(db);
+  ensureSettingsTable(db);
 
   const emojiMap = getEmojiMap(db);
+  const iconSet = getIconSet(db);
   // Most-used categories first, so the common ones are at the top of the picker grid.
   const categories = getCategoryCounts(db).map((c) => ({
     name: c.category,
@@ -36,6 +40,7 @@ export default function NewEntryPage() {
         accounts={accounts}
         defaultAccount={accounts[0] ?? ''}
         today={todayIso()}
+        iconSet={iconSet}
       />
     </PageContainer>
   );

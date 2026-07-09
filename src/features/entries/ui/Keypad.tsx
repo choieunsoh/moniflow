@@ -5,6 +5,7 @@ import { formatBaht } from '@shared/money';
 import { addEntryAction } from '../actions';
 import { evaluate } from '../calc';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
+import type { IconSet } from '@features/settings/queries';
 
 export type KeypadCategory = { name: string; emoji: string };
 
@@ -36,11 +37,13 @@ export function Keypad({
   accounts,
   defaultAccount,
   today,
+  iconSet,
 }: {
   categories: KeypadCategory[];
   accounts: string[];
   defaultAccount: string;
   today: string;
+  iconSet: IconSet;
 }) {
   const [expr, setExpr] = useState('');
   const [picking, setPicking] = useState(false);
@@ -157,7 +160,7 @@ export function Keypad({
               value={c.name}
               className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-colors active:opacity-70"
             >
-              <CategoryIcon emoji={c.emoji} name={c.name} size="lg" />
+              <CategoryIcon emoji={c.emoji} name={c.name} size="lg" iconSet={iconSet} />
               <span className="w-full truncate text-xs" style={{ color: 'var(--color-muted)' }}>
                 {c.name}
               </span>

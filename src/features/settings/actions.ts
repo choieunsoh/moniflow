@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { initDb } from '@db/client';
 import { ensureSettingsTable } from './schema';
-import { setCutoff, isValidCutoffDay } from './queries';
+import { setCutoff, isValidCutoffDay, setIconSet, isIconSet } from './queries';
 
 // Server Action backing the /settings form. Validates before writing (the <input min/max> only
 // constrains well-behaved browsers — this is the real guard), then revalidates both pages that
@@ -18,5 +18,18 @@ export async function setCutoffAction(formData: FormData): Promise<void> {
   const db = initDb();
   ensureSettingsTable(db);
   setCutoff(db, day);
+  revalidatePath('/', 'layout');
+}
+
+// Server Action backing the icon-set picker. Validates the value is a known set, then revalidates
+// the whole app so every category marker re-renders in the chosen style at once.
+export async function setIconSetAction(formData: FormData): Promise<void> {
+  const value = formData.get('iconSet');
+  if (!isIconSet(value)) {
+    throw new Error(`Unknown icon set: ${typeof value === 'string' ? value : 'a file'}`);
+  }
+  const db = initDb();
+  ensureSettingsTable(db);
+  setIconSet(db, value);
   revalidatePath('/', 'layout');
 }

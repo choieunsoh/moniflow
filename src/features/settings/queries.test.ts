@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
+import { sql } from 'drizzle-orm';
 import { initDb } from '@db/client';
 import { ensureSettingsTable } from './schema';
-import { getCutoff, setCutoff, isValidCutoffDay } from './queries';
+import {
+  getCutoff,
+  setCutoff,
+  isValidCutoffDay,
+  getIconSet,
+  setIconSet,
+  isIconSet,
+} from './queries';
 
 describe('getCutoff / setCutoff', () => {
   it('defaults to 18 when no cutoff has been stored', () => {
@@ -23,6 +31,41 @@ describe('getCutoff / setCutoff', () => {
     setCutoff(db, 25);
     setCutoff(db, 5);
     expect(getCutoff(db)).toBe(5);
+  });
+});
+
+describe('getIconSet / setIconSet', () => {
+  it('defaults to emoji when nothing is stored', () => {
+    const db = initDb(':memory:');
+    ensureSettingsTable(db);
+    expect(getIconSet(db)).toBe('emoji');
+  });
+
+  it('round-trips a stored icon set', () => {
+    const db = initDb(':memory:');
+    ensureSettingsTable(db);
+    setIconSet(db, 'phosphor');
+    expect(getIconSet(db)).toBe('phosphor');
+    setIconSet(db, 'lucide');
+    expect(getIconSet(db)).toBe('lucide');
+  });
+
+  it('falls back to emoji if the stored value is somehow unknown', () => {
+    const db = initDb(':memory:');
+    ensureSettingsTable(db);
+    db.run(sql`INSERT INTO settings (key, value) VALUES ('icon_set', 'bogus')`);
+    expect(getIconSet(db)).toBe('emoji');
+  });
+});
+
+describe('isIconSet', () => {
+  it('accepts the three known sets and rejects everything else', () => {
+    expect(isIconSet('emoji')).toBe(true);
+    expect(isIconSet('phosphor')).toBe(true);
+    expect(isIconSet('lucide')).toBe(true);
+    expect(isIconSet('bogus')).toBe(false);
+    expect(isIconSet(undefined)).toBe(false);
+    expect(isIconSet(3)).toBe(false);
   });
 });
 

@@ -2,12 +2,22 @@
 
 import { useRef } from 'react';
 import { EMOJI_CHOICES, EMOJI_LABELS } from '../queries';
-import { categoryColor } from '../color';
+import { CategoryIcon } from './CategoryIcon';
 import { setCategoryEmojiAction } from '../actions';
+import type { IconSet } from '@features/settings/queries';
 
-// Tap the current emoji to open a native <dialog> grid; picking one submits the assignment (a single
+// Tap the current marker to open a native <dialog> grid; picking one submits the assignment (a single
 // form whose clicked button carries the emoji value) and the dialog closes on navigation/revalidate.
-export function EmojiPicker({ category, current }: { category: string; current: string }) {
+// The grid always picks emoji (the semantic key); `iconSet` only changes how the current marker shows.
+export function EmojiPicker({
+  category,
+  current,
+  iconSet,
+}: {
+  category: string;
+  current: string;
+  iconSet: IconSet;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
 
   return (
@@ -15,12 +25,11 @@ export function EmojiPicker({ category, current }: { category: string; current: 
       <button
         type="button"
         onClick={() => ref.current?.showModal()}
-        aria-label={`Choose emoji for ${category}`}
-        title={`Change emoji for ${category}`}
-        className="grid size-10 shrink-0 place-items-center rounded-full text-xl transition-colors active:opacity-70"
-        style={{ background: `color-mix(in srgb, ${categoryColor(category)} 22%, transparent)` }}
+        aria-label={`Choose icon for ${category}`}
+        title={`Change icon for ${category}`}
+        className="shrink-0 rounded-full transition-opacity active:opacity-70"
       >
-        {current}
+        <CategoryIcon emoji={current} name={category} size="md" iconSet={iconSet} />
       </button>
 
       <dialog

@@ -3,14 +3,21 @@ export const dynamic = 'force-dynamic';
 
 import { initDb } from '@db/client';
 import { ensureSettingsTable } from '@features/settings/schema';
-import { getCutoff } from '@features/settings/queries';
-import { setCutoffAction } from '@features/settings/actions';
+import { getCutoff, getIconSet, ICON_SETS } from '@features/settings/queries';
+import { setCutoffAction, setIconSetAction } from '@features/settings/actions';
 import { PageContainer } from '@shared/ui/PageContainer';
+
+const ICON_SET_LABELS = {
+  emoji: 'Emoji (colorful)',
+  phosphor: 'Phosphor (line icons)',
+  lucide: 'Lucide (line icons)',
+} as const;
 
 export default function SettingsPage() {
   const db = initDb();
   ensureSettingsTable(db);
   const cutoff = getCutoff(db);
+  const iconSet = getIconSet(db);
 
   return (
     <PageContainer size="form">
@@ -42,6 +49,35 @@ export default function SettingsPage() {
             A cycle runs from this day of one month to the day before it in the next (e.g. 18 → 17
             for a cutoff of 18). Changing this reinterprets which cycle every existing entry falls
             into — no data is modified or lost.
+          </p>
+          <button type="submit" className="btn btn-primary w-fit">
+            Save
+          </button>
+        </form>
+      </section>
+
+      <section className="panel flex flex-col gap-4 p-5">
+        <form action={setIconSetAction} className="flex flex-col gap-3">
+          <label htmlFor="iconSet" className="text-sm font-medium">
+            Category icons
+          </label>
+          <select
+            id="iconSet"
+            name="iconSet"
+            defaultValue={iconSet}
+            className="min-h-11 w-full max-w-xs rounded-[var(--radius-sm)] border px-3 py-2 text-base"
+            style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface-2)' }}
+          >
+            {ICON_SETS.map((set) => (
+              <option key={set} value={set}>
+                {ICON_SET_LABELS[set]}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
+            How categories appear everywhere — records, home, the add-expense keypad. Emoji stays
+            the underlying label; the line-icon sets render each category&apos;s emoji as a matching
+            icon, falling back to the emoji where no icon exists.
           </p>
           <button type="submit" className="btn btn-primary w-fit">
             Save

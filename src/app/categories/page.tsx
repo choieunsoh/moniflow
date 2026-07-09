@@ -9,14 +9,18 @@ import { mergeCategoryAction } from '@features/entries/actions';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor } from '@features/categories/queries';
 import { EmojiPicker } from '@features/categories/ui/EmojiPicker';
+import { ensureSettingsTable } from '@features/settings/schema';
+import { getIconSet } from '@features/settings/queries';
 import { PageContainer } from '@shared/ui/PageContainer';
 
 export default function CategoriesPage() {
   const db = initDb();
   ensureEntriesTable(db);
   ensureCategoryMetaTable(db);
+  ensureSettingsTable(db);
   const counts = getCategoryCounts(db);
   const emojiMap = getEmojiMap(db);
+  const iconSet = getIconSet(db);
 
   return (
     <PageContainer size="full">
@@ -38,7 +42,11 @@ export default function CategoriesPage() {
             {counts.map((c) => (
               <li key={c.category} className="flex flex-col gap-2.5 px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <EmojiPicker category={c.category} current={emojiFor(emojiMap, c.category)} />
+                  <EmojiPicker
+                    category={c.category}
+                    current={emojiFor(emojiMap, c.category)}
+                    iconSet={iconSet}
+                  />
                   <span className="min-w-0 flex-1 truncate font-medium">{c.category}</span>
                   <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
                     {c.count}
