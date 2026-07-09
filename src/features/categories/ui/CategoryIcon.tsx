@@ -1,6 +1,5 @@
 import { categoryColor, categoryColorBold } from '../color';
-import { LUCIDE_ICONS } from '../icon-map.lucide';
-import { PHOSPHOR_ICONS } from '../icon-map.phosphor';
+import { iconMapFor } from '../icon-for';
 import type { IconSet } from '@features/settings/queries';
 
 // A category marker on a colored disc. `iconSet` picks the render style app-wide:
@@ -28,12 +27,7 @@ export function CategoryIcon({
   size?: keyof typeof SIZES;
   iconSet?: IconSet;
 }) {
-  const Icon =
-    iconSet === 'lucide'
-      ? LUCIDE_ICONS[emoji]
-      : iconSet === 'phosphor'
-        ? PHOSPHOR_ICONS[emoji]
-        : undefined;
+  const Icon = iconMapFor(iconSet)?.[emoji];
 
   if (Icon) {
     return (

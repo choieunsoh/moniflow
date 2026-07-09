@@ -3,12 +3,14 @@
 import { useRef } from 'react';
 import { EMOJI_CHOICES, EMOJI_LABELS } from '../queries';
 import { CategoryIcon } from './CategoryIcon';
+import { iconMapFor } from '../icon-for';
 import { setCategoryEmojiAction } from '../actions';
 import type { IconSet } from '@features/settings/queries';
 
 // Tap the current marker to open a native <dialog> grid; picking one submits the assignment (a single
 // form whose clicked button carries the emoji value) and the dialog closes on navigation/revalidate.
-// The grid always picks emoji (the semantic key); `iconSet` only changes how the current marker shows.
+// Each choice renders in the active icon set (emoji stays the stored key), so what you pick matches
+// what the rest of the app shows.
 export function EmojiPicker({
   category,
   current,
@@ -19,6 +21,7 @@ export function EmojiPicker({
   iconSet: IconSet;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const iconMap = iconMapFor(iconSet);
 
   return (
     <>
@@ -41,7 +44,7 @@ export function EmojiPicker({
       >
         <div className="flex flex-col gap-3 p-4">
           <h2 className="text-sm font-semibold">
-            Emoji for <span style={{ color: 'var(--color-muted)' }}>{category}</span>
+            Icon for <span style={{ color: 'var(--color-muted)' }}>{category}</span>
           </h2>
           <form
             action={setCategoryEmojiAction}
@@ -51,6 +54,7 @@ export function EmojiPicker({
             <input type="hidden" name="category" value={category} />
             {EMOJI_CHOICES.map((emoji) => {
               const label = EMOJI_LABELS[emoji] ?? emoji;
+              const Marker = iconMap?.[emoji];
               return (
                 <button
                   key={emoji}
@@ -61,7 +65,7 @@ export function EmojiPicker({
                   title={label}
                   className="grid aspect-square w-full place-items-center rounded-[var(--radius-sm)] text-xl transition-colors hover:bg-[var(--color-surface-2)] active:opacity-70"
                 >
-                  {emoji}
+                  {Marker ? <Marker size={22} /> : emoji}
                 </button>
               );
             })}

@@ -27,8 +27,8 @@ export default function CategoriesPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Categories</h1>
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Tap an emoji to set a category&apos;s icon. Rename a category — or type an existing name —
-          to merge it into another.
+          Tap a category&apos;s icon to change it. Rename a category — or type an existing name — to
+          merge it into another.
         </p>
       </header>
 
