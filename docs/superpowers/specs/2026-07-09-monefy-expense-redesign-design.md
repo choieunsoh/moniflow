@@ -63,8 +63,8 @@ Every tab routes to a working page; Home still reads well before the donut lands
 - **`src/app/page.tsx` (Home)** — hero = **total spent this cycle** (`฿` of `abs(outflow)`), prominent;
   keep cycle nav; keep the top-categories list (becomes the donut legend in phase 2); drop the 4-figure
   SummaryBar (net/inflow/outflow/entries) — expense-only needs only total spent + entry count.
-- **`src/app/records/page.tsx` (new)** — cycle nav + a simple chronological list of the cycle's entries
-  (full list, newest-first), notes shown. (Upgraded to grouped-by-day in phase 2.)
+- **`src/app/records/page.tsx` (new)** — cycle nav + the full cycle's entries newest-first, reusing the
+  existing `LedgerTable`. (Upgraded to grouped-by-day + notes-first in phase 2.)
 - **MoreSheet** — add a **Trips** link (now Categories · Trips · Settings).
 
 ## Phase 2 — Donut home & record views
