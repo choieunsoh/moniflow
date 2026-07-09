@@ -7,9 +7,9 @@ import { usePathname } from 'next/navigation';
 import { isActivePath } from './active-path';
 import { MoreSheet } from './MoreSheet';
 
-// Mobile-only app-style tab bar. Hidden at >=sm (the top Nav takes over on desktop). Five slots:
-// Home · Budgets · [＋ raised FAB → /entries/new] · Trips · More. The FAB overhangs the bar's top
-// edge and is visibly larger/primary. z-index matches the header; the More sheet is top-layer above it.
+// App-style tab bar, always visible, centered to the app column. Five slots:
+// Home · Records · [＋ expense FAB → /entries/new] · Budgets · More. Expense-only: the center FAB is
+// the single "add expense" action. z-index matches the header; the More sheet is top-layer above it.
 export function BottomBar() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -18,7 +18,7 @@ export function BottomBar() {
     <>
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 border-t backdrop-blur-md sm:hidden"
+        className="fixed bottom-0 left-1/2 w-full max-w-[var(--app-max-width)] -translate-x-1/2 border-t backdrop-blur-md"
         style={{
           zIndex: 'var(--z-header)',
           background: 'color-mix(in oklab, var(--color-bg) 82%, transparent)',
@@ -29,15 +29,15 @@ export function BottomBar() {
         <ul className="grid grid-cols-5 items-end">
           <BarLink href="/" label="Home" active={isActivePath(pathname, '/')} icon={<HomeIcon />} />
           <BarLink
-            href="/budgets"
-            label="Budgets"
-            active={isActivePath(pathname, '/budgets')}
-            icon={<BudgetsIcon />}
+            href="/records"
+            label="Records"
+            active={isActivePath(pathname, '/records')}
+            icon={<RecordsIcon />}
           />
           <li className="flex justify-center">
             <Link
               href="/entries/new"
-              aria-label="Add entry"
+              aria-label="Add expense"
               className="-mt-5 grid size-14 place-items-center rounded-full shadow-[var(--shadow-2)]"
               style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
             >
@@ -45,10 +45,10 @@ export function BottomBar() {
             </Link>
           </li>
           <BarLink
-            href="/trips"
-            label="Trips"
-            active={isActivePath(pathname, '/trips')}
-            icon={<TripsIcon />}
+            href="/budgets"
+            label="Budgets"
+            active={isActivePath(pathname, '/budgets')}
+            icon={<BudgetsIcon />}
           />
           <li>
             <button
@@ -110,6 +110,19 @@ function HomeIcon() {
   );
 }
 
+function RecordsIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M3 2.5h10v11l-2-1.2-1.5 1.2L8 12.3 6.5 13.5 5 12.3 3 13.5z M5.5 5.5h5 M5.5 8h5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function BudgetsIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden>
@@ -119,20 +132,6 @@ function BudgetsIcon() {
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
-    </svg>
-  );
-}
-
-function TripsIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M8 1.5c-2.2 0-4 1.7-4 3.9 0 2.9 4 8.1 4 8.1s4-5.2 4-8.1c0-2.2-1.8-3.9-4-3.9z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <circle cx="8" cy="5.4" r="1.4" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
 }
