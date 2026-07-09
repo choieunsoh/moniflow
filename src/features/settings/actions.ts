@@ -18,6 +18,5 @@ export async function setCutoffAction(formData: FormData): Promise<void> {
   const db = initDb();
   ensureSettingsTable(db);
   setCutoff(db, day);
-  revalidatePath('/dashboard');
-  revalidatePath('/settings');
+  revalidatePath('/', 'layout');
 }

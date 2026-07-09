@@ -23,8 +23,7 @@ export async function setBudgetAction(formData: FormData): Promise<void> {
   const db = initDb();
   ensureBudgetsTable(db);
   setBudget(db, category, amount);
-  revalidatePath('/budgets');
-  revalidatePath('/dashboard');
+  revalidatePath('/', 'layout');
 }
 
 export async function deleteBudgetAction(formData: FormData): Promise<void> {
@@ -33,6 +32,5 @@ export async function deleteBudgetAction(formData: FormData): Promise<void> {
   const db = initDb();
   ensureBudgetsTable(db);
   deleteBudget(db, category);
-  revalidatePath('/budgets');
-  revalidatePath('/dashboard');
+  revalidatePath('/', 'layout');
 }
