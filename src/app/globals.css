@@ -162,6 +162,35 @@ p {
   touch-action: manipulation;
 }
 
+/* Bottom sheet built on the native <dialog>. showModal() gives focus-trap, Esc, ::backdrop and
+   top-layer stacking for free; we only style position + entrance. */
+.more-sheet {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  margin-block: auto 0; /* pin to the bottom edge of the viewport */
+  padding: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  border: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.more-sheet[open] {
+  animation: sheet-up var(--dur) var(--ease-out);
+}
+.more-sheet::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 /* Reduced motion: keep meaning, drop movement. */
 @media (prefers-reduced-motion: reduce) {
   *,
