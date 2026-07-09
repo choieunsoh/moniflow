@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 
 const LINKS = [
   { href: '/categories', label: 'Categories' },
+  { href: '/trips', label: 'Trips' },
   { href: '/settings', label: 'Settings' },
 ] as const;
 
