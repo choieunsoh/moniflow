@@ -2,29 +2,24 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { isActivePath } from './active-path';
 
 const LINKS = [
   { href: '/', label: 'Home' },
-  { href: '/dashboard', label: 'Dashboard' },
   { href: '/budgets', label: 'Budgets' },
   { href: '/categories', label: 'Categories' },
   { href: '/trips', label: 'Trips' },
   { href: '/settings', label: 'Settings' },
 ] as const;
 
-// Primary nav. On mobile it's a full-width horizontally-scrollable tab row — all six items stay
-// reachable and one-tap, no hamburger, no clipped overflow; at ≥sm it collapses to the inline row.
-// The `-mx-4 px-4` lets the strip bleed to the screen edges on mobile while keeping the first/last
-// item clear of the gutter; each item is a 44px (.tap) target.
+// Desktop primary nav (hidden below sm — the mobile BottomBar replaces it there). Inline row of
+// one-tap items; the active item is tinted with the accent-soft chip.
 export function Nav() {
   const pathname = usePathname();
   return (
-    <nav
-      className="-mx-4 flex items-center gap-1 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0"
-      aria-label="Primary"
-    >
+    <nav className="hidden items-center gap-1 sm:flex" aria-label="Primary">
       {LINKS.map(({ href, label }) => {
-        const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+        const active = isActivePath(pathname, href);
         return (
           <Link
             key={href}
