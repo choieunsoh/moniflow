@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { PointerEvent } from 'react';
 import { useRef, useState } from 'react';
-import { formatSignedBaht } from '@shared/money';
+import { formatBaht, formatSignedBaht } from '@shared/money';
 import { deleteEntryAction } from '../actions';
 import type { Entry } from '../schema';
 import { resolveSwipe, type SwipeSide } from '../swipe';
@@ -153,7 +153,9 @@ export function SwipeRow({ entry }: { entry: Entry }) {
             className="tnum shrink-0 font-medium whitespace-nowrap"
             style={{ color: entry.amount < 0 ? 'var(--color-loss)' : 'var(--color-gain)' }}
           >
-            {formatSignedBaht(entry.amount)}
+            {/* Expense-only: show expenses as magnitudes (the minus is redundant on every row); only
+                the rare income row keeps its signed +green so the exception stays honest. */}
+            {entry.amount < 0 ? formatBaht(-entry.amount) : formatSignedBaht(entry.amount)}
           </span>
         </div>
         {note ? (
