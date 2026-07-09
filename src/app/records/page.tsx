@@ -37,6 +37,7 @@ export default async function RecordsPage({
   );
   const filtered = Boolean(category || account);
   const days = groupByDate([...entries].reverse());
+  const total = entries.reduce((sum, e) => sum + e.amount, 0);
 
   return (
     <PageContainer size="full">
@@ -64,6 +65,13 @@ export default async function RecordsPage({
 
       {days.length > 0 ? (
         <div className="flex flex-col gap-5">
+          {/* Summary of the current view (respects the active filter). */}
+          <div className="flex items-baseline justify-between px-1">
+            <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+              {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+            </span>
+            <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
+          </div>
           {days.map((day) => (
             <section key={day.date} className="flex flex-col gap-2">
               <header className="flex items-baseline justify-between px-1">
