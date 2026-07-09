@@ -24,12 +24,17 @@ export function SwipeRow({ entry }: { entry: Entry }) {
   const [dragging, setDragging] = useState(false);
   const gesture = useRef<{ x: number; base: number; moved: boolean } | null>(null);
   const params = useSearchParams();
+  const categoryActive = params.get('category') === entry.category;
+  const accountActive = params.get('account') === entry.account;
 
-  // A chip links to the records list filtered by that field, preserving the other params (cycle etc).
-  function filterHref(key: string, value: string): string {
+  // Tapping a chip toggles that filter: set it, or clear it if it's already the active one. Other
+  // params (cycle) are preserved.
+  function toggleHref(key: string, value: string, active: boolean): string {
     const next = new URLSearchParams(params.toString());
-    next.set(key, value);
-    return `/records?${next.toString()}`;
+    if (active) next.delete(key);
+    else next.set(key, value);
+    const qs = next.toString();
+    return qs ? `/records?${qs}` : '/records';
   }
   // Pressing a chip filters instead of starting a swipe — keep the drag from claiming the pointer.
   const stopDrag = (e: PointerEvent<HTMLElement>) => e.stopPropagation();
@@ -111,22 +116,35 @@ export function SwipeRow({ entry }: { entry: Entry }) {
       >
         <div className="flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2">
-            {/* Tap a chip to filter the list by it (a swipe from the row body still works). */}
+            {/* Tap a chip to filter by it; tap the active (accent) one to clear. Swipe from the row
+                body still works. */}
             <Link
-              href={filterHref('category', entry.category)}
+              href={toggleHref('category', entry.category, categoryActive)}
               onPointerDown={stopDrag}
-              aria-label={`Filter by ${entry.category}`}
+              aria-label={
+                categoryActive ? `Clear ${entry.category} filter` : `Filter by ${entry.category}`
+              }
               className="chip shrink-0 transition-opacity active:opacity-70"
+              style={
+                categoryActive
+                  ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent-text)' }
+                  : undefined
+              }
             >
               {entry.category}
             </Link>
             {/* Account as a lighter outline badge so it reads as secondary to the category. */}
             <Link
-              href={filterHref('account', entry.account)}
+              href={toggleHref('account', entry.account, accountActive)}
               onPointerDown={stopDrag}
-              aria-label={`Filter by ${entry.account}`}
+              aria-label={
+                accountActive ? `Clear ${entry.account} filter` : `Filter by ${entry.account}`
+              }
               className="shrink-0 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap transition-opacity active:opacity-70"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-faint)' }}
+              style={{
+                borderColor: accountActive ? 'var(--color-accent-text)' : 'var(--color-border)',
+                color: accountActive ? 'var(--color-accent-text)' : 'var(--color-faint)',
+              }}
             >
               {entry.account}
             </Link>

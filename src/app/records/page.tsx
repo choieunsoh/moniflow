@@ -43,26 +43,6 @@ export default async function RecordsPage({
     <PageContainer size="full">
       <CycleSelector activeKey={activeKey} cutoff={cutoff} />
 
-      {filtered && (
-        <div className="panel flex items-center justify-between gap-3 px-4 py-2.5">
-          <span
-            className="flex min-w-0 flex-wrap items-center gap-2 text-sm"
-            style={{ color: 'var(--color-muted)' }}
-          >
-            Filter
-            {category ? <span className="chip">{category}</span> : null}
-            {account ? <span className="chip">{account}</span> : null}
-          </span>
-          <Link
-            href={`/records?cycle=${activeKey}`}
-            className="shrink-0 text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
-          >
-            Clear
-          </Link>
-        </div>
-      )}
-
       {days.length > 0 ? (
         <div className="flex flex-col gap-5">
           {/* Summary of the current view (respects the active filter). */}
