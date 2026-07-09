@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { formatBaht } from '@shared/money';
 import { addEntryAction } from '../actions';
 import { evaluate } from '../calc';
+import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 
 export type KeypadCategory = { name: string; emoji: string };
 
@@ -156,9 +157,7 @@ export function Keypad({
               value={c.name}
               className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-colors active:opacity-70"
             >
-              <span aria-hidden className="text-2xl leading-none">
-                {c.emoji}
-              </span>
+              <CategoryIcon emoji={c.emoji} name={c.name} size="lg" />
               <span className="w-full truncate text-xs" style={{ color: 'var(--color-muted)' }}>
                 {c.name}
               </span>

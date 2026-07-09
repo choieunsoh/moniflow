@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { EMOJI_CHOICES } from '../queries';
+import { categoryColor } from '../color';
 import { setCategoryEmojiAction } from '../actions';
 
 // Tap the current emoji to open a native <dialog> grid; picking one submits the assignment (a single
@@ -15,8 +16,9 @@ export function EmojiPicker({ category, current }: { category: string; current: 
         type="button"
         onClick={() => ref.current?.showModal()}
         aria-label={`Choose emoji for ${category}`}
-        className="grid size-10 shrink-0 place-items-center rounded-[var(--radius-md)] text-xl transition-colors active:opacity-70"
-        style={{ background: 'var(--color-surface-2)' }}
+        title={`Change emoji for ${category}`}
+        className="grid size-10 shrink-0 place-items-center rounded-full text-xl transition-colors active:opacity-70"
+        style={{ background: `color-mix(in srgb, ${categoryColor(category)} 22%, transparent)` }}
       >
         {current}
       </button>
