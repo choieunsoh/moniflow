@@ -1,10 +1,20 @@
 import { formatBaht } from '@shared/money';
 import { toBars } from '../breakdown';
 import type { Breakdown as BreakdownRow } from '../queries';
+import { emojiFor } from '@features/categories/queries';
 
 // A ranked bar list — outflow-heavy categories/accounts read at a glance. Magnitudes only (spending
-// is negative); the bar width is relative to the biggest row in the set.
-export function Breakdown({ title, rows }: { title: string; rows: BreakdownRow[] }) {
+// is negative); the bar width is relative to the biggest row in the set. Pass `emojis` to lead each
+// row with its category emoji.
+export function Breakdown({
+  title,
+  rows,
+  emojis,
+}: {
+  title: string;
+  rows: BreakdownRow[];
+  emojis?: Record<string, string>;
+}) {
   const bars = toBars(rows);
   return (
     <section className="panel p-5">
@@ -18,7 +28,14 @@ export function Breakdown({ title, rows }: { title: string; rows: BreakdownRow[]
           {bars.map((b) => (
             <li key={b.key} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between text-sm">
-                <span>{b.key}</span>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {emojis ? (
+                    <span aria-hidden className="leading-none">
+                      {emojiFor(emojis, b.key)}
+                    </span>
+                  ) : null}
+                  <span className="truncate">{b.key}</span>
+                </span>
                 <span className="tnum" style={{ color: 'var(--color-text)' }}>
                   {formatBaht(Math.abs(b.total))}
                 </span>

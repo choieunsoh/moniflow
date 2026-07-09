@@ -12,6 +12,8 @@ import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff } from '@features/settings/queries';
 import { todayIso } from '@shared/date';
 import { formatBaht } from '@shared/money';
+import { ensureCategoryMetaTable } from '@features/categories/schema';
+import { getEmojiMap, emojiFor } from '@features/categories/queries';
 import { toDonutSlices } from '@features/entries/donut';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { Breakdown } from '@features/entries/ui/Breakdown';
@@ -30,6 +32,8 @@ export default async function HomePage({
   const db = initDb();
   ensureEntriesTable(db);
   ensureSettingsTable(db);
+  ensureCategoryMetaTable(db);
+  const emojiMap = getEmojiMap(db);
 
   const cutoff = getCutoff(db);
   const activeKey = cycleParam ?? currentCycleKey(todayIso(), cutoff);
@@ -53,7 +57,7 @@ export default async function HomePage({
           </div>
 
           {showList ? (
-            <Breakdown title="Spending by category" rows={categoryBreakdown} />
+            <Breakdown title="Spending by category" rows={categoryBreakdown} emojis={emojiMap} />
           ) : (
             <section className="panel flex flex-col gap-5 p-5">
               <DonutChart rows={categoryBreakdown} />
@@ -65,6 +69,9 @@ export default async function HomePage({
                       className="size-2.5 shrink-0 rounded-full"
                       style={{ background: s.color }}
                     />
+                    <span aria-hidden className="shrink-0 leading-none">
+                      {emojiFor(emojiMap, s.name)}
+                    </span>
                     <span className="min-w-0 flex-1 truncate">{s.name}</span>
                     <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
                       {formatBaht(s.value)}

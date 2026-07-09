@@ -9,6 +9,8 @@ import { groupByDate } from '@features/entries/by-date';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff } from '@features/settings/queries';
+import { ensureCategoryMetaTable } from '@features/categories/schema';
+import { getEmojiMap, emojiFor } from '@features/categories/queries';
 import { todayIso, formatDayHeading } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
@@ -26,6 +28,8 @@ export default async function RecordsPage({
   const db = initDb();
   ensureEntriesTable(db);
   ensureSettingsTable(db);
+  ensureCategoryMetaTable(db);
+  const emojiMap = getEmojiMap(db);
 
   const cutoff = getCutoff(db);
   const activeKey = cycleParam ?? currentCycleKey(todayIso(), cutoff);
@@ -62,7 +66,11 @@ export default async function RecordsPage({
               </header>
               <ul className="panel flex flex-col divide-y overflow-hidden">
                 {day.entries.map((entry) => (
-                  <SwipeRow key={entry.id} entry={entry} />
+                  <SwipeRow
+                    key={entry.id}
+                    entry={entry}
+                    emoji={emojiFor(emojiMap, entry.category)}
+                  />
                 ))}
               </ul>
             </section>
