@@ -8,6 +8,8 @@ import { formatBaht, formatSignedBaht } from '@shared/money';
 import { deleteEntryAction } from '../actions';
 import type { Entry } from '../schema';
 import { resolveSwipe, type SwipeSide } from '../swipe';
+import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
+import type { IconSet } from '@features/settings/queries';
 
 // Width of each action panel revealed behind the row.
 const ACTION_W = 88;
@@ -18,7 +20,15 @@ const DRAG_SLOP = 6;
 // Delete (red, right); release past half a panel to rest it open, otherwise it snaps back. Tapping an
 // open row closes it. `touch-action: pan-y` keeps vertical scrolling native — we only own horizontal.
 // Delete/Edit are real DOM controls (a form button + a link), so they stay in the a11y tree.
-export function SwipeRow({ entry, emoji }: { entry: Entry; emoji: string }) {
+export function SwipeRow({
+  entry,
+  emoji,
+  iconSet,
+}: {
+  entry: Entry;
+  emoji: string;
+  iconSet: IconSet;
+}) {
   const [side, setSide] = useState<SwipeSide>(0); // resting position
   const [offset, setOffset] = useState(0); // live drag offset while dragging
   const [dragging, setDragging] = useState(false);
@@ -116,9 +126,7 @@ export function SwipeRow({ entry, emoji }: { entry: Entry; emoji: string }) {
       >
         <div className="flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2">
-            <span aria-hidden className="shrink-0 text-base leading-none">
-              {emoji}
-            </span>
+            <CategoryIcon emoji={emoji} name={entry.category} size="sm" iconSet={iconSet} />
             {/* Tap a chip to filter by it; tap the active (accent) one to clear. Swipe from the row
                 body still works. */}
             <Link

@@ -8,7 +8,7 @@ import { getEntriesInRange } from '@features/entries/queries';
 import { groupByDate } from '@features/entries/by-date';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { ensureSettingsTable } from '@features/settings/schema';
-import { getCutoff } from '@features/settings/queries';
+import { getCutoff, getIconSet } from '@features/settings/queries';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor } from '@features/categories/queries';
 import { todayIso, formatDayHeading } from '@shared/date';
@@ -30,6 +30,7 @@ export default async function RecordsPage({
   ensureSettingsTable(db);
   ensureCategoryMetaTable(db);
   const emojiMap = getEmojiMap(db);
+  const iconSet = getIconSet(db);
 
   const cutoff = getCutoff(db);
   const activeKey = cycleParam ?? currentCycleKey(todayIso(), cutoff);
@@ -70,6 +71,7 @@ export default async function RecordsPage({
                     key={entry.id}
                     entry={entry}
                     emoji={emojiFor(emojiMap, entry.category)}
+                    iconSet={iconSet}
                   />
                 ))}
               </ul>

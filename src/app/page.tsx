@@ -9,7 +9,7 @@ import { ensureEntriesTable } from '@features/entries/schema';
 import { getCycleSummary, getCategoryBreakdown } from '@features/entries/queries';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { ensureSettingsTable } from '@features/settings/schema';
-import { getCutoff } from '@features/settings/queries';
+import { getCutoff, getIconSet } from '@features/settings/queries';
 import { todayIso } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
@@ -34,6 +34,7 @@ export default async function HomePage({
   ensureSettingsTable(db);
   ensureCategoryMetaTable(db);
   const emojiMap = getEmojiMap(db);
+  const iconSet = getIconSet(db);
 
   const cutoff = getCutoff(db);
   const activeKey = cycleParam ?? currentCycleKey(todayIso(), cutoff);
@@ -57,7 +58,12 @@ export default async function HomePage({
           </div>
 
           {showList ? (
-            <Breakdown title="Spending by category" rows={categoryBreakdown} emojis={emojiMap} />
+            <Breakdown
+              title="Spending by category"
+              rows={categoryBreakdown}
+              emojis={emojiMap}
+              iconSet={iconSet}
+            />
           ) : (
             <section className="panel flex flex-col gap-5 p-5">
               <DonutChart rows={categoryBreakdown} />
