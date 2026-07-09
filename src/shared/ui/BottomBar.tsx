@@ -37,16 +37,8 @@ export function BottomBar() {
             active={isActivePath(pathname, '/records')}
             icon={<RecordsIcon />}
           />
-          <li className="flex justify-center">
-            <Link
-              href="/entries/new"
-              aria-label="Add expense"
-              className="-mt-5 grid size-14 place-items-center rounded-full shadow-[var(--shadow-2)] transition-transform duration-200 active:scale-95"
-              style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
-            >
-              <PlusIcon />
-            </Link>
-          </li>
+          {/* Spacer: the FAB floats over this column (absolutely positioned below). */}
+          <li aria-hidden className="h-0" />
           <BarTab
             href="/budgets"
             label="Budgets"
@@ -62,6 +54,21 @@ export function BottomBar() {
             />
           </li>
         </ul>
+
+        {/* Expense FAB — a large circle centered ON the bar's top edge so it clearly overhangs above
+            the bar (half above / half over it), the single primary action. */}
+        <Link
+          href="/entries/new"
+          aria-label="Add expense"
+          className="absolute top-0 left-1/2 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full transition-transform duration-200 active:scale-95"
+          style={{
+            background: 'var(--color-accent)',
+            color: 'var(--color-on-accent)',
+            boxShadow: '0 10px 24px -6px color-mix(in oklab, var(--color-accent) 55%, transparent)',
+          }}
+        >
+          <PlusIcon size={28} />
+        </Link>
       </nav>
       <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
     </>
@@ -199,9 +206,9 @@ function MoreIcon() {
   );
 }
 
-function PlusIcon() {
+function PlusIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden>
       <path d="M8 3v10 M3 8h10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
     </svg>
   );
