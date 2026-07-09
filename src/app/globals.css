@@ -179,10 +179,13 @@ p {
    top-layer stacking for free; we only style position + entrance. */
 .more-sheet {
   position: fixed;
-  inset: auto 0 0 0; /* pin to the bottom edge, full width (beats the UA dialog centering) */
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
+  /* Pin to the bottom edge; left/right:0 + max-width + margin:auto centers it within the phone-frame
+     width (the app is a 412px column even on desktop). No transform here so the sheet-up entrance can
+     own transform. */
+  inset: auto 0 0 0;
+  width: auto;
+  max-width: var(--app-max-width);
+  margin: 0 auto;
   padding: 0;
   padding-bottom: env(safe-area-inset-bottom);
   border: none;

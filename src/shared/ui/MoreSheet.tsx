@@ -28,7 +28,7 @@ export function MoreSheet({ open, onClose }: { open: boolean; onClose: () => voi
   return (
     <dialog
       ref={ref}
-      className="more-sheet sm:hidden"
+      className="more-sheet"
       onClose={onClose}
       onClick={(e) => {
         if (e.target === ref.current) onClose();
