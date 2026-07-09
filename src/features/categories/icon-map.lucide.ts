@@ -42,6 +42,12 @@ import {
   ToyBrick,
   Droplet,
   Wrench,
+  ShoppingBasket,
+  CircleDollarSign,
+  JapaneseYen,
+  TreePalm,
+  Monitor,
+  Folder,
 } from 'lucide-react';
 
 // Maps each picker emoji to its lucide equivalent. Emoji left out here (bento 🍱, makeup 💄,
@@ -90,4 +96,10 @@ export const LUCIDE_ICONS: Record<string, LucideIcon> = {
   '🧸': ToyBrick,
   '🚰': Droplet,
   '🔧': Wrench,
+  '🧺': ShoppingBasket,
+  '🖥️': Monitor,
+  '📁': Folder,
+  '🏝️': TreePalm,
+  '💲': CircleDollarSign,
+  '💴': JapaneseYen,
 };

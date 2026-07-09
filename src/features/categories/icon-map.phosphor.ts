@@ -46,6 +46,17 @@ import {
   GraduationCap,
   Drop,
   Wrench,
+  Bag,
+  Basket,
+  BeerStein,
+  Cheers,
+  CurrencyCircleDollar,
+  CurrencyJpy,
+  CurrencyKrw,
+  Dress,
+  Island,
+  DesktopTower,
+  Folder,
 } from '@phosphor-icons/react/ssr';
 
 // Phosphor equivalents for each picker emoji. Phosphor covers the food/beauty specifics lucide
@@ -93,4 +104,15 @@ export const PHOSPHOR_ICONS: Record<string, Icon> = {
   '🎓': GraduationCap,
   '🚰': Drop,
   '🔧': Wrench,
+  '🧺': Basket,
+  '👜': Bag,
+  '👗': Dress,
+  '🍻': BeerStein,
+  '🥂': Cheers,
+  '🖥️': DesktopTower,
+  '📁': Folder,
+  '🏝️': Island,
+  '💲': CurrencyCircleDollar,
+  '💴': CurrencyJpy,
+  '🇰🇷': CurrencyKrw,
 };
