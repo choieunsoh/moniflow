@@ -4,6 +4,7 @@ import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 import { AppHeader } from '@shared/ui/AppHeader';
 import { AppFooter } from '@shared/ui/AppFooter';
+import { BottomBar } from '@shared/ui/BottomBar';
 
 // Brand typefaces: IBM Plex Sans (UI/body) + IBM Plex Mono (data figures). Self-hosted & subset
 // by next/font — no external request, no layout shift. Each exposes a CSS variable that
@@ -31,8 +32,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
       <body className="flex min-h-dvh flex-col">
         <AppHeader />
-        <main className="flex-1">{children}</main>
-        <AppFooter />
+        {/* pb clears the fixed bottom bar (~56px + FAB overhang + safe area) on mobile; none on desktop. */}
+        <main className="flex-1 pb-24 sm:pb-0">{children}</main>
+        {/* Footer is desktop-only — it's clutter beneath a mobile tab bar. */}
+        <div className="hidden sm:block">
+          <AppFooter />
+        </div>
+        <BottomBar />
       </body>
     </html>
   );
