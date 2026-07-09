@@ -1,8 +1,10 @@
 # Mobile Home overview + bottom tab bar — design
 
 **Date:** 2026-07-09
-**Branch:** `feat/mobile-home-bottom-bar`
-**Status:** approved design → ready for implementation plan
+**Branch:** `feat/monefy-expense-redesign` (was `feat/mobile-home-bottom-bar`)
+**Status:** ⚠️ SUPERSEDED by `2026-07-09-monefy-expense-redesign-design.md`. Implemented as the v1
+foundation (bottom bar, `/`-as-home, MoreSheet, `isActivePath`); the Home *content* and the
+desktop/responsive parts are replaced by the Monefy-based expense-only redesign.
 
 ## Goal
 
