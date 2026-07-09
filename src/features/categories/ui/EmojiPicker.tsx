@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { EMOJI_CHOICES } from '../queries';
+import { EMOJI_CHOICES, EMOJI_LABELS } from '../queries';
 import { categoryColor } from '../color';
 import { setCategoryEmojiAction } from '../actions';
 
@@ -40,18 +40,22 @@ export function EmojiPicker({ category, current }: { category: string; current: 
             className="grid grid-cols-8 gap-1"
           >
             <input type="hidden" name="category" value={category} />
-            {EMOJI_CHOICES.map((emoji) => (
-              <button
-                key={emoji}
-                type="submit"
-                name="emoji"
-                value={emoji}
-                aria-label={`Set ${emoji}`}
-                className="grid aspect-square w-full place-items-center rounded-[var(--radius-sm)] text-xl transition-colors hover:bg-[var(--color-surface-2)] active:opacity-70"
-              >
-                {emoji}
-              </button>
-            ))}
+            {EMOJI_CHOICES.map((emoji) => {
+              const label = EMOJI_LABELS[emoji] ?? emoji;
+              return (
+                <button
+                  key={emoji}
+                  type="submit"
+                  name="emoji"
+                  value={emoji}
+                  aria-label={`Set ${label}`}
+                  title={label}
+                  className="grid aspect-square w-full place-items-center rounded-[var(--radius-sm)] text-xl transition-colors hover:bg-[var(--color-surface-2)] active:opacity-70"
+                >
+                  {emoji}
+                </button>
+              );
+            })}
           </form>
         </div>
       </dialog>

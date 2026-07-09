@@ -54,6 +54,57 @@ export const EMOJI_CHOICES = [
   '🔧',
 ] as const;
 
+// Human names for the picker tooltips / aria-labels — one per EMOJI_CHOICES entry. A bare-emoji
+// tooltip is useless (you're already looking at it), so hovering a choice names it instead.
+// Kept in sync with EMOJI_CHOICES by emoji-labels.test.ts.
+export const EMOJI_LABELS: Record<string, string> = {
+  '🍔': 'Burger',
+  '🍜': 'Noodles',
+  '🍱': 'Bento',
+  '☕': 'Coffee',
+  '🍺': 'Drinks',
+  '🍰': 'Dessert',
+  '🛒': 'Groceries',
+  '🛍️': 'Shopping',
+  '👕': 'Clothes',
+  '👟': 'Shoes',
+  '💄': 'Makeup',
+  '💍': 'Jewelry',
+  '🎁': 'Gifts',
+  '🏠': 'Home',
+  '🏨': 'Hotel',
+  '🧾': 'Bills',
+  '💡': 'Utilities',
+  '📱': 'Phone',
+  '💻': 'Computer',
+  '📶': 'Internet',
+  '🚕': 'Taxi',
+  '⛽': 'Fuel',
+  '✈️': 'Travel',
+  '🚌': 'Bus',
+  '🚆': 'Train',
+  '🛵': 'Delivery',
+  '🏥': 'Hospital',
+  '💊': 'Medicine',
+  '💅': 'Nails',
+  '🎮': 'Games',
+  '🎬': 'Movies',
+  '🎵': 'Music',
+  '📚': 'Books',
+  '🐶': 'Pets',
+  '🏋️': 'Gym',
+  '💇': 'Haircut',
+  '🧹': 'Cleaning',
+  '💰': 'Cash',
+  '💳': 'Card',
+  '🏦': 'Bank',
+  '📈': 'Investing',
+  '🎓': 'Education',
+  '🧸': 'Toys',
+  '🚰': 'Water',
+  '🔧': 'Repairs',
+};
+
 export function getEmojiMap(db: Db): Record<string, string> {
   const rows = db.select().from(categoryMeta).all();
   const map: Record<string, string> = {};
