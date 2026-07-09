@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Wordmark } from './Wordmark';
-import { Nav } from './Nav';
 
+// Mobile app header: just the wordmark (nav now lives in the bottom bar). Sticky, blurred, and
+// constrained to the app column by its parent in layout.tsx.
 export function AppHeader() {
   return (
     <header
@@ -13,15 +14,10 @@ export function AppHeader() {
         paddingTop: 'env(safe-area-inset-top)',
       }}
     >
-      <div className="mx-auto flex max-w-[1120px] flex-col gap-1 px-4 pb-2 sm:h-14 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:pb-0">
-        <Link
-          href="/"
-          className="tap self-start rounded-[var(--radius-sm)] sm:self-auto"
-          aria-label="moniflow home"
-        >
+      <div className="flex h-14 items-center px-4">
+        <Link href="/" className="tap rounded-[var(--radius-sm)]" aria-label="moniflow home">
           <Wordmark />
         </Link>
-        <Nav />
       </div>
     </header>
   );
