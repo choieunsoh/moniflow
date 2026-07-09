@@ -49,7 +49,7 @@ export function SwipeRow({ entry }: { entry: Entry }) {
     gesture.current = null;
   }
 
-  const detail = entry.note && entry.note.trim() ? entry.note : entry.account;
+  const note = entry.note?.trim();
   const translate = dragging ? offset : side * ACTION_W;
 
   return (
@@ -102,17 +102,27 @@ export function SwipeRow({ entry }: { entry: Entry }) {
           transition: dragging ? 'none' : 'transform var(--dur) var(--ease-out)',
         }}
       >
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="chip">{entry.category}</span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="chip shrink-0">{entry.category}</span>
+            {/* Account as a lighter outline badge so it reads as secondary to the category. */}
+            <span
+              className="shrink-0 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-faint)' }}
+            >
+              {entry.account}
+            </span>
+          </span>
           <span
-            className="tnum font-medium whitespace-nowrap"
+            className="tnum shrink-0 font-medium whitespace-nowrap"
             style={{ color: entry.amount < 0 ? 'var(--color-loss)' : 'var(--color-gain)' }}
           >
             {formatSignedBaht(entry.amount)}
           </span>
         </div>
         <div className="tnum truncate text-sm" style={{ color: 'var(--color-muted)' }}>
-          {formatDay(entry.date)} · {detail}
+          {formatDay(entry.date)}
+          {note ? ` · ${note}` : ''}
         </div>
       </div>
     </li>
