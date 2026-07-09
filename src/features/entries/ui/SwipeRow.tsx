@@ -4,7 +4,6 @@ import Link from 'next/link';
 import type { PointerEvent } from 'react';
 import { useRef, useState } from 'react';
 import { formatSignedBaht } from '@shared/money';
-import { formatDay } from '@shared/date';
 import { deleteEntryAction } from '../actions';
 import type { Entry } from '../schema';
 import { resolveSwipe, type SwipeSide } from '../swipe';
@@ -53,10 +52,7 @@ export function SwipeRow({ entry }: { entry: Entry }) {
   const translate = dragging ? offset : side * ACTION_W;
 
   return (
-    <li
-      className="relative overflow-hidden border-t"
-      style={{ borderColor: 'var(--color-border)' }}
-    >
+    <li className="relative overflow-hidden">
       {/* Edit — revealed on a right swipe (row slides right). */}
       <Link
         href={`/entries/${entry.id}/edit`}
@@ -120,10 +116,11 @@ export function SwipeRow({ entry }: { entry: Entry }) {
             {formatSignedBaht(entry.amount)}
           </span>
         </div>
-        <div className="tnum truncate text-sm" style={{ color: 'var(--color-muted)' }}>
-          {formatDay(entry.date)}
-          {note ? ` · ${note}` : ''}
-        </div>
+        {note ? (
+          <div className="truncate text-sm" style={{ color: 'var(--color-muted)' }}>
+            {note}
+          </div>
+        ) : null}
       </div>
     </li>
   );
