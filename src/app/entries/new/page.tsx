@@ -1,28 +1,42 @@
-// Reads the local SQLite DB per request for the datalists, so opt out of static generation.
+// Reads the local SQLite DB per request for the category/account lists, so opt out of static gen.
 export const dynamic = 'force-dynamic';
 
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
-import { getDistinctAccounts, getDistinctCategories } from '@features/entries/queries';
-import { addEntryAction } from '@features/entries/actions';
-import { EntryForm } from '@features/entries/ui/EntryForm';
+import { getDistinctAccounts, getCategoryCounts } from '@features/entries/queries';
+import { ensureCategoryMetaTable } from '@features/categories/schema';
+import { getEmojiMap, emojiFor } from '@features/categories/queries';
+import { Keypad } from '@features/entries/ui/Keypad';
 import { PageContainer } from '@shared/ui/PageContainer';
+import { todayIso } from '@shared/date';
 
 export default function NewEntryPage() {
   const db = initDb();
   ensureEntriesTable(db);
+  ensureCategoryMetaTable(db);
+
+  const emojiMap = getEmojiMap(db);
+  // Most-used categories first, so the common ones are at the top of the picker grid.
+  const categories = getCategoryCounts(db).map((c) => ({
+    name: c.category,
+    emoji: emojiFor(emojiMap, c.category),
+  }));
   const accounts = getDistinctAccounts(db);
-  const categories = getDistinctCategories(db);
 
   return (
-    <PageContainer size="form">
+    <PageContainer size="full">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Add entry</h1>
+        <h1 className="text-2xl font-semibold">Add expense</h1>
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Record a new inflow or outflow.
+          Type the amount (＋ − × ÷ work), then choose a category to save.
         </p>
       </header>
-      <EntryForm action={addEntryAction} accounts={accounts} categories={categories} />
+      <Keypad
+        categories={categories}
+        accounts={accounts}
+        defaultAccount={accounts[0] ?? ''}
+        today={todayIso()}
+      />
     </PageContainer>
   );
 }
