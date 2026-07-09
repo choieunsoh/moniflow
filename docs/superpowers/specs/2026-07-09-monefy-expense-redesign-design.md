@@ -16,9 +16,13 @@ per-category **emoji**, and a Monefy-style **calculator** entry — all driven b
 
 ## Principles / global constraints
 
-- **Mobile-only.** No responsive desktop layout. The app renders as one centered column,
-  `max-width: 430px`. On desktop it looks exactly like mobile (fixed-width phone frame, centered).
-  This *removes* code: `Nav.tsx` and all `sm:` dual-layout branches are deleted.
+- **Mobile-only.** No responsive desktop layout. The app renders as one centered column whose width
+  is a single token **`--app-max-width`** (in `globals.css`). Target device: **Samsung Galaxy S24
+  Ultra** (CSS viewport ~384–412px depending on the phone's screen-zoom setting). Default the token to
+  `412px`; on the phone the column goes edge-to-edge regardless (screen ≤ token), and on desktop it's a
+  centered fixed-width phone frame. Confirm the exact S24 Ultra CSS width on-device during the Phase-1
+  smoke and set the token to match so desktop mirrors the real phone. This *removes* code: `Nav.tsx`
+  and all `sm:` dual-layout branches are deleted.
 - **Expense-only.** No income anywhere — no income FAB, no net/Balance duality, no inflow figures.
   The hero number is **total spent this cycle**. The signed-amount schema is UNCHANGED (safe with the
   user's ~10.7k real rows); expenses are negative amounts; the UI only ever creates/shows expenses.
@@ -30,7 +34,7 @@ per-category **emoji**, and a Monefy-style **calculator** entry — all driven b
 
 ## Information architecture
 
-- **Shell:** centered `max-w-[430px]` column; sticky bottom bar always present.
+- **Shell:** centered `max-w-[var(--app-max-width)]` column; sticky bottom bar always present.
   Bar slots: **Home · Records · [＋ expense FAB] · Budgets · More**.
 - **More sheet** (native `<dialog>`): **Categories · Trips · Settings**.
 - **Home** (`/`): the spending **chart** view — donut + total-spent hero + category legend. Keeps
@@ -46,14 +50,14 @@ per-category **emoji**, and a Monefy-style **calculator** entry — all driven b
 
 Every tab routes to a working page; Home still reads well before the donut lands.
 
-- **`src/app/layout.tsx`** — wrap `<main>`'s content in a centered `max-w-[430px]` column; bottom
+- **`src/app/layout.tsx`** — wrap `<main>`'s content in a centered `max-w-[var(--app-max-width)]` column; bottom
   padding always on (no `sm:` variant); delete the desktop footer wrapper (footer moves to nothing —
   the About blurb already lives in the More sheet).
 - **`src/shared/ui/AppHeader.tsx`** — drop `<Nav/>`; header becomes the wordmark + the "All accounts"-
   style cycle context (wordmark only is fine for phase 1). Constrain to the column width.
 - **Delete `src/shared/ui/Nav.tsx`** and its import.
 - **`src/shared/ui/BottomBar.tsx`** — remove `sm:hidden` (bar is always shown); constrain to the column
-  (`left-1/2 -translate-x-1/2 w-full max-w-[430px]`). Slots become **Home · Records · [＋] · Budgets ·
+  (`left-1/2 -translate-x-1/2 w-full max-w-[var(--app-max-width)]`). Slots become **Home · Records · [＋] · Budgets ·
   More**; the center FAB is the **expense** action (label "Add expense", → `/entries/new`). New Records
   icon; keep emoji-free inline SVGs.
 - **`src/app/page.tsx` (Home)** — hero = **total spent this cycle** (`฿` of `abs(outflow)`), prominent;
