@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
@@ -19,9 +20,9 @@ import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 export default async function RecordsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cycle?: string }>;
+  searchParams: Promise<{ cycle?: string; category?: string; account?: string }>;
 }) {
-  const { cycle: cycleParam } = await searchParams;
+  const { cycle: cycleParam, category, account } = await searchParams;
   const db = initDb();
   ensureEntriesTable(db);
   ensureSettingsTable(db);
@@ -29,12 +30,38 @@ export default async function RecordsPage({
   const cutoff = getCutoff(db);
   const activeKey = cycleParam ?? currentCycleKey(todayIso(), cutoff);
   const cycle = cycleFromKey(activeKey, cutoff);
-  const entries = getEntriesInRange(db, cycle.start, cycle.end);
+  const inCycle = getEntriesInRange(db, cycle.start, cycle.end);
+  // Tap-a-chip filters by category and/or account, scoped to the current cycle.
+  const entries = inCycle.filter(
+    (e) => (!category || e.category === category) && (!account || e.account === account),
+  );
+  const filtered = Boolean(category || account);
   const days = groupByDate([...entries].reverse());
 
   return (
     <PageContainer size="full">
       <CycleSelector activeKey={activeKey} cutoff={cutoff} />
+
+      {filtered && (
+        <div className="panel flex items-center justify-between gap-3 px-4 py-2.5">
+          <span
+            className="flex min-w-0 flex-wrap items-center gap-2 text-sm"
+            style={{ color: 'var(--color-muted)' }}
+          >
+            Filter
+            {category ? <span className="chip">{category}</span> : null}
+            {account ? <span className="chip">{account}</span> : null}
+          </span>
+          <Link
+            href={`/records?cycle=${activeKey}`}
+            className="shrink-0 text-sm font-medium"
+            style={{ color: 'var(--color-accent-text)' }}
+          >
+            Clear
+          </Link>
+        </div>
+      )}
+
       {days.length > 0 ? (
         <div className="flex flex-col gap-5">
           {days.map((day) => (
@@ -55,6 +82,19 @@ export default async function RecordsPage({
           <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
             Swipe a row left to delete · right to edit
           </p>
+        </div>
+      ) : filtered ? (
+        <div className="panel flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            No entries match this filter in this cycle.
+          </p>
+          <Link
+            href={`/records?cycle=${activeKey}`}
+            className="text-sm font-medium"
+            style={{ color: 'var(--color-accent-text)' }}
+          >
+            Clear filter
+          </Link>
         </div>
       ) : (
         <EmptyLedger />

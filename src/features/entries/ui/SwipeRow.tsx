@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import type { PointerEvent } from 'react';
 import { useRef, useState } from 'react';
 import { formatSignedBaht } from '@shared/money';
@@ -22,6 +23,16 @@ export function SwipeRow({ entry }: { entry: Entry }) {
   const [offset, setOffset] = useState(0); // live drag offset while dragging
   const [dragging, setDragging] = useState(false);
   const gesture = useRef<{ x: number; base: number; moved: boolean } | null>(null);
+  const params = useSearchParams();
+
+  // A chip links to the records list filtered by that field, preserving the other params (cycle etc).
+  function filterHref(key: string, value: string): string {
+    const next = new URLSearchParams(params.toString());
+    next.set(key, value);
+    return `/records?${next.toString()}`;
+  }
+  // Pressing a chip filters instead of starting a swipe — keep the drag from claiming the pointer.
+  const stopDrag = (e: PointerEvent<HTMLElement>) => e.stopPropagation();
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     gesture.current = { x: e.clientX, base: side * ACTION_W, moved: false };
@@ -100,14 +111,25 @@ export function SwipeRow({ entry }: { entry: Entry }) {
       >
         <div className="flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2">
-            <span className="chip shrink-0">{entry.category}</span>
+            {/* Tap a chip to filter the list by it (a swipe from the row body still works). */}
+            <Link
+              href={filterHref('category', entry.category)}
+              onPointerDown={stopDrag}
+              aria-label={`Filter by ${entry.category}`}
+              className="chip shrink-0 transition-opacity active:opacity-70"
+            >
+              {entry.category}
+            </Link>
             {/* Account as a lighter outline badge so it reads as secondary to the category. */}
-            <span
-              className="shrink-0 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap"
+            <Link
+              href={filterHref('account', entry.account)}
+              onPointerDown={stopDrag}
+              aria-label={`Filter by ${entry.account}`}
+              className="shrink-0 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap transition-opacity active:opacity-70"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-faint)' }}
             >
               {entry.account}
-            </span>
+            </Link>
           </span>
           <span
             className="tnum shrink-0 font-medium whitespace-nowrap"
