@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { cycleFromKey, stepKey } from '../cycle';
 
 // Prev / current / next cycle navigation. Pure links that swap the ?cycle= param and re-render the
-// server component — no client state. On mobile the prev/next labels collapse to just ← / → (the
-// active label stays centered) so three month-ranges don't cram one row; full labels return at ≥sm.
-// `cutoff` is required so labels match whatever the caller resolved from settings.
+// server component — no client state. Mobile-only: the prev/next controls are chevron icon buttons
+// (44px tap targets) with the active cycle label centered; the neighbouring cycle's date range is
+// carried only in the aria-label for screen readers, not shown, to keep the row clean.
+// `cutoff` is required so the aria labels match whatever the caller resolved from settings.
 export function CycleSelector({ activeKey, cutoff }: { activeKey: string; cutoff: number }) {
   const active = cycleFromKey(activeKey, cutoff);
   const prev = stepKey(activeKey, -1);
@@ -12,24 +13,52 @@ export function CycleSelector({ activeKey, cutoff }: { activeKey: string; cutoff
   const prevLabel = cycleFromKey(prev, cutoff).label;
   const nextLabel = cycleFromKey(next, cutoff).label;
   return (
-    <nav className="panel flex items-center justify-between gap-2 p-2 sm:p-3">
+    <nav className="panel flex items-center justify-between p-2">
       <Link
         href={`?cycle=${prev}`}
         aria-label={`Previous cycle: ${prevLabel}`}
-        className="tap rounded px-3 text-sm hover:underline"
+        className="grid size-11 place-items-center rounded-[var(--radius-md)] transition-colors duration-150 active:bg-[var(--color-surface-2)]"
+        style={{ color: 'var(--color-muted)' }}
       >
-        <span aria-hidden="true">←</span>
-        <span className="hidden sm:inline">&nbsp;{prevLabel}</span>
+        <ChevronLeft />
       </Link>
       <span className="text-sm font-semibold">{active.label}</span>
       <Link
         href={`?cycle=${next}`}
         aria-label={`Next cycle: ${nextLabel}`}
-        className="tap rounded px-3 text-sm hover:underline"
+        className="grid size-11 place-items-center rounded-[var(--radius-md)] transition-colors duration-150 active:bg-[var(--color-surface-2)]"
+        style={{ color: 'var(--color-muted)' }}
       >
-        <span className="hidden sm:inline">{nextLabel}&nbsp;</span>
-        <span aria-hidden="true">→</span>
+        <ChevronRight />
       </Link>
     </nav>
+  );
+}
+
+function ChevronLeft() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M10 3 5 8l5 5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ChevronRight() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M6 3l5 5-5 5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
