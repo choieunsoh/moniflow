@@ -10,6 +10,10 @@ import { getCycleSummary, getCategoryBreakdown } from '@features/entries/queries
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet } from '@features/settings/queries';
+import { ensureBudgetsTable } from '@features/budgets/schema';
+import { getBudgets } from '@features/budgets/queries';
+import { toBudgetTotal } from '@features/budgets/budget-status';
+import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 import { todayIso } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
@@ -35,6 +39,7 @@ export default async function HomePage({
   ensureEntriesTable(db);
   ensureSettingsTable(db);
   ensureCategoryMetaTable(db);
+  ensureBudgetsTable(db);
   const emojiMap = getEmojiMap(db);
   const hueMap = getHueMap(db);
   const iconSet = getIconSet(db);
@@ -51,6 +56,17 @@ export default async function HomePage({
   const showList = view === 'category';
   const slices = toDonutSlices(categoryBreakdown);
   const total = slices.reduce((sum, s) => sum + s.value, 0);
+
+  // Standing budgets: the category=null row is the whole-cycle total; the rest are per-category
+  // caps keyed by name. Spend magnitudes come straight from the category breakdown (totals are
+  // negative — take the abs).
+  const budgetRows = getBudgets(db);
+  const totalLimit = budgetRows.find((b) => b.category === null)?.amount ?? null;
+  const limits = new Map<string, number>();
+  for (const b of budgetRows) {
+    if (b.category !== null) limits.set(b.category, b.amount);
+  }
+  const totalStatus = totalLimit === null ? null : toBudgetTotal(totalLimit, total);
 
   return (
     <PageContainer size="full">
@@ -71,10 +87,22 @@ export default async function HomePage({
                 emojis={emojiMap}
                 hues={hueMap}
                 iconSet={iconSet}
+                limits={limits}
               />
             ) : (
               <section className="panel flex flex-col gap-5 p-5">
                 <DonutChart rows={categoryBreakdown} />
+                {totalStatus ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-baseline justify-between text-sm">
+                      <span style={{ color: 'var(--color-muted)' }}>Total budget</span>
+                      <span className="tnum" style={{ color: 'var(--color-text)' }}>
+                        {formatBaht(total)} / {formatBaht(totalStatus.limit ?? 0)}
+                      </span>
+                    </div>
+                    <BudgetMeter status={totalStatus} />
+                  </div>
+                ) : null}
                 <ul className="flex flex-col gap-2.5">
                   {slices.map((s) => (
                     <li key={s.name} className="flex items-center gap-3 text-sm">
