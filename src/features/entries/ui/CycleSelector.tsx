@@ -6,7 +6,17 @@ import { cycleFromKey, stepKey } from '../cycle';
 // (44px tap targets) with the active cycle label centered; the neighbouring cycle's date range is
 // carried only in the aria-label for screen readers, not shown, to keep the row clean.
 // `cutoff` is required so the aria labels match whatever the caller resolved from settings.
-export function CycleSelector({ activeKey, cutoff }: { activeKey: string; cutoff: number }) {
+// `canGoNext` is false once the active cycle is today's — there are no future cycles to spend in
+// yet, so the next control is disabled rather than walking into empty months.
+export function CycleSelector({
+  activeKey,
+  cutoff,
+  canGoNext,
+}: {
+  activeKey: string;
+  cutoff: number;
+  canGoNext: boolean;
+}) {
   const active = cycleFromKey(activeKey, cutoff);
   const prev = stepKey(activeKey, -1);
   const next = stepKey(activeKey, 1);
@@ -23,14 +33,24 @@ export function CycleSelector({ activeKey, cutoff }: { activeKey: string; cutoff
         <ChevronLeft />
       </Link>
       <span className="text-sm font-semibold">{active.label}</span>
-      <Link
-        href={`?cycle=${next}`}
-        aria-label={`Next cycle: ${nextLabel}`}
-        className="grid size-11 place-items-center rounded-[var(--radius-md)] transition-colors duration-150 active:bg-[var(--color-surface-2)]"
-        style={{ color: 'var(--color-muted)' }}
-      >
-        <ChevronRight />
-      </Link>
+      {canGoNext ? (
+        <Link
+          href={`?cycle=${next}`}
+          aria-label={`Next cycle: ${nextLabel}`}
+          className="grid size-11 place-items-center rounded-[var(--radius-md)] transition-colors duration-150 active:bg-[var(--color-surface-2)]"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          <ChevronRight />
+        </Link>
+      ) : (
+        <span
+          aria-hidden
+          className="grid size-11 place-items-center"
+          style={{ color: 'var(--color-faint)', opacity: 0.4 }}
+        >
+          <ChevronRight />
+        </span>
+      )}
     </nav>
   );
 }

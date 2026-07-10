@@ -12,7 +12,15 @@ import { stepKey } from '../cycle';
 const THRESHOLD = 44; // px of travel to commit a cycle change
 const DAMP = 0.5; // how far the content trails the pointer before commit
 
-export function CycleSwipe({ activeKey, children }: { activeKey: string; children: ReactNode }) {
+export function CycleSwipe({
+  activeKey,
+  canGoNext,
+  children,
+}: {
+  activeKey: string;
+  canGoNext: boolean; // false once we're on today's cycle — no future cycles to spend in yet
+  children: ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -39,8 +47,8 @@ export function CycleSwipe({ activeKey, children }: { activeKey: string; childre
 
   function onPointerUp(): void {
     if (startX.current === null) return;
-    if (dx <= -THRESHOLD)
-      go(1); // swiped left → next cycle
+    if (dx <= -THRESHOLD && canGoNext)
+      go(1); // swiped left → next cycle (blocked at today's cycle — springs back)
     else if (dx >= THRESHOLD) go(-1); // swiped right → previous cycle
     startX.current = null;
     setDragging(false);

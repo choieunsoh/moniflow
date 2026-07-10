@@ -40,7 +40,10 @@ export default async function HomePage({
   const iconSet = getIconSet(db);
 
   const cutoff = getCutoff(db);
-  const activeKey = cycleParam ?? currentCycleKey(todayIso(), cutoff);
+  const currentKey = currentCycleKey(todayIso(), cutoff);
+  const activeKey = cycleParam ?? currentKey;
+  // No future cycles to spend in yet — cap forward navigation at today's cycle.
+  const canGoNext = activeKey < currentKey;
   const cycle = cycleFromKey(activeKey, cutoff);
   const summary = getCycleSummary(db, cycle.start, cycle.end);
   const categoryBreakdown = getCategoryBreakdown(db, cycle.start, cycle.end);
@@ -51,7 +54,7 @@ export default async function HomePage({
 
   return (
     <PageContainer size="full">
-      <CycleSelector activeKey={activeKey} cutoff={cutoff} />
+      <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} />
 
       {summary.count > 0 ? (
         <>
@@ -60,7 +63,7 @@ export default async function HomePage({
             <ViewLink label="List" active={showList} href={`/?cycle=${activeKey}&view=category`} />
           </div>
 
-          <CycleSwipe activeKey={activeKey}>
+          <CycleSwipe activeKey={activeKey} canGoNext={canGoNext}>
             {showList ? (
               <Breakdown
                 title="Spending by category"
@@ -111,7 +114,7 @@ export default async function HomePage({
           </CycleSwipe>
         </>
       ) : (
-        <CycleSwipe activeKey={activeKey}>
+        <CycleSwipe activeKey={activeKey} canGoNext={canGoNext}>
           <EmptyLedger />
         </CycleSwipe>
       )}

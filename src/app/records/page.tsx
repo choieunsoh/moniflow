@@ -48,7 +48,9 @@ export default async function RecordsPage({
   ].sort();
 
   const cutoff = getCutoff(db);
-  const activeKey = cycleParam ?? currentCycleKey(todayIso(), cutoff);
+  const currentKey = currentCycleKey(todayIso(), cutoff);
+  const activeKey = cycleParam ?? currentKey;
+  const canGoNext = activeKey < currentKey; // cap forward navigation at today's cycle
   const cycle = cycleFromKey(activeKey, cutoff);
   const inCycle = getEntriesInRange(db, cycle.start, cycle.end);
   // Tap-a-chip filters by category and/or account, scoped to the current cycle.
@@ -66,7 +68,7 @@ export default async function RecordsPage({
   return (
     <PageContainer size="full">
       <SearchBox query={query} suggestions={suggestions} />
-      {!searching && <CycleSelector activeKey={activeKey} cutoff={cutoff} />}
+      {!searching && <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} />}
 
       {days.length > 0 ? (
         <CategoryPickerProvider iconSet={iconSet}>
