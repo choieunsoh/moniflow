@@ -9,8 +9,8 @@ import { stepKey } from '../cycle';
 // right → prev. The content follows the finger (damped) as the affordance, then springs back if the
 // gesture doesn't pass the threshold. `touch-action: pan-y` keeps vertical scrolling native — we
 // only claim horizontal. Navigation preserves the other params (e.g. ?view=) and just swaps ?cycle=.
-const THRESHOLD = 60; // px of travel to commit a cycle change
-const DAMP = 0.3; // how far the content trails the finger before commit
+const THRESHOLD = 44; // px of travel to commit a cycle change
+const DAMP = 0.5; // how far the content trails the pointer before commit
 
 export function CycleSwipe({ activeKey, children }: { activeKey: string; children: ReactNode }) {
   const router = useRouter();
@@ -53,7 +53,11 @@ export function CycleSwipe({ activeKey, children }: { activeKey: string; childre
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      className="touch-pan-y select-none"
+      // A mouse drag over the content can otherwise start the browser's native image/text drag and
+      // swallow the gesture — kill it. select-none stops text selection while dragging.
+      onDragStart={(e) => e.preventDefault()}
+      draggable={false}
+      className="cursor-grab touch-pan-y select-none active:cursor-grabbing"
       style={{
         transform: `translateX(${dragging ? dx * DAMP : 0}px)`,
         transition: dragging ? 'none' : 'transform var(--dur) var(--ease-out)',
