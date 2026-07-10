@@ -4,17 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Moniflow is a personal, **local-first money-flow dashboard**. It stores financial entries
-(inflows/outflows) in a local **SQLite** database and presents them through a small **Next.js**
-web app. Single user, read-only over ingested data. Scaffolded from the `portfolio-dashboard`
-stack.
+Moniflow is a personal, local-first, **mobile-first spending tracker**. It stores signed financial
+entries (inflows/outflows) in a local **SQLite** database and presents them through a small
+**Next.js** web app shaped as a phone-sized column with a bottom tab bar. Single user, no cloud.
+Data is hand-entered (a Monefy-style keypad) or bulk-imported from a **Monefy CSV** (THB home
+currency). It is scoped to a monthly **billing cycle** (a configurable cutoff day). Though the DB
+is lossless (income is stored), it is a **spending tracker** — every UI read surface shows expenses
+only (`amount < 0`), enforced in the queries (`getEntriesInRange`, `groupSum`, `searchEntries`).
+Scaffolded from the `portfolio-dashboard` stack.
 
 - **Stack — data layer:** Node 24 (nvm) · TypeScript 5.9 strict (ESM; `module: esnext` +
   `moduleResolution: bundler`, extensionless relative imports) · tsx · better-sqlite3 +
   drizzle-orm (storage/ORM) · drizzle-kit (migrations) · commander (CLI) · Vitest.
-- **Stack — web layer:** Next.js 16 App Router · React 19 · Tailwind CSS v4 · ECharts 5.
-  Server Components read SQLite **directly** via the query module — no API layer. Interactivity
-  (scope, selection, sort) rides on **URL search params** that re-render the server component.
+- **Stack — web layer:** Next.js 16 App Router · React 19 · Tailwind CSS v4 · ECharts 6 ·
+  Phosphor / Lucide (switchable category icon sets). Server Components read SQLite **directly** via
+  the query module — no API layer; **mutations go through Server Actions** (`'use server'`
+  `actions.ts`, one per feature, each ending in `revalidatePath('/', 'layout')`). Interactivity
+  (cycle, filters, search, view) rides on **URL search params** that re-render the server component.
+  Every page is `export const dynamic = 'force-dynamic'` (better-sqlite3 can't be prerendered).
 
 ## Commands
 
@@ -68,18 +75,26 @@ components; `db/` and `shared/` hold only cross-cutting infrastructure.
 ```
 src/
 ├── app/                    # Next 16 App Router — thin routes that delegate to features
-│   └── layout.tsx, page.tsx, globals.css   # Tailwind v4 @theme tokens
+│   ├── layout.tsx          # the 412px phone-frame shell (.app-frame) + AppHeader + BottomBar
+│   ├── globals.css         # Tailwind v4 @theme tokens + component classes
+│   ├── page.tsx            # / — cycle spending donut + category breakdown (chart/list)
+│   ├── records/, budgets/, categories/, trips/, settings/, entries/{new,[id]/edit}/  # routes
 ├── db/
 │   └── client.ts           # (@db) initDb(path): the SQLite connection ONLY — schema-agnostic
-├── features/
-│   └── entries/            # (@features/entries) the money-flow domain
-│       ├── schema.ts        # drizzle table + Insert/Select types + ensureEntriesTable(db)
-│       ├── queries.ts       # typed reads/writes (addEntries / getEntries / getNetFlow)
-│       └── entries.test.ts  # feature-level round-trip test
+├── features/               # organised by domain; each owns schema + queries + actions + ui
+│   ├── entries/            # the ledger: entries table, cycle math, donut/breakdown, records, keypad
+│   ├── budgets/            # standing per-category monthly limits
+│   ├── categories/         # category display meta (emoji + hue) and the icon-set system
+│   └── settings/           # key-value store: billing cutoff day, icon set
 ├── shared/
-│   └── money.ts            # (@shared) cross-feature THB Intl formatter
-└── cli.ts                  # commander composition root — wires initDb → feature modules
+│   ├── ui/                 # cross-feature shell: PageContainer, AppHeader, BottomBar, MoreSheet…
+│   ├── money.ts, date.ts   # (@shared) THB Intl formatter, Bangkok-tz date helpers
+└── cli.ts                  # commander composition root — summary / seed / import <csv>
 ```
+
+Each feature's `schema.ts` is its drizzle table + `ensure<Table>Table(db)` bootstrap; `queries.ts`
+holds typed reads/writes; `actions.ts` the Server Actions; pure logic (cycle, donut, breakdown,
+calc, trips, combobox…) sits in plain modules with co-located `*.test.ts`.
 
 Path aliases: `@db/*`, `@features/*`, `@shared/*` (see `tsconfig.json`).
 

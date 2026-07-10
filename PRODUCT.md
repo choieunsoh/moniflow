@@ -8,18 +8,31 @@ product
 
 A single, financially-literate individual tracking their own money flow on their own machine —
 the kind of person who'd rather own a local SQLite file than hand their transactions to a SaaS.
-They open the app to answer one calm question: "where did my money go, and am I net up or down?"
+They open the app to answer one calm question: "where did my money go this cycle?"
 No team, no permissions, no cloud. Because moniflow is also a **project template**, the second
 audience is the _developer_ who scaffolds a new app from it and sees this UI as their starting
 point — so the design must read as a confident, finished default, not a placeholder to rip out.
 
 ## Product Purpose
 
-A local-first money-flow dashboard: ingest signed inflow/outflow entries into SQLite, and read
-them back through Next.js Server Components as a net-flow summary, a flow-over-time chart, and a
-recent-entries ledger. Success is a UI that a user fluent in Linear/Stripe/Notion would trust at
-a glance and that a developer would be happy to inherit and rebrand. It ships as the reference
-implementation for the `create-sqlite-next-app` scaffold.
+A local-first, **mobile-first spending tracker**. Signed inflow/outflow entries live in a local
+SQLite file; Next.js Server Components read them back **directly — no API layer** — and mutations
+go through Server Actions. The app is scoped to a monthly **billing cycle** (a configurable cutoff
+day) and organised as a phone-sized column with a bottom tab bar:
+
+- **Home** — the cycle's spending as a by-category donut with the total spent in the hole, plus a
+  ranked category breakdown (chart / list toggle).
+- **Records** — the cycle's expenses grouped by day, each a swipe-to-edit/delete row, with live
+  cross-cycle search.
+- **Budgets** — standing per-category monthly limits. **Categories** — rename/merge and pick each
+  category's icon + colour. **Trips** — foreign-currency spending grouped into trips.
+- Entries are added on a Monefy-style calculator keypad or bulk-imported from a **Monefy CSV**
+  (THB home currency; non-THB rows surface in Trips).
+
+It is a **spending tracker**: income is stored losslessly but every UI surface shows expenses
+only. Success is a UI a user fluent in Linear/Stripe/Notion would trust at a glance and a
+developer would be happy to inherit and rebrand. It ships as the reference implementation for the
+`create-sqlite-next-app` scaffold.
 
 ## Brand Personality
 

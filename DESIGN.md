@@ -16,7 +16,8 @@ structure makes it a drop-in override (`:root[data-theme="light"]`) later.
 
 | Token                   | Value                   | Role                                                     |
 | ----------------------- | ----------------------- | -------------------------------------------------------- |
-| `--color-bg`            | `#101114`               | Canvas                                                   |
+| `--color-backdrop`      | `#050506`               | Behind the phone frame on wide viewports (dimmer)        |
+| `--color-bg`            | `#101114`               | Canvas (the app frame)                                   |
 | `--color-surface`       | `#16181d`               | Panels, cards, table                                     |
 | `--color-surface-2`     | `#1e2128`               | Raised: header, table head, hover, selected              |
 | `--color-border`        | `#2a2d38`               | Hairlines, dividers, panel edges                         |
@@ -41,18 +42,17 @@ always paired with a `+`/`−` sign so it survives grayscale and color blindness
 Two IBM Plex families on a real contrast axis: **Sans** for all UI/prose, **Mono** for every
 number (amounts, dates, counts) — data honesty made visible. Self-hosted via `next/font`.
 
-Fixed rem scale (product register — no fluid clamp in the app; the one exception is the home
-hero, a deliberate brand moment, capped at 3rem):
+Fixed rem scale, product register — no fluid clamp (a phone-frame UI is viewed at one width, so
+type is set with Tailwind size utilities, not a hero). Figures render in `--font-mono` via `.tnum`
+(tabular-nums) so amounts, counts, and dates align:
 
-| Step  | Size / line-height / weight              | Use                     |
-| ----- | ---------------------------------------- | ----------------------- |
-| hero  | `clamp(2.25rem, 5vw, 3rem)` / 1.05 / 600 | Home hero only          |
-| h1    | `2rem` / 1.15 / 600                      | Page title              |
-| h2    | `1.5rem` / 1.2 / 600                     | Section                 |
-| h3    | `1.25rem` / 1.3 / 600                    | Panel title             |
-| body  | `1rem` / 1.6 / 400                       | Prose (cap 68ch)        |
-| small | `0.875rem` / 1.5 / 400                   | Secondary UI            |
-| label | `0.75rem` / 1.4 / 500                    | Captions, table headers |
+| Step  | Size / line-height / weight | Use                            |
+| ----- | --------------------------- | ------------------------------ |
+| h1    | `1.5rem` / 1.2 / 600        | Page title (budgets/settings…) |
+| h2    | `1rem` / 1.3 / 600          | Panel / section title          |
+| body  | `1rem` / 1.6 / 400          | Prose                          |
+| small | `0.875rem` / 1.5 / 400      | Row text, secondary UI         |
+| label | `0.75rem` / 1.4 / 500       | Chips, captions                |
 
 `text-wrap: balance` on headings; `pretty` on prose. Numerals use `font-variant-numeric:
 tabular-nums` so columns align.
@@ -69,19 +69,41 @@ tabular-nums` so columns align.
 
 ## Components & states
 
-Every interactive element ships default / hover / focus-visible / active / disabled. Buttons:
-`primary` (accent fill), `ghost` (transparent, border on hover). Nav links carry an `active`
-state (accent-text + underline). Category chips are pills in `surface-2`. Tables: `surface`
-body, `surface-2` sticky header, row hover in `surface-2`, selected in `accent-soft`.
+Every interactive element ships default / hover / focus-visible / active / disabled, and every
+touch target clears 44px (`.btn`, `.tap`). Shared classes live in `globals.css`:
 
-- **Loading**: skeleton blocks in `surface-2`, never a centered spinner.
-- **Empty state teaches**: the dashboard with no data explains how to add entries (the CLI seed
+- **Buttons** — `.btn` + `.btn-primary` (accent fill) / `.btn-ghost` (transparent, border on hover);
+  `active` presses down 1px.
+- **`.panel`** — the surface card (surface + border + `radius-lg`); the app leans on border +
+  surface step, not heavy shadows. Never nest panels.
+- **`.chip`** — category pill in `surface-2`; the active filter chip flips to `accent-soft` +
+  `accent-text`.
+- **Category markers** — `CategoryIcon` (a coloured disc: white line-icon on a bold hue disc, or
+  emoji on a soft tint) and `CategoryGlyph` (disc-less, for places that already carry colour like
+  the donut legend). The icon set (emoji / Phosphor / Lucide) is a global setting.
+- **Overlays** — native `<dialog>`: `.more-sheet` (bottom sheet, slides up) and `.emoji-dialog`
+  (centred modal for the icon/colour picker) get focus-trap, `Esc`, `::backdrop`, and top-layer
+  stacking for free. `.menu` is the elevated combobox dropdown (records search) with a short rise-in.
+- **Bottom nav** — the active tab carries **three** signals (an `accent-soft` pill behind the icon,
+  `accent-text` colour, and a heavier label) so the current section survives grayscale.
+- **Empty state teaches** — no data explains how to add entries (the keypad or the CLI `seed`
   command), it doesn't just say "no data".
 
 ## Layout
 
-App shell: sticky header (wordmark + nav + action), content in a centered container
-(`max-width: 1120px` for the dashboard, `68ch` for prose). Dashboard stacks: a quiet summary bar
-(net / in / out / count — a flex row, **not** a hero-metric block), a flow-over-time chart panel,
-then the recent-entries ledger. Responsive is structural: header condenses, the ledger table
-scrolls horizontally within its panel on narrow viewports.
+The whole app is a **centred fixed-width phone frame** — `.app-frame`, `max-width:
+--app-max-width` (**412px**, tuned to a Samsung S24 Ultra). On a phone the frame is the viewport
+(edge-to-edge); on wider screens the body paints the dimmer `--color-backdrop` behind it and the
+frame gains a hairline ring + shadow (`@media (min-width: 420px)`) so its edge reads. There is **no
+desktop layout** — desktop shows the same phone column, centred.
+
+The shell is a sticky blurred **header** (just the `Wordmark`, linking home — no top nav) over
+`<main>`, with a **fixed bottom tab bar** (`BottomBar`): Home · Records · **⊕ FAB** (add expense,
+overhanging the bar) · Budgets · More. **More** opens a `.more-sheet` `<dialog>` launcher
+(Categories / Trips / Settings). Pages compose through `PageContainer` (a `gap-6` column with
+mobile-first gutters).
+
+Screens: **Home** — a `CycleSelector`, a chart/list toggle, and either the spending donut
+(`DonutChart`, total in the hole) with a colour-keyed legend or a ranked `Breakdown`. **Records** —
+a `SearchBox` over day-grouped `SwipeRow`s (swipe to edit/delete, tap the marker to recolour it).
+Charts follow the "tested pure option-builder + thin React wrapper" split.
