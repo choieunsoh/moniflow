@@ -12,15 +12,6 @@ export function getEntries(db: Db): Entry[] {
   return db.select().from(entries).all();
 }
 
-export function getRecentEntries(db: Db, limit = 8): Entry[] {
-  return db
-    .select()
-    .from(entries)
-    .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
-    .limit(limit)
-    .all();
-}
-
 // ponytail: nets in JS over the full table — fine at scaffold scale. Upgrade to SQL aggregates
 // (sum/count) if the ledger grows past what's cheap to load.
 export function getNetFlow(db: Db): number {
@@ -29,8 +20,8 @@ export function getNetFlow(db: Db): number {
 
 export type Summary = { net: number; inflow: number; outflow: number; count: number };
 
-// Headline figures for the dashboard summary bar. inflow/outflow are split by sign so the UI
-// can show where money came from vs went, not just the net.
+// Cycle rollup figures. inflow/outflow are split by sign; the home page uses only `count` today
+// (to gate the empty state), but the split is kept for a caller that wants where money came from.
 function summarize(rows: Entry[]): Summary {
   return rows.reduce<Summary>(
     (acc, r) => ({
@@ -41,10 +32,6 @@ function summarize(rows: Entry[]): Summary {
     }),
     { net: 0, inflow: 0, outflow: 0, count: 0 },
   );
-}
-
-export function getSummary(db: Db): Summary {
-  return summarize(getEntries(db));
 }
 
 // Replace the imported ledger from an immutable Monefy export, leaving hand-entered ('manual')
@@ -104,10 +91,6 @@ function groupSum(
 
 export function getCategoryBreakdown(db: Db, start: string, end: string): Breakdown[] {
   return groupSum(db, entries.category, start, end);
-}
-
-export function getAccountBreakdown(db: Db, start: string, end: string): Breakdown[] {
-  return groupSum(db, entries.account, start, end);
 }
 
 export function insertEntry(db: Db, entry: NewEntry): void {

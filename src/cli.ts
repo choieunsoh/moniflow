@@ -32,7 +32,9 @@ program
     const db = initDb(opts.db);
     ensureEntriesTable(db);
     const n = seedEntries(db);
-    console.log(`seeded ${n} demo entries — run \`npm run dev:web\` and open /dashboard`);
+    console.log(
+      `seeded ${n} demo entries — run \`npm run dev:web\` and open http://127.0.0.1:4010`,
+    );
   });
 
 program
@@ -45,7 +47,7 @@ program
     const { entries, skipped } = parseMonefyCsv(readFileSync(file, 'utf8'));
     replaceEntries(db, entries);
     console.log(
-      `imported ${entries.length}, skipped ${skipped} — run \`npm run dev:web\` and open /dashboard`,
+      `imported ${entries.length}, skipped ${skipped} — run \`npm run dev:web\` and open http://127.0.0.1:4010`,
     );
   });
 
