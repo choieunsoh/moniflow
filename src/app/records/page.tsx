@@ -21,6 +21,7 @@ import { formatBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { SearchBox } from '@features/entries/ui/SearchBox';
 import { SwipeRow } from '@features/entries/ui/SwipeRow';
+import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
 // Records = the cycle's expenses grouped by day, newest first. Each day is a light header (date +
@@ -68,48 +69,50 @@ export default async function RecordsPage({
       {!searching && <CycleSelector activeKey={activeKey} cutoff={cutoff} />}
 
       {days.length > 0 ? (
-        <div className="flex flex-col gap-5">
-          {/* Summary of the current view (respects the active filter / search). */}
-          <div className="flex items-baseline justify-between px-1">
-            <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-              {entries.length}{' '}
-              {searching
-                ? entries.length === 1
-                  ? 'result'
-                  : 'results'
-                : entries.length === 1
-                  ? 'entry'
-                  : 'entries'}
-            </span>
-            <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
+        <CategoryPickerProvider iconSet={iconSet}>
+          <div className="flex flex-col gap-5">
+            {/* Summary of the current view (respects the active filter / search). */}
+            <div className="flex items-baseline justify-between px-1">
+              <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                {entries.length}{' '}
+                {searching
+                  ? entries.length === 1
+                    ? 'result'
+                    : 'results'
+                  : entries.length === 1
+                    ? 'entry'
+                    : 'entries'}
+              </span>
+              <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
+            </div>
+            {days.map((day) => (
+              <section key={day.date} className="flex flex-col gap-2">
+                <header className="flex items-baseline justify-between px-1">
+                  <h2 className="text-sm font-semibold">
+                    {searching ? formatDayHeadingWithYear(day.date) : formatDayHeading(day.date)}
+                  </h2>
+                  <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
+                    {day.entries.length} · {formatBaht(Math.abs(day.total))}
+                  </span>
+                </header>
+                <ul className="panel flex flex-col divide-y overflow-hidden">
+                  {day.entries.map((entry) => (
+                    <SwipeRow
+                      key={entry.id}
+                      entry={entry}
+                      emoji={emojiFor(emojiMap, entry.category)}
+                      iconSet={iconSet}
+                      hue={hueFor(hueMap, entry.category)}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))}
+            <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
+              Swipe a row left to delete · right to edit
+            </p>
           </div>
-          {days.map((day) => (
-            <section key={day.date} className="flex flex-col gap-2">
-              <header className="flex items-baseline justify-between px-1">
-                <h2 className="text-sm font-semibold">
-                  {searching ? formatDayHeadingWithYear(day.date) : formatDayHeading(day.date)}
-                </h2>
-                <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                  {day.entries.length} · {formatBaht(Math.abs(day.total))}
-                </span>
-              </header>
-              <ul className="panel flex flex-col divide-y overflow-hidden">
-                {day.entries.map((entry) => (
-                  <SwipeRow
-                    key={entry.id}
-                    entry={entry}
-                    emoji={emojiFor(emojiMap, entry.category)}
-                    iconSet={iconSet}
-                    hue={hueFor(hueMap, entry.category)}
-                  />
-                ))}
-              </ul>
-            </section>
-          ))}
-          <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
-            Swipe a row left to delete · right to edit
-          </p>
-        </div>
+        </CategoryPickerProvider>
       ) : searching ? (
         <div className="panel flex flex-col items-center gap-3 px-6 py-12 text-center">
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>

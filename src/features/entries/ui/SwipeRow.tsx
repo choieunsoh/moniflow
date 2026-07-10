@@ -8,7 +8,7 @@ import { formatBaht, formatSignedBaht } from '@shared/money';
 import { deleteEntryAction } from '../actions';
 import type { Entry } from '../schema';
 import { resolveSwipe, type SwipeSide } from '../swipe';
-import { EmojiPicker } from '@features/categories/ui/EmojiPicker';
+import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import type { IconSet } from '@features/settings/queries';
 
 // Width of each action panel revealed behind the row.
@@ -128,14 +128,15 @@ export function SwipeRow({
       >
         <div className="flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2">
-            {/* Tap the marker to edit this category's icon + background (same picker as the
-                Categories page). stopDrag keeps the press from starting a row swipe. */}
+            {/* Tap the marker to edit this category's icon + background via the page's shared picker
+                dialog (one per page, not one per row). stopDrag keeps the press from starting a
+                swipe. */}
             <span onPointerDown={stopDrag}>
-              <EmojiPicker
+              <CategoryIconButton
                 category={entry.category}
-                current={emoji}
+                emoji={emoji}
                 iconSet={iconSet}
-                currentHue={hue}
+                hue={hue}
               />
             </span>
             {/* Tap a chip to filter by it; tap the active (accent) one to clear. Swipe from the row
