@@ -14,6 +14,7 @@ import { todayIso } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap } from '@features/categories/queries';
+import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
 import { toDonutSlices } from '@features/entries/donut';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { Breakdown } from '@features/entries/ui/Breakdown';
@@ -77,8 +78,8 @@ export default async function HomePage({
                       className="size-2.5 shrink-0 rounded-full"
                       style={{ background: s.color }}
                     />
-                    <span aria-hidden className="shrink-0 leading-none">
-                      {emojiFor(emojiMap, s.name)}
+                    <span aria-hidden className="shrink-0">
+                      <CategoryGlyph emoji={emojiFor(emojiMap, s.name)} iconSet={iconSet} />
                     </span>
                     <span className="min-w-0 flex-1 truncate">{s.name}</span>
                     <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
