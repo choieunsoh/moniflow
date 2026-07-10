@@ -1,5 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { toBudgetRows, toBudgetTotal } from './budget-status';
+import { toBudgetRows, toBudgetTotal, suggestBudget } from './budget-status';
+
+describe('suggestBudget', () => {
+  it('rounds up to the nearest 500 for amounts ≥ ฿1,000', () => {
+    expect(suggestBudget(8918)).toBe(9000);
+    expect(suggestBudget(5388)).toBe(5500);
+    expect(suggestBudget(1000)).toBe(1000); // already a clean step
+  });
+
+  it('rounds up to the nearest 100 for small amounts', () => {
+    expect(suggestBudget(140)).toBe(200);
+    expect(suggestBudget(553)).toBe(600);
+  });
+
+  it('returns null when there is no spend to base it on', () => {
+    expect(suggestBudget(0)).toBeNull();
+    expect(suggestBudget(-50)).toBeNull();
+  });
+});
 
 describe('toBudgetTotal', () => {
   it('classifies under / near / over against the limit', () => {

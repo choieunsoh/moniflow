@@ -47,6 +47,15 @@ export function toBudgetTotal(limit: number | null, spent: number): BudgetTotal 
   return toStatus(limit, spent);
 }
 
+// A clean starting budget derived from spend: round UP to a tidy step so the suggestion reads as a
+// budget ("฿9,000"), not a raw ledger figure ("฿8,918") — the page prefills this so setting a limit
+// is one tap. Null when there's nothing to base a suggestion on (no spend this cycle).
+export function suggestBudget(spent: number): number | null {
+  if (spent <= 0) return null;
+  const step = spent >= 1000 ? 500 : 100;
+  return Math.ceil(spent / step) * step;
+}
+
 // Attention-first ordering: the rows a user needs to act on float up. Over budget first, then
 // nearing it, then comfortably under, then untracked spend (no budget). Ties break by spend
 // (biggest first), then name for a stable order.

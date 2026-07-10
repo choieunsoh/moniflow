@@ -11,6 +11,7 @@ import { setBudgetAction, deleteBudgetAction } from '@features/budgets/actions';
 import {
   toBudgetRows,
   toBudgetTotal,
+  suggestBudget,
   type BudgetState,
   type BudgetRow,
 } from '@features/budgets/budget-status';
@@ -118,6 +119,8 @@ export default function BudgetsPage() {
           category=""
           amount={total.limit ?? undefined}
           showDelete={total.limit !== null}
+          suggestion={total.limit === null ? suggestBudget(total.spent) : null}
+          spent={total.spent}
         />
       </section>
 
@@ -210,6 +213,8 @@ function CategoryRow({
             category={row.category}
             amount={row.limit ?? undefined}
             showDelete={row.limit !== null}
+            suggestion={row.limit === null ? suggestBudget(row.spent) : null}
+            spent={row.spent}
           />
         </div>
       </details>
@@ -317,11 +322,15 @@ function EditDisclosure({
   category,
   amount,
   showDelete,
+  suggestion = null,
+  spent = 0,
 }: {
   label: string;
   category: string;
   amount: number | undefined;
   showDelete: boolean;
+  suggestion?: number | null;
+  spent?: number;
 }) {
   return (
     <details className="group border-t pt-3">
@@ -335,7 +344,13 @@ function EditDisclosure({
         </span>
       </summary>
       <div className="pt-3">
-        <BudgetForm category={category} amount={amount} showDelete={showDelete} />
+        <BudgetForm
+          category={category}
+          amount={amount}
+          showDelete={showDelete}
+          suggestion={suggestion}
+          spent={spent}
+        />
       </div>
     </details>
   );
@@ -343,46 +358,62 @@ function EditDisclosure({
 
 // Progressive-enhancement edit: plain <form>s over Server Actions, so setting a limit works with no
 // client JS. Same control vocabulary the rest of the app uses (.btn primary / ghost, min-11 input).
+// When no budget is set yet, the input is prefilled with `suggestion` (a clean number rounded from
+// this cycle's spend) so setting a limit is just tap-row → tap-Save; the hint says where it came
+// from, and the value stays fully editable.
 function BudgetForm({
   category,
   amount,
   showDelete,
+  suggestion = null,
+  spent = 0,
 }: {
   category: string;
   amount: number | undefined;
   showDelete: boolean;
+  suggestion?: number | null;
+  spent?: number;
 }) {
+  const prefill = amount ?? suggestion ?? undefined;
+  const showHint = amount === undefined && suggestion !== null;
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <form action={setBudgetAction} className="flex flex-1 items-center gap-2">
-        <input type="hidden" name="category" value={category} />
-        <input
-          type="number"
-          name="amount"
-          step="1"
-          min="0"
-          inputMode="numeric"
-          defaultValue={amount ?? ''}
-          placeholder="Monthly limit (฿)"
-          aria-label={category ? `${category} monthly limit` : 'Total monthly limit'}
-          className="tnum min-h-11 min-w-0 flex-1 rounded-[var(--radius-md)] px-3 text-base"
-          style={{
-            border: '1px solid var(--color-border-strong)',
-            background: 'var(--color-surface-2)',
-            color: 'var(--color-text)',
-          }}
-        />
-        <button type="submit" className="btn btn-primary">
-          Save
-        </button>
-      </form>
-      {showDelete && (
-        <form action={deleteBudgetAction}>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <form action={setBudgetAction} className="flex flex-1 items-center gap-2">
           <input type="hidden" name="category" value={category} />
-          <button type="submit" className="btn btn-ghost">
-            Remove
+          <input
+            type="number"
+            name="amount"
+            step="1"
+            min="0"
+            inputMode="numeric"
+            defaultValue={prefill ?? ''}
+            placeholder="Monthly limit (฿)"
+            aria-label={category ? `${category} monthly limit` : 'Total monthly limit'}
+            className="tnum min-h-11 min-w-0 flex-1 rounded-[var(--radius-md)] px-3 text-base"
+            style={{
+              border: '1px solid var(--color-border-strong)',
+              background: 'var(--color-surface-2)',
+              color: 'var(--color-text)',
+            }}
+          />
+          <button type="submit" className="btn btn-primary">
+            Save
           </button>
         </form>
+        {showDelete && (
+          <form action={deleteBudgetAction}>
+            <input type="hidden" name="category" value={category} />
+            <button type="submit" className="btn btn-ghost">
+              Remove
+            </button>
+          </form>
+        )}
+      </div>
+      {showHint && (
+        <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
+          Suggested from <span className="tnum">{formatBaht(spent)}</span> spent this cycle
+        </p>
       )}
     </div>
   );
