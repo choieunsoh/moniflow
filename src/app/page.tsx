@@ -12,7 +12,7 @@ import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet } from '@features/settings/queries';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { getBudgets } from '@features/budgets/queries';
-import { toBudgetTotal } from '@features/budgets/budget-status';
+import { toBudgetTotal, pacePhrase } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 import { todayIso } from '@shared/date';
 import { formatBaht } from '@shared/money';
@@ -111,6 +111,11 @@ export default async function HomePage({
                       </span>
                     </div>
                     <BudgetMeter status={totalStatus} pacePct={pacePct} />
+                    {pacePct !== undefined && totalStatus.state !== 'over' ? (
+                      <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                        {pacePhrase(totalStatus.pct, pacePct)}
+                      </span>
+                    ) : null}
                   </div>
                 ) : null}
                 <ul className="flex flex-col gap-2.5">

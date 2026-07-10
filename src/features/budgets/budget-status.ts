@@ -55,6 +55,15 @@ export function meterColorVar(state: BudgetState): string {
   return 'var(--color-accent)';
 }
 
+// Spend pace vs the clock: the signed gap between how much of the budget is spent and how far through
+// the cycle we are. Positive → spending ahead of time ("over pace"); negative → behind ("under pace");
+// within a rounded point → "on pace". Both inputs are percentages (0–100).
+export function pacePhrase(spentPct: number, pacePct: number): string {
+  const delta = Math.round(spentPct - pacePct);
+  if (delta === 0) return 'on pace';
+  return delta > 0 ? `${delta}% over pace` : `${-delta}% under pace`;
+}
+
 // A clean starting budget derived from spend: round UP to a tidy step so the suggestion reads as a
 // budget ("฿9,000"), not a raw ledger figure ("฿8,918") — the page prefills this so setting a limit
 // is one tap. Null when there's nothing to base a suggestion on (no spend this cycle).

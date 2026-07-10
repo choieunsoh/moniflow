@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { toBudgetRows, toBudgetTotal, suggestBudget, meterColorVar } from './budget-status';
+import {
+  toBudgetRows,
+  toBudgetTotal,
+  suggestBudget,
+  meterColorVar,
+  pacePhrase,
+} from './budget-status';
 
 describe('suggestBudget', () => {
   it('rounds up to the nearest 500 for amounts ≥ ฿1,000', () => {
@@ -87,5 +93,17 @@ describe('meterColorVar', () => {
     expect(meterColorVar('near')).toBe('var(--color-warn)');
     expect(meterColorVar('under')).toBe('var(--color-accent)');
     expect(meterColorVar('none')).toBe('var(--color-accent)');
+  });
+});
+
+describe('pacePhrase', () => {
+  it('reports the signed gap between spend and time as under/over pace', () => {
+    expect(pacePhrase(70, 77)).toBe('7% under pace');
+    expect(pacePhrase(85, 77)).toBe('8% over pace');
+  });
+
+  it('reads "on pace" when spend and time round to the same point', () => {
+    expect(pacePhrase(77, 77)).toBe('on pace');
+    expect(pacePhrase(77.3, 77)).toBe('on pace');
   });
 });
