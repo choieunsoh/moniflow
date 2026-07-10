@@ -55,10 +55,13 @@ function baht(v: number): string {
 }
 
 // Returns a plain ECharts option: a doughnut of spending-by-category with the total spent rendered in
-// the hole (two graphic texts, since a canvas center label can't be a CSS-styled element).
+// the hole (two graphic texts, since a canvas center label can't be a CSS-styled element). The label
+// line carries the transaction count too — "62 · Spent" — summed from the slices (incl. Other).
 export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
   const slices = toDonutSlices(rows);
   const total = slices.reduce((sum, s) => sum + s.value, 0);
+  const count = slices.reduce((sum, s) => sum + s.count, 0);
+  const spentLabel = `${new Intl.NumberFormat('en-US').format(count)} · Spent`;
   return {
     tooltip: {
       trigger: 'item',
@@ -79,7 +82,7 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
         type: 'text',
         left: 'center',
         top: '56%',
-        style: { text: 'Spent', fill: p.muted, font: `400 13px ${p.font}`, textAlign: 'center' },
+        style: { text: spentLabel, fill: p.muted, font: `400 13px ${p.font}`, textAlign: 'center' },
       },
     ],
     series: [

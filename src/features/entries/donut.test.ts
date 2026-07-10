@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toDonutSlices, SLICE_COLORS } from './donut';
+import { toDonutSlices, buildDonutOption, SLICE_COLORS } from './donut';
 
 const row = (key: string, total: number, count = 1) => ({ key, total, count });
 
@@ -26,5 +26,14 @@ describe('toDonutSlices', () => {
 
   it('drops zero-value rows', () => {
     expect(toDonutSlices([row('z', 0), row('a', -5)]).map((s) => s.name)).toEqual(['a']);
+  });
+});
+
+describe('buildDonutOption', () => {
+  const palette = { text: '#fff', muted: '#999', border: '#333', surface: '#111', font: 'sans' };
+
+  it('labels the hole with the summed transaction count next to Spent', () => {
+    const opt = buildDonutOption([row('a', -30, 5), row('b', -20, 2)], palette);
+    expect(opt.graphic[1].style.text).toBe('7 · Spent'); // 5 + 2 transactions
   });
 });
