@@ -5,7 +5,7 @@ import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { getDistinctAccounts, getCategoryCounts } from '@features/entries/queries';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
-import { getEmojiMap, emojiFor } from '@features/categories/queries';
+import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
 import { Keypad } from '@features/entries/ui/Keypad';
@@ -19,11 +19,13 @@ export default function NewEntryPage() {
   ensureSettingsTable(db);
 
   const emojiMap = getEmojiMap(db);
+  const hueMap = getHueMap(db);
   const iconSet = getIconSet(db);
   // Most-used categories first, so the common ones are at the top of the picker grid.
   const categories = getCategoryCounts(db).map((c) => ({
     name: c.category,
     emoji: emojiFor(emojiMap, c.category),
+    hue: hueFor(hueMap, c.category),
   }));
   const accounts = getDistinctAccounts(db);
 

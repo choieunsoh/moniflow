@@ -24,10 +24,12 @@ export function SwipeRow({
   entry,
   emoji,
   iconSet,
+  hue,
 }: {
   entry: Entry;
   emoji: string;
   iconSet: IconSet;
+  hue?: number;
 }) {
   const [side, setSide] = useState<SwipeSide>(0); // resting position
   const [offset, setOffset] = useState(0); // live drag offset while dragging
@@ -126,7 +128,13 @@ export function SwipeRow({
       >
         <div className="flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2">
-            <CategoryIcon emoji={emoji} name={entry.category} size="sm" iconSet={iconSet} />
+            <CategoryIcon
+              emoji={emoji}
+              name={entry.category}
+              size="sm"
+              iconSet={iconSet}
+              hue={hue}
+            />
             {/* Tap a chip to filter by it; tap the active (accent) one to clear. Swipe from the row
                 body still works. */}
             <Link

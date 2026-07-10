@@ -10,7 +10,7 @@ import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet } from '@features/settings/queries';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
-import { getEmojiMap, emojiFor } from '@features/categories/queries';
+import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { todayIso, formatDayHeading } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
@@ -30,6 +30,7 @@ export default async function RecordsPage({
   ensureSettingsTable(db);
   ensureCategoryMetaTable(db);
   const emojiMap = getEmojiMap(db);
+  const hueMap = getHueMap(db);
   const iconSet = getIconSet(db);
 
   const cutoff = getCutoff(db);
@@ -72,6 +73,7 @@ export default async function RecordsPage({
                     entry={entry}
                     emoji={emojiFor(emojiMap, entry.category)}
                     iconSet={iconSet}
+                    hue={hueFor(hueMap, entry.category)}
                   />
                 ))}
               </ul>

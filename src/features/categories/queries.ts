@@ -177,3 +177,27 @@ export function setCategoryEmoji(db: Db, category: string, emoji: string): void 
 export function emojiFor(map: Record<string, string>, category: string): string {
   return map[category] ?? FALLBACK_EMOJI;
 }
+
+// Only categories with a picked hue land in the map; the rest fall through to the name-derived color.
+export function getHueMap(db: Db): Record<string, number> {
+  const rows = db
+    .select({ category: categoryMeta.category, hue: categoryMeta.hue })
+    .from(categoryMeta)
+    .all();
+  const map: Record<string, number> = {};
+  for (const row of rows) if (row.hue !== null) map[row.category] = row.hue;
+  return map;
+}
+
+// Upsert the hue. `null` resets to auto. A category with no meta row yet gets the fallback emoji so
+// the NOT NULL emoji column is satisfied; an existing row keeps its emoji (only hue is updated).
+export function setCategoryHue(db: Db, category: string, hue: number | null): void {
+  db.insert(categoryMeta)
+    .values({ category, emoji: FALLBACK_EMOJI, hue })
+    .onConflictDoUpdate({ target: categoryMeta.category, set: { hue } })
+    .run();
+}
+
+export function hueFor(map: Record<string, number>, category: string): number | undefined {
+  return map[category];
+}

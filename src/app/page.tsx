@@ -13,7 +13,7 @@ import { getCutoff, getIconSet } from '@features/settings/queries';
 import { todayIso } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
-import { getEmojiMap, emojiFor } from '@features/categories/queries';
+import { getEmojiMap, emojiFor, getHueMap } from '@features/categories/queries';
 import { toDonutSlices } from '@features/entries/donut';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { Breakdown } from '@features/entries/ui/Breakdown';
@@ -34,6 +34,7 @@ export default async function HomePage({
   ensureSettingsTable(db);
   ensureCategoryMetaTable(db);
   const emojiMap = getEmojiMap(db);
+  const hueMap = getHueMap(db);
   const iconSet = getIconSet(db);
 
   const cutoff = getCutoff(db);
@@ -62,6 +63,7 @@ export default async function HomePage({
               title="Spending by category"
               rows={categoryBreakdown}
               emojis={emojiMap}
+              hues={hueMap}
               iconSet={iconSet}
             />
           ) : (

@@ -1,22 +1,24 @@
 import { formatBaht } from '@shared/money';
 import { toBars } from '../breakdown';
 import type { Breakdown as BreakdownRow } from '../queries';
-import { emojiFor } from '@features/categories/queries';
+import { emojiFor, hueFor } from '@features/categories/queries';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import type { IconSet } from '@features/settings/queries';
 
 // A ranked bar list — outflow-heavy categories/accounts read at a glance. Magnitudes only (spending
 // is negative); the bar width is relative to the biggest row in the set. Pass `emojis` to lead each
-// row with its category marker, rendered per `iconSet`.
+// row with its category marker, rendered per `iconSet`; `hues` gives each marker its picked color.
 export function Breakdown({
   title,
   rows,
   emojis,
+  hues,
   iconSet = 'emoji',
 }: {
   title: string;
   rows: BreakdownRow[];
   emojis?: Record<string, string>;
+  hues?: Record<string, number>;
   iconSet?: IconSet;
 }) {
   const bars = toBars(rows);
@@ -39,6 +41,7 @@ export function Breakdown({
                       name={b.key}
                       size="sm"
                       iconSet={iconSet}
+                      hue={hues ? hueFor(hues, b.key) : undefined}
                     />
                   ) : null}
                   <span className="truncate">{b.key}</span>

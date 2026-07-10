@@ -21,11 +21,14 @@ export function CategoryIcon({
   name,
   size = 'md',
   iconSet = 'emoji',
+  hue,
 }: {
   emoji: string;
   name: string;
   size?: keyof typeof SIZES;
   iconSet?: IconSet;
+  // Picked disc hue; undefined falls back to the name-derived color.
+  hue?: number;
 }) {
   const Icon = iconMapFor(iconSet)?.[emoji];
 
@@ -34,7 +37,7 @@ export function CategoryIcon({
       <span
         aria-hidden
         className={`grid shrink-0 place-items-center rounded-full ${SIZES[size]}`}
-        style={{ background: categoryColorBold(name) }}
+        style={{ background: categoryColorBold(name, hue) }}
       >
         <Icon size={ICON_PX[size]} color="#fff" />
       </span>
@@ -45,7 +48,7 @@ export function CategoryIcon({
     <span
       aria-hidden
       className={`grid shrink-0 place-items-center rounded-full leading-none ${SIZES[size]}`}
-      style={{ background: `color-mix(in srgb, ${categoryColor(name)} 22%, transparent)` }}
+      style={{ background: `color-mix(in srgb, ${categoryColor(name, hue)} 22%, transparent)` }}
     >
       {emoji}
     </span>

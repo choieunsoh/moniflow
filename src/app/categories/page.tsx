@@ -7,7 +7,7 @@ import { ensureEntriesTable } from '@features/entries/schema';
 import { getCategoryCounts } from '@features/entries/queries';
 import { mergeCategoryAction } from '@features/entries/actions';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
-import { getEmojiMap, emojiFor } from '@features/categories/queries';
+import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { EmojiPicker } from '@features/categories/ui/EmojiPicker';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
@@ -20,6 +20,7 @@ export default function CategoriesPage() {
   ensureSettingsTable(db);
   const counts = getCategoryCounts(db);
   const emojiMap = getEmojiMap(db);
+  const hueMap = getHueMap(db);
   const iconSet = getIconSet(db);
 
   return (
@@ -46,6 +47,7 @@ export default function CategoriesPage() {
                     category={c.category}
                     current={emojiFor(emojiMap, c.category)}
                     iconSet={iconSet}
+                    currentHue={hueFor(hueMap, c.category)}
                   />
                   <span className="min-w-0 flex-1 truncate font-medium">{c.category}</span>
                   <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>

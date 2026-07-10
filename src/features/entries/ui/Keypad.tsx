@@ -7,7 +7,7 @@ import { evaluate } from '../calc';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import type { IconSet } from '@features/settings/queries';
 
-export type KeypadCategory = { name: string; emoji: string };
+export type KeypadCategory = { name: string; emoji: string; hue?: number };
 
 const OPS = '+−×÷';
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'];
@@ -160,7 +160,7 @@ export function Keypad({
               value={c.name}
               className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-colors active:opacity-70"
             >
-              <CategoryIcon emoji={c.emoji} name={c.name} size="lg" iconSet={iconSet} />
+              <CategoryIcon emoji={c.emoji} name={c.name} size="lg" iconSet={iconSet} hue={c.hue} />
               <span className="w-full truncate text-xs" style={{ color: 'var(--color-muted)' }}>
                 {c.name}
               </span>
