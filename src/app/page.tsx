@@ -7,7 +7,7 @@ import { PageContainer } from '@shared/ui/PageContainer';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { getCycleSummary, getCategoryBreakdown } from '@features/entries/queries';
-import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
+import { cycleFromKey, currentCycleKey, cycleProgress } from '@features/entries/cycle';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet } from '@features/settings/queries';
 import { ensureBudgetsTable } from '@features/budgets/schema';
@@ -23,6 +23,7 @@ import { toDonutSlices } from '@features/entries/donut';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
+import { CycleProgress } from '@features/entries/ui/CycleProgress';
 import { CycleSwipe } from '@features/entries/ui/CycleSwipe';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
@@ -49,6 +50,7 @@ export default async function HomePage({
   const activeKey = cycleParam ?? currentKey;
   // No future cycles to spend in yet — cap forward navigation at today's cycle.
   const canGoNext = activeKey < currentKey;
+  const isCurrentCycle = activeKey === currentKey;
   const cycle = cycleFromKey(activeKey, cutoff);
   const summary = getCycleSummary(db, cycle.start, cycle.end);
   const categoryBreakdown = getCategoryBreakdown(db, cycle.start, cycle.end);
@@ -71,6 +73,7 @@ export default async function HomePage({
   return (
     <PageContainer size="full">
       <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} />
+      {isCurrentCycle ? <CycleProgress progress={cycleProgress(cycle, todayIso())} /> : null}
 
       {summary.count > 0 ? (
         <>
