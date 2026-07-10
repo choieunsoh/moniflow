@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toBudgetRows, toBudgetTotal, suggestBudget } from './budget-status';
+import { toBudgetRows, toBudgetTotal, suggestBudget, meterColorVar } from './budget-status';
 
 describe('suggestBudget', () => {
   it('rounds up to the nearest 500 for amounts ≥ ฿1,000', () => {
@@ -78,5 +78,14 @@ describe('toBudgetRows', () => {
 
   it('lists each category once even when it appears in every source', () => {
     expect(new Set(rows.map((r) => r.category)).size).toBe(rows.length);
+  });
+});
+
+describe('meterColorVar', () => {
+  it('maps over → loss, near → warn, under/none → accent', () => {
+    expect(meterColorVar('over')).toBe('var(--color-loss)');
+    expect(meterColorVar('near')).toBe('var(--color-warn)');
+    expect(meterColorVar('under')).toBe('var(--color-accent)');
+    expect(meterColorVar('none')).toBe('var(--color-accent)');
   });
 });

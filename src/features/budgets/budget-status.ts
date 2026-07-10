@@ -47,6 +47,14 @@ export function toBudgetTotal(limit: number | null, spent: number): BudgetTotal 
   return toStatus(limit, spent);
 }
 
+// The meter fill color for a budget state, as a CSS var (applied via inline style). Only near/over
+// deviate from the calm accent — under-budget must not shout, and unbudgeted rows never reach here.
+export function meterColorVar(state: BudgetState): string {
+  if (state === 'over') return 'var(--color-loss)';
+  if (state === 'near') return 'var(--color-warn)';
+  return 'var(--color-accent)';
+}
+
 // A clean starting budget derived from spend: round UP to a tidy step so the suggestion reads as a
 // budget ("฿9,000"), not a raw ledger figure ("฿8,918") — the page prefills this so setting a limit
 // is one tap. Null when there's nothing to base a suggestion on (no spend this cycle).
