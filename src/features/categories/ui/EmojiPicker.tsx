@@ -52,9 +52,18 @@ export function EmojiPicker({
         }}
       >
         <div className="flex flex-col gap-3 p-4">
-          <h2 className="text-sm font-semibold">
-            Icon for <span style={{ color: 'var(--color-muted)' }}>{category}</span>
-          </h2>
+          {/* Live preview of the current icon on its current background. */}
+          <div className="flex items-center gap-3">
+            <CategoryIcon
+              emoji={current}
+              name={category}
+              size="lg"
+              iconSet={iconSet}
+              hue={currentHue}
+            />
+            <span className="min-w-0 truncate text-sm font-semibold">{category}</span>
+          </div>
+          <h2 className="text-sm font-semibold">Icon</h2>
           <form
             action={setCategoryEmojiAction}
             onSubmit={() => ref.current?.close()}
