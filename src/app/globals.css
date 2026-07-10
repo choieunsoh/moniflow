@@ -12,6 +12,7 @@
   --font-mono: var(--font-plex-mono), 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
 
   /* Surfaces (canvas → raised) */
+  --color-backdrop: #050506; /* behind the phone frame on wide viewports — dimmer than the canvas */
   --color-bg: #101114;
   --color-surface: #16181d;
   --color-surface-2: #1e2128;
@@ -77,7 +78,7 @@ html {
 }
 
 body {
-  background: var(--color-bg);
+  background: var(--color-backdrop);
   color: var(--color-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -107,6 +108,20 @@ p {
   outline: 2px solid var(--color-accent-ring);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/* The fixed-width phone column. It keeps the canvas colour so the dimmer --color-backdrop only shows
+   OUTSIDE it. On viewports wider than the frame, a hairline ring + shadow make the frame edge
+   obvious; on the phone (frame == viewport) the media query never fires, so it stays edge-to-edge. */
+.app-frame {
+  background: var(--color-bg);
+}
+@media (min-width: 420px) {
+  .app-frame {
+    box-shadow:
+      0 0 0 1px var(--color-border-strong),
+      0 0 60px -12px rgba(0, 0, 0, 0.9);
+  }
 }
 
 /* ── Components ──────────────────────────────────────────────────────────── */

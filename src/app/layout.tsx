@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
       <body className="min-h-dvh">
         {/* The whole app is a centered fixed-width phone frame (mobile-only; desktop = same size). */}
-        <div className="mx-auto flex min-h-dvh w-full max-w-[var(--app-max-width)] flex-col">
+        <div className="app-frame mx-auto flex min-h-dvh w-full max-w-[var(--app-max-width)] flex-col">
           <AppHeader />
           {/* pb clears the fixed bottom bar (bar height + FAB overhang + safe area). */}
           <main className="flex-1 pb-24">{children}</main>
