@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { getDistinctCategories, getCategoryBreakdown } from '@features/entries/queries';
-import { cycleFromKey, currentCycleKey, cycleProgress } from '@features/entries/cycle';
+import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { getBudgets } from '@features/budgets/queries';
 import { setBudgetAction, deleteBudgetAction } from '@features/budgets/actions';
@@ -24,8 +24,9 @@ import { PageContainer } from '@shared/ui/PageContainer';
 import { formatBaht } from '@shared/money';
 import { todayIso } from '@shared/date';
 
-// The meter colour IS the state, so it never stands alone — every row pairs it with a word
-// ("left" / "over" / "No budget") so meaning survives grayscale and colour blindness.
+// A thin colour-only glance of spend against the limit you set — red over, amber near, accent under.
+// This page is for setting budgets, so the exact "left"/percent figures are intentionally omitted;
+// the bar is a hint, and the spend figure beside the input carries the honest number.
 const METER: Record<BudgetState, string> = {
   over: 'var(--color-loss)',
   near: 'var(--color-warn)',
@@ -41,9 +42,7 @@ export default function BudgetsPage() {
   ensureCategoryMetaTable(db);
 
   const cutoff = getCutoff(db);
-  const today = todayIso();
-  const cycle = cycleFromKey(currentCycleKey(today, cutoff), cutoff);
-  const progress = cycleProgress(cycle, today);
+  const cycle = cycleFromKey(currentCycleKey(todayIso(), cutoff), cutoff);
 
   // This cycle's spend per category (magnitudes — the ledger stores outflow as negative).
   const breakdown = getCategoryBreakdown(db, cycle.start, cycle.end);
@@ -76,55 +75,32 @@ export default function BudgetsPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Budgets</h1>
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Standing monthly limits, tracked against this cycle&rsquo;s spending.
+          Set a standing monthly limit for each category — it applies to every billing cycle.
         </p>
       </header>
 
-      {/* Total — the hero read: how much of the whole-cycle budget is gone. */}
-      <section className="panel flex flex-col gap-4 p-5">
+      {/* Total — the whole-cycle limit, set inline like every category. */}
+      <section className="panel flex flex-col gap-3 p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold">Total</h2>
           <span className="chip tnum">{cycle.label}</span>
         </div>
-
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="tnum text-3xl font-semibold">{formatBaht(totalSpent)}</span>
-          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            spent
-            {total.limit !== null && (
-              <>
-                {' '}
-                of <span className="tnum">{formatBaht(total.limit)}</span>
-              </>
-            )}
-          </span>
-        </div>
-
-        {total.limit !== null ? (
-          <>
-            <Meter pct={total.pct} state={total.state} tall />
-            <div className="flex items-baseline justify-between gap-3 text-sm">
-              <Remaining row={total} />
-              <Pace day={progress.day} total={progress.total} row={total} />
-            </div>
-          </>
-        ) : (
-          <p className="text-sm" style={{ color: 'var(--color-faint)' }}>
-            No total budget yet — set one to track the whole cycle at a glance.
-          </p>
-        )}
-
-        <EditDisclosure
-          label={total.limit === null ? 'Set total budget' : 'Edit total budget'}
+        <BudgetForm
           category=""
           amount={total.limit ?? undefined}
           showDelete={total.limit !== null}
           suggestion={total.limit === null ? suggestBudget(total.spent) : null}
           spent={total.spent}
         />
+        {total.state !== 'none' && <Meter pct={total.pct} state={total.state} tall />}
+        {total.limit !== null && (
+          <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
+            <span className="tnum">{formatBaht(total.spent)}</span> spent this cycle
+          </p>
+        )}
       </section>
 
-      {/* By category — attention-first: over/near-budget rows float to the top. */}
+      {/* By category — each row edits inline; biggest spenders (most worth budgeting) surface first. */}
       <section className="panel p-5">
         <h2 className="mb-1 text-base font-semibold">By category</h2>
         {rows.length === 0 ? (
@@ -163,9 +139,9 @@ export default function BudgetsPage() {
   );
 }
 
-// One category's tracker row: a <details> whose summary is the read view (marker, spend / limit,
-// meter, remaining) and whose body is the edit form — so the whole list stays a calm read until you
-// tap a row to change its limit. No client JS: native disclosure + Server-Action form.
+// One category's set row — the limit is edited inline (no tap-to-expand): marker + name, the spend
+// figure for context, and the amount input right there. A thin meter under a budgeted row is the
+// only tracking left; the "left"/percent readouts are gone so the surface stays about setting.
 function CategoryRow({
   row,
   emojis,
@@ -178,46 +154,30 @@ function CategoryRow({
   iconSet: IconSet;
 }) {
   return (
-    <li className="border-b last:border-0">
-      <details className="group">
-        <summary className="tap flex cursor-pointer list-none flex-col gap-2 py-3 [&::-webkit-details-marker]:hidden">
-          <div className="flex items-center gap-3">
-            <CategoryIcon
-              emoji={emojiFor(emojis, row.category)}
-              name={row.category}
-              size="sm"
-              iconSet={iconSet}
-              hue={hueFor(hues, row.category)}
-            />
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">{row.category}</span>
-            <span className="tnum text-sm">{formatBaht(row.spent)}</span>
-            {row.limit !== null && (
-              <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                / {formatBaht(row.limit)}
-              </span>
-            )}
-            <Chevron />
-          </div>
-          <Meter pct={row.pct} state={row.state} />
-          <div className="flex items-baseline justify-between gap-3 text-xs">
-            <Remaining row={row} />
-            {row.limit !== null && (
-              <span className="tnum" style={{ color: 'var(--color-faint)' }}>
-                {Math.round(row.pct)}%
-              </span>
-            )}
-          </div>
-        </summary>
-        <div className="pb-3">
-          <BudgetForm
-            category={row.category}
-            amount={row.limit ?? undefined}
-            showDelete={row.limit !== null}
-            suggestion={row.limit === null ? suggestBudget(row.spent) : null}
-            spent={row.spent}
-          />
-        </div>
-      </details>
+    <li className="flex flex-col gap-2 border-b py-3 last:border-0">
+      <div className="flex items-center gap-3">
+        <CategoryIcon
+          emoji={emojiFor(emojis, row.category)}
+          name={row.category}
+          size="sm"
+          iconSet={iconSet}
+          hue={hueFor(hues, row.category)}
+        />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{row.category}</span>
+        {row.limit !== null && row.spent > 0 && (
+          <span className="tnum text-xs" style={{ color: 'var(--color-faint)' }}>
+            {formatBaht(row.spent)} spent
+          </span>
+        )}
+      </div>
+      <BudgetForm
+        category={row.category}
+        amount={row.limit ?? undefined}
+        showDelete={row.limit !== null}
+        suggestion={row.limit === null ? suggestBudget(row.spent) : null}
+        spent={row.spent}
+      />
+      {row.state !== 'none' && <Meter pct={row.pct} state={row.state} />}
     </li>
   );
 }
@@ -246,55 +206,6 @@ function Meter({ pct, state, tall }: { pct: number; state: BudgetState; tall?: b
   );
 }
 
-// Remaining-to-limit, stated with a word so the state never rides on colour alone.
-function Remaining({ row }: { row: Pick<BudgetRow, 'state' | 'remaining'> }) {
-  if (row.state === 'none') {
-    return <span style={{ color: 'var(--color-faint)' }}>No budget</span>;
-  }
-  if (row.state === 'over') {
-    return (
-      <span className="font-medium" style={{ color: 'var(--color-loss)' }}>
-        <span className="tnum">{formatBaht(Math.abs(row.remaining))}</span> over
-      </span>
-    );
-  }
-  const color = row.state === 'near' ? 'var(--color-warn)' : 'var(--color-muted)';
-  return (
-    <span style={{ color }}>
-      <span className="tnum">{formatBaht(row.remaining)}</span> left
-    </span>
-  );
-}
-
-// Cycle pace: how far into the cycle we are. Flags "Ahead of pace" when spend has outrun the
-// elapsed share of the cycle by a clear margin — an honest early-warning before you actually
-// breach the cap.
-function Pace({
-  day,
-  total: days,
-  row,
-}: {
-  day: number;
-  total: number;
-  row: Pick<BudgetRow, 'state' | 'spent' | 'limit'>;
-}) {
-  const elapsedShare = day / days;
-  const spentShare = row.limit && row.limit > 0 ? row.spent / row.limit : 0;
-  const ahead = row.state !== 'over' && spentShare > elapsedShare + 0.05;
-  return (
-    <span className="flex items-center gap-2" style={{ color: 'var(--color-faint)' }}>
-      {ahead && (
-        <span className="chip" style={{ color: 'var(--color-warn)' }}>
-          Ahead of pace
-        </span>
-      )}
-      <span className="tnum">
-        Day {day} of {days}
-      </span>
-    </span>
-  );
-}
-
 function Chevron() {
   return (
     <svg
@@ -311,48 +222,6 @@ function Chevron() {
     >
       <path d="m6 9 6 6 6-6" />
     </svg>
-  );
-}
-
-// A <details> disclosure wrapping the total's edit form, so the summary panel stays a clean read
-// until you choose to change the number. Category rows are their own <details>, so they inline the
-// form directly.
-function EditDisclosure({
-  label,
-  category,
-  amount,
-  showDelete,
-  suggestion = null,
-  spent = 0,
-}: {
-  label: string;
-  category: string;
-  amount: number | undefined;
-  showDelete: boolean;
-  suggestion?: number | null;
-  spent?: number;
-}) {
-  return (
-    <details className="group border-t pt-3">
-      <summary className="tap cursor-pointer list-none text-sm font-medium [&::-webkit-details-marker]:hidden">
-        <span
-          className="inline-flex items-center gap-1"
-          style={{ color: 'var(--color-accent-text)' }}
-        >
-          {label}
-          <Chevron />
-        </span>
-      </summary>
-      <div className="pt-3">
-        <BudgetForm
-          category={category}
-          amount={amount}
-          showDelete={showDelete}
-          suggestion={suggestion}
-          spent={spent}
-        />
-      </div>
-    </details>
   );
 }
 
