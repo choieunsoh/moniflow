@@ -4,22 +4,28 @@ import type { Breakdown as BreakdownRow } from '../queries';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import type { IconSet } from '@features/settings/queries';
+import { toBudgetTotal } from '@features/budgets/budget-status';
+import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 
 // A ranked bar list — outflow-heavy categories/accounts read at a glance. Magnitudes only (spending
 // is negative); the bar width is relative to the biggest row in the set. Pass `emojis` to lead each
 // row with its category marker, rendered per `iconSet`; `hues` gives each marker its picked color.
+// Pass `limits` (category → monthly limit) to turn budgeted rows into spent-vs-limit meters; rows
+// with no limit keep the plain relative bar.
 export function Breakdown({
   title,
   rows,
   emojis,
   hues,
   iconSet = 'emoji',
+  limits,
 }: {
   title: string;
   rows: BreakdownRow[];
   emojis?: Record<string, string>;
   hues?: Record<string, number>;
   iconSet?: IconSet;
+  limits?: Map<string, number>;
 }) {
   const bars = toBars(rows);
   return (
@@ -31,39 +37,50 @@ export function Breakdown({
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {bars.map((b) => (
-            <li key={b.key} className="flex flex-col gap-1">
-              <div className="flex items-baseline justify-between text-sm">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  {emojis ? (
-                    <CategoryIcon
-                      emoji={emojiFor(emojis, b.key)}
-                      name={b.key}
-                      size="sm"
-                      iconSet={iconSet}
-                      hue={hues ? hueFor(hues, b.key) : undefined}
-                    />
-                  ) : null}
-                  <span className="truncate">{b.key}</span>
-                  <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                    ({b.count})
+          {bars.map((b) => {
+            const spent = Math.abs(b.total);
+            const limit = limits?.get(b.key);
+            const status = limit === undefined ? null : toBudgetTotal(limit, spent);
+            return (
+              <li key={b.key} className="flex flex-col gap-1">
+                <div className="flex items-baseline justify-between text-sm">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {emojis ? (
+                      <CategoryIcon
+                        emoji={emojiFor(emojis, b.key)}
+                        name={b.key}
+                        size="sm"
+                        iconSet={iconSet}
+                        hue={hues ? hueFor(hues, b.key) : undefined}
+                      />
+                    ) : null}
+                    <span className="truncate">{b.key}</span>
+                    <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                      ({b.count})
+                    </span>
                   </span>
-                </span>
-                <span className="tnum" style={{ color: 'var(--color-text)' }}>
-                  {formatBaht(Math.abs(b.total))}
-                </span>
-              </div>
-              <div
-                className="h-2 overflow-hidden rounded"
-                style={{ background: 'var(--color-border)' }}
-              >
-                <div
-                  className="h-full rounded"
-                  style={{ width: `${b.pct}%`, background: 'var(--color-accent)' }}
-                />
-              </div>
-            </li>
-          ))}
+                  <span className="tnum" style={{ color: 'var(--color-text)' }}>
+                    {status
+                      ? `${formatBaht(spent)} / ${formatBaht(status.limit ?? 0)}`
+                      : formatBaht(spent)}
+                  </span>
+                </div>
+                {status ? (
+                  <BudgetMeter status={status} />
+                ) : (
+                  <div
+                    className="h-2 overflow-hidden rounded"
+                    style={{ background: 'var(--color-border)' }}
+                  >
+                    <div
+                      className="h-full rounded"
+                      style={{ width: `${b.pct}%`, background: 'var(--color-accent)' }}
+                    />
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
