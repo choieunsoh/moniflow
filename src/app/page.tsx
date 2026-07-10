@@ -73,13 +73,18 @@ export default async function HomePage({
               <ul className="flex flex-col gap-2.5">
                 {slices.map((s) => (
                   <li key={s.name} className="flex items-center gap-3 text-sm">
+                    {/* Slice colour + category icon combined into one mark: a disc in the ring's
+                        colour with the icon inside (white line icons / emoji on the colour). */}
                     <span
                       aria-hidden
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ background: s.color }}
-                    />
-                    <span aria-hidden className="shrink-0">
-                      <CategoryGlyph emoji={emojiFor(emojiMap, s.name)} iconSet={iconSet} />
+                      className="grid size-7 shrink-0 place-items-center rounded-full text-base"
+                      style={{ background: s.color, color: 'var(--color-on-accent)' }}
+                    >
+                      <CategoryGlyph
+                        emoji={emojiFor(emojiMap, s.name)}
+                        iconSet={iconSet}
+                        size={18}
+                      />
                     </span>
                     <span className="min-w-0 flex-1 truncate">{s.name}</span>
                     <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
