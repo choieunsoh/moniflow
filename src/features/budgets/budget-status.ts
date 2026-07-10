@@ -56,11 +56,10 @@ export function suggestBudget(spent: number): number | null {
   return Math.ceil(spent / step) * step;
 }
 
-// Attention-first ordering: the rows a user needs to act on float up. Over budget first, then
-// nearing it, then comfortably under, then untracked spend (no budget). Ties break by spend
-// (biggest first), then name for a stable order.
-const ORDER: Record<BudgetState, number> = { over: 0, near: 1, under: 2, none: 3 };
-
+// Ordered by spend, biggest first — the categories most worth budgeting lead, and the order is
+// STABLE as you set limits (setting a budget changes a row's state but not its spend, so it never
+// jumps under you while auto-save re-renders). Ties break by name.
+//
 // Every category that has a budget OR spend this cycle appears exactly once. `limits` and
 // `spentByCategory` are keyed by category name; `categories` seeds the union so a budgeted-but-
 // unspent category still shows.
@@ -76,8 +75,5 @@ export function toBudgetRows(
     const spent = spentByCategory.get(category) ?? 0;
     rows.push({ category, ...toStatus(limit, spent) });
   }
-  return rows.sort(
-    (a, b) =>
-      ORDER[a.state] - ORDER[b.state] || b.spent - a.spent || a.category.localeCompare(b.category),
-  );
+  return rows.sort((a, b) => b.spent - a.spent || a.category.localeCompare(b.category));
 }

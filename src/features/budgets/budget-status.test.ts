@@ -60,8 +60,9 @@ describe('toBudgetRows', () => {
     ]),
   );
 
-  it('orders attention-first: over → near → under → none', () => {
-    expect(rows.map((r) => r.category)).toEqual(['Food', 'Fun', 'Rent', 'Health']);
+  it('orders by spend, biggest first (stable as budgets are set)', () => {
+    // spend: Food 1500, Rent 1000, Health 300, Fun 160
+    expect(rows.map((r) => r.category)).toEqual(['Food', 'Rent', 'Health', 'Fun']);
   });
 
   it('includes a budgeted category with no spend this cycle', () => {

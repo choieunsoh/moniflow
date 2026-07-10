@@ -7,7 +7,7 @@ import { getDistinctCategories, getCategoryBreakdown } from '@features/entries/q
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { getBudgets } from '@features/budgets/queries';
-import { setBudgetAction, deleteBudgetAction } from '@features/budgets/actions';
+import { BudgetField } from '@features/budgets/ui/BudgetField';
 import {
   toBudgetRows,
   toBudgetTotal,
@@ -33,6 +33,21 @@ const METER: Record<BudgetState, string> = {
   under: 'var(--color-accent)',
   none: 'var(--color-border-strong)',
 };
+
+// Build the inline editor's props from a category's limit + spend. An unset budget is prefilled with
+// a suggestion (rounded from this cycle's spend) and carries a hint saying where it came from; a set
+// budget shows its saved amount and no hint. `amount` is the committed baseline the field diffs
+// against on blur, so it stays undefined until a budget actually exists.
+function fieldProps(category: string, limit: number | null, spent: number) {
+  const suggestion = limit === null ? suggestBudget(spent) : null;
+  const prefill = limit ?? suggestion ?? '';
+  return {
+    category,
+    amount: limit ?? undefined,
+    prefill: String(prefill),
+    hint: suggestion !== null ? `Suggested from ${formatBaht(spent)} spent this cycle` : undefined,
+  };
+}
 
 export default function BudgetsPage() {
   const db = initDb();
@@ -85,13 +100,7 @@ export default function BudgetsPage() {
           <h2 className="text-base font-semibold">Total</h2>
           <span className="chip tnum">{cycle.label}</span>
         </div>
-        <BudgetForm
-          category=""
-          amount={total.limit ?? undefined}
-          showDelete={total.limit !== null}
-          suggestion={total.limit === null ? suggestBudget(total.spent) : null}
-          spent={total.spent}
-        />
+        <BudgetField {...fieldProps('', total.limit, total.spent)} />
         {total.state !== 'none' && <Meter pct={total.pct} state={total.state} tall />}
         {total.limit !== null && (
           <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
@@ -170,13 +179,7 @@ function CategoryRow({
           </span>
         )}
       </div>
-      <BudgetForm
-        category={row.category}
-        amount={row.limit ?? undefined}
-        showDelete={row.limit !== null}
-        suggestion={row.limit === null ? suggestBudget(row.spent) : null}
-        spent={row.spent}
-      />
+      <BudgetField {...fieldProps(row.category, row.limit, row.spent)} />
       {row.state !== 'none' && <Meter pct={row.pct} state={row.state} />}
     </li>
   );
@@ -222,68 +225,5 @@ function Chevron() {
     >
       <path d="m6 9 6 6 6-6" />
     </svg>
-  );
-}
-
-// Progressive-enhancement edit: plain <form>s over Server Actions, so setting a limit works with no
-// client JS. Same control vocabulary the rest of the app uses (.btn primary / ghost, min-11 input).
-// When no budget is set yet, the input is prefilled with `suggestion` (a clean number rounded from
-// this cycle's spend) so setting a limit is just tap-row → tap-Save; the hint says where it came
-// from, and the value stays fully editable.
-function BudgetForm({
-  category,
-  amount,
-  showDelete,
-  suggestion = null,
-  spent = 0,
-}: {
-  category: string;
-  amount: number | undefined;
-  showDelete: boolean;
-  suggestion?: number | null;
-  spent?: number;
-}) {
-  const prefill = amount ?? suggestion ?? undefined;
-  const showHint = amount === undefined && suggestion !== null;
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <form action={setBudgetAction} className="flex flex-1 items-center gap-2">
-          <input type="hidden" name="category" value={category} />
-          <input
-            type="number"
-            name="amount"
-            step="1"
-            min="0"
-            inputMode="numeric"
-            defaultValue={prefill ?? ''}
-            placeholder="Monthly limit (฿)"
-            aria-label={category ? `${category} monthly limit` : 'Total monthly limit'}
-            className="tnum min-h-11 min-w-0 flex-1 rounded-[var(--radius-md)] px-3 text-base"
-            style={{
-              border: '1px solid var(--color-border-strong)',
-              background: 'var(--color-surface-2)',
-              color: 'var(--color-text)',
-            }}
-          />
-          <button type="submit" className="btn btn-primary">
-            Save
-          </button>
-        </form>
-        {showDelete && (
-          <form action={deleteBudgetAction}>
-            <input type="hidden" name="category" value={category} />
-            <button type="submit" className="btn btn-ghost">
-              Remove
-            </button>
-          </form>
-        )}
-      </div>
-      {showHint && (
-        <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
-          Suggested from <span className="tnum">{formatBaht(spent)}</span> spent this cycle
-        </p>
-      )}
-    </div>
   );
 }
