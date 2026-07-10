@@ -70,10 +70,16 @@ export default async function HomePage({
   }
   const totalStatus = totalLimit === null ? null : toBudgetTotal(totalLimit, total);
 
+  // Time elapsed in the cycle drives both the standalone header bar and the "today" pace tick on the
+  // budget meters — but a pace mark only makes sense while the cycle is live, so pacePct is undefined
+  // on a past cycle (no tick), matching the header bar hiding there.
+  const progress = cycleProgress(cycle, todayIso());
+  const pacePct = isCurrentCycle ? (progress.day / progress.total) * 100 : undefined;
+
   return (
     <PageContainer size="full">
       <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} />
-      {isCurrentCycle ? <CycleProgress progress={cycleProgress(cycle, todayIso())} /> : null}
+      {isCurrentCycle ? <CycleProgress progress={progress} /> : null}
 
       {summary.count > 0 ? (
         <>
@@ -91,6 +97,7 @@ export default async function HomePage({
                 hues={hueMap}
                 iconSet={iconSet}
                 limits={limits}
+                pacePct={pacePct}
               />
             ) : (
               <section className="panel flex flex-col gap-5 p-5">
@@ -103,7 +110,7 @@ export default async function HomePage({
                         {formatBaht(total)} / {formatBaht(totalStatus.limit ?? 0)}
                       </span>
                     </div>
-                    <BudgetMeter status={totalStatus} />
+                    <BudgetMeter status={totalStatus} pacePct={pacePct} />
                   </div>
                 ) : null}
                 <ul className="flex flex-col gap-2.5">

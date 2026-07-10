@@ -11,7 +11,8 @@ import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 // is negative); the bar width is relative to the biggest row in the set. Pass `emojis` to lead each
 // row with its category marker, rendered per `iconSet`; `hues` gives each marker its picked color.
 // Pass `limits` (category → monthly limit) to turn budgeted rows into spent-vs-limit meters; rows
-// with no limit keep the plain relative bar.
+// with no limit keep the plain relative bar. `pacePct` (time elapsed in the cycle) draws the "today"
+// pace tick on each budgeted meter — forwarded straight to BudgetMeter, current cycle only.
 export function Breakdown({
   title,
   rows,
@@ -19,6 +20,7 @@ export function Breakdown({
   hues,
   iconSet = 'emoji',
   limits,
+  pacePct,
 }: {
   title: string;
   rows: BreakdownRow[];
@@ -26,6 +28,7 @@ export function Breakdown({
   hues?: Record<string, number>;
   iconSet?: IconSet;
   limits?: Map<string, number>;
+  pacePct?: number;
 }) {
   const bars = toBars(rows);
   return (
@@ -66,7 +69,7 @@ export function Breakdown({
                   </span>
                 </div>
                 {status ? (
-                  <BudgetMeter status={status} />
+                  <BudgetMeter status={status} pacePct={pacePct} />
                 ) : (
                   <div
                     className="h-2 overflow-hidden rounded"

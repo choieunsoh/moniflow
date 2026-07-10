@@ -5,7 +5,12 @@ import { meterColorVar, type BudgetTotal } from '../budget-status';
 // right — "over ฿600" when past the limit, else the percent used. Renders ONLY the bar + caption;
 // the caller renders its own header/label line (category row vs. total) above it. Pure and
 // server-renderable — no client state.
-export function BudgetMeter({ status }: { status: BudgetTotal }) {
+//
+// `pacePct` (0–100, time elapsed in the cycle) draws a "today" tick on the track: fill left of the
+// tick = spending under pace, past it = over pace. Passed only for the current cycle (undefined on a
+// past cycle, where a pace mark is meaningless). White with a surface-colored halo so the mark reads
+// on any fill colour — accent, warn, loss, or the empty track.
+export function BudgetMeter({ status, pacePct }: { status: BudgetTotal; pacePct?: number }) {
   const caption =
     status.state === 'over'
       ? `over ${formatBaht(Math.abs(status.remaining))}`
@@ -14,10 +19,21 @@ export function BudgetMeter({ status }: { status: BudgetTotal }) {
   return (
     <div className="flex items-center gap-2">
       <div
-        className="h-2 flex-1 overflow-hidden rounded"
+        className="relative h-2 flex-1 overflow-hidden rounded"
         style={{ background: 'var(--color-border)' }}
       >
         <div className="h-full rounded" style={{ width: `${status.pct}%`, background: fill }} />
+        {pacePct === undefined ? null : (
+          <span
+            aria-hidden
+            className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded-full"
+            style={{
+              left: `${pacePct}%`,
+              background: 'var(--color-text)',
+              boxShadow: '0 0 0 1px var(--color-surface)',
+            }}
+          />
+        )}
       </div>
       <span
         className="tnum shrink-0 text-xs"
