@@ -34,18 +34,18 @@ const METER: Record<BudgetState, string> = {
   none: 'var(--color-border-strong)',
 };
 
-// Build the inline editor's props from a category's limit + spend. An unset budget is prefilled with
-// a suggestion (rounded from this cycle's spend) and carries a hint saying where it came from; a set
-// budget shows its saved amount and no hint. `amount` is the committed baseline the field diffs
-// against on blur, so it stays undefined until a budget actually exists.
+// Build the inline editor's props from a category's limit + spend. A set budget shows its saved
+// amount; an unset budget stays EMPTY — the suggestion (rounded from this cycle's spend) rides in
+// the placeholder as a hint, not a filled value, so leaving an untouched row never auto-saves it.
+// `amount` is the committed baseline the field diffs against on blur (undefined until a budget
+// actually exists), so the empty field is a clean no-op on blur.
 function fieldProps(category: string, limit: number | null, spent: number) {
   const suggestion = limit === null ? suggestBudget(spent) : null;
-  const prefill = limit ?? suggestion ?? '';
   return {
     category,
     amount: limit ?? undefined,
-    prefill: String(prefill),
-    hint: suggestion !== null ? `Suggested from ${formatBaht(spent)} spent this cycle` : undefined,
+    prefill: limit !== null ? String(limit) : '',
+    placeholder: suggestion !== null ? formatBaht(suggestion) : 'Amount',
   };
 }
 
@@ -100,12 +100,28 @@ export default function BudgetsPage() {
           <h2 className="text-base font-semibold">Total</h2>
           <span className="chip tnum">{cycle.label}</span>
         </div>
-        <BudgetField {...fieldProps('', total.limit, total.spent)} />
-        {total.state !== 'none' && <Meter pct={total.pct} state={total.state} tall />}
-        {total.limit !== null && (
-          <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
-            <span className="tnum">{formatBaht(total.spent)}</span> spent this cycle
-          </p>
+        {/* Row 1: label · amount · × */}
+        <div className="flex items-center gap-3">
+          <span
+            className="min-w-0 flex-1 text-sm font-medium"
+            style={{ color: 'var(--color-muted)' }}
+          >
+            Limit for the whole cycle
+          </span>
+          <BudgetField {...fieldProps('', total.limit, total.spent)} />
+        </div>
+        {/* Row 2: this cycle's spend · progress bar */}
+        {total.spent > 0 && (
+          <div className="flex items-center gap-3">
+            <span className="tnum shrink-0 text-xs" style={{ color: 'var(--color-faint)' }}>
+              {formatBaht(total.spent)} spent
+            </span>
+            {total.state !== 'none' && (
+              <div className="min-w-0 flex-1">
+                <Meter pct={total.pct} state={total.state} tall />
+              </div>
+            )}
+          </div>
         )}
       </section>
 
@@ -164,6 +180,7 @@ function CategoryRow({
 }) {
   return (
     <li className="flex flex-col gap-2 border-b py-3 last:border-0">
+      {/* Row 1: marker · name · amount · × */}
       <div className="flex items-center gap-3">
         <CategoryIcon
           emoji={emojiFor(emojis, row.category)}
@@ -173,14 +190,21 @@ function CategoryRow({
           hue={hueFor(hues, row.category)}
         />
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{row.category}</span>
-        {row.limit !== null && row.spent > 0 && (
-          <span className="tnum text-xs" style={{ color: 'var(--color-faint)' }}>
+        <BudgetField {...fieldProps(row.category, row.limit, row.spent)} />
+      </div>
+      {/* Row 2: this cycle's spend · progress bar, aligned under the name (past the icon) */}
+      {row.spent > 0 && (
+        <div className="flex items-center gap-3 pl-10">
+          <span className="tnum shrink-0 text-xs" style={{ color: 'var(--color-faint)' }}>
             {formatBaht(row.spent)} spent
           </span>
-        )}
-      </div>
-      <BudgetField {...fieldProps(row.category, row.limit, row.spent)} />
-      {row.state !== 'none' && <Meter pct={row.pct} state={row.state} />}
+          {row.state !== 'none' && (
+            <div className="min-w-0 flex-1">
+              <Meter pct={row.pct} state={row.state} />
+            </div>
+          )}
+        </div>
+      )}
     </li>
   );
 }
