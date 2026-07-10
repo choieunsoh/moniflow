@@ -16,7 +16,7 @@ import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet } from '@features/settings/queries';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
-import { todayIso, formatDayHeading } from '@shared/date';
+import { todayIso, formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { SearchBox } from '@features/entries/ui/SearchBox';
@@ -86,7 +86,9 @@ export default async function RecordsPage({
           {days.map((day) => (
             <section key={day.date} className="flex flex-col gap-2">
               <header className="flex items-baseline justify-between px-1">
-                <h2 className="text-sm font-semibold">{formatDayHeading(day.date)}</h2>
+                <h2 className="text-sm font-semibold">
+                  {searching ? formatDayHeadingWithYear(day.date) : formatDayHeading(day.date)}
+                </h2>
                 <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
                   {day.entries.length} · {formatBaht(Math.abs(day.total))}
                 </span>
