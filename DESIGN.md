@@ -39,12 +39,14 @@ always paired with a `+`/`−` sign so it survives grayscale and color blindness
 
 ## Typography
 
-Two IBM Plex families on a real contrast axis: **Sans** for all UI/prose, **Mono** for every
-number (amounts, dates, counts) — data honesty made visible. Self-hosted via `next/font`.
+**One** typeface app-wide: **IBM Plex Sans** carries UI, prose, and figures alike. Self-hosted via
+`next/font`. No monospace for numbers — a mono (IBM Plex Mono, Consolas…) draws a slashed/dotted
+zero; Plex Sans draws a plain zero, which is the house rule for figures.
 
 Fixed rem scale, product register — no fluid clamp (a phone-frame UI is viewed at one width, so
-type is set with Tailwind size utilities, not a hero). Figures render in `--font-mono` via `.tnum`
-(tabular-nums) so amounts, counts, and dates align:
+type is set with Tailwind size utilities, not a hero). Figures render in the same Plex Sans via
+`.tnum`, which adds `font-variant-numeric: tabular-nums` (letter-spacing `-0.01em`) so amounts,
+counts, and dates align in columns:
 
 | Step  | Size / line-height / weight | Use                            |
 | ----- | --------------------------- | ------------------------------ |
@@ -54,8 +56,7 @@ type is set with Tailwind size utilities, not a hero). Figures render in `--font
 | small | `0.875rem` / 1.5 / 400      | Row text, secondary UI         |
 | label | `0.75rem` / 1.4 / 500       | Chips, captions                |
 
-`text-wrap: balance` on headings; `pretty` on prose. Numerals use `font-variant-numeric:
-tabular-nums` so columns align.
+`text-wrap: balance` on headings; `pretty` on prose.
 
 ## Radii, elevation, motion
 
