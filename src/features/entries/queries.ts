@@ -63,7 +63,7 @@ export function replaceEntries(db: Db, rows: NewEntry[]): void {
   });
 }
 
-export type Breakdown = { key: string; total: number };
+export type Breakdown = { key: string; total: number; count: number };
 
 // moniflow is a spending tracker: cycle reads return expenses only (amount < 0), so the rare income
 // row never lands in the summary, donut, records or day totals. Income stays in the DB (lossless
@@ -90,7 +90,11 @@ function groupSum(
   end: string,
 ): Breakdown[] {
   return db
-    .select({ key: column, total: sql<number>`sum(${entries.amount})` })
+    .select({
+      key: column,
+      total: sql<number>`sum(${entries.amount})`,
+      count: sql<number>`count(*)`,
+    })
     .from(entries)
     .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
     .groupBy(column)

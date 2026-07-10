@@ -45,6 +45,9 @@ export function Breakdown({
                     />
                   ) : null}
                   <span className="truncate">{b.key}</span>
+                  <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                    ({b.count})
+                  </span>
                 </span>
                 <span className="tnum" style={{ color: 'var(--color-text)' }}>
                   {formatBaht(Math.abs(b.total))}

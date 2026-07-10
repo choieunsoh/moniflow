@@ -1,24 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { toDonutSlices, SLICE_COLORS } from './donut';
 
-const row = (key: string, total: number) => ({ key, total });
+const row = (key: string, total: number, count = 1) => ({ key, total, count });
 
 describe('toDonutSlices', () => {
-  it('maps magnitudes and assigns palette colours in order', () => {
-    expect(toDonutSlices([row('a', -30), row('b', -20)])).toEqual([
-      { name: 'a', value: 30, color: SLICE_COLORS[0] },
-      { name: 'b', value: 20, color: SLICE_COLORS[1] },
+  it('maps magnitudes and assigns palette colours in order, carrying the count', () => {
+    expect(toDonutSlices([row('a', -30, 5), row('b', -20, 2)])).toEqual([
+      { name: 'a', value: 30, color: SLICE_COLORS[0], count: 5 },
+      { name: 'b', value: 20, color: SLICE_COLORS[1], count: 2 },
     ]);
   });
 
-  it('buckets the tail beyond the palette into a neutral Other', () => {
-    const rows = Array.from({ length: SLICE_COLORS.length + 3 }, (_, i) => row(`c${i}`, -(20 - i)));
+  it('buckets the tail beyond the palette into a neutral Other, summing tail counts', () => {
+    const rows = Array.from({ length: SLICE_COLORS.length + 3 }, (_, i) =>
+      row(`c${i}`, -(20 - i), 2),
+    );
     const slices = toDonutSlices(rows);
     expect(slices.length).toBe(SLICE_COLORS.length + 1);
     const other = slices[slices.length - 1];
     expect(other.name).toBe('Other');
-    // Other = sum of the 4 tail rows (values 20-7 .. 20-9 = 13,12,11) -> the last 3 after 7 kept.
+    // Other = the 3 tail rows beyond the palette: values 13,12,11 and 2 txns each -> count 6.
     expect(other.value).toBe(13 + 12 + 11);
+    expect(other.count).toBe(6);
   });
 
   it('drops zero-value rows', () => {

@@ -86,7 +86,12 @@ export default async function HomePage({
                         size={18}
                       />
                     </span>
-                    <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                    <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                      <span className="truncate">{s.name}</span>
+                      <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                        ({s.count})
+                      </span>
+                    </span>
                     <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
                       {formatBaht(s.value)}
                     </span>

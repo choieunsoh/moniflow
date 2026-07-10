@@ -5,12 +5,12 @@ describe('toBars', () => {
   it('scales each row to a 0–100 pct of the largest magnitude', () => {
     expect(
       toBars([
-        { key: 'a', total: -300 },
-        { key: 'b', total: -150 },
+        { key: 'a', total: -300, count: 4 },
+        { key: 'b', total: -150, count: 2 },
       ]),
     ).toEqual([
-      { key: 'a', total: -300, pct: 100 },
-      { key: 'b', total: -150, pct: 50 },
+      { key: 'a', total: -300, count: 4, pct: 100 }, // count passes through untouched
+      { key: 'b', total: -150, count: 2, pct: 50 },
     ]);
   });
 

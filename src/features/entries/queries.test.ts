@@ -93,16 +93,16 @@ describe('cycle-scoped queries', () => {
   it('breaks down by category, largest magnitude first', () => {
     const b = getCategoryBreakdown(seed(), '2026-07-18', '2026-08-17');
     expect(b).toEqual([
-      { key: 'travel', total: -300 },
-      { key: 'food', total: -250 },
+      { key: 'travel', total: -300, count: 1 },
+      { key: 'food', total: -250, count: 2 }, // two in-cycle food rows (visa -200, cash -50)
     ]);
   });
 
   it('breaks down by account', () => {
     const b = getAccountBreakdown(seed(), '2026-07-18', '2026-08-17');
     expect(b).toEqual([
-      { key: 'visa', total: -500 },
-      { key: 'cash', total: -50 },
+      { key: 'visa', total: -500, count: 2 },
+      { key: 'cash', total: -50, count: 1 },
     ]);
   });
 

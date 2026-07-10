@@ -15,13 +15,15 @@ export const SLICE_COLORS = [
 const OTHER_COLOR = '#4b5061';
 const MAX_SLICES = SLICE_COLORS.length;
 
-export type DonutSlice = { name: string; value: number; color: string };
+export type DonutSlice = { name: string; value: number; color: string; count: number };
 
 // Category breakdown (magnitudes, already sorted desc) → donut slices, with a neutral "Other" bucket
-// for the tail beyond the palette so the ring never fragments into unreadable slivers.
+// for the tail beyond the palette so the ring never fragments into unreadable slivers. Each slice
+// carries its transaction count; Other sums the counts of the merged tail categories (the legend
+// can't derive that itself, since only this split knows which categories were folded in).
 export function toDonutSlices(rows: Breakdown[]): DonutSlice[] {
   const mags = rows
-    .map((r) => ({ name: r.key, value: Math.abs(r.total) }))
+    .map((r) => ({ name: r.key, value: Math.abs(r.total), count: r.count }))
     .filter((s) => s.value > 0);
   const slices: DonutSlice[] = mags
     .slice(0, MAX_SLICES)
@@ -32,6 +34,7 @@ export function toDonutSlices(rows: Breakdown[]): DonutSlice[] {
       name: 'Other',
       value: rest.reduce((sum, s) => sum + s.value, 0),
       color: OTHER_COLOR,
+      count: rest.reduce((sum, s) => sum + s.count, 0),
     });
   }
   return slices;
