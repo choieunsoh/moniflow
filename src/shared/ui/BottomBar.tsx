@@ -154,41 +154,50 @@ function BarButton({
 
 // Inline SVG icons — a consistent 24px outline set (stroke=currentColor inherits each tab's color).
 // Simple, familiar glyphs; no icon dependency.
+// Home opens the spending overview (the donut + breakdown), so the tab reads as a trend line rather
+// than a house — and it echoes the moniflow wordmark.
 function HomeIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
       <path
-        d="M2 7 8 2l6 5v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7z"
+        d="M2.5 10.8 6.2 7.1l2.3 2.3 5-5 M11 4.4h2.5v2.5"
         stroke="currentColor"
         strokeWidth="1.5"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>
   );
 }
 
+// Records is the day-by-day list of entries — a bulleted list reads more directly than a receipt.
 function RecordsIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
       <path
-        d="M3 2.5h10v11l-2-1.2-1.5 1.2L8 12.3 6.5 13.5 5 12.3 3 13.5z M5.5 5.5h5 M5.5 8h5"
+        d="M6 4.5h7.5 M6 8h7.5 M6 11.5h7.5"
         stroke="currentColor"
         strokeWidth="1.5"
-        strokeLinejoin="round"
+        strokeLinecap="round"
       />
+      <circle cx="3" cy="4.5" r="0.9" fill="currentColor" />
+      <circle cx="3" cy="8" r="0.9" fill="currentColor" />
+      <circle cx="3" cy="11.5" r="0.9" fill="currentColor" />
     </svg>
   );
 }
 
+// Budgets = money set aside per category — a wallet reads as money more clearly than the old bank box.
 function BudgetsIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
       <path
-        d="M2.5 5.5h11v7h-11z M2.5 5.5 8 2l5.5 3.5 M10.5 9h1.5"
+        d="M2.8 5.2a1.2 1.2 0 0 1 1.2-1.2h7a1.2 1.2 0 0 1 1.2 1.2V6 M2.8 5.2v5.6a1.2 1.2 0 0 0 1.2 1.2h8a1.2 1.2 0 0 0 1.2-1.2V7.5a1 1 0 0 0-1-1h-2.4a1.35 1.35 0 0 0 0 2.7H13"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
+      <circle cx="10.9" cy="7.85" r="0.55" fill="currentColor" />
     </svg>
   );
 }
