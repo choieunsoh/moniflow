@@ -61,11 +61,17 @@ import {
   TrainFrontTunnel,
   TramFront,
   Luggage,
+  Utensils,
+  Croissant,
+  PartyPopper,
+  Handbag,
+  Motorbike,
 } from 'lucide-react';
 
-// Maps each picker emoji to its lucide equivalent. Emoji left out here (bento 🍱, makeup 💄,
-// nails 💅) have no clean lucide glyph and fall back to the emoji itself — the food/beauty gap the
-// live comparison showed. Keyed by emoji so category_meta needs no re-keying.
+// Maps each picker emoji to its lucide equivalent. Emoji left out here (makeup 💄, nails 💅, tea
+// 🍵, champagne 🍾, dress 👗, won 🇰🇷) have no clean lucide glyph and fall back to the emoji itself
+// — lucide lacks these where phosphor has them (💄/💅 are emoji-only in both). Keyed by emoji so
+// category_meta needs no re-keying.
 export const LUCIDE_ICONS: Record<string, LucideIcon> = {
   '🍔': Beef,
   '🍜': Soup,
@@ -128,4 +134,10 @@ export const LUCIDE_ICONS: Record<string, LucideIcon> = {
   '🚈': TrainFrontTunnel,
   '🚊': TramFront,
   '🧳': Luggage,
+  '🍱': Utensils,
+  '🍞': Croissant,
+  '🍻': Beer,
+  '🥂': PartyPopper,
+  '👜': Handbag,
+  '🏍️': Motorbike,
 };
