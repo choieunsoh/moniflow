@@ -1,4 +1,4 @@
-import { desc, and, eq, gte, lte, lt, sql, isNotNull, ne } from 'drizzle-orm';
+import { desc, and, or, eq, gte, lte, lt, sql, isNotNull, ne, type AnyColumn } from 'drizzle-orm';
 import type { Db } from '@db/client';
 import { entries, type Entry, type NewEntry } from './schema';
 
@@ -160,6 +160,28 @@ export function getCategoryCounts(db: Db): CategoryCount[] {
 // touched, so renaming a category that doesn't exist updates zero rows.
 export function renameCategory(db: Db, from: string, to: string): void {
   db.update(entries).set({ category: to }).where(eq(entries.category, from)).run();
+}
+
+// Free-text search across the whole ledger (not cycle-scoped) — matches a substring of the note,
+// category, or account, case-insensitively, expenses only (same spending-tracker scope as the cycle
+// reads). Newest first. LIKE metacharacters in the query are escaped so a literal '_' or '%' can't
+// widen the match. A blank query returns nothing rather than the whole ledger.
+export function searchEntries(db: Db, query: string): Entry[] {
+  const q = query.trim();
+  if (!q) return [];
+  const pattern = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const has = (col: AnyColumn) => sql`${col} like ${pattern} escape '\\'`;
+  return db
+    .select()
+    .from(entries)
+    .where(
+      and(
+        lt(entries.amount, 0),
+        or(has(entries.note), has(entries.category), has(entries.account)),
+      ),
+    )
+    .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
+    .all();
 }
 
 // Foreign-currency rows for the trip view — anything not THB (and not null, which covers legacy

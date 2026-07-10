@@ -19,6 +19,7 @@ import {
   getCategoryCounts,
   renameCategory,
   getForeignEntries,
+  searchEntries,
 } from './queries';
 
 describe('replaceEntries', () => {
@@ -262,6 +263,45 @@ describe('renameCategory', () => {
     addEntries(db, [{ date: '2026-07-01', account: 'a', category: 'อาหาร', amount: -100 }]);
     renameCategory(db, 'ไม่มีอยู่จริง', 'อาหาร');
     expect(getCategoryCounts(db)).toEqual([{ category: 'อาหาร', count: 1 }]);
+  });
+});
+
+describe('searchEntries', () => {
+  function seed() {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    addEntries(db, [
+      { date: '2026-03-03', account: 'Cash', category: 'Running shoes', amount: -1200 },
+      { date: '2026-07-08', account: 'Kasikorn', category: 'Shoes', amount: -1990 },
+      { date: '2026-07-08', time: '20:00', account: 'Cash', category: 'Food', amount: -60, note: 'shoe polish' }, // prettier-ignore
+      { date: '2026-07-09', account: 'Kasikorn', category: 'Salary', amount: 50000 }, // income, excluded
+      { date: '2026-07-10', account: 'Cash', category: 'Coffee', amount: -80 }, // no match
+    ]);
+    return db;
+  }
+
+  it('matches case-insensitively across category, account, and note, newest first', () => {
+    const rows = searchEntries(seed(), 'shoe');
+    // 2026-07-08 has two matches (Shoes category, "shoe polish" note); the timed one sorts first.
+    expect(rows.map((r) => [r.date, r.category])).toEqual([
+      ['2026-07-08', 'Food'], // note "shoe polish", time 20:00 → first within the day
+      ['2026-07-08', 'Shoes'],
+      ['2026-03-03', 'Running shoes'],
+    ]);
+  });
+
+  it('matches on account name', () => {
+    expect(searchEntries(seed(), 'kasikorn').map((r) => r.category)).toEqual(['Shoes']); // income row excluded
+  });
+
+  it('excludes income and returns nothing for a blank query', () => {
+    expect(searchEntries(seed(), 'salary')).toHaveLength(0); // salary is income
+    expect(searchEntries(seed(), '   ')).toHaveLength(0);
+  });
+
+  it('treats LIKE wildcards as literal text', () => {
+    // '_' must not behave as "any single char" — otherwise it would match every row.
+    expect(searchEntries(seed(), '_')).toHaveLength(0);
   });
 });
 
