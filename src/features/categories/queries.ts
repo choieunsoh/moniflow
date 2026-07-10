@@ -9,6 +9,7 @@ export const FALLBACK_EMOJI = '🏷️';
 export const EMOJI_CHOICES = [
   '🍔',
   '🍜',
+  '🍲',
   '🍱',
   '🍕',
   '🍞',
@@ -88,6 +89,7 @@ export const EMOJI_CHOICES = [
 export const EMOJI_LABELS: Record<string, string> = {
   '🍔': 'Burger',
   '🍜': 'Noodles',
+  '🍲': 'Soup',
   '🍱': 'Bento',
   '☕': 'Coffee',
   '🍺': 'Drinks',

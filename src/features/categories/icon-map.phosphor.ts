@@ -6,6 +6,7 @@ import type { Icon } from '@phosphor-icons/react';
 import {
   Hamburger,
   BowlFood,
+  BowlSteam,
   ForkKnife,
   Coffee,
   BeerBottle,
@@ -81,6 +82,7 @@ import {
 export const PHOSPHOR_ICONS: Record<string, Icon> = {
   '🍔': Hamburger,
   '🍜': BowlFood,
+  '🍲': BowlSteam,
   '🍱': ForkKnife,
   '☕': Coffee,
   '🍺': BeerBottle,

@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Beef,
   Soup,
+  CookingPot,
   Coffee,
   Beer,
   CakeSlice,
@@ -75,6 +76,7 @@ import {
 export const LUCIDE_ICONS: Record<string, LucideIcon> = {
   '🍔': Beef,
   '🍜': Soup,
+  '🍲': CookingPot,
   '☕': Coffee,
   '🍺': Beer,
   '🍰': CakeSlice,
