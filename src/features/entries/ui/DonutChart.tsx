@@ -36,6 +36,14 @@ export function DonutChart({ rows }: { rows: Breakdown[] }) {
   }, [rows]);
 
   return (
-    <div ref={ref} className="mx-auto h-64 w-full" role="img" aria-label="Spending by category" />
+    // pointer-events-none so a swipe over the donut passes through to the cycle-swipe wrapper
+    // (echarts' canvas would otherwise eat the gesture). The legend below carries the same figures,
+    // so the hover/tap tooltip isn't missed on this mobile surface.
+    <div
+      ref={ref}
+      className="pointer-events-none mx-auto h-64 w-full"
+      role="img"
+      aria-label="Spending by category"
+    />
   );
 }

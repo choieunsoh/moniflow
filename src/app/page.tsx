@@ -19,6 +19,7 @@ import { toDonutSlices } from '@features/entries/donut';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
+import { CycleSwipe } from '@features/entries/ui/CycleSwipe';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
 // Home = the expense overview for the current cycle. Chart view: a spending donut with the total
@@ -59,56 +60,60 @@ export default async function HomePage({
             <ViewLink label="List" active={showList} href={`/?cycle=${activeKey}&view=category`} />
           </div>
 
-          {showList ? (
-            <Breakdown
-              title="Spending by category"
-              rows={categoryBreakdown}
-              emojis={emojiMap}
-              hues={hueMap}
-              iconSet={iconSet}
-            />
-          ) : (
-            <section className="panel flex flex-col gap-5 p-5">
-              <DonutChart rows={categoryBreakdown} />
-              <ul className="flex flex-col gap-2.5">
-                {slices.map((s) => (
-                  <li key={s.name} className="flex items-center gap-3 text-sm">
-                    {/* Slice colour + category icon combined into one mark: a disc in the ring's
+          <CycleSwipe activeKey={activeKey}>
+            {showList ? (
+              <Breakdown
+                title="Spending by category"
+                rows={categoryBreakdown}
+                emojis={emojiMap}
+                hues={hueMap}
+                iconSet={iconSet}
+              />
+            ) : (
+              <section className="panel flex flex-col gap-5 p-5">
+                <DonutChart rows={categoryBreakdown} />
+                <ul className="flex flex-col gap-2.5">
+                  {slices.map((s) => (
+                    <li key={s.name} className="flex items-center gap-3 text-sm">
+                      {/* Slice colour + category icon combined into one mark: a disc in the ring's
                         colour with the icon inside (white line icons / emoji on the colour). */}
-                    <span
-                      aria-hidden
-                      className="grid size-7 shrink-0 place-items-center rounded-full text-base"
-                      style={{ background: s.color, color: 'var(--color-on-accent)' }}
-                    >
-                      <CategoryGlyph
-                        emoji={emojiFor(emojiMap, s.name)}
-                        iconSet={iconSet}
-                        size={18}
-                      />
-                    </span>
-                    <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                      <span className="truncate">{s.name}</span>
-                      <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                        ({s.count})
+                      <span
+                        aria-hidden
+                        className="grid size-7 shrink-0 place-items-center rounded-full text-base"
+                        style={{ background: s.color, color: 'var(--color-on-accent)' }}
+                      >
+                        <CategoryGlyph
+                          emoji={emojiFor(emojiMap, s.name)}
+                          iconSet={iconSet}
+                          size={18}
+                        />
                       </span>
-                    </span>
-                    <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                      {formatBaht(s.value)}
-                    </span>
-                    <span
-                      className="tnum w-9 shrink-0 text-right"
-                      style={{ color: 'var(--color-faint)' }}
-                    >
-                      {Math.round((s.value / total) * 100)}%
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+                      <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                        <span className="truncate">{s.name}</span>
+                        <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                          ({s.count})
+                        </span>
+                      </span>
+                      <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                        {formatBaht(s.value)}
+                      </span>
+                      <span
+                        className="tnum w-9 shrink-0 text-right"
+                        style={{ color: 'var(--color-faint)' }}
+                      >
+                        {Math.round((s.value / total) * 100)}%
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </CycleSwipe>
         </>
       ) : (
-        <EmptyLedger />
+        <CycleSwipe activeKey={activeKey}>
+          <EmptyLedger />
+        </CycleSwipe>
       )}
     </PageContainer>
   );
