@@ -70,7 +70,7 @@ export function SearchBox({ query, suggestions }: { query: string; suggestions: 
         role="combobox"
         aria-label="Search records"
         aria-expanded={showList}
-        aria-controls={listId}
+        aria-controls={showList ? listId : undefined}
         aria-autocomplete="list"
         aria-activedescendant={highlight >= 0 ? `${listId}-${highlight}` : undefined}
         autoComplete="off"
@@ -85,7 +85,7 @@ export function SearchBox({ query, suggestions }: { query: string; suggestions: 
         onKeyDown={onKeyDown}
         placeholder="Search records"
         className="h-11 w-full rounded-[var(--radius-md)] border pr-11 pl-10 text-sm transition-colors duration-150 outline-none placeholder:text-[var(--color-muted)]"
-        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+        style={{ background: 'var(--color-surface-2)', borderColor: 'var(--color-border)' }}
       />
       {value.length > 0 && (
         <button
@@ -96,10 +96,9 @@ export function SearchBox({ query, suggestions }: { query: string; suggestions: 
             go('');
           }}
           aria-label="Clear search"
-          className="absolute top-0 right-0 grid h-11 w-11 place-items-center rounded-[var(--radius-md)] text-base"
-          style={{ color: 'var(--color-muted)' }}
+          className="absolute top-0 right-0 grid h-11 w-11 place-items-center rounded-[var(--radius-md)] text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-text)]"
         >
-          ✕
+          <ClearIcon />
         </button>
       )}
 
@@ -119,8 +118,8 @@ export function SearchBox({ query, suggestions }: { query: string; suggestions: 
               onMouseDown={(e) => e.preventDefault()}
               onMouseEnter={() => setHighlight(i)}
               onClick={() => choose(s)}
-              className="flex min-h-11 cursor-pointer items-center px-3 text-sm"
-              style={i === highlight ? { background: 'var(--color-surface-2)' } : undefined}
+              className="flex min-h-11 cursor-pointer items-center px-3 text-sm transition-colors duration-150"
+              style={i === highlight ? { background: 'var(--color-accent-soft)' } : undefined}
             >
               {s}
             </li>
@@ -140,6 +139,16 @@ function useDebouncedValue<T>(value: T, delay: number): T {
     return () => clearTimeout(id);
   }, [value, delay]);
   return debounced;
+}
+
+// Clear (✕) glyph as an SVG matching the magnifier's 1.75 stroke, so the field's two icons read as
+// one family rather than a stroked icon beside a unicode character.
+function ClearIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </svg>
+  );
 }
 
 // Magnifier marking the field. Absolutely placed inside the input's left padding; decorative, so
