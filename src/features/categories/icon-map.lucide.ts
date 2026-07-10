@@ -69,9 +69,9 @@ import {
   Motorbike,
 } from 'lucide-react';
 
-// Maps each picker emoji to its lucide equivalent. Emoji left out here (makeup 💄, nails 💅, tea
-// 🍵, champagne 🍾, dress 👗, won 🇰🇷) have no clean lucide glyph and fall back to the emoji itself
-// — lucide lacks these where phosphor has them (💄/💅 are emoji-only in both). Keyed by emoji so
+// Maps each picker emoji to its lucide equivalent. Emoji left out here (makeup 💄, tea 🍵,
+// champagne 🍾, dress 👗, won 🇰🇷) have no clean lucide glyph and fall back to the emoji itself —
+// lucide lacks these where phosphor has them (💄 is emoji-only in both). Keyed by emoji so
 // category_meta needs no re-keying.
 export const LUCIDE_ICONS: Record<string, LucideIcon> = {
   '🍔': Beef,
