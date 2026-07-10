@@ -111,7 +111,7 @@ export default function BudgetsPage() {
           <BudgetField {...fieldProps('', total.limit, total.spent)} />
         </div>
         {/* Row 2: this cycle's spend · progress bar */}
-        {total.spent > 0 && (
+        {(total.limit !== null || total.spent > 0) && (
           <div className="flex items-center gap-3">
             <span className="tnum shrink-0 text-xs" style={{ color: 'var(--color-faint)' }}>
               {formatBaht(total.spent)} spent
@@ -192,8 +192,9 @@ function CategoryRow({
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{row.category}</span>
         <BudgetField {...fieldProps(row.category, row.limit, row.spent)} />
       </div>
-      {/* Row 2: this cycle's spend · progress bar, aligned under the name (past the icon) */}
-      {row.spent > 0 && (
+      {/* Row 2: this cycle's spend · progress bar, aligned under the name (past the icon). Shown for
+          any budgeted row too, so setting a limit always surfaces a bar (empty until you spend). */}
+      {(row.limit !== null || row.spent > 0) && (
         <div className="flex items-center gap-3 pl-10">
           <span className="tnum shrink-0 text-xs" style={{ color: 'var(--color-faint)' }}>
             {formatBaht(row.spent)} spent

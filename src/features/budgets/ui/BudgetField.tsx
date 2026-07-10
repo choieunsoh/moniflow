@@ -1,6 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { useBudgetInput } from '../use-budget-input';
 import { saveBudget, removeBudget } from '../actions';
 
@@ -22,9 +23,11 @@ export function BudgetField({
   placeholder: string;
 }) {
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
   const { onBlur, onKeyDown } = useBudgetInput(amount, (next) =>
     startTransition(async () => {
       await saveBudget(category, next);
+      router.refresh(); // guarantee the row re-renders (× + progress bar) even if cache revalidation is slow
     }),
   );
 
@@ -40,7 +43,7 @@ export function BudgetField({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         aria-label={category ? `${category} monthly limit` : 'Total monthly limit'}
-        className="tnum min-h-11 w-24 rounded-[var(--radius-md)] px-3 text-right text-base transition-opacity placeholder:[color:var(--color-muted)]"
+        className="tnum min-h-11 w-24 rounded-[var(--radius-md)] px-3 text-center text-base transition-opacity placeholder:[color:var(--color-muted)]"
         style={{
           border: '1px solid var(--color-border-strong)',
           background: 'var(--color-surface-2)',
@@ -54,6 +57,7 @@ export function BudgetField({
           onClick={() =>
             startTransition(async () => {
               await removeBudget(category);
+              router.refresh();
             })
           }
           aria-label={category ? `Remove ${category} budget` : 'Remove total budget'}
