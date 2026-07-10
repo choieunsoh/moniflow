@@ -61,7 +61,7 @@ export function BudgetField({
             })
           }
           aria-label={category ? `Remove ${category} budget` : 'Remove total budget'}
-          className="tap grid size-11 shrink-0 place-items-center rounded-[var(--radius-md)] transition-colors hover:[color:var(--color-loss)] hover:[background:var(--color-surface-2)]"
+          className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-[var(--radius-md)] transition-colors hover:[color:var(--color-loss)] hover:[background:var(--color-surface-2)]"
           style={{ color: 'var(--color-faint)' }}
         >
           <svg
