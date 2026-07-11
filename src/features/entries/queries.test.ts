@@ -16,6 +16,7 @@ import {
   getDistinctCategories,
   getDistinctAccounts,
   getAccountsByUsage,
+  getLatestAccount,
   getCategoryCounts,
   renameCategory,
   getForeignEntries,
@@ -203,6 +204,22 @@ describe('getAccountsByUsage', () => {
       { date: '2026-07-06', account: 'bank', category: 'food', amount: -1 },
     ]);
     expect(getAccountsByUsage(d)).toEqual(['visa', 'cash', 'bank']);
+  });
+});
+
+describe('getLatestAccount', () => {
+  it('returns the account of the most recent entry', () => {
+    const d = db();
+    addEntries(d, [
+      { date: '2026-07-01', account: 'old', category: 'food', amount: -1 },
+      { date: '2026-07-05', account: 'latest', category: 'food', amount: -1 },
+      { date: '2026-07-03', account: 'mid', category: 'food', amount: -1 },
+    ]);
+    expect(getLatestAccount(d)).toBe('latest');
+  });
+
+  it('returns undefined for an empty ledger', () => {
+    expect(getLatestAccount(db())).toBeUndefined();
   });
 });
 

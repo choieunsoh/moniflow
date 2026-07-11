@@ -64,8 +64,9 @@ function nextExpr(prev: string, key: string): string {
 }
 
 // Monefy-style expense entry: a calculator keypad for the amount, then a category grid that submits.
-// One <form> stays mounted (views toggle via `hidden`) so date / account / note always post. The
-// clicked category button carries the category value. Expense-only — direction is fixed.
+// Three views (keypad / account picker / category picker) toggle via `hidden` inside one always-
+// mounted <form>, so date / account / note always post. The account picker just sets state and
+// returns; the category tile is what submits. Expense-only — direction is fixed.
 export function Keypad({
   categories,
   accounts,
@@ -80,7 +81,7 @@ export function Keypad({
   iconSet: IconSet;
 }) {
   const [expr, setExpr] = useState('');
-  const [picking, setPicking] = useState(false);
+  const [view, setView] = useState<'keypad' | 'account' | 'category'>('keypad');
   const [date, setDate] = useState(today);
   const [account, setAccount] = useState(defaultAccount);
 
@@ -97,7 +98,7 @@ export function Keypad({
       <input type="hidden" name="account" value={account} />
 
       {/* Amount + inputs + keypad */}
-      <div className={picking ? 'hidden' : 'flex flex-col gap-4'}>
+      <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
         {/* Date: one-tap Today/Yesterday chips for the common case; the native picker (which stays in
             sync with the chips) is the escape hatch for any other day. */}
         <div className="flex flex-col gap-2">
@@ -123,20 +124,23 @@ export function Keypad({
           </div>
         </div>
 
-        {/* Account: one-tap chips instead of a dropdown. Most-used first (see page.tsx), in a single
-            horizontal-scroll strip so many accounts don't push the keypad off-screen. Selection posts
-            via the hidden `account`. */}
+        {/* Account: collapsed to a single chip showing the current (default = last-used) account. Tap
+            to open the full account grid — same second-view pattern as the category picker. Posts via
+            the hidden `account`. */}
         <div className="flex flex-col gap-2">
           <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
             Account
           </span>
-          <div className="-mx-1 flex [scrollbar-width:none] gap-2 overflow-x-auto px-1 pb-1">
-            {accounts.map((a) => (
-              <Chip key={a} selected={account === a} onClick={() => setAccount(a)}>
-                {a}
-              </Chip>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => setView('account')}
+            aria-haspopup="true"
+            className="tap max-w-full justify-center gap-1.5 self-start rounded-full px-4 text-sm font-medium active:opacity-70"
+            style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
+          >
+            <span className="truncate">{account}</span>
+            <span aria-hidden>▾</span>
+          </button>
         </div>
 
         <div className="panel flex flex-col items-end gap-1 px-5 py-4">
@@ -181,7 +185,7 @@ export function Keypad({
 
         <button
           type="button"
-          onClick={() => setPicking(true)}
+          onClick={() => setView('category')}
           disabled={!valid}
           className="btn btn-primary w-full disabled:opacity-40"
         >
@@ -189,12 +193,56 @@ export function Keypad({
         </button>
       </div>
 
-      {/* Category grid — each tile submits the expense with its category. */}
-      <div className={picking ? 'flex flex-col gap-3' : 'hidden'}>
+      {/* Account picker — a grid of every account (most-used first). Tapping one sets the account and
+          returns to the keypad; it does not submit. */}
+      <div className={view === 'account' ? 'flex flex-col gap-3' : 'hidden'}>
         <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => setPicking(false)}
+            onClick={() => setView('keypad')}
+            className="tap text-sm font-medium"
+            style={{ color: 'var(--color-accent-text)' }}
+          >
+            ‹ Back
+          </button>
+          <span className="text-sm font-semibold">Account</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {accounts.map((a) => {
+            const on = account === a;
+            return (
+              <button
+                key={a}
+                type="button"
+                onClick={() => {
+                  setAccount(a);
+                  setView('keypad');
+                }}
+                aria-pressed={on}
+                className="tap min-h-12 justify-center rounded-[var(--radius-md)] border px-3 py-2 text-center text-sm font-medium transition-colors active:opacity-70"
+                style={
+                  on
+                    ? {
+                        background: 'var(--color-accent)',
+                        color: 'var(--color-on-accent)',
+                        borderColor: 'var(--color-accent)',
+                      }
+                    : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
+                }
+              >
+                {a}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Category grid — each tile submits the expense with its category. */}
+      <div className={view === 'category' ? 'flex flex-col gap-3' : 'hidden'}>
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setView('keypad')}
             className="tap text-sm font-medium"
             style={{ color: 'var(--color-accent-text)' }}
           >

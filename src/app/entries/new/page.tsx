@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
-import { getAccountsByUsage, getCategoryCounts } from '@features/entries/queries';
+import { getAccountsByUsage, getLatestAccount, getCategoryCounts } from '@features/entries/queries';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { ensureSettingsTable } from '@features/settings/schema';
@@ -27,8 +27,10 @@ export default function NewEntryPage() {
     emoji: emojiFor(emojiMap, c.category),
     hue: hueFor(hueMap, c.category),
   }));
-  // Most-used accounts first, so the quick-entry strip surfaces the common ones without scrolling.
+  // Most-used accounts first for the picker grid; default to the account last used so the common
+  // case (same account again) is zero taps.
   const accounts = getAccountsByUsage(db);
+  const latestAccount = getLatestAccount(db) ?? accounts[0] ?? '';
 
   return (
     <PageContainer size="full">
@@ -41,7 +43,7 @@ export default function NewEntryPage() {
       <Keypad
         categories={categories}
         accounts={accounts}
-        defaultAccount={accounts[0] ?? ''}
+        defaultAccount={latestAccount}
         today={todayIso()}
         iconSet={iconSet}
       />

@@ -171,7 +171,7 @@ export function getDistinctAccounts(db: Db): string[] {
 }
 
 // Accounts ordered by how often they've been used (most-used first). Drives the quick-entry account
-// strip so the common accounts land at the front — the default is accounts[0], the one used most.
+// grid so the common accounts land at the front.
 export function getAccountsByUsage(db: Db): string[] {
   return db
     .select({ account: entries.account, count: sql<number>`count(*)` })
@@ -180,6 +180,17 @@ export function getAccountsByUsage(db: Db): string[] {
     .all()
     .sort((a, b) => b.count - a.count)
     .map((r) => r.account);
+}
+
+// The account on the most recent entry — the quick-entry form's default, so the next entry starts on
+// the account you last used. `undefined` when the ledger is empty (caller falls back).
+export function getLatestAccount(db: Db): string | undefined {
+  return db
+    .select({ account: entries.account })
+    .from(entries)
+    .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
+    .limit(1)
+    .get()?.account;
 }
 
 export type CategoryCount = { category: string; count: number };
