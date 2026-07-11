@@ -14,13 +14,13 @@ PoC earns it.
 
 Every option combines: **where data lives**, **where the app runs**, **how the phone reaches it.**
 
-| # | Data lives | App runs | Phone reaches it | Code change | Cost/mo | Best when |
-|---|---|---|---|---|---|---|
-| **0. Local PoC (now)** | server SQLite file | `next dev`/`start` on your box | Tailscale | none | $0 (your machine + Tailscale free) | Validating the idea. Current state. |
-| **1. Self-host** | server SQLite file | Docker on Pi/mini-PC/VPS | Tailscale (or CF Access public) | tiny (Dockerfile) | $0 on owned hardware¹; ~$5 on a VPS | PoC works, want always-on without a laptop awake |
-| **2. Client PWA** | browser OPFS (WASM) | static host *or* installed PWA | install to home screen | large (Plan 1+2) | $0 (CF Pages / GH Pages / Vercel hobby) | True offline + installed feel, single device |
-| **3. Hosted SQLite** | Turso/libSQL (cloud) | Vercel/CF serverless | public URL + auth | medium (libsql driver swap) | $0 (Turso free + host free + CF Access free) | Ever go multi-device / off your network |
-| **4. Hosted Postgres** | Neon/Supabase | Vercel serverless | public URL + auth | large (dialect change) | $0 free tier → ~$25 paid² | ❌ overkill — don't |
+| # | Data lives | App runs | Phone reaches it | Code change | Cost/mo | Performance | Best when |
+|---|---|---|---|---|---|---|---|
+| **0. Local PoC (now)** | server SQLite file | `next dev`/`start` on your box | Tailscale | none | $0 (your machine + Tailscale free) | DB reads instant; server round-trip per navigation — snappy on LAN, network-bound if the box is remote. No offline. | Validating the idea. Current state. |
+| **1. Self-host** | server SQLite file | Docker on Pi/mini-PC/VPS | Tailscale (or CF Access public) | tiny (Dockerfile) | $0 on owned hardware¹; ~$5 on a VPS | Same as 0: fast DB, latency = network to the box, round-trip per page. No offline. | PoC works, want always-on without a laptop awake |
+| **2. Client PWA** | browser OPFS (WASM) | static host *or* installed PWA | install to home screen | large (Plan 1+2) | $0 (CF Pages / GH Pages / Vercel hobby) | ~1 MB WASM load + worker boot on first visit, then every read/write is local — instant and fully offline. Best steady-state. | True offline + installed feel, single device |
+| **3. Hosted SQLite** | Turso/libSQL (cloud) | Vercel/CF serverless | public URL + auth | medium (libsql driver swap) | $0 (Turso free + host free + CF Access free) | Network round-trip + possible serverless cold start per action; needs signal, never truly instant. | Ever go multi-device / off your network |
+| **4. Hosted Postgres** | Neon/Supabase | Vercel serverless | public URL + auth | large (dialect change) | $0 free tier → ~$25 paid² | Like 3, plus Postgres connection overhead — marginally slower cold. | ❌ overkill — don't |
 
 ¹ One-time hardware only: Raspberry Pi ~$50–80 or mini-PC ~$100–200, then ~$0/mo (electricity).
 Tailscale personal plan is free (up to 100 devices).
@@ -52,6 +52,10 @@ Which itch dominates?
 - **Option 3 is the "I was wrong about single-device" escape hatch.** drizzle has a `libsql`
   driver, so `schema.ts` and most queries survive a Turso move; it's mostly rewriting
   `db/client.ts` and adding auth. Know it exists; don't build it now.
+- **Performance inverts with the network.** Server/cloud options (0/1/3/4) pay a round-trip on
+  every action and die without signal; the PWA (2) pays once up front (WASM load) then runs
+  local, instant, and offline. If phone responsiveness is the goal, Option 2 wins the steady
+  state — that's the case *for* the eventual rewrite, not against it.
 - **Skip Option 4.** A single-user spending tracker has no reason to run Postgres.
 - **For the PoC itself, change nothing:** keep `npm run dev:web`; `tailscale serve 4010` puts it
   on your phone today with zero code.
