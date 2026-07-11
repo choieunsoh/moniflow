@@ -21,6 +21,7 @@ import {
   searchEntries,
 } from './queries';
 import { categoryIdFor, setCategoryEmoji } from '@features/categories/queries';
+import { setBudget, getBudgets } from '@features/budgets/queries';
 
 function db() {
   const d = initDb(':memory:');
@@ -297,6 +298,35 @@ describe('renameCategory', () => {
     expect(rows.every((r) => r.category === 'dining')).toBe(true);
     expect(rows.every((r) => r.categoryId === target)).toBe(true);
     expect(getDistinctCategories(d)).toEqual(['dining']); // 'food' gone
+  });
+
+  it('merge moves the source budget to the target when the target has none', () => {
+    const d = db();
+    addEntries(d, [
+      { date: '2026-07-01', account: 'cash', category: 'food', amount: -100 },
+      { date: '2026-07-02', account: 'cash', category: 'dining', amount: -50 },
+    ]);
+    setBudget(d, 'food', 3000); // only the source has a cap
+    renameCategory(d, 'food', 'dining');
+    const perCategory = getBudgets(d).filter((b) => b.category !== null);
+    expect(perCategory).toHaveLength(1);
+    expect(perCategory[0].category).toBe('dining');
+    expect(perCategory[0].amount).toBe(3000); // cap preserved, not silently lost
+  });
+
+  it("merge keeps the target's own budget and drops the source's (no duplicate)", () => {
+    const d = db();
+    addEntries(d, [
+      { date: '2026-07-01', account: 'cash', category: 'food', amount: -100 },
+      { date: '2026-07-02', account: 'cash', category: 'dining', amount: -50 },
+    ]);
+    setBudget(d, 'food', 3000);
+    setBudget(d, 'dining', 5000); // both have caps — target wins
+    renameCategory(d, 'food', 'dining');
+    const perCategory = getBudgets(d).filter((b) => b.category !== null);
+    expect(perCategory).toHaveLength(1); // exactly one row for the target, source's dropped
+    expect(perCategory[0].category).toBe('dining');
+    expect(perCategory[0].amount).toBe(5000); // target keeps its own amount
   });
 });
 

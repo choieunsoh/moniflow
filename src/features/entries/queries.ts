@@ -1,4 +1,17 @@
-import { desc, and, or, eq, gte, lte, lt, sql, isNotNull, ne, type AnyColumn } from 'drizzle-orm';
+import {
+  desc,
+  and,
+  or,
+  eq,
+  gte,
+  lte,
+  lt,
+  sql,
+  isNotNull,
+  ne,
+  getTableColumns,
+  type AnyColumn,
+} from 'drizzle-orm';
 import type { Db } from '@db/client';
 import { entries, type EntryRow, type EntryInput } from './schema';
 import { categories } from '@features/categories/schema';
@@ -9,20 +22,10 @@ import { budgets } from '@features/budgets/schema';
 // — no API layer. Column selections infer row types, so no `as` casts are needed.
 
 // Every read that returns entries for the UI projects this shape: the stored columns plus the joined
-// category NAME. innerJoin because every entry has a category_id after migration and on every write.
-const entryRowColumns = {
-  id: entries.id,
-  date: entries.date,
-  time: entries.time,
-  account: entries.account,
-  categoryId: entries.categoryId,
-  category: categories.name,
-  amount: entries.amount,
-  currency: entries.currency,
-  originalAmount: entries.originalAmount,
-  note: entries.note,
-  source: entries.source,
-};
+// category NAME. getTableColumns keeps it in lockstep with the schema — a new entries column can't be
+// silently dropped from reads. innerJoin because every entry has a category_id after migration and on
+// every write.
+const entryRowColumns = { ...getTableColumns(entries), category: categories.name };
 
 function entryRowsQuery(db: Db) {
   return db
@@ -31,12 +34,26 @@ function entryRowsQuery(db: Db) {
     .innerJoin(categories, eq(entries.categoryId, categories.id));
 }
 
+// Resolve one write-input's category NAME to its id (creating the category if new).
+function toRow(db: Db, { category, ...rest }: EntryInput) {
+  return { ...rest, categoryId: categoryIdFor(db, category) };
+}
+
+// Bulk: resolve each DISTINCT category name once (an import of ~10k rows spans only a few dozen
+// categories), then map every row through the cached lookup.
+function toRows(db: Db, rows: EntryInput[]) {
+  const ids = new Map<string, number>();
+  for (const name of new Set(rows.map((r) => r.category))) ids.set(name, categoryIdFor(db, name));
+  return rows.map(({ category, ...rest }) => {
+    const categoryId = ids.get(category);
+    if (categoryId === undefined) throw new Error(`toRows: unresolved category "${category}"`);
+    return { ...rest, categoryId };
+  });
+}
+
 export function addEntries(db: Db, rows: EntryInput[]): void {
   if (rows.length === 0) return;
-  const resolved = rows.map(({ category, ...rest }) => ({
-    ...rest,
-    categoryId: categoryIdFor(db, category),
-  }));
+  const resolved = toRows(db, rows);
   db.insert(entries).values(resolved).run();
 }
 
@@ -74,10 +91,7 @@ export function replaceEntries(db: Db, rows: EntryInput[]): void {
   const chunkSize = 500; // 500 rows × bound columns stays well under SQLite's variable cap
   db.transaction((tx) => {
     tx.delete(entries).where(eq(entries.source, 'monefy')).run();
-    const resolved = rows.map(({ category, ...rest }) => ({
-      ...rest,
-      categoryId: categoryIdFor(tx, category),
-    }));
+    const resolved = toRows(tx, rows);
     for (let i = 0; i < resolved.length; i += chunkSize) {
       tx.insert(entries)
         .values(resolved.slice(i, i + chunkSize))
@@ -120,18 +134,11 @@ export function getCategoryBreakdown(db: Db, start: string, end: string): Breakd
 }
 
 export function insertEntry(db: Db, entry: EntryInput): void {
-  const { category, ...rest } = entry;
-  db.insert(entries)
-    .values({ ...rest, categoryId: categoryIdFor(db, category) })
-    .run();
+  db.insert(entries).values(toRow(db, entry)).run();
 }
 
 export function updateEntry(db: Db, id: number, entry: EntryInput): void {
-  const { category, ...rest } = entry;
-  db.update(entries)
-    .set({ ...rest, categoryId: categoryIdFor(db, category) })
-    .where(eq(entries.id, id))
-    .run();
+  db.update(entries).set(toRow(db, entry)).where(eq(entries.id, id)).run();
 }
 
 export function deleteEntry(db: Db, id: number): void {
@@ -180,9 +187,13 @@ export function getCategoryCounts(db: Db): CategoryCount[] {
 }
 
 // Rename a category by id, or MERGE when `to` already names a different category: reassign this
-// category's entries to the target, drop this category's per-category budget (target's budget wins),
-// then delete the now-empty source row. A pure rename keeps the same id — entries are never rewritten,
-// and the emoji/hue on the row follow the rename for free. No-op when `from` doesn't exist.
+// category's entries to the target, settle the per-category budget (see below), then delete the
+// now-empty source row. A pure rename keeps the same id — entries are never rewritten, and the
+// emoji/hue on the row follow the rename for free. No-op when `from` doesn't exist.
+//
+// Budget on merge: if the target already has a per-category budget its cap wins and the source's is
+// dropped; if only the source had one, it moves to the target so the user's cap isn't silently lost.
+// (Summing the two caps is a smarter policy for another day, only if users ask.)
 export function renameCategory(db: Db, from: string, to: string): void {
   const source = db
     .select({ id: categories.id })
@@ -201,9 +212,19 @@ export function renameCategory(db: Db, from: string, to: string): void {
         .set({ categoryId: target.id })
         .where(eq(entries.categoryId, source.id))
         .run();
-      // ponytail: on merge the source's per-category budget is dropped, target's wins; a smarter
-      // policy (sum the caps) only if users ask.
-      tx.delete(budgets).where(eq(budgets.categoryId, source.id)).run();
+      const targetBudget = tx
+        .select({ id: budgets.id })
+        .from(budgets)
+        .where(eq(budgets.categoryId, target.id))
+        .get();
+      if (targetBudget) {
+        tx.delete(budgets).where(eq(budgets.categoryId, source.id)).run();
+      } else {
+        tx.update(budgets)
+          .set({ categoryId: target.id })
+          .where(eq(budgets.categoryId, source.id))
+          .run();
+      }
       tx.delete(categories).where(eq(categories.id, source.id)).run();
     });
   } else {
