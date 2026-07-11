@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { filterSuggestions, wrapIndex } from '../combobox';
 
@@ -22,6 +22,12 @@ export function SearchBox({ suggestions }: { suggestions: string[] }) {
   const [value, setValue] = useState(query);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
+  // Resting state is just the magnifier icon; tapping it reveals the field. Derived, not stored:
+  // the field also shows whenever a query is active (deep link / mid-search), so no effect is
+  // needed to sync the two.
+  const [expanded, setExpanded] = useState(false);
+  const showField = expanded || query.length > 0;
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const matches = filterSuggestions(suggestions, value);
   const showList = open && matches.length > 0;
@@ -38,6 +44,11 @@ export function SearchBox({ suggestions }: { suggestions: string[] }) {
     const q = debounced.trim();
     if (q !== query) router.replace(q ? `/records?q=${encodeURIComponent(q)}` : '/records');
   }, [debounced, query, router]);
+
+  // Focus the field the moment it appears so the user can type straight away.
+  useEffect(() => {
+    if (showField) inputRef.current?.focus();
+  }, [showField]);
 
   function choose(s: string): void {
     setValue(s);
@@ -58,6 +69,23 @@ export function SearchBox({ suggestions }: { suggestions: string[] }) {
     }
   }
 
+  // Collapsed: only the magnifier, aligned right (the header slot is flex-1). Tap → expand + focus.
+  if (!showField) {
+    return (
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          aria-label="Search records"
+          aria-expanded={false}
+          className="tap grid size-11 place-items-center rounded-[var(--radius-md)] text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-text)]"
+        >
+          <MagnifierGlyph size={18} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <form
       role="search"
@@ -68,8 +96,15 @@ export function SearchBox({ suggestions }: { suggestions: string[] }) {
       }}
       className="relative"
     >
-      <SearchIcon />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
+        style={{ color: 'var(--color-muted)' }}
+      >
+        <MagnifierGlyph size={18} />
+      </span>
       <input
+        ref={inputRef}
         type="text"
         role="combobox"
         aria-label="Search records"
@@ -85,7 +120,11 @@ export function SearchBox({ suggestions }: { suggestions: string[] }) {
           setHighlight(-1);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        // Collapse back to the icon when the user taps away with nothing typed.
+        onBlur={() => {
+          setOpen(false);
+          if (value.trim() === '') setExpanded(false);
+        }}
         onKeyDown={onKeyDown}
         placeholder="Search records"
         className="h-11 w-full rounded-[var(--radius-md)] border pr-11 pl-10 text-sm transition-colors duration-150 outline-none placeholder:text-[var(--color-muted)]"
@@ -155,19 +194,11 @@ function ClearIcon() {
   );
 }
 
-// Magnifier marking the field. Absolutely placed inside the input's left padding; decorative, so
-// it's aria-hidden and ignores pointer events (taps fall through to the input).
-function SearchIcon() {
+// Magnifier glyph (1.75 stroke, matching the clear ✕). Rendered two ways: the collapsed icon
+// button, and — wrapped in a positioned span — decoratively inside the expanded field's padding.
+function MagnifierGlyph({ size = 16 }: { size?: number }) {
   return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-      className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
-      style={{ color: 'var(--color-muted)' }}
-    >
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden>
       <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.75" />
       <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
     </svg>
