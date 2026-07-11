@@ -20,8 +20,9 @@ export function getBudgets(db: Db): BudgetReadRow[] {
 }
 
 // Upsert-by-category (or the null-category total). Delete+insert rather than ON CONFLICT: NULLs are
-// never equal in a UNIQUE index, so the total row can't be conflict-upserted; isNull handles it
-// explicitly. A per-category budget resolves its name to an id (creating the category if new).
+// never equal in a UNIQUE index, so the total row can't be conflict-upserted. isNull handles the
+// null/total case explicitly; eq(col, null) would compile to an always-false comparison and silently
+// fail to clear the old total row. A per-category budget resolves its name to an id (creating it if new).
 export function setBudget(db: Db, category: string | null, amount: number): void {
   const categoryId = category === null ? null : categoryIdFor(db, category);
   db.transaction((tx) => {
@@ -31,6 +32,8 @@ export function setBudget(db: Db, category: string | null, amount: number): void
   });
 }
 
+// A per-category delete must look the category up by name to get its id — there's no longer a category
+// text column on budgets to match against directly. isNull handles the null/total row.
 export function deleteBudget(db: Db, category: string | null): void {
   if (category === null) {
     db.delete(budgets).where(isNull(budgets.categoryId)).run();

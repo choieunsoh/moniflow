@@ -16,12 +16,7 @@ export type Budget = typeof budgets.$inferSelect;
 export type NewBudget = typeof budgets.$inferInsert;
 
 // A read row for the UI: the budget plus the joined category NAME (null for the total row).
-export type BudgetReadRow = {
-  id: number;
-  categoryId: number | null;
-  category: string | null;
-  amount: number;
-};
+export type BudgetReadRow = Budget & { category: string | null };
 
 // ponytail: CREATE TABLE IF NOT EXISTS bootstrap; migrateCategoryIds upgrades an existing text-keyed
 // budgets table (adds + backfills category_id) — invoked here so ensuring budgets triggers the backfill.

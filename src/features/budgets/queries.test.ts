@@ -38,4 +38,11 @@ describe('budgets keyed by category_id, read back by name', () => {
     deleteBudget(d, null);
     expect(getBudgets(d)).toHaveLength(0);
   });
+
+  it('deleting an unknown category is a no-op, leaves existing budgets intact', () => {
+    const d = db();
+    setBudget(d, 'groceries', 3000);
+    expect(() => deleteBudget(d, 'nonexistent')).not.toThrow();
+    expect(getBudgets(d).some((r) => r.category === 'groceries')).toBe(true);
+  });
 });
