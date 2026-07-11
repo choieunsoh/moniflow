@@ -4,9 +4,10 @@ import type { Db } from '@db/client';
 
 // Per-category display metadata — an emoji plus an optional hue, shown alongside the category
 // everywhere (records, donut legend, category picker). Keyed by the category NAME because categories
-// are plain text on entries, not their own table; a rename/merge can orphan a row, which is harmless
-// (unused meta). `hue` overrides the name-derived disc color (null = auto). This file is the schema
-// source of truth; drizzle.config globs it automatically.
+// are plain text on entries, not their own table; a rename/merge migrates this row alongside via
+// renameCategoryMeta (queries.ts), so the meta follows its category. `hue` overrides the name-derived
+// disc color (null = auto). This file is the schema source of truth; drizzle.config globs it
+// automatically.
 export const categoryMeta = sqliteTable('category_meta', {
   category: text('category').primaryKey(),
   emoji: text('emoji').notNull(),

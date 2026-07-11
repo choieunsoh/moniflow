@@ -10,6 +10,7 @@ import {
   getHueMap,
   setCategoryHue,
   hueFor,
+  renameCategoryMeta,
 } from './queries';
 
 describe('category emoji queries', () => {
@@ -87,5 +88,54 @@ describe('category hue queries', () => {
     expect(getEmojiMap(db)).toEqual({ Coffee: '☕' }); // data survived the migration
     setCategoryHue(db, 'Coffee', 45);
     expect(getHueMap(db)).toEqual({ Coffee: 45 });
+  });
+});
+
+describe('renameCategoryMeta', () => {
+  it('carries the emoji + hue to the new name on a pure rename', () => {
+    const db = initDb(':memory:');
+    ensureCategoryMetaTable(db);
+    setCategoryEmoji(db, 'Coffee', '☕');
+    setCategoryHue(db, 'Coffee', 25);
+
+    renameCategoryMeta(db, 'Coffee', 'Cafe');
+
+    expect(getEmojiMap(db)).toEqual({ Cafe: '☕' });
+    expect(getHueMap(db)).toEqual({ Cafe: 25 });
+  });
+
+  it('keeps the target meta on a merge (target wins), dropping the source orphan', () => {
+    const db = initDb(':memory:');
+    ensureCategoryMetaTable(db);
+    setCategoryEmoji(db, 'Coffee', '☕');
+    setCategoryHue(db, 'Coffee', 25);
+    setCategoryEmoji(db, 'Drinks', '🍺');
+    setCategoryHue(db, 'Drinks', 200);
+
+    renameCategoryMeta(db, 'Coffee', 'Drinks');
+
+    // Target's own emoji/hue survive; the source's are not merged in.
+    expect(getEmojiMap(db)).toEqual({ Drinks: '🍺' });
+    expect(getHueMap(db)).toEqual({ Drinks: 200 });
+  });
+
+  it('is a no-op when the source has no meta row', () => {
+    const db = initDb(':memory:');
+    ensureCategoryMetaTable(db);
+    setCategoryEmoji(db, 'Drinks', '🍺');
+
+    renameCategoryMeta(db, 'Coffee', 'Drinks');
+
+    expect(getEmojiMap(db)).toEqual({ Drinks: '🍺' });
+  });
+
+  it('is a no-op when from === to', () => {
+    const db = initDb(':memory:');
+    ensureCategoryMetaTable(db);
+    setCategoryEmoji(db, 'Coffee', '☕');
+
+    renameCategoryMeta(db, 'Coffee', 'Coffee');
+
+    expect(getEmojiMap(db)).toEqual({ Coffee: '☕' });
   });
 });

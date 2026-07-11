@@ -7,6 +7,8 @@ import { ensureEntriesTable } from './schema';
 import { parseEntryForm } from './entry-form';
 import { insertEntry, updateEntry, deleteEntry, renameCategory } from './queries';
 import { parseMergeInput } from './merge-input';
+import { ensureCategoryMetaTable } from '@features/categories/schema';
+import { renameCategoryMeta } from '@features/categories/queries';
 
 // The only feature module allowed to import Next's mutation APIs. Each action: open the DB,
 // parse + validate the form, write, revalidate the whole app (`revalidatePath('/', 'layout')` — one
@@ -52,6 +54,9 @@ export async function mergeCategoryAction(formData: FormData): Promise<void> {
 
   const db = initDb();
   ensureEntriesTable(db);
+  ensureCategoryMetaTable(db);
   renameCategory(db, input.from, input.to);
+  // Move the category's emoji + hue along with it, else the rename shows the fallback icon/color.
+  renameCategoryMeta(db, input.from, input.to);
   revalidatePath('/', 'layout');
 }

@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import type { Db } from '@db/client';
 import { categoryMeta } from './schema';
 
@@ -200,4 +201,19 @@ export function setCategoryHue(db: Db, category: string, hue: number | null): vo
 
 export function hueFor(map: Record<string, number>, category: string): number | undefined {
   return map[category];
+}
+
+// Follow a category rename/merge with its display meta, mirroring entries' renameCategory: on a pure
+// rename, carry the emoji + hue to the new name; on a merge (the target already has meta), the target
+// wins — keep its meta and drop the now-orphaned source row (avoids a PK collision on the move).
+export function renameCategoryMeta(db: Db, from: string, to: string): void {
+  if (from === to) return;
+  const source = db.select().from(categoryMeta).where(eq(categoryMeta.category, from)).all();
+  if (source.length === 0) return;
+  const target = db.select().from(categoryMeta).where(eq(categoryMeta.category, to)).all();
+  if (target.length === 0) {
+    db.update(categoryMeta).set({ category: to }).where(eq(categoryMeta.category, from)).run();
+  } else {
+    db.delete(categoryMeta).where(eq(categoryMeta.category, from)).run();
+  }
 }
