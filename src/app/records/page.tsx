@@ -118,9 +118,9 @@ export default async function RecordsPage({
               <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
             </div>
             {sections.map((section) => (
-              // Native <details> = tap the header to collapse/expand, no JS. Open by default;
+              // Native <details> = tap the header to collapse/expand, no JS. Collapsed by default;
               // the open/closed state is DOM-local and resets when a param re-renders the page.
-              <details key={section.key} open data-records-section className="flex flex-col gap-2">
+              <details key={section.key} data-records-section className="flex flex-col gap-2">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
                   <div className="flex min-w-0 items-center gap-1.5">
                     <Chevron />
