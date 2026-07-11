@@ -15,20 +15,24 @@ export function CycleSelector({
   activeKey,
   cutoff,
   canGoNext,
+  view,
 }: {
   activeKey: string;
   cutoff: number;
   canGoNext: boolean;
+  // Carried onto the prev/next links so the active grouping/view survives a cycle change.
+  view?: string;
 }) {
   const active = cycleFromKey(activeKey, cutoff);
   const prev = stepKey(activeKey, -1);
   const next = stepKey(activeKey, 1);
   const prevLabel = cycleFromKey(prev, cutoff).label;
   const nextLabel = cycleFromKey(next, cutoff).label;
+  const viewParam = view ? `&view=${view}` : '';
   return (
     <nav className="panel sticky top-[calc(3.5rem_+_env(safe-area-inset-top))] z-[var(--z-header)] flex items-center justify-between p-2">
       <Link
-        href={`?cycle=${prev}`}
+        href={`?cycle=${prev}${viewParam}`}
         aria-label={`Previous cycle: ${prevLabel}`}
         className="grid size-11 place-items-center rounded-[var(--radius-md)] transition-colors duration-150 active:bg-[var(--color-surface-2)]"
         style={{ color: 'var(--color-muted)' }}
@@ -38,7 +42,7 @@ export function CycleSelector({
       <span className="text-sm font-semibold">{active.label}</span>
       {canGoNext ? (
         <Link
-          href={`?cycle=${next}`}
+          href={`?cycle=${next}${viewParam}`}
           aria-label={`Next cycle: ${nextLabel}`}
           className="grid size-11 place-items-center rounded-[var(--radius-md)] transition-colors duration-150 active:bg-[var(--color-surface-2)]"
           style={{ color: 'var(--color-muted)' }}

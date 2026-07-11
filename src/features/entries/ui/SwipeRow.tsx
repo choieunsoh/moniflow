@@ -25,11 +25,15 @@ export function SwipeRow({
   emoji,
   iconSet,
   hue,
+  dateLabel,
 }: {
   entry: Entry;
   emoji: string;
   iconSet: IconSet;
   hue?: number;
+  // Set in the by-category view: the row leads with this date instead of the (redundant) category
+  // marker + chip, since every row under the section already shares the header's category.
+  dateLabel?: string;
 }) {
   const [side, setSide] = useState<SwipeSide>(0); // resting position
   const [offset, setOffset] = useState(0); // live drag offset while dragging
@@ -128,34 +132,46 @@ export function SwipeRow({
       >
         <div className="flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2">
-            {/* Tap the marker to edit this category's icon + background via the page's shared picker
-                dialog (one per page, not one per row). stopDrag keeps the press from starting a
-                swipe. */}
-            <span onPointerDown={stopDrag}>
-              <CategoryIconButton
-                category={entry.category}
-                emoji={emoji}
-                iconSet={iconSet}
-                hue={hue}
-              />
-            </span>
-            {/* Tap a chip to filter by it; tap the active (accent) one to clear. Swipe from the row
-                body still works. */}
-            <Link
-              href={toggleHref('category', entry.category, categoryActive)}
-              onPointerDown={stopDrag}
-              aria-label={
-                categoryActive ? `Clear ${entry.category} filter` : `Filter by ${entry.category}`
-              }
-              className="chip shrink-0 transition-opacity active:opacity-70"
-              style={
-                categoryActive
-                  ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent-text)' }
-                  : undefined
-              }
-            >
-              {entry.category}
-            </Link>
+            {dateLabel ? (
+              // By-category view: the category is the section header, so lead with the date instead.
+              <span className="shrink-0 text-sm font-medium">{dateLabel}</span>
+            ) : (
+              <>
+                {/* Tap the marker to edit this category's icon + background via the page's shared
+                    picker dialog (one per page, not one per row). stopDrag keeps the press from
+                    starting a swipe. */}
+                <span onPointerDown={stopDrag}>
+                  <CategoryIconButton
+                    category={entry.category}
+                    emoji={emoji}
+                    iconSet={iconSet}
+                    hue={hue}
+                  />
+                </span>
+                {/* Tap a chip to filter by it; tap the active (accent) one to clear. Swipe from the
+                    row body still works. */}
+                <Link
+                  href={toggleHref('category', entry.category, categoryActive)}
+                  onPointerDown={stopDrag}
+                  aria-label={
+                    categoryActive
+                      ? `Clear ${entry.category} filter`
+                      : `Filter by ${entry.category}`
+                  }
+                  className="chip shrink-0 transition-opacity active:opacity-70"
+                  style={
+                    categoryActive
+                      ? {
+                          background: 'var(--color-accent-soft)',
+                          color: 'var(--color-accent-text)',
+                        }
+                      : undefined
+                  }
+                >
+                  {entry.category}
+                </Link>
+              </>
+            )}
             {/* Account as a lighter outline badge so it reads as secondary to the category. */}
             <Link
               href={toggleHref('account', entry.account, accountActive)}

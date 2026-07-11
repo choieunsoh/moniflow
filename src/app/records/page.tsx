@@ -82,7 +82,14 @@ export default async function RecordsPage({
 
   return (
     <PageContainer size="full">
-      {!searching && <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} />}
+      {!searching && (
+        <CycleSelector
+          activeKey={activeKey}
+          cutoff={cutoff}
+          canGoNext={canGoNext}
+          view={byCategory ? 'category' : undefined}
+        />
+      )}
 
       {sections.length > 0 ? (
         <CategoryPickerProvider iconSet={iconSet}>
@@ -107,30 +114,35 @@ export default async function RecordsPage({
               <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
             </div>
             {sections.map((section) => (
-              <section key={section.key} className="flex flex-col gap-2">
-                <header className="flex items-baseline justify-between gap-2 px-1">
-                  {byCategory ? (
-                    <h2 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
-                      <CategoryIcon
-                        emoji={emojiFor(emojiMap, section.key)}
-                        name={section.key}
-                        size="sm"
-                        iconSet={iconSet}
-                        hue={hueFor(hueMap, section.key)}
-                      />
-                      <span className="truncate">{section.key}</span>
-                    </h2>
-                  ) : (
-                    <h2 className="text-sm font-semibold">
-                      {searching
-                        ? formatDayHeadingWithYear(section.key)
-                        : formatDayHeading(section.key)}
-                    </h2>
-                  )}
+              // Native <details> = tap the header to collapse/expand, no JS. Open by default;
+              // the open/closed state is DOM-local and resets when a param re-renders the page.
+              <details key={section.key} open className="flex flex-col gap-2">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <Chevron />
+                    {byCategory ? (
+                      <h2 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                        <CategoryIcon
+                          emoji={emojiFor(emojiMap, section.key)}
+                          name={section.key}
+                          size="sm"
+                          iconSet={iconSet}
+                          hue={hueFor(hueMap, section.key)}
+                        />
+                        <span className="truncate">{section.key}</span>
+                      </h2>
+                    ) : (
+                      <h2 className="truncate text-sm font-semibold">
+                        {searching
+                          ? formatDayHeadingWithYear(section.key)
+                          : formatDayHeading(section.key)}
+                      </h2>
+                    )}
+                  </div>
                   <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
                     {section.entries.length} · {formatBaht(Math.abs(section.total))}
                   </span>
-                </header>
+                </summary>
                 <ul className="panel flex flex-col divide-y overflow-hidden">
                   {section.entries.map((entry) => (
                     <SwipeRow
@@ -139,10 +151,17 @@ export default async function RecordsPage({
                       emoji={emojiFor(emojiMap, entry.category)}
                       iconSet={iconSet}
                       hue={hueFor(hueMap, entry.category)}
+                      dateLabel={
+                        byCategory
+                          ? searching
+                            ? formatDayHeadingWithYear(entry.date)
+                            : formatDayHeading(entry.date)
+                          : undefined
+                      }
                     />
                   ))}
                 </ul>
-              </section>
+              </details>
             ))}
             <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
               Swipe a row left to delete · right to edit
@@ -179,6 +198,27 @@ export default async function RecordsPage({
         <EmptyLedger />
       )}
     </PageContainer>
+  );
+}
+
+// A disclosure caret: points right when collapsed, rotates down when an ancestor <details> is open.
+function Chevron() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0 transition-transform duration-150 [[open]_&]:rotate-90"
+      style={{ color: 'var(--color-faint)' }}
+    >
+      <path d="M9 6l6 6-6 6" />
+    </svg>
   );
 }
 

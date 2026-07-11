@@ -78,7 +78,7 @@ export default async function HomePage({
 
   return (
     <PageContainer size="full">
-      <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} />
+      <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} view={view} />
       {isCurrentCycle ? <CycleProgress progress={progress} /> : null}
 
       {summary.count > 0 ? (
