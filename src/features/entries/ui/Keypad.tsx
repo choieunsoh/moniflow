@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { formatBaht } from '@shared/money';
-import { shiftIso } from '@shared/date';
+import { shiftIso, formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
 import { evaluate } from '../calc';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
@@ -13,9 +13,23 @@ export type KeypadCategory = { name: string; emoji: string; hue?: number };
 const OPS = '+−×÷';
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'];
 
-// A one-tap selectable pill, shared by the quick-date and account rows. Selected = accent fill;
-// otherwise a bordered surface. `.tap` guarantees the 44px touch target; aria-pressed carries the
-// toggle state to assistive tech. Global :focus-visible supplies the focus ring.
+// Shared pill look for the quick-date chips. `.tap` guarantees the 44px touch target; the style
+// helper toggles accent fill (selected) vs bordered surface.
+const pillClass =
+  'tap shrink-0 justify-center rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors';
+
+function chipStyle(selected: boolean): React.CSSProperties {
+  return selected
+    ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
+    : {
+        background: 'var(--color-surface-2)',
+        color: 'var(--color-text)',
+        border: '1px solid var(--color-border)',
+      };
+}
+
+// A one-tap selectable pill. aria-pressed carries the toggle state to assistive tech; the global
+// :focus-visible rule supplies the focus ring.
 function Chip({
   selected,
   onClick,
@@ -30,16 +44,8 @@ function Chip({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className="tap shrink-0 justify-center rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors active:opacity-70"
-      style={
-        selected
-          ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
-          : {
-              background: 'var(--color-surface-2)',
-              color: 'var(--color-text)',
-              border: '1px solid var(--color-border)',
-            }
-      }
+      className={`${pillClass} active:opacity-70`}
+      style={chipStyle(selected)}
     >
       {children}
     </button>
@@ -86,6 +92,7 @@ export function Keypad({
   const [account, setAccount] = useState(defaultAccount);
 
   const yesterday = shiftIso(today, -1);
+  const isCustomDate = date !== today && date !== yesterday;
   const amount = evaluate(expr);
   const valid = amount !== null && amount > 0;
   const spaced = expr.replace(/([+−×÷])/g, ' $1 ').trim();
@@ -99,8 +106,10 @@ export function Keypad({
 
       {/* Amount + inputs + keypad */}
       <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
-        {/* Date: one-tap Today/Yesterday chips for the common case; the native picker (which stays in
-            sync with the chips) is the escape hatch for any other day. */}
+        {/* Date: one-tap Today/Yesterday chips for the common case. The third chip is "Earlier…"; a
+            transparent native date input sits on top of it, so tapping opens the OS picker, and once a
+            further-back day is chosen the chip shows it (e.g. "Wed 9 Jul") and reads as selected. The
+            input holds the posted `date` in all three cases. */}
         <div className="flex flex-col gap-2">
           <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
             Date
@@ -112,15 +121,19 @@ export function Keypad({
             <Chip selected={date === yesterday} onClick={() => setDate(yesterday)}>
               Yesterday
             </Chip>
-            <input
-              type="date"
-              name="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              aria-label="Pick another date"
-              className="tnum h-11 min-w-0 flex-1 rounded-full border px-3 text-sm"
-              style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
-            />
+            <span className="relative inline-flex shrink-0">
+              <span className={pillClass} style={chipStyle(isCustomDate)}>
+                {isCustomDate ? formatDayHeading(date) : 'Earlier…'}
+              </span>
+              <input
+                type="date"
+                name="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                aria-label="Pick another date"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </span>
           </div>
         </div>
 
