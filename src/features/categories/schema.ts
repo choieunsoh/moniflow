@@ -22,7 +22,8 @@ export type NewCategory = typeof categories.$inferInsert;
 
 // ponytail: CREATE TABLE IF NOT EXISTS bootstrap, matching the other features. The one-time backfill
 // from the legacy text-keyed shape lives in migrateCategoryIds (idempotent, guarded, no-op once done),
-// invoked here and from ensureEntriesTable/ensureBudgetsTable so any read path triggers it.
+// invoked here and from ensureEntriesTable/ensureBudgetsTable so any read path triggers it;
+// dropLegacyCategoryColumns then removes the legacy `category` columns and the category_meta table.
 export function ensureCategoriesTable(db: Db): void {
   migrateCategoryIds(db);
   dropLegacyCategoryColumns(db);

@@ -44,7 +44,8 @@ export type EntryInput = {
 
 // ponytail: CREATE TABLE IF NOT EXISTS bootstrap. Fresh installs get category_id directly; existing
 // text-keyed DBs are upgraded by migrateCategoryIds (idempotent, guarded, invoked here so any page
-// that ensures entries triggers the one-time backfill).
+// that ensures entries triggers the one-time backfill); dropLegacyCategoryColumns then removes the
+// now-unused `category` text column once category_id is populated.
 export function ensureEntriesTable(db: Db): void {
   db.run(sql`
     CREATE TABLE IF NOT EXISTS entries (
