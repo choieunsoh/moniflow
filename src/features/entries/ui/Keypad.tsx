@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { formatBaht } from '@shared/money';
-import { shiftIso, formatDayHeading } from '@shared/date';
+import { formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
 import { evaluate } from '../calc';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
@@ -91,8 +91,7 @@ export function Keypad({
   const [date, setDate] = useState(today);
   const [account, setAccount] = useState(defaultAccount);
 
-  const yesterday = shiftIso(today, -1);
-  const isCustomDate = date !== today && date !== yesterday;
+  const isCustomDate = date !== today;
   const amount = evaluate(expr);
   const valid = amount !== null && amount > 0;
   const spaced = expr.replace(/([+−×÷])/g, ' $1 ').trim();
@@ -106,65 +105,52 @@ export function Keypad({
 
       {/* Amount + inputs + keypad */}
       <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
-        {/* Date: one-tap Today/Yesterday chips for the common case. The third chip is "Earlier…"; a
-            transparent native date input sits on top of it, so tapping opens the OS picker, and once a
-            further-back day is chosen the chip shows it (e.g. "Wed 9 Jul") and reads as selected. The
-            input holds the posted `date` in all three cases. */}
-        <div className="flex flex-col gap-2">
-          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Date
-          </span>
-          <div className="flex gap-2">
-            <Chip selected={date === today} onClick={() => setDate(today)}>
-              Today
-            </Chip>
-            <Chip selected={date === yesterday} onClick={() => setDate(yesterday)}>
-              Yesterday
-            </Chip>
-            <span className="relative inline-flex shrink-0">
-              <span className={pillClass} style={chipStyle(isCustomDate)}>
-                {isCustomDate ? formatDayHeading(date) : 'Earlier…'}
-              </span>
-              <input
-                type="date"
-                name="date"
-                value={date}
-                max={today}
-                // No spending in the future: `max` disables later days in the OS picker; the guard
-                // rejects an empty or future value from a typed/edge case (ISO strings compare
-                // chronologically), so `date` stays a valid past-or-today day.
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v && v <= today) setDate(v);
-                }}
-                // Open the OS picker from a tap anywhere on the chip, not just the (invisible)
-                // calendar indicator. showPicker throws if unsupported or already open — ignore it.
-                onClick={(e) => {
-                  try {
-                    e.currentTarget.showPicker();
-                  } catch {
-                    // no-op: browser without showPicker, or a picker already open
-                  }
-                }}
-                aria-label="Pick another date"
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              />
+        {/* Date + account on one compact row: a Today chip and an "Earlier…" chip, then the account
+            chip pushed to the right. The "Earlier…" chip carries a transparent native date input (tap
+            anywhere opens the OS picker); once another day is chosen it shows that day (e.g. "Wed 9
+            Jul") and reads as selected. Wraps if names run long. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip selected={date === today} onClick={() => setDate(today)}>
+            Today
+          </Chip>
+          <span className="relative inline-flex shrink-0">
+            <span className={pillClass} style={chipStyle(isCustomDate)}>
+              {isCustomDate ? formatDayHeading(date) : 'Earlier…'}
             </span>
-          </div>
-        </div>
-
-        {/* Account: collapsed to a single chip showing the current (default = last-used) account. Tap
-            to open the full account grid — same second-view pattern as the category picker. Posts via
-            the hidden `account`. */}
-        <div className="flex flex-col gap-2">
-          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Account
+            <input
+              type="date"
+              name="date"
+              value={date}
+              max={today}
+              // No spending in the future: `max` disables later days in the OS picker; the guard
+              // rejects an empty or future value from a typed/edge case (ISO strings compare
+              // chronologically), so `date` stays a valid past-or-today day.
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v && v <= today) setDate(v);
+              }}
+              // Open the OS picker from a tap anywhere on the chip, not just the (invisible)
+              // calendar indicator. showPicker throws if unsupported or already open — ignore it.
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker();
+                } catch {
+                  // no-op: browser without showPicker, or a picker already open
+                }
+              }}
+              aria-label="Pick another date"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
           </span>
+
+          {/* Account chip → opens the account grid (second view). Pushed to the right of the date
+              chips; the current (default = last-used) account posts via the hidden `account`. */}
           <button
             type="button"
             onClick={() => setView('account')}
             aria-haspopup="true"
-            className="tap max-w-full justify-center gap-1.5 self-start rounded-full px-4 text-sm font-medium active:opacity-70"
+            aria-label={`Account: ${account}`}
+            className="tap ml-auto max-w-full shrink-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
             style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
           >
             <span className="truncate">{account}</span>
