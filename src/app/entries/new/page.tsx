@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { getDistinctAccounts, getCategoryCounts } from '@features/entries/queries';
-import { ensureCategoryMetaTable } from '@features/categories/schema';
+import { ensureCategoriesTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
@@ -15,7 +15,7 @@ import { todayIso } from '@shared/date';
 export default function NewEntryPage() {
   const db = initDb();
   ensureEntriesTable(db);
-  ensureCategoryMetaTable(db);
+  ensureCategoriesTable(db);
   ensureSettingsTable(db);
 
   const emojiMap = getEmojiMap(db);

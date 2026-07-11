@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { sql } from 'drizzle-orm';
 import { initDb } from '@db/client';
-import { ensureEntriesTable } from './schema';
+import { ensureEntriesTable, entries } from './schema';
 import { addEntries, getEntries, getNetFlow } from './queries';
 
 // Proves the feature is wired end-to-end through its public API: connection → table bootstrap →
@@ -47,5 +48,25 @@ describe('entries feature (in-memory)', () => {
     const [withTime, withoutTime] = getEntries(db);
     expect(withTime.time).toBe('08:15');
     expect(withoutTime.time).toBeNull();
+  });
+});
+
+describe('ensureEntriesTable (id-keyed)', () => {
+  it('creates entries with a category_id column and no category text column', () => {
+    const db = initDb(':memory:');
+    ensureEntriesTable(db);
+    const cols = db
+      .all(sql`PRAGMA table_info(entries)`)
+      .flatMap((r) =>
+        typeof r === 'object' && r !== null && 'name' in r && typeof r.name === 'string'
+          ? [r.name]
+          : [],
+      );
+    expect(cols).toContain('category_id');
+    expect(cols).not.toContain('category');
+    db.insert(entries)
+      .values({ date: '2026-07-01', account: 'cash', categoryId: 1, amount: -5 })
+      .run();
+    expect(db.select().from(entries).all()).toHaveLength(1);
   });
 });

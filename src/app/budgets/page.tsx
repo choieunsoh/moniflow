@@ -17,7 +17,7 @@ import {
 } from '@features/budgets/budget-status';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
-import { ensureCategoryMetaTable } from '@features/categories/schema';
+import { ensureCategoriesTable } from '@features/categories/schema';
 import { getEmojiMap, getHueMap, emojiFor, hueFor } from '@features/categories/queries';
 import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import { PageContainer } from '@shared/ui/PageContainer';
@@ -54,7 +54,7 @@ export default function BudgetsPage() {
   ensureEntriesTable(db);
   ensureBudgetsTable(db);
   ensureSettingsTable(db);
-  ensureCategoryMetaTable(db);
+  ensureCategoriesTable(db);
 
   const cutoff = getCutoff(db);
   const cycle = cycleFromKey(currentCycleKey(todayIso(), cutoff), cutoff);

@@ -1,15 +1,64 @@
-import { desc, and, or, eq, gte, lte, lt, sql, isNotNull, ne, type AnyColumn } from 'drizzle-orm';
+import {
+  desc,
+  and,
+  or,
+  eq,
+  gte,
+  lte,
+  lt,
+  sql,
+  isNotNull,
+  ne,
+  getTableColumns,
+  type AnyColumn,
+} from 'drizzle-orm';
 import type { Db } from '@db/client';
-import { entries, type Entry, type NewEntry } from './schema';
+import { entries, type EntryRow, type EntryInput } from './schema';
+import { categories } from '@features/categories/schema';
+import { categoryIdFor } from '@features/categories/queries';
+import { budgets } from '@features/budgets/schema';
 
 // Typed reads/writes for the entries feature. Server Components and the CLI call these directly
 // — no API layer. Column selections infer row types, so no `as` casts are needed.
-export function addEntries(db: Db, rows: NewEntry[]): void {
-  db.insert(entries).values(rows).run();
+
+// Every read that returns entries for the UI projects this shape: the stored columns plus the joined
+// category NAME. getTableColumns keeps it in lockstep with the schema — a new entries column can't be
+// silently dropped from reads. innerJoin because every entry has a category_id after migration and on
+// every write.
+const entryRowColumns = { ...getTableColumns(entries), category: categories.name };
+
+function entryRowsQuery(db: Db) {
+  return db
+    .select(entryRowColumns)
+    .from(entries)
+    .innerJoin(categories, eq(entries.categoryId, categories.id));
 }
 
-export function getEntries(db: Db): Entry[] {
-  return db.select().from(entries).all();
+// Resolve one write-input's category NAME to its id (creating the category if new).
+function toRow(db: Db, { category, ...rest }: EntryInput) {
+  return { ...rest, categoryId: categoryIdFor(db, category) };
+}
+
+// Bulk: resolve each DISTINCT category name once (an import of ~10k rows spans only a few dozen
+// categories), then map every row through the cached lookup.
+function toRows(db: Db, rows: EntryInput[]) {
+  const ids = new Map<string, number>();
+  for (const name of new Set(rows.map((r) => r.category))) ids.set(name, categoryIdFor(db, name));
+  return rows.map(({ category, ...rest }) => {
+    const categoryId = ids.get(category);
+    if (categoryId === undefined) throw new Error(`toRows: unresolved category "${category}"`);
+    return { ...rest, categoryId };
+  });
+}
+
+export function addEntries(db: Db, rows: EntryInput[]): void {
+  if (rows.length === 0) return;
+  const resolved = toRows(db, rows);
+  db.insert(entries).values(resolved).run();
+}
+
+export function getEntries(db: Db): EntryRow[] {
+  return entryRowsQuery(db).all();
 }
 
 // ponytail: nets in JS over the full table — fine at scaffold scale. Upgrade to SQL aggregates
@@ -22,7 +71,7 @@ export type Summary = { net: number; inflow: number; outflow: number; count: num
 
 // Cycle rollup figures. inflow/outflow are split by sign; the home page uses only `count` today
 // (to gate the empty state), but the split is kept for a caller that wants where money came from.
-function summarize(rows: Entry[]): Summary {
+function summarize(rows: EntryRow[]): Summary {
   return rows.reduce<Summary>(
     (acc, r) => ({
       net: acc.net + r.amount,
@@ -38,13 +87,14 @@ function summarize(rows: Entry[]): Summary {
 // rows untouched — only 'monefy'-sourced rows are cleared. Chunked inside a transaction: a single
 // insert of the ~10.7k-row export exceeds SQLite's bound-variable cap, and delete + inserts must
 // be atomic so a failure can't leave a half ledger.
-export function replaceEntries(db: Db, rows: NewEntry[]): void {
+export function replaceEntries(db: Db, rows: EntryInput[]): void {
   const chunkSize = 500; // 500 rows × bound columns stays well under SQLite's variable cap
   db.transaction((tx) => {
     tx.delete(entries).where(eq(entries.source, 'monefy')).run();
-    for (let i = 0; i < rows.length; i += chunkSize) {
+    const resolved = toRows(tx, rows);
+    for (let i = 0; i < resolved.length; i += chunkSize) {
       tx.insert(entries)
-        .values(rows.slice(i, i + chunkSize))
+        .values(resolved.slice(i, i + chunkSize))
         .run();
     }
   });
@@ -56,10 +106,8 @@ export type Breakdown = { key: string; total: number; count: number };
 // row never lands in the summary, donut, records or day totals. Income stays in the DB (lossless
 // import) but is out of scope for every UI surface. getCycleSummary derives from this, so it too is
 // spending-only.
-export function getEntriesInRange(db: Db, start: string, end: string): Entry[] {
-  return db
-    .select()
-    .from(entries)
+export function getEntriesInRange(db: Db, start: string, end: string): EntryRow[] {
+  return entryRowsQuery(db)
     .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
     .all();
 }
@@ -69,53 +117,48 @@ export function getCycleSummary(db: Db, start: string, end: string): Summary {
 }
 
 // GROUP BY in SQL so a cycle view never loads the full 10-year ledger. Sorted by magnitude in JS
-// (the result set is at most one row per category/account — tiny).
-function groupSum(
-  db: Db,
-  column: typeof entries.category | typeof entries.account,
-  start: string,
-  end: string,
-): Breakdown[] {
+// (the result set is at most one row per category — tiny).
+export function getCategoryBreakdown(db: Db, start: string, end: string): Breakdown[] {
   return db
     .select({
-      key: column,
+      key: categories.name,
       total: sql<number>`sum(${entries.amount})`,
       count: sql<number>`count(*)`,
     })
     .from(entries)
+    .innerJoin(categories, eq(entries.categoryId, categories.id))
     .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
-    .groupBy(column)
+    .groupBy(categories.name)
     .all()
     .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
 }
 
-export function getCategoryBreakdown(db: Db, start: string, end: string): Breakdown[] {
-  return groupSum(db, entries.category, start, end);
+export function insertEntry(db: Db, entry: EntryInput): void {
+  db.insert(entries).values(toRow(db, entry)).run();
 }
 
-export function insertEntry(db: Db, entry: NewEntry): void {
-  db.insert(entries).values(entry).run();
-}
-
-export function updateEntry(db: Db, id: number, entry: NewEntry): void {
-  db.update(entries).set(entry).where(eq(entries.id, id)).run();
+export function updateEntry(db: Db, id: number, entry: EntryInput): void {
+  db.update(entries).set(toRow(db, entry)).where(eq(entries.id, id)).run();
 }
 
 export function deleteEntry(db: Db, id: number): void {
   db.delete(entries).where(eq(entries.id, id)).run();
 }
 
-export function getEntryById(db: Db, id: number): Entry | undefined {
-  return db.select().from(entries).where(eq(entries.id, id)).get();
+export function getEntryById(db: Db, id: number): EntryRow | undefined {
+  return entryRowsQuery(db).where(eq(entries.id, id)).get();
 }
 
+// Lists all categories, including ones with zero entries — the categories table is now the source
+// of truth for "what categories exist" (a category can be created via setCategoryEmoji/categoryIdFor
+// before any entry ever uses it).
 export function getDistinctCategories(db: Db): string[] {
   return db
-    .selectDistinct({ category: entries.category })
-    .from(entries)
-    .orderBy(entries.category)
+    .select({ name: categories.name })
+    .from(categories)
+    .orderBy(categories.name)
     .all()
-    .map((r) => r.category);
+    .map((r) => r.name);
 }
 
 export function getDistinctAccounts(db: Db): string[] {
@@ -130,42 +173,77 @@ export function getDistinctAccounts(db: Db): string[] {
 export type CategoryCount = { category: string; count: number };
 
 // Category cleanup surface: how many rows sit in each category, so the biggest fragments are
-// obvious before a rename/merge. Grouped in SQL; sorted by count in JS — same pattern as
-// groupSum above, since the result set is at most one row per distinct category, tiny even over
-// a decade of data.
+// obvious before a rename/merge. leftJoin so a category with zero entries still shows up (at
+// count 0) instead of disappearing from the list. Grouped in SQL; sorted by count in JS — the
+// result set is at most one row per category, tiny even over a decade of data.
 export function getCategoryCounts(db: Db): CategoryCount[] {
   return db
-    .select({ category: entries.category, count: sql<number>`count(*)` })
-    .from(entries)
-    .groupBy(entries.category)
+    .select({ category: categories.name, count: sql<number>`count(${entries.id})` })
+    .from(categories)
+    .leftJoin(entries, eq(entries.categoryId, categories.id))
+    .groupBy(categories.id)
     .all()
     .sort((a, b) => b.count - a.count);
 }
 
-// Whole-ledger category rename. If `to` already exists, matching rows fold into it automatically
-// — a merge, not a separate code path. No-op-safe: only rows where category = `from` are
-// touched, so renaming a category that doesn't exist updates zero rows.
+// Rename a category by id, or MERGE when `to` already names a different category: reassign this
+// category's entries to the target, settle the per-category budget (see below), then delete the
+// now-empty source row. A pure rename keeps the same id — entries are never rewritten, and the
+// emoji/hue on the row follow the rename for free. No-op when `from` doesn't exist.
+//
+// Budget on merge: if the target already has a per-category budget its cap wins and the source's is
+// dropped; if only the source had one, it moves to the target so the user's cap isn't silently lost.
+// (Summing the two caps is a smarter policy for another day, only if users ask.)
 export function renameCategory(db: Db, from: string, to: string): void {
-  db.update(entries).set({ category: to }).where(eq(entries.category, from)).run();
+  const source = db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.name, from))
+    .get();
+  if (!source) return;
+  const target = db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.name, to))
+    .get();
+  if (target && target.id !== source.id) {
+    db.transaction((tx) => {
+      tx.update(entries)
+        .set({ categoryId: target.id })
+        .where(eq(entries.categoryId, source.id))
+        .run();
+      const targetBudget = tx
+        .select({ id: budgets.id })
+        .from(budgets)
+        .where(eq(budgets.categoryId, target.id))
+        .get();
+      if (targetBudget) {
+        tx.delete(budgets).where(eq(budgets.categoryId, source.id)).run();
+      } else {
+        tx.update(budgets)
+          .set({ categoryId: target.id })
+          .where(eq(budgets.categoryId, source.id))
+          .run();
+      }
+      tx.delete(categories).where(eq(categories.id, source.id)).run();
+    });
+  } else {
+    db.update(categories).set({ name: to }).where(eq(categories.id, source.id)).run();
+  }
 }
 
 // Free-text search across the whole ledger (not cycle-scoped) — matches a substring of the note,
 // category, or account, case-insensitively, expenses only (same spending-tracker scope as the cycle
 // reads). Newest first. LIKE metacharacters in the query are escaped so a literal '_' or '%' can't
 // widen the match. A blank query returns nothing rather than the whole ledger.
-export function searchEntries(db: Db, query: string): Entry[] {
+export function searchEntries(db: Db, query: string): EntryRow[] {
   const q = query.trim();
   if (!q) return [];
   const pattern = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   const has = (col: AnyColumn) => sql`${col} like ${pattern} escape '\\'`;
-  return db
-    .select()
-    .from(entries)
+  return entryRowsQuery(db)
     .where(
-      and(
-        lt(entries.amount, 0),
-        or(has(entries.note), has(entries.category), has(entries.account)),
-      ),
+      and(lt(entries.amount, 0), or(has(entries.note), has(categories.name), has(entries.account))),
     )
     .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
     .all();
@@ -174,10 +252,8 @@ export function searchEntries(db: Db, query: string): Entry[] {
 // Foreign-currency rows for the trip view — anything not THB (and not null, which covers legacy
 // or bad-import rows). Ordered by date then id so groupIntoTrips can walk it as one chronological
 // pass without needing to trust the caller's ordering.
-export function getForeignEntries(db: Db): Entry[] {
-  return db
-    .select()
-    .from(entries)
+export function getForeignEntries(db: Db): EntryRow[] {
+  return entryRowsQuery(db)
     .where(and(isNotNull(entries.currency), ne(entries.currency, 'THB')))
     .orderBy(entries.date, entries.id)
     .all();

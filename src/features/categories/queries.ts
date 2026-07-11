@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '@db/client';
-import { categoryMeta } from './schema';
+import { categories } from './schema';
 
 // Shown for any category without an assigned emoji.
 export const FALLBACK_EMOJI = '🏷️';
@@ -161,17 +161,18 @@ export const EMOJI_LABELS: Record<string, string> = {
 };
 
 export function getEmojiMap(db: Db): Record<string, string> {
-  const rows = db.select().from(categoryMeta).all();
+  const rows = db.select({ name: categories.name, emoji: categories.emoji }).from(categories).all();
   const map: Record<string, string> = {};
-  for (const row of rows) map[row.category] = row.emoji;
+  for (const row of rows) map[row.name] = row.emoji;
   return map;
 }
 
-// Upsert: assigning an emoji to a category replaces any prior one.
+// Upsert: assigning an emoji to a category replaces any prior one. Creates the category row if the
+// name is new (a category with no entries yet is now legitimate).
 export function setCategoryEmoji(db: Db, category: string, emoji: string): void {
-  db.insert(categoryMeta)
-    .values({ category, emoji })
-    .onConflictDoUpdate({ target: categoryMeta.category, set: { emoji } })
+  db.insert(categories)
+    .values({ name: category, emoji })
+    .onConflictDoUpdate({ target: categories.name, set: { emoji } })
     .run();
 }
 
@@ -181,21 +182,18 @@ export function emojiFor(map: Record<string, string>, category: string): string 
 
 // Only categories with a picked hue land in the map; the rest fall through to the name-derived color.
 export function getHueMap(db: Db): Record<string, number> {
-  const rows = db
-    .select({ category: categoryMeta.category, hue: categoryMeta.hue })
-    .from(categoryMeta)
-    .all();
+  const rows = db.select({ name: categories.name, hue: categories.hue }).from(categories).all();
   const map: Record<string, number> = {};
-  for (const row of rows) if (row.hue !== null) map[row.category] = row.hue;
+  for (const row of rows) if (row.hue !== null) map[row.name] = row.hue;
   return map;
 }
 
-// Upsert the hue. `null` resets to auto. A category with no meta row yet gets the fallback emoji so
-// the NOT NULL emoji column is satisfied; an existing row keeps its emoji (only hue is updated).
+// Upsert the hue. `null` resets to auto. A new name gets the fallback emoji to satisfy NOT NULL; an
+// existing row keeps its emoji (only hue changes).
 export function setCategoryHue(db: Db, category: string, hue: number | null): void {
-  db.insert(categoryMeta)
-    .values({ category, emoji: FALLBACK_EMOJI, hue })
-    .onConflictDoUpdate({ target: categoryMeta.category, set: { hue } })
+  db.insert(categories)
+    .values({ name: category, emoji: FALLBACK_EMOJI, hue })
+    .onConflictDoUpdate({ target: categories.name, set: { hue } })
     .run();
 }
 
@@ -203,17 +201,18 @@ export function hueFor(map: Record<string, number>, category: string): number | 
   return map[category];
 }
 
-// Follow a category rename/merge with its display meta, mirroring entries' renameCategory: on a pure
-// rename, carry the emoji + hue to the new name; on a merge (the target already has meta), the target
-// wins — keep its meta and drop the now-orphaned source row (avoids a PK collision on the move).
-export function renameCategoryMeta(db: Db, from: string, to: string): void {
-  if (from === to) return;
-  const source = db.select().from(categoryMeta).where(eq(categoryMeta.category, from)).all();
-  if (source.length === 0) return;
-  const target = db.select().from(categoryMeta).where(eq(categoryMeta.category, to)).all();
-  if (target.length === 0) {
-    db.update(categoryMeta).set({ category: to }).where(eq(categoryMeta.category, from)).run();
-  } else {
-    db.delete(categoryMeta).where(eq(categoryMeta.category, from)).run();
-  }
+// Resolve a category name to its id, creating the row (fallback emoji) if the name is new. This is the
+// single write-boundary that turns the name-based UI/import into id-based storage. Idempotent.
+export function categoryIdFor(db: Db, name: string): number {
+  db.insert(categories)
+    .values({ name, emoji: FALLBACK_EMOJI })
+    .onConflictDoNothing({ target: categories.name })
+    .run();
+  const row = db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.name, name))
+    .get();
+  if (!row) throw new Error(`categoryIdFor: could not resolve category "${name}"`);
+  return row.id;
 }

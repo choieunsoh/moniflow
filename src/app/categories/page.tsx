@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { getCategoryCounts } from '@features/entries/queries';
-import { ensureCategoryMetaTable } from '@features/categories/schema';
+import { ensureCategoriesTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { EmojiPicker } from '@features/categories/ui/EmojiPicker';
 import { CategoryNameEditor } from '@features/categories/ui/CategoryNameEditor';
@@ -16,7 +16,7 @@ import { PageContainer } from '@shared/ui/PageContainer';
 export default function CategoriesPage() {
   const db = initDb();
   ensureEntriesTable(db);
-  ensureCategoryMetaTable(db);
+  ensureCategoriesTable(db);
   ensureSettingsTable(db);
   const counts = getCategoryCounts(db);
   const emojiMap = getEmojiMap(db);

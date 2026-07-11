@@ -16,7 +16,7 @@ import { toBudgetTotal, pacePhrase } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 import { todayIso } from '@shared/date';
 import { formatBaht } from '@shared/money';
-import { ensureCategoryMetaTable } from '@features/categories/schema';
+import { ensureCategoriesTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
 import { CategoryEditTrigger } from '@features/categories/ui/CategoryPicker';
@@ -40,7 +40,7 @@ export default async function HomePage({
   const db = initDb();
   ensureEntriesTable(db);
   ensureSettingsTable(db);
-  ensureCategoryMetaTable(db);
+  ensureCategoriesTable(db);
   ensureBudgetsTable(db);
   const emojiMap = getEmojiMap(db);
   const hueMap = getHueMap(db);

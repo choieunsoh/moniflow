@@ -1,12 +1,12 @@
-import type { Entry } from './schema';
+import type { EntryRow } from './schema';
 
-export type DayGroup = { date: string; total: number; entries: Entry[] };
+export type DayGroup = { date: string; total: number; entries: EntryRow[] };
 
 // Group ledger entries into day buckets, newest day first, with the signed day total (expenses are
 // negative). Entry order within a day is preserved from the input, so pass entries already in the
 // order you want them listed under each day.
-export function groupByDate(entries: Entry[]): DayGroup[] {
-  const buckets = new Map<string, Entry[]>();
+export function groupByDate(entries: EntryRow[]): DayGroup[] {
+  const buckets = new Map<string, EntryRow[]>();
   for (const entry of entries) {
     const bucket = buckets.get(entry.date);
     if (bucket) bucket.push(entry);

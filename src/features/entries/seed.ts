@@ -1,10 +1,10 @@
 import type { Db } from '@db/client';
-import { entries, type NewEntry } from './schema';
+import { entries, type EntryInput } from './schema';
 import { addEntries } from './queries';
 
 // A realistic ~3 weeks of personal money flow (THB), signed: + inflow, − outflow. Enough shape
 // for the balance chart to tell a story and the ledger to feel real. Replace with your own.
-const DEMO: NewEntry[] = [
+const DEMO: EntryInput[] = [
   { date: '2026-07-01', account: 'bank', category: 'salary', amount: 62000, note: 'July payroll' },
   { date: '2026-07-01', account: 'bank', category: 'rent', amount: -18000, note: null },
   { date: '2026-07-02', account: 'cash', category: 'groceries', amount: -1450, note: null },
