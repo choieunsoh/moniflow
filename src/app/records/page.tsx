@@ -142,9 +142,13 @@ export default async function RecordsPage({
                           : formatDayHeading(section.key)}
                       </h2>
                     )}
+                    {/* Entry count sits next to the title (date or category); total stays right. */}
+                    <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
+                      ({section.entries.length})
+                    </span>
                   </div>
                   <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
-                    {section.entries.length} · {formatBaht(Math.abs(section.total))}
+                    {formatBaht(Math.abs(section.total))}
                   </span>
                 </summary>
                 <ul className="panel flex flex-col divide-y overflow-hidden">
