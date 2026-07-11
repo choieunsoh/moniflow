@@ -129,7 +129,14 @@ export function Keypad({
                 type="date"
                 name="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                max={today}
+                // No spending in the future: `max` disables later days in the OS picker; the guard
+                // rejects an empty or future value from a typed/edge case (ISO strings compare
+                // chronologically), so `date` stays a valid past-or-today day.
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v && v <= today) setDate(v);
+                }}
                 // Open the OS picker from a tap anywhere on the chip, not just the (invisible)
                 // calendar indicator. showPicker throws if unsupported or already open — ignore it.
                 onClick={(e) => {
