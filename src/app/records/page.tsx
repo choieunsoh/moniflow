@@ -6,6 +6,7 @@ import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { getEntriesInRange, searchEntries } from '@features/entries/queries';
 import { groupByDate } from '@features/entries/by-date';
+import { groupByCategory } from '@features/entries/by-category';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet } from '@features/settings/queries';
@@ -14,6 +15,7 @@ import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/q
 import { todayIso, formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
+import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { SwipeRow } from '@features/entries/ui/SwipeRow';
 import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
@@ -23,9 +25,15 @@ import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 export default async function RecordsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cycle?: string; category?: string; account?: string; q?: string }>;
+  searchParams: Promise<{
+    cycle?: string;
+    category?: string;
+    account?: string;
+    q?: string;
+    view?: string;
+  }>;
 }) {
-  const { cycle: cycleParam, category, account, q } = await searchParams;
+  const { cycle: cycleParam, category, account, q, view } = await searchParams;
   const db = initDb();
   ensureEntriesTable(db);
   ensureSettingsTable(db);
@@ -51,18 +59,39 @@ export default async function RecordsPage({
   const filtered = Boolean(category || account);
 
   // In search mode the view spans all cycles (search results are already newest-first); otherwise
-  // it's the active cycle. Both render as the same day-grouped SwipeRow list below.
+  // it's the active cycle. Both render as the same SwipeRow list below, grouped either by day
+  // (default) or by category via ?view=category.
   const entries = searching ? searchEntries(db, query) : cycleEntries;
-  const days = groupByDate(searching ? entries : [...entries].reverse());
+  const ordered = searching ? entries : [...entries].reverse(); // newest first
+  const byCategory = view === 'category';
+  const sections = byCategory
+    ? groupByCategory(ordered).map((g) => ({ key: g.category, entries: g.entries, total: g.total }))
+    : groupByDate(ordered).map((g) => ({ key: g.date, entries: g.entries, total: g.total }));
   const total = entries.reduce((sum, e) => sum + e.amount, 0);
+
+  // Toggle links preserve the current cycle/search/filter and only flip ?view=.
+  const viewHref = (next: 'date' | 'category') => {
+    const params = new URLSearchParams();
+    if (searching) params.set('q', query);
+    else params.set('cycle', activeKey);
+    if (category) params.set('category', category);
+    if (account) params.set('account', account);
+    if (next === 'category') params.set('view', 'category');
+    return `/records?${params.toString()}`;
+  };
 
   return (
     <PageContainer size="full">
       {!searching && <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} />}
 
-      {days.length > 0 ? (
+      {sections.length > 0 ? (
         <CategoryPickerProvider iconSet={iconSet}>
           <div className="flex flex-col gap-5">
+            {/* Group-by toggle — flips the same entries between day and category sections. */}
+            <div className="panel flex gap-1 p-1">
+              <ViewLink label="By date" active={!byCategory} href={viewHref('date')} />
+              <ViewLink label="By category" active={byCategory} href={viewHref('category')} />
+            </div>
             {/* Summary of the current view (respects the active filter / search). */}
             <div className="flex items-baseline justify-between px-1">
               <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
@@ -77,18 +106,33 @@ export default async function RecordsPage({
               </span>
               <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
             </div>
-            {days.map((day) => (
-              <section key={day.date} className="flex flex-col gap-2">
-                <header className="flex items-baseline justify-between px-1">
-                  <h2 className="text-sm font-semibold">
-                    {searching ? formatDayHeadingWithYear(day.date) : formatDayHeading(day.date)}
-                  </h2>
-                  <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                    {day.entries.length} · {formatBaht(Math.abs(day.total))}
+            {sections.map((section) => (
+              <section key={section.key} className="flex flex-col gap-2">
+                <header className="flex items-baseline justify-between gap-2 px-1">
+                  {byCategory ? (
+                    <h2 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                      <CategoryIcon
+                        emoji={emojiFor(emojiMap, section.key)}
+                        name={section.key}
+                        size="sm"
+                        iconSet={iconSet}
+                        hue={hueFor(hueMap, section.key)}
+                      />
+                      <span className="truncate">{section.key}</span>
+                    </h2>
+                  ) : (
+                    <h2 className="text-sm font-semibold">
+                      {searching
+                        ? formatDayHeadingWithYear(section.key)
+                        : formatDayHeading(section.key)}
+                    </h2>
+                  )}
+                  <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
+                    {section.entries.length} · {formatBaht(Math.abs(section.total))}
                   </span>
                 </header>
                 <ul className="panel flex flex-col divide-y overflow-hidden">
-                  {day.entries.map((entry) => (
+                  {section.entries.map((entry) => (
                     <SwipeRow
                       key={entry.id}
                       entry={entry}
@@ -135,5 +179,21 @@ export default async function RecordsPage({
         <EmptyLedger />
       )}
     </PageContainer>
+  );
+}
+
+function ViewLink({ label, active, href }: { label: string; active: boolean; href: string }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      className="flex-1 rounded-[var(--radius-md)] py-2 text-center text-sm font-medium transition-colors duration-150"
+      style={{
+        background: active ? 'var(--color-accent-soft)' : 'transparent',
+        color: active ? 'var(--color-accent-text)' : 'var(--color-muted)',
+      }}
+    >
+      {label}
+    </Link>
   );
 }
