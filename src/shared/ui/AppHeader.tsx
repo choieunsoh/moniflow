@@ -17,7 +17,7 @@ export function AppHeader({ search }: { search?: ReactNode }) {
         paddingTop: 'env(safe-area-inset-top)',
       }}
     >
-      <div className="flex h-[var(--header-h)] items-center gap-3 px-4">
+      <div className="flex h-14 items-center gap-3 px-4">
         <Link
           href="/"
           className="tap shrink-0 rounded-[var(--radius-sm)]"

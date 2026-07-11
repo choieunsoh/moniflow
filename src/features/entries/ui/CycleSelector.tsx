@@ -8,8 +8,9 @@ import { cycleFromKey, stepKey } from '../cycle';
 // `cutoff` is required so the aria labels match whatever the caller resolved from settings.
 // `canGoNext` is false once the active cycle is today's — there are no future cycles to spend in
 // yet, so the next control is disabled rather than walking into empty months.
-// Sticks just under the AppHeader while the page scrolls (top offset = --header-h + safe area); its
-// opaque .panel bg hides the content passing behind it.
+// Sticks just under the AppHeader while the page scrolls; its opaque .panel bg hides the content
+// passing behind it. ponytail: top offset is the literal 3.5rem — must equal AppHeader's h-14; a
+// --header-h token was tried but Turbopack wouldn't serve the new :root var reliably.
 export function CycleSelector({
   activeKey,
   cutoff,
@@ -25,7 +26,7 @@ export function CycleSelector({
   const prevLabel = cycleFromKey(prev, cutoff).label;
   const nextLabel = cycleFromKey(next, cutoff).label;
   return (
-    <nav className="panel sticky top-[calc(var(--header-h)_+_env(safe-area-inset-top))] z-[var(--z-header)] flex items-center justify-between p-2">
+    <nav className="panel sticky top-[calc(3.5rem_+_env(safe-area-inset-top))] z-[var(--z-header)] flex items-center justify-between p-2">
       <Link
         href={`?cycle=${prev}`}
         aria-label={`Previous cycle: ${prevLabel}`}
