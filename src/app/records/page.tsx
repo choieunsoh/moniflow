@@ -16,6 +16,7 @@ import { todayIso, formatDayHeading, formatDayHeadingWithYear } from '@shared/da
 import { formatBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
+import { CollapseAllButton } from '@features/entries/ui/CollapseAllButton';
 import { SwipeRow } from '@features/entries/ui/SwipeRow';
 import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
@@ -101,22 +102,25 @@ export default async function RecordsPage({
             </div>
             {/* Summary of the current view (respects the active filter / search). */}
             <div className="flex items-baseline justify-between px-1">
-              <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                {entries.length}{' '}
-                {searching
-                  ? entries.length === 1
-                    ? 'result'
-                    : 'results'
-                  : entries.length === 1
-                    ? 'entry'
-                    : 'entries'}
+              <span className="flex items-baseline gap-3">
+                <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                  {entries.length}{' '}
+                  {searching
+                    ? entries.length === 1
+                      ? 'result'
+                      : 'results'
+                    : entries.length === 1
+                      ? 'entry'
+                      : 'entries'}
+                </span>
+                {sections.length > 1 ? <CollapseAllButton /> : null}
               </span>
               <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
             </div>
             {sections.map((section) => (
               // Native <details> = tap the header to collapse/expand, no JS. Open by default;
               // the open/closed state is DOM-local and resets when a param re-renders the page.
-              <details key={section.key} open className="flex flex-col gap-2">
+              <details key={section.key} open data-records-section className="flex flex-col gap-2">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
                   <div className="flex min-w-0 items-center gap-1.5">
                     <Chevron />
