@@ -60,6 +60,7 @@
   /* Mobile-only app frame. On the phone the column is edge-to-edge (screen <= this); on desktop it's
      a centered fixed-width phone frame. Target: Samsung Galaxy S24 Ultra (~384–412px CSS width). */
   --app-max-width: 412px;
+  --header-h: 3.5rem; /* AppHeader row height; sticky offsets (CycleSelector) key off this */
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
