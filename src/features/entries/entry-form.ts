@@ -18,7 +18,7 @@ function readString(fd: FormData, key: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-// Pure: FormData → a validated NewEntry, or a human-readable error. No DB, no Next imports — the
+// Pure: FormData → a validated EntryInput, or a human-readable error. No DB, no Next imports — the
 // Server Action calling this is the only thing that touches the database. `amount` is the
 // original-currency figure the user typed; `thb` is the THB-converted figure. For THB rows the
 // two are equal by construction (the form never shows a second field for them), so `thb` is
