@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { initDb } from '@db/client';
-import { ensureCategoryMetaTable } from './schema';
+import { ensureCategoriesTable } from './schema';
 import { setCategoryEmoji, setCategoryHue } from './queries';
 
 // Assign an emoji to a category (upsert). Revalidates the whole app so the emoji shows on records,
@@ -13,7 +13,7 @@ export async function setCategoryEmojiAction(formData: FormData): Promise<void> 
   if (typeof category !== 'string' || typeof emoji !== 'string' || !category || !emoji) return;
 
   const db = initDb();
-  ensureCategoryMetaTable(db);
+  ensureCategoriesTable(db);
   setCategoryEmoji(db, category, emoji);
   revalidatePath('/', 'layout');
 }
@@ -29,7 +29,7 @@ export async function setCategoryHueAction(formData: FormData): Promise<void> {
   if (hue !== null && (!Number.isInteger(hue) || hue < 0 || hue > 359)) return;
 
   const db = initDb();
-  ensureCategoryMetaTable(db);
+  ensureCategoriesTable(db);
   setCategoryHue(db, category, hue);
   revalidatePath('/', 'layout');
 }
