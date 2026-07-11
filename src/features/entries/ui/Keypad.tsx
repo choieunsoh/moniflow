@@ -130,6 +130,15 @@ export function Keypad({
                 name="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                // Open the OS picker from a tap anywhere on the chip, not just the (invisible)
+                // calendar indicator. showPicker throws if unsupported or already open — ignore it.
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker();
+                  } catch {
+                    // no-op: browser without showPicker, or a picker already open
+                  }
+                }}
                 aria-label="Pick another date"
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
