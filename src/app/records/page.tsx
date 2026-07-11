@@ -10,7 +10,7 @@ import { groupByCategory } from '@features/entries/by-category';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet } from '@features/settings/queries';
-import { ensureCategoryMetaTable } from '@features/categories/schema';
+import { ensureCategoriesTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { todayIso, formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
 import { formatBaht } from '@shared/money';
@@ -37,7 +37,7 @@ export default async function RecordsPage({
   const db = initDb();
   ensureEntriesTable(db);
   ensureSettingsTable(db);
-  ensureCategoryMetaTable(db);
+  ensureCategoriesTable(db);
   const emojiMap = getEmojiMap(db);
   const hueMap = getHueMap(db);
   const iconSet = getIconSet(db);

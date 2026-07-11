@@ -6,7 +6,7 @@ import type { PointerEvent } from 'react';
 import { useRef, useState } from 'react';
 import { formatBaht, formatSignedBaht } from '@shared/money';
 import { deleteEntryAction } from '../actions';
-import type { Entry } from '../schema';
+import type { EntryRow } from '../schema';
 import { resolveSwipe, type SwipeSide } from '../swipe';
 import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import type { IconSet } from '@features/settings/queries';
@@ -27,7 +27,7 @@ export function SwipeRow({
   hue,
   dateLabel,
 }: {
-  entry: Entry;
+  entry: EntryRow;
   emoji: string;
   iconSet: IconSet;
   hue?: number;

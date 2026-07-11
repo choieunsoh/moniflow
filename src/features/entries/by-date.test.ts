@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { groupByDate } from './by-date';
-import type { Entry } from './schema';
+import type { EntryRow } from './schema';
 
-function entry(id: number, date: string, amount: number): Entry {
+function entry(id: number, date: string, amount: number): EntryRow {
   return {
     id,
     date,
     time: null,
     account: 'acct',
+    categoryId: 1,
     category: 'cat',
     amount,
     currency: null,

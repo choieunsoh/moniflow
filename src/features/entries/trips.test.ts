@@ -10,7 +10,7 @@ function entry(overrides: Partial<Entry>): Entry {
     date: '2019-03-01',
     time: null,
     account: 'jpy',
-    category: 'food',
+    categoryId: 1,
     amount: -100,
     currency: 'JPY',
     originalAmount: -400,

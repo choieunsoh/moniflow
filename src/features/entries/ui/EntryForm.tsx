@@ -2,13 +2,13 @@
 
 import { useId, useState } from 'react';
 import { CURRENCIES } from '../entry-form';
-import type { Entry } from '../schema';
+import type { EntryRow } from '../schema';
 
 type EntryFormProps = {
   action: (formData: FormData) => Promise<void>;
   accounts: string[];
   categories: string[];
-  entry?: Entry;
+  entry?: EntryRow;
 };
 
 const fieldClass = 'min-h-11 rounded-[var(--radius-sm)] border px-3 py-2 text-base';
