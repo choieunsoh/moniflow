@@ -207,7 +207,9 @@ export function Keypad({
           </button>
           <span className="text-sm font-semibold">Account</span>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        {/* Square 3-col tiles, mirroring the category grid so a per-account icon drops into the slot
+            above the name later. */}
+        <div className="grid grid-cols-3 gap-2">
           {accounts.map((a) => {
             const on = account === a;
             return (
@@ -219,7 +221,7 @@ export function Keypad({
                   setView('keypad');
                 }}
                 aria-pressed={on}
-                className="tap min-h-12 justify-center rounded-[var(--radius-md)] border px-3 py-2 text-center text-sm font-medium transition-colors active:opacity-70"
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-[var(--radius-lg)] border px-2 text-center text-xs font-medium transition-colors active:opacity-70"
                 style={
                   on
                     ? {
@@ -230,7 +232,8 @@ export function Keypad({
                     : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
                 }
               >
-                {a}
+                {/* icon slot — per-account icon goes here later */}
+                <span className="line-clamp-3 w-full">{a}</span>
               </button>
             );
           })}
