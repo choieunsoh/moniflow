@@ -78,7 +78,7 @@ export function SearchBox({ suggestions }: { suggestions: string[] }) {
           onClick={() => setExpanded(true)}
           aria-label="Search records"
           aria-expanded={false}
-          className="tap grid size-11 place-items-center rounded-[var(--radius-md)] text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-text)]"
+          className="tap -mr-4 grid size-11 place-items-center rounded-[var(--radius-md)] text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-text)]"
         >
           <MagnifierGlyph size={18} />
         </button>
