@@ -51,14 +51,3 @@ const isoBangkok = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }
 export function todayIso(): string {
   return isoBangkok.format(new Date());
 }
-
-// Shift a 'YYYY-MM-DD' key by whole days. Parse as UTC midnight and step with setUTCDate so the
-// result never drifts across a DST boundary, then re-key via en-CA/UTC (same house style as the DB
-// keys). Powers the keypad's Today/Yesterday quick-date chips.
-const isoUtc = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' });
-
-export function shiftIso(isoDate: string, days: number): string {
-  const d = new Date(`${isoDate}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return isoUtc.format(d);
-}
