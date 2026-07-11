@@ -17,8 +17,9 @@ import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 import { todayIso } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
-import { getEmojiMap, emojiFor, getHueMap } from '@features/categories/queries';
+import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
+import { CategoryEditTrigger } from '@features/categories/ui/CategoryPicker';
 import { toDonutSlices } from '@features/entries/donut';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { Breakdown } from '@features/entries/ui/Breakdown';
@@ -122,18 +123,35 @@ export default async function HomePage({
                   {slices.map((s) => (
                     <li key={s.name} className="flex items-center gap-3 text-sm">
                       {/* Slice colour + category icon combined into one mark: a disc in the ring's
-                        colour with the icon inside (white line icons / emoji on the colour). */}
-                      <span
-                        aria-hidden
-                        className="grid size-7 shrink-0 place-items-center rounded-full text-base"
-                        style={{ background: s.color, color: 'var(--color-on-accent)' }}
-                      >
-                        <CategoryGlyph
-                          emoji={emojiFor(emojiMap, s.name)}
-                          iconSet={iconSet}
-                          size={18}
-                        />
-                      </span>
+                        colour with the icon inside (white line icons / emoji on the colour). Tap a
+                        real category to edit it — the disc keeps its slice colour, the dialog edits
+                        the category's own hue. The synthetic "Other" bucket isn't editable. */}
+                      {(() => {
+                        const disc = (
+                          <span
+                            aria-hidden
+                            className="grid size-7 shrink-0 place-items-center rounded-full text-base"
+                            style={{ background: s.color, color: 'var(--color-on-accent)' }}
+                          >
+                            <CategoryGlyph
+                              emoji={emojiFor(emojiMap, s.name)}
+                              iconSet={iconSet}
+                              size={18}
+                            />
+                          </span>
+                        );
+                        return s.other ? (
+                          disc
+                        ) : (
+                          <CategoryEditTrigger
+                            category={s.name}
+                            emoji={emojiFor(emojiMap, s.name)}
+                            hue={hueFor(hueMap, s.name)}
+                          >
+                            {disc}
+                          </CategoryEditTrigger>
+                        );
+                      })()}
                       <span className="flex min-w-0 flex-1 items-baseline gap-1">
                         <span className="truncate">{s.name}</span>
                         <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>

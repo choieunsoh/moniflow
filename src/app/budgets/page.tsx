@@ -19,7 +19,7 @@ import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
 import { getEmojiMap, getHueMap, emojiFor, hueFor } from '@features/categories/queries';
-import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
+import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { formatBaht } from '@shared/money';
 import { todayIso } from '@shared/date';
@@ -182,12 +182,12 @@ function CategoryRow({
     <li className="flex flex-col gap-2 border-b py-3 last:border-0">
       {/* Row 1: marker · name · amount · × */}
       <div className="flex items-center gap-3">
-        <CategoryIcon
+        <CategoryIconButton
           emoji={emojiFor(emojis, row.category)}
-          name={row.category}
-          size="sm"
+          category={row.category}
           iconSet={iconSet}
           hue={hueFor(hues, row.category)}
+          size="sm"
         />
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{row.category}</span>
         <BudgetField {...fieldProps(row.category, row.limit, row.spent)} />

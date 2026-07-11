@@ -2,7 +2,7 @@ import { formatBaht } from '@shared/money';
 import { toBars } from '../breakdown';
 import type { Breakdown as BreakdownRow } from '../queries';
 import { emojiFor, hueFor } from '@features/categories/queries';
-import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
+import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import type { IconSet } from '@features/settings/queries';
 import { toBudgetTotal } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
@@ -48,13 +48,16 @@ export function Breakdown({
               <li key={b.key} className="flex flex-col gap-1">
                 <div className="flex items-baseline justify-between text-sm">
                   <span className="flex min-w-0 items-center gap-1.5">
+                    {/* A category breakdown (emojis passed) makes each marker tappable to edit its
+                        icon; needs a CategoryPickerProvider ancestor (the app layout mounts one). An
+                        account breakdown passes no emojis, so the marker is simply absent. */}
                     {emojis ? (
-                      <CategoryIcon
+                      <CategoryIconButton
                         emoji={emojiFor(emojis, b.key)}
-                        name={b.key}
-                        size="sm"
+                        category={b.key}
                         iconSet={iconSet}
                         hue={hues ? hueFor(hues, b.key) : undefined}
+                        size="sm"
                       />
                     ) : null}
                     <span className="truncate">{b.key}</span>

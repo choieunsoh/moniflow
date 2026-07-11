@@ -5,6 +5,9 @@ import './globals.css';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { getDistinctCategories, getDistinctAccounts } from '@features/entries/queries';
+import { ensureSettingsTable } from '@features/settings/schema';
+import { getIconSet } from '@features/settings/queries';
+import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
 import { AppHeader } from '@shared/ui/AppHeader';
 import { SearchBox } from '@features/entries/ui/SearchBox';
 import { BottomBar } from '@shared/ui/BottomBar';
@@ -32,20 +35,26 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   // Autocomplete pool for the header search: distinct categories + accounts, de-duped and sorted.
   const db = initDb();
   ensureEntriesTable(db);
+  ensureSettingsTable(db);
   const suggestions = [
     ...new Set([...getDistinctCategories(db), ...getDistinctAccounts(db)]),
   ].sort();
+  const iconSet = getIconSet(db);
 
   return (
     <html lang="en" className={plexSans.variable}>
       <body className="min-h-dvh">
         {/* The whole app is a centered fixed-width phone frame (mobile-only; desktop = same size). */}
-        <div className="app-frame mx-auto flex min-h-dvh w-full max-w-[var(--app-max-width)] flex-col">
-          <AppHeader search={<SearchBox suggestions={suggestions} />} />
-          {/* pb clears the fixed bottom bar (bar height + FAB overhang + safe area). */}
-          <main className="flex-1 pb-24">{children}</main>
-        </div>
-        <BottomBar />
+        {/* One app-wide category picker: any CategoryIconButton/CategoryEditTrigger on any page taps
+            into this single shared dialog, so category icons are editable everywhere. */}
+        <CategoryPickerProvider iconSet={iconSet}>
+          <div className="app-frame mx-auto flex min-h-dvh w-full max-w-[var(--app-max-width)] flex-col">
+            <AppHeader search={<SearchBox suggestions={suggestions} />} />
+            {/* pb clears the fixed bottom bar (bar height + FAB overhang + safe area). */}
+            <main className="flex-1 pb-24">{children}</main>
+          </div>
+          <BottomBar />
+        </CategoryPickerProvider>
       </body>
     </html>
   );

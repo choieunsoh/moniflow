@@ -15,7 +15,15 @@ export const SLICE_COLORS = [
 const OTHER_COLOR = '#4b5061';
 const MAX_SLICES = SLICE_COLORS.length;
 
-export type DonutSlice = { name: string; value: number; color: string; count: number };
+// `other: true` marks the synthetic tail bucket — not a real category, so the legend must not offer
+// to edit it. Real slices omit the field.
+export type DonutSlice = {
+  name: string;
+  value: number;
+  color: string;
+  count: number;
+  other?: boolean;
+};
 
 // Category breakdown (magnitudes, already sorted desc) → donut slices, with a neutral "Other" bucket
 // for the tail beyond the palette so the ring never fragments into unreadable slivers. Each slice
@@ -35,6 +43,7 @@ export function toDonutSlices(rows: Breakdown[]): DonutSlice[] {
       value: rest.reduce((sum, s) => sum + s.value, 0),
       color: OTHER_COLOR,
       count: rest.reduce((sum, s) => sum + s.count, 0),
+      other: true,
     });
   }
   return slices;

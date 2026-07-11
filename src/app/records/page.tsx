@@ -15,10 +15,9 @@ import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/q
 import { todayIso, formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
-import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { CollapseAllButton } from '@features/entries/ui/CollapseAllButton';
 import { SwipeRow } from '@features/entries/ui/SwipeRow';
-import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
+import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
 // Records = the cycle's expenses grouped by day, newest first. Each day is a light header (date +
@@ -93,89 +92,87 @@ export default async function RecordsPage({
       )}
 
       {sections.length > 0 ? (
-        <CategoryPickerProvider iconSet={iconSet}>
-          <div className="flex flex-col gap-5">
-            {/* Group-by toggle — flips the same entries between day and category sections. */}
-            <div className="panel flex gap-1 p-1">
-              <ViewLink label="By date" active={!byCategory} href={viewHref('date')} />
-              <ViewLink label="By category" active={byCategory} href={viewHref('category')} />
-            </div>
-            {/* Summary of the current view (respects the active filter / search). */}
-            <div className="flex items-baseline justify-between px-1">
-              <span className="flex items-baseline gap-3">
-                <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                  {entries.length}{' '}
-                  {searching
-                    ? entries.length === 1
-                      ? 'result'
-                      : 'results'
-                    : entries.length === 1
-                      ? 'entry'
-                      : 'entries'}
-                </span>
-                {sections.length > 1 ? <CollapseAllButton /> : null}
-              </span>
-              <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
-            </div>
-            {sections.map((section) => (
-              // Native <details> = tap the header to collapse/expand, no JS. Collapsed by default;
-              // the open/closed state is DOM-local and resets when a param re-renders the page.
-              <details key={section.key} data-records-section className="flex flex-col gap-2">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <Chevron />
-                    {byCategory ? (
-                      <h2 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
-                        <CategoryIcon
-                          emoji={emojiFor(emojiMap, section.key)}
-                          name={section.key}
-                          size="sm"
-                          iconSet={iconSet}
-                          hue={hueFor(hueMap, section.key)}
-                        />
-                        <span className="truncate">{section.key}</span>
-                      </h2>
-                    ) : (
-                      <h2 className="truncate text-sm font-semibold">
-                        {searching
-                          ? formatDayHeadingWithYear(section.key)
-                          : formatDayHeading(section.key)}
-                      </h2>
-                    )}
-                    {/* Entry count sits next to the title (date or category); total stays right. */}
-                    <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
-                      ({section.entries.length})
-                    </span>
-                  </div>
-                  <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
-                    {formatBaht(Math.abs(section.total))}
-                  </span>
-                </summary>
-                <ul className="panel flex flex-col divide-y overflow-hidden">
-                  {section.entries.map((entry) => (
-                    <SwipeRow
-                      key={entry.id}
-                      entry={entry}
-                      emoji={emojiFor(emojiMap, entry.category)}
-                      iconSet={iconSet}
-                      hue={hueFor(hueMap, entry.category)}
-                      dateLabel={
-                        byCategory
-                          ? searching
-                            ? formatDayHeadingWithYear(entry.date)
-                            : formatDayHeading(entry.date)
-                          : undefined
-                      }
-                    />
-                  ))}
-                </ul>
-              </details>
-            ))}
-            <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
-              Swipe a row left to delete · right to edit
-            </p>
+        <div className="flex flex-col gap-5">
+          {/* Group-by toggle — flips the same entries between day and category sections. */}
+          <div className="panel flex gap-1 p-1">
+            <ViewLink label="By date" active={!byCategory} href={viewHref('date')} />
+            <ViewLink label="By category" active={byCategory} href={viewHref('category')} />
           </div>
-        </CategoryPickerProvider>
+          {/* Summary of the current view (respects the active filter / search). */}
+          <div className="flex items-baseline justify-between px-1">
+            <span className="flex items-baseline gap-3">
+              <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                {entries.length}{' '}
+                {searching
+                  ? entries.length === 1
+                    ? 'result'
+                    : 'results'
+                  : entries.length === 1
+                    ? 'entry'
+                    : 'entries'}
+              </span>
+              {sections.length > 1 ? <CollapseAllButton /> : null}
+            </span>
+            <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
+          </div>
+          {sections.map((section) => (
+            // Native <details> = tap the header to collapse/expand, no JS. Collapsed by default;
+            // the open/closed state is DOM-local and resets when a param re-renders the page.
+            <details key={section.key} data-records-section className="flex flex-col gap-2">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Chevron />
+                  {byCategory ? (
+                    <h2 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                      <CategoryIconButton
+                        category={section.key}
+                        emoji={emojiFor(emojiMap, section.key)}
+                        iconSet={iconSet}
+                        hue={hueFor(hueMap, section.key)}
+                        size="sm"
+                      />
+                      <span className="truncate">{section.key}</span>
+                    </h2>
+                  ) : (
+                    <h2 className="truncate text-sm font-semibold">
+                      {searching
+                        ? formatDayHeadingWithYear(section.key)
+                        : formatDayHeading(section.key)}
+                    </h2>
+                  )}
+                  {/* Entry count sits next to the title (date or category); total stays right. */}
+                  <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
+                    ({section.entries.length})
+                  </span>
+                </div>
+                <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
+                  {formatBaht(Math.abs(section.total))}
+                </span>
+              </summary>
+              <ul className="panel flex flex-col divide-y overflow-hidden">
+                {section.entries.map((entry) => (
+                  <SwipeRow
+                    key={entry.id}
+                    entry={entry}
+                    emoji={emojiFor(emojiMap, entry.category)}
+                    iconSet={iconSet}
+                    hue={hueFor(hueMap, entry.category)}
+                    dateLabel={
+                      byCategory
+                        ? searching
+                          ? formatDayHeadingWithYear(entry.date)
+                          : formatDayHeading(entry.date)
+                        : undefined
+                    }
+                  />
+                ))}
+              </ul>
+            </details>
+          ))}
+          <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
+            Swipe a row left to delete · right to edit
+          </p>
+        </div>
       ) : searching ? (
         <div className="panel flex flex-col items-center gap-3 px-6 py-12 text-center">
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>

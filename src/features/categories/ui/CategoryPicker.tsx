@@ -50,6 +50,39 @@ function useCategoryPicker(): PickerApi {
   return api;
 }
 
+// Wrap any category marker so tapping it opens the shared picker — use when the marker carries its
+// own styling and can't be swapped for CategoryIconButton (e.g. the donut legend's slice-coloured
+// disc). stopPropagation keeps the tap from also firing a parent handler, like a <summary> toggle or
+// a swipe row. Requires a CategoryPickerProvider ancestor (the app layout mounts one).
+export function CategoryEditTrigger({
+  category,
+  emoji,
+  hue,
+  children,
+}: {
+  category: string;
+  emoji: string;
+  hue?: number;
+  children: ReactNode;
+}) {
+  const { open } = useCategoryPicker();
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        open({ category, current: emoji, hue });
+      }}
+      aria-label={`Edit ${category}`}
+      title={`Edit ${category}`}
+      className="shrink-0 rounded-full transition-opacity active:opacity-70"
+    >
+      {children}
+    </button>
+  );
+}
+
 // A category marker that opens the shared picker for its category. Drop-in replacement for a static
 // CategoryIcon inside a CategoryPickerProvider.
 export function CategoryIconButton({
@@ -57,23 +90,17 @@ export function CategoryIconButton({
   emoji,
   iconSet,
   hue,
+  size = 'md',
 }: {
   category: string;
   emoji: string;
   iconSet: IconSet;
   hue?: number;
+  size?: 'sm' | 'md' | 'lg';
 }) {
-  const { open } = useCategoryPicker();
-
   return (
-    <button
-      type="button"
-      onClick={() => open({ category, current: emoji, hue })}
-      aria-label={`Choose icon for ${category}`}
-      title={`Change icon for ${category}`}
-      className="shrink-0 rounded-full transition-opacity active:opacity-70"
-    >
-      <CategoryIcon emoji={emoji} name={category} size="md" iconSet={iconSet} hue={hue} />
-    </button>
+    <CategoryEditTrigger category={category} emoji={emoji} hue={hue}>
+      <CategoryIcon emoji={emoji} name={category} size={size} iconSet={iconSet} hue={hue} />
+    </CategoryEditTrigger>
   );
 }
