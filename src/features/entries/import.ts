@@ -1,4 +1,4 @@
-import type { NewEntry } from './schema';
+import type { EntryInput } from './schema';
 
 // Pure Monefy-CSV → entries mapping. No DB, no fs — the CLI reads the file and calls this, which
 // is what makes it unit-testable. The parser handles Monefy's quoting: fields with commas (money
@@ -49,7 +49,7 @@ export function parseCsv(text: string): string[][] {
 // against the real export in Task 4; add entries here if that enumeration surfaces more.
 export const SKIP_CATEGORIES: readonly string[] = ['บัตรเครดิท'];
 
-export type ImportResult = { entries: NewEntry[]; skipped: number };
+export type ImportResult = { entries: EntryInput[]; skipped: number };
 
 const isoFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' });
 
@@ -71,7 +71,7 @@ function isSkippable(category: string): boolean {
 export function parseMonefyCsv(text: string): ImportResult {
   const rows = parseCsv(text);
   const body = rows.slice(1); // drop header
-  const entries: NewEntry[] = [];
+  const entries: EntryInput[] = [];
   let skipped = 0;
   for (const cols of body) {
     const category = cols[2];

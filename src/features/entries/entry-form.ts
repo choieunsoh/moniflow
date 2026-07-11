@@ -1,4 +1,4 @@
-import type { NewEntry } from './schema';
+import type { EntryInput } from './schema';
 
 // Every currency the ledger's data has seen (Monefy export + manual entries). THB is home
 // currency; the rest need a manual THB conversion since there's no live FX lookup (deferred).
@@ -11,7 +11,7 @@ function isCurrency(value: string): value is Currency {
   return currencySet.has(value);
 }
 
-export type ParseResult = { ok: true; entry: NewEntry } | { ok: false; error: string };
+export type ParseResult = { ok: true; entry: EntryInput } | { ok: false; error: string };
 
 function readString(fd: FormData, key: string): string {
   const value = fd.get(key);
@@ -52,7 +52,7 @@ export function parseEntryForm(fd: FormData): ParseResult {
   }
 
   const sign = direction === 'income' ? 1 : -1;
-  const entry: NewEntry = {
+  const entry: EntryInput = {
     date,
     time: time === '' ? null : time,
     account,
