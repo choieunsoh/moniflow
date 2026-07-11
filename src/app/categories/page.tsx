@@ -5,10 +5,10 @@ export const dynamic = 'force-dynamic';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { getCategoryCounts } from '@features/entries/queries';
-import { mergeCategoryAction } from '@features/entries/actions';
 import { ensureCategoryMetaTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { EmojiPicker } from '@features/categories/ui/EmojiPicker';
+import { CategoryNameEditor } from '@features/categories/ui/CategoryNameEditor';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
 import { PageContainer } from '@shared/ui/PageContainer';
@@ -28,8 +28,8 @@ export default function CategoriesPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Categories</h1>
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Tap a category&apos;s icon to change it. Rename a category — or type an existing name — to
-          merge it into another.
+          Tap a category&apos;s icon to restyle it, or its name to rename — type an existing name to
+          merge two together.
         </p>
       </header>
 
@@ -41,33 +41,17 @@ export default function CategoriesPage() {
         ) : (
           <ul className="flex flex-col divide-y">
             {counts.map((c) => (
-              <li key={c.category} className="flex flex-col gap-2.5 px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <EmojiPicker
-                    category={c.category}
-                    current={emojiFor(emojiMap, c.category)}
-                    iconSet={iconSet}
-                    currentHue={hueFor(hueMap, c.category)}
-                  />
-                  <span className="min-w-0 flex-1 truncate font-medium">{c.category}</span>
-                  <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                    {c.count}
-                  </span>
-                </div>
-                <form action={mergeCategoryAction} className="flex items-center gap-2">
-                  <input type="hidden" name="from" value={c.category} />
-                  <input
-                    name="to"
-                    list="category-options"
-                    placeholder="rename / merge into…"
-                    required
-                    className="min-h-11 min-w-0 flex-1 rounded-[var(--radius-sm)] border px-3 text-base"
-                    style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
-                  />
-                  <button type="submit" className="btn btn-ghost">
-                    Apply
-                  </button>
-                </form>
+              <li key={c.category} className="flex items-center gap-3 px-4 py-3">
+                <EmojiPicker
+                  category={c.category}
+                  current={emojiFor(emojiMap, c.category)}
+                  iconSet={iconSet}
+                  currentHue={hueFor(hueMap, c.category)}
+                />
+                <CategoryNameEditor category={c.category} />
+                <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
+                  {c.count}
+                </span>
               </li>
             ))}
           </ul>
