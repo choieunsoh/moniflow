@@ -170,6 +170,18 @@ export function getDistinctAccounts(db: Db): string[] {
     .map((r) => r.account);
 }
 
+// Accounts ordered by how often they've been used (most-used first). Drives the quick-entry account
+// strip so the common accounts land at the front — the default is accounts[0], the one used most.
+export function getAccountsByUsage(db: Db): string[] {
+  return db
+    .select({ account: entries.account, count: sql<number>`count(*)` })
+    .from(entries)
+    .groupBy(entries.account)
+    .all()
+    .sort((a, b) => b.count - a.count)
+    .map((r) => r.account);
+}
+
 export type CategoryCount = { category: string; count: number };
 
 // Category cleanup surface: how many rows sit in each category, so the biggest fragments are

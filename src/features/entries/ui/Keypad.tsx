@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { formatBaht } from '@shared/money';
+import { shiftIso } from '@shared/date';
 import { addEntryAction } from '../actions';
 import { evaluate } from '../calc';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
@@ -11,6 +12,39 @@ export type KeypadCategory = { name: string; emoji: string; hue?: number };
 
 const OPS = '+−×÷';
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'];
+
+// A one-tap selectable pill, shared by the quick-date and account rows. Selected = accent fill;
+// otherwise a bordered surface. `.tap` guarantees the 44px touch target; aria-pressed carries the
+// toggle state to assistive tech. Global :focus-visible supplies the focus ring.
+function Chip({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className="tap shrink-0 justify-center rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors active:opacity-70"
+      style={
+        selected
+          ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
+          : {
+              background: 'var(--color-surface-2)',
+              color: 'var(--color-text)',
+              border: '1px solid var(--color-border)',
+            }
+      }
+    >
+      {children}
+    </button>
+  );
+}
 
 // Advance the amount expression by one key press, with light guards (no leading operator, no double
 // operator, one decimal point per number). Arithmetic itself is evaluated by ../calc.
@@ -47,7 +81,10 @@ export function Keypad({
 }) {
   const [expr, setExpr] = useState('');
   const [picking, setPicking] = useState(false);
+  const [date, setDate] = useState(today);
+  const [account, setAccount] = useState(defaultAccount);
 
+  const yesterday = shiftIso(today, -1);
   const amount = evaluate(expr);
   const valid = amount !== null && amount > 0;
   const spaced = expr.replace(/([+−×÷])/g, ' $1 ').trim();
@@ -57,35 +94,49 @@ export function Keypad({
       <input type="hidden" name="currency" value="THB" />
       <input type="hidden" name="direction" value="expense" />
       <input type="hidden" name="amount" value={valid ? String(amount) : ''} />
+      <input type="hidden" name="account" value={account} />
 
       {/* Amount + inputs + keypad */}
       <div className={picking ? 'hidden' : 'flex flex-col gap-4'}>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <label className="flex-1 text-sm" style={{ color: 'var(--color-muted)' }}>
-            <span className="mb-1 block">Date</span>
+        {/* Date: one-tap Today/Yesterday chips for the common case; the native picker (which stays in
+            sync with the chips) is the escape hatch for any other day. */}
+        <div className="flex flex-col gap-2">
+          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            Date
+          </span>
+          <div className="flex gap-2">
+            <Chip selected={date === today} onClick={() => setDate(today)}>
+              Today
+            </Chip>
+            <Chip selected={date === yesterday} onClick={() => setDate(yesterday)}>
+              Yesterday
+            </Chip>
             <input
               type="date"
               name="date"
-              defaultValue={today}
-              className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              aria-label="Pick another date"
+              className="tnum h-11 min-w-0 flex-1 rounded-full border px-3 text-sm"
               style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
             />
-          </label>
-          <label className="flex-1 text-sm" style={{ color: 'var(--color-muted)' }}>
-            <span className="mb-1 block">Account</span>
-            <select
-              name="account"
-              defaultValue={defaultAccount}
-              className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
-              style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
-            >
-              {accounts.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
-          </label>
+          </div>
+        </div>
+
+        {/* Account: one-tap chips instead of a dropdown. Most-used first (see page.tsx), in a single
+            horizontal-scroll strip so many accounts don't push the keypad off-screen. Selection posts
+            via the hidden `account`. */}
+        <div className="flex flex-col gap-2">
+          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            Account
+          </span>
+          <div className="-mx-1 flex [scrollbar-width:none] gap-2 overflow-x-auto px-1 pb-1">
+            {accounts.map((a) => (
+              <Chip key={a} selected={account === a} onClick={() => setAccount(a)}>
+                {a}
+              </Chip>
+            ))}
+          </div>
         </div>
 
         <div className="panel flex flex-col items-end gap-1 px-5 py-4">

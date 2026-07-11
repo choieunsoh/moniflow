@@ -15,6 +15,7 @@ import {
   getEntryById,
   getDistinctCategories,
   getDistinctAccounts,
+  getAccountsByUsage,
   getCategoryCounts,
   renameCategory,
   getForeignEntries,
@@ -187,6 +188,21 @@ describe('getDistinctCategories / getDistinctAccounts', () => {
     ]);
     expect(getDistinctCategories(d)).toEqual(['food', 'travel']);
     expect(getDistinctAccounts(d)).toEqual(['cash', 'visa']);
+  });
+});
+
+describe('getAccountsByUsage', () => {
+  it('orders accounts by entry count, most-used first', () => {
+    const d = db();
+    addEntries(d, [
+      { date: '2026-07-01', account: 'cash', category: 'food', amount: -1 },
+      { date: '2026-07-02', account: 'visa', category: 'food', amount: -1 },
+      { date: '2026-07-03', account: 'visa', category: 'food', amount: -1 },
+      { date: '2026-07-04', account: 'visa', category: 'food', amount: -1 },
+      { date: '2026-07-05', account: 'cash', category: 'food', amount: -1 },
+      { date: '2026-07-06', account: 'bank', category: 'food', amount: -1 },
+    ]);
+    expect(getAccountsByUsage(d)).toEqual(['visa', 'cash', 'bank']);
   });
 });
 

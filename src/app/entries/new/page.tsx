@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
-import { getDistinctAccounts, getCategoryCounts } from '@features/entries/queries';
+import { getAccountsByUsage, getCategoryCounts } from '@features/entries/queries';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { ensureSettingsTable } from '@features/settings/schema';
@@ -27,7 +27,8 @@ export default function NewEntryPage() {
     emoji: emojiFor(emojiMap, c.category),
     hue: hueFor(hueMap, c.category),
   }));
-  const accounts = getDistinctAccounts(db);
+  // Most-used accounts first, so the quick-entry strip surfaces the common ones without scrolling.
+  const accounts = getAccountsByUsage(db);
 
   return (
     <PageContainer size="full">
