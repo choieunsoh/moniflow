@@ -1,6 +1,6 @@
 import { sqliteTable, integer, text, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
-import { migrateCategoryIds } from '@db/migrate';
+import { migrateCategoryIds, dropLegacyCategoryColumns } from '@db/migrate';
 import type { Db } from '@db/client';
 
 // The money-flow ledger — one row per inflow/outflow. `amount` is signed THB (the converted value)
@@ -61,4 +61,5 @@ export function ensureEntriesTable(db: Db): void {
     )
   `);
   migrateCategoryIds(db);
+  dropLegacyCategoryColumns(db);
 }

@@ -1,6 +1,6 @@
 import { sqliteTable, integer, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
-import { migrateCategoryIds } from '@db/migrate';
+import { migrateCategoryIds, dropLegacyCategoryColumns } from '@db/migrate';
 import type { Db } from '@db/client';
 
 // Standing budgets — no cycle column; the same limit applies to every billing cycle. The row with
@@ -29,4 +29,5 @@ export function ensureBudgetsTable(db: Db): void {
     )
   `);
   migrateCategoryIds(db);
+  dropLegacyCategoryColumns(db);
 }

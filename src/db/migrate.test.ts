@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { initDb } from '@db/client';
-import { migrateCategoryIds } from './migrate';
+import { migrateCategoryIds, dropLegacyCategoryColumns } from './migrate';
 
 // Build a DB in the pre-migration ("legacy") shape: entries/budgets keyed by category TEXT, plus a
 // category_meta table carrying emoji/hue. This is what a real user's data looks like before upgrade.
@@ -71,5 +71,34 @@ describe('migrateCategoryIds', () => {
     const db = initDb(':memory:');
     migrateCategoryIds(db);
     expect(() => db.run(sql`INSERT INTO categories (name, emoji) VALUES ('x','🏷️')`)).not.toThrow();
+  });
+});
+
+describe('dropLegacyCategoryColumns', () => {
+  it('drops the vestigial category text columns and category_meta after backfill', () => {
+    const db = legacyDb();
+    migrateCategoryIds(db);
+    dropLegacyCategoryColumns(db);
+    const cols = (t: string) =>
+      db
+        .all(sql`PRAGMA table_info(${sql.raw(t)})`)
+        .flatMap((r) =>
+          typeof r === 'object' && r !== null && 'name' in r && typeof r.name === 'string'
+            ? [r.name]
+            : [],
+        );
+    expect(cols('entries')).toContain('category_id');
+    expect(cols('entries')).not.toContain('category');
+    expect(cols('budgets')).not.toContain('category');
+    expect(
+      db.all(sql`SELECT name FROM sqlite_master WHERE type='table' AND name='category_meta'`),
+    ).toHaveLength(0);
+  });
+
+  it('is idempotent and safe on an already-clean DB', () => {
+    const db = legacyDb();
+    migrateCategoryIds(db);
+    dropLegacyCategoryColumns(db);
+    expect(() => dropLegacyCategoryColumns(db)).not.toThrow();
   });
 });

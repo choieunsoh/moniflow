@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { migrateCategoryIds } from '@db/migrate';
+import { migrateCategoryIds, dropLegacyCategoryColumns } from '@db/migrate';
 import type { Db } from '@db/client';
 
 // First-class categories. Each category is a real row with a surrogate `id` PK — entries and budgets
@@ -25,4 +25,5 @@ export type NewCategory = typeof categories.$inferInsert;
 // invoked here and from ensureEntriesTable/ensureBudgetsTable so any read path triggers it.
 export function ensureCategoriesTable(db: Db): void {
   migrateCategoryIds(db);
+  dropLegacyCategoryColumns(db);
 }
