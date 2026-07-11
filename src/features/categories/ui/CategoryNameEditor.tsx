@@ -6,8 +6,16 @@ import { mergeCategoryAction } from '@features/entries/actions';
 // Tap the category name to rename it inline — or type an existing name to merge this category into
 // that one (the shared #category-options datalist autocompletes). Collapsed to a plain label until
 // tapped so the list stays calm. Submitting an unchanged name is a safe no-op: mergeCategoryAction
-// rejects from === trimmed(to). Esc cancels.
-export function CategoryNameEditor({ category }: { category: string }) {
+// rejects from === trimmed(to). Esc cancels. `onDone` fires on submit — used inside the icon/bg
+// dialog to close it after a rename (Esc there stops at the input, so it cancels the rename without
+// also closing the dialog).
+export function CategoryNameEditor({
+  category,
+  onDone,
+}: {
+  category: string;
+  onDone?: () => void;
+}) {
   const [editing, setEditing] = useState(false);
 
   if (!editing) {
@@ -24,7 +32,11 @@ export function CategoryNameEditor({ category }: { category: string }) {
   }
 
   return (
-    <form action={mergeCategoryAction} className="flex min-w-0 flex-1 items-center gap-2">
+    <form
+      action={mergeCategoryAction}
+      onSubmit={() => onDone?.()}
+      className="flex min-w-0 flex-1 items-center gap-2"
+    >
       <input type="hidden" name="from" value={category} />
       <input
         name="to"
@@ -33,7 +45,10 @@ export function CategoryNameEditor({ category }: { category: string }) {
         autoFocus
         onFocus={(e) => e.currentTarget.select()}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') setEditing(false);
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            setEditing(false);
+          }
         }}
         required
         aria-label={`Rename ${category}`}

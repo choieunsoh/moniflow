@@ -3,6 +3,7 @@
 import type { RefObject } from 'react';
 import { EMOJI_CHOICES, EMOJI_LABELS } from '../queries';
 import { CategoryIcon } from './CategoryIcon';
+import { CategoryNameEditor } from './CategoryNameEditor';
 import { iconMapFor } from '../icon-for';
 import { categoryColorBold, HUE_PRESETS } from '../color';
 import { setCategoryEmojiAction, setCategoryHueAction } from '../actions';
@@ -44,10 +45,11 @@ export function CategoryPickerDialog({
     >
       {category !== null && (
         <div className="flex flex-col gap-3 p-4">
-          {/* Live preview of the current icon on its current background. */}
+          {/* Live preview of the current icon on its current background; tap the name to rename it
+              (closes the dialog on submit, since the old category key no longer exists). */}
           <div className="flex items-center gap-3">
             <CategoryIcon emoji={current} name={category} size="lg" iconSet={iconSet} hue={hue} />
-            <span className="min-w-0 truncate text-sm font-semibold">{category}</span>
+            <CategoryNameEditor category={category} onDone={close} />
           </div>
 
           <h2 className="text-sm font-semibold">Icon</h2>
