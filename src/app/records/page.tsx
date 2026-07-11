@@ -4,12 +4,7 @@ import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
-import {
-  getEntriesInRange,
-  searchEntries,
-  getDistinctCategories,
-  getDistinctAccounts,
-} from '@features/entries/queries';
+import { getEntriesInRange, searchEntries } from '@features/entries/queries';
 import { groupByDate } from '@features/entries/by-date';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { ensureSettingsTable } from '@features/settings/schema';
@@ -19,7 +14,6 @@ import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/q
 import { todayIso, formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
-import { SearchBox } from '@features/entries/ui/SearchBox';
 import { SwipeRow } from '@features/entries/ui/SwipeRow';
 import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
@@ -40,12 +34,9 @@ export default async function RecordsPage({
   const hueMap = getHueMap(db);
   const iconSet = getIconSet(db);
 
-  // Autocomplete pool: distinct categories + accounts, de-duped and sorted for the <datalist>.
+  // Search box now lives in the header (layout); this page just reads ?q= and renders the results.
   const query = (q ?? '').trim();
   const searching = query.length > 0;
-  const suggestions = [
-    ...new Set([...getDistinctCategories(db), ...getDistinctAccounts(db)]),
-  ].sort();
 
   const cutoff = getCutoff(db);
   const currentKey = currentCycleKey(todayIso(), cutoff);
@@ -67,7 +58,6 @@ export default async function RecordsPage({
 
   return (
     <PageContainer size="full">
-      <SearchBox query={query} suggestions={suggestions} />
       {!searching && <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} />}
 
       {days.length > 0 ? (

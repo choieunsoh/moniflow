@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { filterSuggestions, wrapIndex } from '../combobox';
 
 // Records search — one slim field, no chrome. A magnifier marks it; typing runs a live search
@@ -11,9 +11,13 @@ import { filterSuggestions, wrapIndex } from '../combobox';
 // so it never offers a value the search wouldn't match. router.replace (not push) keeps the back
 // button from filling with one entry per keystroke; only the ?q= param changes, so this client
 // component keeps its state (value, focus, dropdown).
-export function SearchBox({ query, suggestions }: { query: string; suggestions: string[] }) {
+export function SearchBox({ suggestions }: { suggestions: string[] }) {
   const router = useRouter();
   const listId = useId();
+  // The header lives in the layout and gets no page searchParams, so read the active query straight
+  // off the URL. Typing from any page redirects to /records?q=… — that's the "results show on
+  // records" behaviour.
+  const query = (useSearchParams().get('q') ?? '').trim();
 
   const [value, setValue] = useState(query);
   const [open, setOpen] = useState(false);

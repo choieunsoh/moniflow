@@ -2,8 +2,15 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { IBM_Plex_Sans } from 'next/font/google';
 import './globals.css';
+import { initDb } from '@db/client';
+import { ensureEntriesTable } from '@features/entries/schema';
+import { getDistinctCategories, getDistinctAccounts } from '@features/entries/queries';
 import { AppHeader } from '@shared/ui/AppHeader';
+import { SearchBox } from '@features/entries/ui/SearchBox';
 import { BottomBar } from '@shared/ui/BottomBar';
+
+// The header search reads SQLite (autocomplete pool), and better-sqlite3 can't be prerendered.
+export const dynamic = 'force-dynamic';
 
 // One app-wide typeface: IBM Plex Sans carries UI, prose, and figures alike (numbers just add
 // tabular-nums via .tnum). Self-hosted & subset by next/font — no external request, no layout
@@ -22,12 +29,19 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  // Autocomplete pool for the header search: distinct categories + accounts, de-duped and sorted.
+  const db = initDb();
+  ensureEntriesTable(db);
+  const suggestions = [
+    ...new Set([...getDistinctCategories(db), ...getDistinctAccounts(db)]),
+  ].sort();
+
   return (
     <html lang="en" className={plexSans.variable}>
       <body className="min-h-dvh">
         {/* The whole app is a centered fixed-width phone frame (mobile-only; desktop = same size). */}
         <div className="app-frame mx-auto flex min-h-dvh w-full max-w-[var(--app-max-width)] flex-col">
-          <AppHeader />
+          <AppHeader search={<SearchBox suggestions={suggestions} />} />
           {/* pb clears the fixed bottom bar (bar height + FAB overhang + safe area). */}
           <main className="flex-1 pb-24">{children}</main>
         </div>
