@@ -7,6 +7,7 @@ import { addEntryAction } from '../actions';
 import { evaluate } from '../calc';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import type { IconSet } from '@features/settings/queries';
+import type { EntryRow } from '../schema';
 
 export type KeypadCategory = { name: string; emoji: string; hue?: number };
 
@@ -72,24 +73,30 @@ function nextExpr(prev: string, key: string): string {
 // Monefy-style expense entry: a calculator keypad for the amount, then a category grid that submits.
 // Three views (keypad / account picker / category picker) toggle via `hidden` inside one always-
 // mounted <form>, so date / account / note always post. The account picker just sets state and
-// returns; the category tile is what submits. Expense-only — direction is fixed.
+// returns; the category tile is what submits. THB-expense only (direction fixed) — reused for both
+// the new-entry route and editing a THB expense; pass `entry` + editEntryAction to edit an existing
+// row (its id + time ride along as hidden fields so the update preserves them).
 export function Keypad({
   categories,
   accounts,
   defaultAccount,
   today,
   iconSet,
+  action = addEntryAction,
+  entry,
 }: {
   categories: KeypadCategory[];
   accounts: string[];
   defaultAccount: string;
   today: string;
   iconSet: IconSet;
+  action?: (formData: FormData) => Promise<void>;
+  entry?: EntryRow;
 }) {
-  const [expr, setExpr] = useState('');
+  const [expr, setExpr] = useState(entry ? String(Math.abs(entry.amount)) : '');
   const [view, setView] = useState<'keypad' | 'account' | 'category'>('keypad');
-  const [date, setDate] = useState(today);
-  const [account, setAccount] = useState(defaultAccount);
+  const [date, setDate] = useState(entry?.date ?? today);
+  const [account, setAccount] = useState(entry?.account ?? defaultAccount);
 
   const isCustomDate = date !== today;
   const amount = evaluate(expr);
@@ -97,7 +104,11 @@ export function Keypad({
   const spaced = expr.replace(/([+−×÷])/g, ' $1 ').trim();
 
   return (
-    <form action={addEntryAction} className="flex flex-col gap-4">
+    <form action={action} className="flex flex-col gap-4">
+      {/* Edit mode: carry the row id and its existing time so the update targets the right row and
+          doesn't null a time the keypad has no field for. */}
+      {entry ? <input type="hidden" name="id" value={entry.id} /> : null}
+      {entry ? <input type="hidden" name="time" value={entry.time ?? ''} /> : null}
       <input type="hidden" name="currency" value="THB" />
       <input type="hidden" name="direction" value="expense" />
       <input type="hidden" name="amount" value={valid ? String(amount) : ''} />
@@ -173,6 +184,7 @@ export function Keypad({
         <input
           name="note"
           placeholder="Note (optional)"
+          defaultValue={entry?.note ?? ''}
           className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
           style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
         />
@@ -275,7 +287,16 @@ export function Keypad({
               type="submit"
               name="category"
               value={c.name}
+              // When editing, outline the row's current category so it's easy to spot / keep.
               className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-colors active:opacity-70"
+              style={
+                entry?.category === c.name
+                  ? {
+                      borderColor: 'var(--color-accent)',
+                      boxShadow: 'inset 0 0 0 1px var(--color-accent)',
+                    }
+                  : undefined
+              }
             >
               <CategoryIcon emoji={c.emoji} name={c.name} size="lg" iconSet={iconSet} hue={c.hue} />
               <span className="w-full truncate text-xs" style={{ color: 'var(--color-muted)' }}>
