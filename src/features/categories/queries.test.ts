@@ -53,4 +53,23 @@ describe('emoji + hue maps read/write categories', () => {
     expect(hueFor(getHueMap(d), 'rent')).toBeUndefined();
     expect(emojiFor(getEmojiMap(d), 'rent')).toBe('🏠'); // still there
   });
+
+  it('keeps 0 (red) as a real pick, not "unset"', () => {
+    const d = db();
+    setCategoryHue(d, 'Rent', 0);
+    expect(getHueMap(d)).toEqual({ Rent: 0 });
+  });
+
+  it('upserts: re-assigning replaces the emoji', () => {
+    const d = db();
+    setCategoryEmoji(d, 'Grab Food', '🍔');
+    setCategoryEmoji(d, 'Grab Food', '🍜');
+    expect(getEmojiMap(d)).toEqual({ 'Grab Food': '🍜' });
+  });
+
+  it('round-trips a non-ASCII (Thai) category name', () => {
+    const d = db();
+    setCategoryEmoji(d, 'ค่าไฟ', '💡');
+    expect(getEmojiMap(d)).toEqual({ ค่าไฟ: '💡' });
+  });
 });
