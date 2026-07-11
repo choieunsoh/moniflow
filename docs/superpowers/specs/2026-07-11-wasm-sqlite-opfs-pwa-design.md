@@ -116,11 +116,22 @@ server tree.
 ## Testing strategy
 
 - Pure-module Vitest tests: **unchanged.**
-- `queries.ts` tests: keep executing against Node `better-sqlite3` in Vitest (same SQLite
-  dialect, fast, sync) — drizzle abstracts the driver, so the SQL under test is identical to
-  what the WASM worker runs at runtime.
+- `queries.ts` tests: run against the **same `sqlite-proxy` async driver that ships**, backed
+  by an in-memory `better-sqlite3` shim in Node (`makeNodeProxyDb()`). This exercises the exact
+  async code path (including `db.batch`) rather than a separate sync driver. Test files switch
+  `initDb(':memory:')` → `makeNodeProxyDb()` and add `await` — a one-time mechanical change to
+  the 7 DB-backed test files.
 - New worker/RPC glue: a thin smoke test that a round-trip `INSERT` then `SELECT` returns the
   row; heavier verification is manual in-browser.
+
+## Transactions & the async driver
+
+`sqlite-proxy` has no interactive `db.transaction(cb)`. The 3 transactional query functions
+(`replaceEntries`, `setBudget`, `setCutoff`/`setIconSet`) convert from `db.transaction(...)`
+to **`db.batch([...])`** — an array of statements the driver's batch callback wraps in a
+single `BEGIN…COMMIT` (in the worker for the browser; in a `better-sqlite3` transaction for
+the Node shim). Persistence uses the **OPFS SAHPool VFS**, which needs no COOP/COEP headers,
+so static hosting works unchanged.
 
 ## Retired
 
