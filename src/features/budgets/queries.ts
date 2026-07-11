@@ -1,33 +1,46 @@
 import { eq, isNull } from 'drizzle-orm';
 import type { Db } from '@db/client';
-import { budgets, type Budget } from './schema';
+import { budgets, type BudgetReadRow } from './schema';
+import { categories } from '@features/categories/schema';
+import { categoryIdFor } from '@features/categories/queries';
 
-// Typed reads/writes for the budgets feature — standing (non-cycle) spending limits.
-export function getBudgets(db: Db): Budget[] {
-  return db.select().from(budgets).all();
+// Read budgets with their category name joined (null for the total row) so the page + budget-status
+// model keep working with names. leftJoin because the total row has a null category_id.
+export function getBudgets(db: Db): BudgetReadRow[] {
+  return db
+    .select({
+      id: budgets.id,
+      categoryId: budgets.categoryId,
+      category: categories.name,
+      amount: budgets.amount,
+    })
+    .from(budgets)
+    .leftJoin(categories, eq(budgets.categoryId, categories.id))
+    .all();
 }
 
-// Upsert-by-category: delete any existing row for this category (or the null-category total
-// row), then insert the new amount. A plain delete+insert instead of INSERT ... ON CONFLICT
-// because SQLite would need a UNIQUE index on category to conflict-detect, and NULL values are
-// never considered equal to each other in a UNIQUE index — the total row could never be reliably
-// upserted that way. isNull(...) handles the total row explicitly; eq(col, null) would compile to
-// an always-false comparison and silently fail to clear the old total row.
+// Upsert-by-category (or the null-category total). Delete+insert rather than ON CONFLICT: NULLs are
+// never equal in a UNIQUE index, so the total row can't be conflict-upserted; isNull handles it
+// explicitly. A per-category budget resolves its name to an id (creating the category if new).
 export function setBudget(db: Db, category: string | null, amount: number): void {
+  const categoryId = category === null ? null : categoryIdFor(db, category);
   db.transaction((tx) => {
-    if (category === null) {
-      tx.delete(budgets).where(isNull(budgets.category)).run();
-    } else {
-      tx.delete(budgets).where(eq(budgets.category, category)).run();
-    }
-    tx.insert(budgets).values({ category, amount }).run();
+    if (categoryId === null) tx.delete(budgets).where(isNull(budgets.categoryId)).run();
+    else tx.delete(budgets).where(eq(budgets.categoryId, categoryId)).run();
+    tx.insert(budgets).values({ categoryId, amount }).run();
   });
 }
 
 export function deleteBudget(db: Db, category: string | null): void {
   if (category === null) {
-    db.delete(budgets).where(isNull(budgets.category)).run();
-  } else {
-    db.delete(budgets).where(eq(budgets.category, category)).run();
+    db.delete(budgets).where(isNull(budgets.categoryId)).run();
+    return;
   }
+  const row = db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.name, category))
+    .get();
+  if (!row) return; // unknown category → nothing to delete
+  db.delete(budgets).where(eq(budgets.categoryId, row.id)).run();
 }
