@@ -71,7 +71,7 @@ import {
 
 // Maps each picker emoji to its lucide equivalent. Emoji left out here (tea 🍵, champagne 🍾,
 // dress 👗, won 🇰🇷) have no clean lucide glyph and fall back to the emoji itself — lucide lacks
-// these where phosphor has them. Keyed by emoji so category_meta needs no re-keying.
+// these where phosphor has them. Keyed by emoji, so a category's stored emoji maps straight through.
 export const LUCIDE_ICONS: Record<string, LucideIcon> = {
   '🍔': Beef,
   '🍜': Soup,
