@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { isActivePath } from './active-path';
+import { cycleHref } from './cycle-href';
 import { MoreSheet } from './MoreSheet';
 
 // App-style tab bar, always visible, centered to the app column. Five slots:
@@ -14,6 +15,10 @@ import { MoreSheet } from './MoreSheet';
 // Icons are a consistent 24px outline set; the pill animates and presses for tactile feedback.
 export function BottomBar() {
   const pathname = usePathname();
+  // Carry the selected cycle onto the primary tabs so it stays put when you switch sections (Home
+  // ↔ Records ↔ Budgets). The FAB and the More sheet's links go to pages that don't read a cycle,
+  // so they stay bare.
+  const cycle = useSearchParams().get('cycle');
   const [moreOpen, setMoreOpen] = useState(false);
 
   return (
@@ -30,9 +35,14 @@ export function BottomBar() {
         }}
       >
         <ul className="grid grid-cols-5 items-end">
-          <BarTab href="/" label="Home" active={isActivePath(pathname, '/')} icon={<HomeIcon />} />
           <BarTab
-            href="/records"
+            href={cycleHref('/', cycle)}
+            label="Home"
+            active={isActivePath(pathname, '/')}
+            icon={<HomeIcon />}
+          />
+          <BarTab
+            href={cycleHref('/records', cycle)}
             label="Records"
             active={isActivePath(pathname, '/records')}
             icon={<RecordsIcon />}
@@ -40,7 +50,7 @@ export function BottomBar() {
           {/* Spacer: the FAB floats over this column (absolutely positioned below). */}
           <li aria-hidden className="h-0" />
           <BarTab
-            href="/budgets"
+            href={cycleHref('/budgets', cycle)}
             label="Budgets"
             active={isActivePath(pathname, '/budgets')}
             icon={<BudgetsIcon />}
