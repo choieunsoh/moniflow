@@ -35,6 +35,16 @@ describe('ToastRegion', () => {
     expect(screen.queryByText('Merged into Cash')).toBeNull();
   });
 
+  it('an error toast item carries an assertive role (alert), a normal one polite (status)', () => {
+    render(<ToastRegion />);
+    act(() => {
+      toast('Saved');
+      toast.error('Import failed');
+    });
+    expect(screen.getByText('Import failed').closest('[role]')?.getAttribute('role')).toBe('alert');
+    expect(screen.getByText('Saved').closest('[role]')?.getAttribute('role')).toBe('status');
+  });
+
   it('the dismiss button removes the toast', () => {
     render(<ToastRegion />);
     act(() => {

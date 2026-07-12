@@ -58,7 +58,7 @@ function ToastItem({
   return (
     <div
       className="toast"
-      role="status"
+      role={toast.tone === 'assertive' ? 'alert' : 'status'}
       onMouseEnter={() => pause(id)}
       onMouseLeave={() => resume(id)}
       onFocus={() => pause(id)}
