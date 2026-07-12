@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { toast, getToasts, dismissToast, resetToasts } from './toast';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { toast, getToasts, dismissToast, resetToasts, subscribe } from './toast';
 
 describe('toast store', () => {
   beforeEach(() => resetToasts());
@@ -35,5 +35,34 @@ describe('toast store', () => {
     const a = toast('A');
     const b = toast('B');
     expect(b).toBeGreaterThan(a);
+  });
+});
+
+describe('subscribe', () => {
+  beforeEach(() => resetToasts());
+
+  it('fires a registered listener when a toast is pushed', () => {
+    const listener = vi.fn();
+    subscribe(listener);
+    toast('x');
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops delivery after the returned unsubscribe is called', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribe(listener);
+    toast('x');
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+    toast('y');
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a stable reference between mutations and a new reference after a push', () => {
+    expect(getToasts()).toBe(getToasts());
+    const before = getToasts();
+    toast('x');
+    const after = getToasts();
+    expect(before).not.toBe(after);
   });
 });
