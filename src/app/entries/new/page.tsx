@@ -3,16 +3,10 @@ export const dynamic = 'force-dynamic';
 
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
-import { getAccountsByUsage, getLatestAccount, getCategoryCounts } from '@features/entries/queries';
+import { getLatestAccount } from '@features/entries/queries';
+import { getKeypadCategories, getKeypadAccounts } from '@features/entries/keypad-lists';
 import { ensureCategoriesTable } from '@features/categories/schema';
-import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { ensureAccountsTable } from '@features/accounts/schema';
-import {
-  getAccountIconMap,
-  iconForAccount,
-  getAccountHueMap,
-  hueForAccount,
-} from '@features/accounts/queries';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
 import { Keypad } from '@features/entries/ui/Keypad';
@@ -26,25 +20,11 @@ export default function NewEntryPage() {
   ensureAccountsTable(db);
   ensureSettingsTable(db);
 
-  const emojiMap = getEmojiMap(db);
-  const hueMap = getHueMap(db);
   const iconSet = getIconSet(db);
-  // Most-used categories first, so the common ones are at the top of the picker grid.
-  const categories = getCategoryCounts(db).map((c) => ({
-    name: c.category,
-    emoji: emojiFor(emojiMap, c.category),
-    hue: hueFor(hueMap, c.category),
-  }));
-  // Most-used accounts first for the picker grid, each with its brand glyph + hue (same shape as the
-  // category tiles). Default to the account last used so the common case (same account again) is zero
-  // taps.
-  const accountIconMap = getAccountIconMap(db);
-  const accountHueMap = getAccountHueMap(db);
-  const accounts = getAccountsByUsage(db).map((name) => ({
-    name,
-    icon: iconForAccount(accountIconMap, name),
-    hue: hueForAccount(accountHueMap, name),
-  }));
+  // Tiles in the user's manual keypad order (count/usage order for anything not yet dragged).
+  const categories = getKeypadCategories(db);
+  const accounts = getKeypadAccounts(db);
+  // Default to the account last used so the common case (same account again) is zero taps.
   const latestAccount = getLatestAccount(db) ?? accounts[0]?.name ?? '';
 
   return (

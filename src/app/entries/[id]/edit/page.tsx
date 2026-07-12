@@ -5,21 +5,13 @@ import { notFound } from 'next/navigation';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import {
-  getAccountsByUsage,
-  getCategoryCounts,
   getDistinctAccounts,
   getDistinctCategories,
   getEntryById,
 } from '@features/entries/queries';
+import { getKeypadCategories, getKeypadAccounts } from '@features/entries/keypad-lists';
 import { ensureCategoriesTable } from '@features/categories/schema';
-import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
 import { ensureAccountsTable } from '@features/accounts/schema';
-import {
-  getAccountIconMap,
-  iconForAccount,
-  getAccountHueMap,
-  hueForAccount,
-} from '@features/accounts/queries';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
 import { editEntryAction } from '@features/entries/actions';
@@ -45,21 +37,9 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
     ensureCategoriesTable(db);
     ensureAccountsTable(db);
     ensureSettingsTable(db);
-    const emojiMap = getEmojiMap(db);
-    const hueMap = getHueMap(db);
     const iconSet = getIconSet(db);
-    const categories = getCategoryCounts(db).map((c) => ({
-      name: c.category,
-      emoji: emojiFor(emojiMap, c.category),
-      hue: hueFor(hueMap, c.category),
-    }));
-    const accountIconMap = getAccountIconMap(db);
-    const accountHueMap = getAccountHueMap(db);
-    const accounts = getAccountsByUsage(db).map((name) => ({
-      name,
-      icon: iconForAccount(accountIconMap, name),
-      hue: hueForAccount(accountHueMap, name),
-    }));
+    const categories = getKeypadCategories(db);
+    const accounts = getKeypadAccounts(db);
 
     return (
       <PageContainer size="full">
