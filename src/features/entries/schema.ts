@@ -11,8 +11,9 @@ import type { Db } from '@db/client';
 // The money-flow ledger — one row per inflow/outflow. `amount` is signed THB (the converted value)
 // and is the basis for every rollup. `currency` + `originalAmount` preserve the source currency for
 // non-THB rows so the import is lossless; they are informational only. `time` is a nullable 24h
-// 'HH:MM'. `category_id` is a FK into categories.id (nullable at the DB level — SQLite can't ALTER to
-// NOT NULL; app writes always set it). This file is the schema source of truth.
+// 'HH:MM'. `category_id` is a FK into categories.id and `account_id` a FK into accounts.id (both
+// nullable at the DB level — SQLite can't ALTER to NOT NULL; app writes always set them). This file
+// is the schema source of truth.
 export const entries = sqliteTable('entries', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(), // YYYY-MM-DD
@@ -47,10 +48,11 @@ export type EntryInput = {
   source?: string;
 };
 
-// ponytail: CREATE TABLE IF NOT EXISTS bootstrap. Fresh installs get category_id directly; existing
-// text-keyed DBs are upgraded by migrateCategoryIds (idempotent, guarded, invoked here so any page
-// that ensures entries triggers the one-time backfill); dropLegacyCategoryColumns then removes the
-// now-unused `category` text column once category_id is populated.
+// ponytail: CREATE TABLE IF NOT EXISTS bootstrap. Fresh installs get category_id + account_id
+// directly; existing text-keyed DBs are upgraded by migrateCategoryIds / migrateAccountIds
+// (idempotent, guarded, invoked here so any page that ensures entries triggers the one-time backfill);
+// dropLegacyCategoryColumns / dropLegacyAccountColumn then remove the now-unused `category` and
+// `account` text columns once their *_id replacements are populated.
 export function ensureEntriesTable(db: Db): void {
   db.run(sql`
     CREATE TABLE IF NOT EXISTS entries (

@@ -18,7 +18,7 @@ import { categories } from '@features/categories/schema';
 import { categoryIdFor } from '@features/categories/queries';
 import { budgets } from '@features/budgets/schema';
 import { accounts } from '@features/accounts/schema';
-import { accountIdFor } from '@features/accounts/queries';
+import { accountIdFor, FALLBACK_ICON } from '@features/accounts/queries';
 
 // Typed reads/writes for the entries feature. Server Components and the CLI call these directly
 // — no API layer. Column selections infer row types, so no `as` casts are needed.
@@ -367,13 +367,7 @@ export function renameAccount(db: Db, from: string, to: string): void {
   if (!source) return;
   const target = db.select({ id: accounts.id }).from(accounts).where(eq(accounts.name, to)).get();
   if (target && target.id !== source.id) {
-    db.transaction((tx) => {
-      tx.update(entries)
-        .set({ accountId: target.id })
-        .where(eq(entries.accountId, source.id))
-        .run();
-      tx.delete(accounts).where(eq(accounts.id, source.id)).run();
-    });
+    mergeAccountInto(db, from, to); // one implementation of "merge accounts"; snapshot discarded here
   } else {
     db.update(accounts).set({ name: to }).where(eq(accounts.id, source.id)).run();
   }
@@ -405,7 +399,7 @@ export type AccountMergeSnapshot = {
 // deletes the source row. No-op-ish snapshot (empty movedIds) if either name is missing or equal.
 export function mergeAccountInto(db: Db, from: string, to: string): AccountMergeSnapshot {
   const empty: AccountMergeSnapshot = {
-    source: { name: from, icon: 'card', hue: null },
+    source: { name: from, icon: FALLBACK_ICON, hue: null },
     targetName: to,
     movedIds: [],
   };

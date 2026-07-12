@@ -539,10 +539,11 @@ describe('entries ↔ accounts', () => {
 
   it('getAccountCounts left-joins so a zero-entry account still shows', () => {
     const d = ledger();
-    addEntries(d, []); // no-op
+    addAccount(d, 'Empty');
     const counts = getAccountCounts(d);
     expect(counts.find((c) => c.account === 'Cash')?.count).toBe(2);
     expect(counts.find((c) => c.account === 'Bank')?.count).toBe(1);
+    expect(counts.find((c) => c.account === 'Empty')?.count).toBe(0);
   });
 
   it('getAccountBreakdown sums expenses per account, sorted by magnitude', () => {
@@ -573,6 +574,13 @@ describe('entries ↔ accounts', () => {
     addAccount(d, 'Empty');
     deleteAccount(d, 'Empty');
     expect(getDistinctAccounts(d)).not.toContain('Empty');
+  });
+
+  it('mergeAccountInto is a no-op with an empty snapshot when from===to or target missing', () => {
+    const db = ledger();
+    expect(mergeAccountInto(db, 'Cash', 'Cash').movedIds).toEqual([]);
+    expect(mergeAccountInto(db, 'Cash', 'Nope').movedIds).toEqual([]);
+    expect(getDistinctAccounts(db)).toEqual(['Bank', 'Cash']); // unchanged
   });
 
   it('mergeAccountInto returns a snapshot and undoMergeAccount restores it', () => {
