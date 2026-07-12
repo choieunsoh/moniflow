@@ -113,6 +113,10 @@ export function useGridReorder<T extends { name: string }>(
   const onPointerDown = useCallback(
     (index: number, e: DragPointer) => {
       if (session.current) return;
+      // A fresh press: clear any stale suppression. Normally a drag's synthetic click consumes the
+      // flag before the next press, but a pointercancel ends a drag with no click to consume it — so
+      // reset here or the next real tap would be silently eaten once.
+      draggedClick.current = false;
       const node = e.currentTarget;
       const pointerId = e.pointerId;
       const s: Session<T> = {

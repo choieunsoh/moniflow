@@ -82,4 +82,20 @@ describe('useGridReorder', () => {
     expect(result.current.consumeDragClick()).toBe(false); // and only once
     spy.mockRestore();
   });
+
+  it('a pointercancel after activation does not eat the next real tap', () => {
+    const { result } = renderHook(() => useGridReorder(items, vi.fn()));
+    // Long-press to activate, then the OS/multi-touch cancels the gesture — no synthetic click follows.
+    const down = { pointerId: 1, clientX: 10, clientY: 10, currentTarget: captureTarget() };
+    act(() => result.current.tileProps(0).onPointerDown(down));
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    act(() => result.current.tileProps(0).onPointerCancel(down));
+
+    // Starting a fresh interaction must clear the stale suppression so the next tap submits/selects.
+    const next = { pointerId: 2, clientX: 10, clientY: 10, currentTarget: captureTarget() };
+    act(() => result.current.tileProps(1).onPointerDown(next));
+    expect(result.current.consumeDragClick()).toBe(false);
+  });
 });
