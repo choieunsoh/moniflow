@@ -11,10 +11,11 @@ import { willMerge } from '../merge-guard';
 // the dialog doesn't fire a no-op rename. Esc restores the original and cancels. `onDone` fires on an
 // actual submit — the icon/bg dialog passes it to close the modal after a rename.
 //
-// Typing an EXISTING name folds this category into it (a merge) — irreversible, so we confirm first.
-// Both save paths (blur, Enter) route through attemptSubmit, which only calls requestSubmit() once the
-// guard passes, so the server action never fires on an un-confirmed merge (no reliance on cancelling
-// an in-flight action). ponytail: the confirm is only active where #category-options is rendered (the
+// Typing an EXISTING name folds this category into it (a merge) — irreversible, so both save paths
+// (blur, Enter) confirm first, behaving identically. The confirm is deferred a tick (a synchronous
+// confirm() inside a blur steals focus and loops forever on cancel). Both route through attemptSubmit,
+// which only calls requestSubmit() once the confirm is accepted, so the server action never fires on
+// an un-confirmed merge. ponytail: the confirm is only active where #category-options is rendered (the
 // categories page, which is also where autocomplete suggests existing names); the records dialog has
 // no datalist, so a blind-typed collision there still merges silently — pass the name set as a prop if
 // that surface needs guarding too.
@@ -27,8 +28,14 @@ export function CategoryNameEditor({
 }) {
   const [editing, setEditing] = useState(false);
 
-  // The single save path for both blur and Enter: bail on an empty/unchanged value, confirm before an
-  // irreversible merge, and only then submit the form (which runs mergeCategoryAction).
+  // The single save path for both blur and Enter — identical behaviour: bail on an empty/unchanged
+  // value, confirm before an irreversible merge, and only then submit the form (mergeCategoryAction).
+  //
+  // The merge confirm must NOT run synchronously inside a blur: a native confirm steals focus, and
+  // cancelling it bounces focus between the input and whatever was tapped, re-firing blur → confirm
+  // forever (the dialog can never be dismissed). So we always DEFER the confirm to a macrotask — by
+  // then the blur (if any) has settled and focus rests on the tapped element, so cancelling doesn't
+  // loop. Deferring the Enter path too is harmless and keeps the two paths identical.
   function attemptSubmit(input: HTMLInputElement) {
     const next = input.value.trim();
     if (!next || next === category) {
@@ -39,11 +46,15 @@ export function CategoryNameEditor({
       document.querySelectorAll<HTMLOptionElement>('#category-options option'),
       (o) => o.value,
     );
-    if (
-      willMerge(next, category, existing) &&
-      !window.confirm(`Merge “${category}” into “${next}”? This can’t be undone.`)
-    ) {
-      return; // leave the field open so the name can be corrected
+    if (willMerge(next, category, existing)) {
+      setTimeout(() => {
+        if (window.confirm(`Merge “${category}” into “${next}”? This can’t be undone.`)) {
+          input.form?.requestSubmit();
+        } else {
+          setEditing(false); // cancel → discard the typed name, collapse to the label, no refocus
+        }
+      }, 0);
+      return;
     }
     input.form?.requestSubmit();
   }
