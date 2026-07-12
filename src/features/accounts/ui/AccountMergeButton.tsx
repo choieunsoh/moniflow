@@ -23,7 +23,7 @@ export function AccountMergeButton({ account, others }: { account: string; other
       toast.action(`Merged “${account}” into “${target}”`, {
         label: 'Undo',
         onClick: () => {
-          void undoMergeAndRemoveAccount(snap);
+          undoMergeAndRemoveAccount(snap).catch(() => toast.error('Failed to undo — try again'));
         },
       });
     } catch {
@@ -38,9 +38,14 @@ export function AccountMergeButton({ account, others }: { account: string; other
       <button
         type="button"
         onClick={() => ref.current?.showModal()}
+        disabled={others.length === 0}
         aria-label={`Remove ${account}`}
-        title={`Remove ${account} (merge its entries into another account)`}
-        className="tap shrink-0 rounded-[var(--radius-sm)] px-2 transition-colors active:scale-95"
+        title={
+          others.length === 0
+            ? `Can't remove ${account} — it's the only account`
+            : `Remove ${account} (merge its entries into another account)`
+        }
+        className="tap shrink-0 rounded-[var(--radius-sm)] px-2 transition-colors active:scale-95 disabled:pointer-events-none disabled:opacity-40"
         style={{ color: 'var(--color-faint)' }}
       >
         <Trash2 size={18} aria-hidden />
