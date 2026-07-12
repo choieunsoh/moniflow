@@ -7,7 +7,13 @@ import { buildDonutOption } from '../donut';
 
 // Thin wrapper: reads live theme tokens + the resolved font (canvas can't use CSS vars), hands them
 // to the pure option-builder, and manages the echarts instance lifecycle. Logic lives in ../donut.ts.
-export function DonutChart({ rows }: { rows: Breakdown[] }) {
+export function DonutChart({
+  rows,
+  label = 'Spending by category',
+}: {
+  rows: Breakdown[];
+  label?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,7 +49,7 @@ export function DonutChart({ rows }: { rows: Breakdown[] }) {
       ref={ref}
       className="pointer-events-none mx-auto h-64 w-full"
       role="img"
-      aria-label="Spending by category"
+      aria-label={label}
     />
   );
 }
