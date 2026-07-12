@@ -79,12 +79,21 @@ export function parseMonefyCsv(text: string): ImportResult {
       skipped += 1;
       continue;
     }
+    // Spending tracker: drop inflows (income/transfers-in land as amount >= 0). This is what keeps
+    // income-only categories (e.g. เงินสด/salary) out of the ledger, so the /categories counts and
+    // every expenses-only read surface stay in sync. ponytail: sign is the whole test — Monefy marks
+    // outflows negative; if a real export ever ships a 0-amount expense, revisit this bound.
+    const amount = cleanAmount(cols[5]);
+    if (amount >= 0) {
+      skipped += 1;
+      continue;
+    }
     const note = cols[7] ?? '';
     entries.push({
       date: toIsoDate(cols[0]),
       account: cols[1],
       category,
-      amount: cleanAmount(cols[5]),
+      amount,
       currency: cols[4],
       originalAmount: cleanAmount(cols[3]),
       note: note === '' ? null : note,

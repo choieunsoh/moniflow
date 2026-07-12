@@ -64,6 +64,17 @@ describe('parseMonefyCsv', () => {
     expect(skipped).toBe(2);
   });
 
+  it('skips income (inflow) rows — a spending tracker keeps expenses only', () => {
+    const csv =
+      `${header}\n` +
+      `25/01/2016,#Cash,เงินสด,5000,THB,5000,THB,salary\n` +
+      `26/01/2016,#Cash,ช็อปปิ้ง,-100,THB,-100,THB,`;
+    const { entries, skipped } = parseMonefyCsv(csv);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].category).toBe('ช็อปปิ้ง');
+    expect(skipped).toBe(1);
+  });
+
   it('exposes the skip list for review', () => {
     expect(SKIP_CATEGORIES).toContain('บัตรเครดิท');
   });
