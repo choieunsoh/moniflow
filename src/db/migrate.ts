@@ -75,3 +75,41 @@ export function dropLegacyCategoryColumns(db: Db): void {
   }
   db.run(sql`DROP TABLE IF EXISTS category_meta`);
 }
+
+const FALLBACK_ICON = 'card'; // ponytail: default glyph for backfilled accounts; user re-icons on /accounts.
+
+// Phase 1: create the accounts table, seed one row per distinct entries.account value, add + backfill
+// account_id on entries. Does NOT drop the old text column — that is dropLegacyAccountColumn, run only
+// after every consumer has moved. Guarded on column existence so it runs exactly once on a real DB and
+// is cheap (a PRAGMA read) on every subsequent page load. Mirrors migrateCategoryIds.
+export function migrateAccountIds(db: Db): void {
+  db.run(sql`CREATE TABLE IF NOT EXISTS accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    icon TEXT NOT NULL,
+    hue INTEGER,
+    sort_order INTEGER,
+    archived INTEGER NOT NULL DEFAULT 0
+  )`);
+
+  const entriesCols = tableColumns(db, 'entries');
+  if (!entriesCols.includes('account')) return; // fresh install, or legacy text column already dropped
+  if (entriesCols.includes('account_id')) return; // backfill already done (column not yet dropped)
+
+  db.transaction((tx) => {
+    tx.run(sql`INSERT OR IGNORE INTO accounts (name, icon)
+      SELECT DISTINCT account, ${FALLBACK_ICON} FROM entries`);
+    tx.run(sql`ALTER TABLE entries ADD COLUMN account_id INTEGER`);
+    tx.run(sql`UPDATE entries SET account_id =
+      (SELECT id FROM accounts WHERE accounts.name = entries.account)`);
+  });
+}
+
+// Phase 2 (final task): drop the now-unused account text column. Idempotent — only drops it when its
+// account_id replacement is present. SQLite >= 3.35 (bundled by better-sqlite3) supports DROP COLUMN.
+export function dropLegacyAccountColumn(db: Db): void {
+  const e = tableColumns(db, 'entries');
+  if (e.includes('account') && e.includes('account_id')) {
+    db.run(sql`ALTER TABLE entries DROP COLUMN account`);
+  }
+}

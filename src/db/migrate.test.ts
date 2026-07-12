@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { initDb } from '@db/client';
-import { migrateCategoryIds, dropLegacyCategoryColumns } from './migrate';
+import {
+  migrateCategoryIds,
+  dropLegacyCategoryColumns,
+  migrateAccountIds,
+  dropLegacyAccountColumn,
+} from './migrate';
 
 // Build a DB in the pre-migration ("legacy") shape: entries/budgets keyed by category TEXT, plus a
 // category_meta table carrying emoji/hue. This is what a real user's data looks like before upgrade.
@@ -100,5 +105,84 @@ describe('dropLegacyCategoryColumns', () => {
     migrateCategoryIds(db);
     dropLegacyCategoryColumns(db);
     expect(() => dropLegacyCategoryColumns(db)).not.toThrow();
+  });
+});
+
+// A DB in the pre-account-migration shape: entries keyed by account TEXT (category already migrated to
+// category_id, since account migration ships after the category one). This is what a real user's data
+// looks like just before the accounts upgrade.
+function preAccountDb() {
+  const db = initDb(':memory:');
+  db.run(sql`CREATE TABLE entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, time TEXT, account TEXT NOT NULL,
+    category_id INTEGER, amount REAL NOT NULL, currency TEXT, original_amount REAL, note TEXT,
+    source TEXT NOT NULL DEFAULT 'manual')`);
+  db.run(sql`INSERT INTO entries (date, account, category_id, amount) VALUES
+    ('2026-07-01','Cash',1,-100), ('2026-07-02','Cash',1,-50), ('2026-07-03','Bank',2,-9000)`);
+  return db;
+}
+
+describe('migrateAccountIds', () => {
+  it('seeds one account row per distinct entries.account, defaulting icon to card', () => {
+    const db = preAccountDb();
+    migrateAccountIds(db);
+    const rows = db.all(sql`SELECT name, icon, hue FROM accounts ORDER BY name`);
+    expect(rows).toEqual([
+      { name: 'Bank', icon: 'card', hue: null },
+      { name: 'Cash', icon: 'card', hue: null },
+    ]);
+  });
+
+  it('backfills entries.account_id by name with no nulls', () => {
+    const db = preAccountDb();
+    migrateAccountIds(db);
+    const ok = db.all(sql`SELECT e.account_id = a.id AS ok FROM entries e
+      JOIN accounts a ON a.name = e.account`);
+    expect(ok.every((r) => typeof r === 'object' && r !== null && 'ok' in r && r.ok === 1)).toBe(
+      true,
+    );
+    const nulls = db.all(sql`SELECT id FROM entries WHERE account_id IS NULL`);
+    expect(nulls).toHaveLength(0);
+  });
+
+  it('is idempotent — a second run does not duplicate accounts', () => {
+    const db = preAccountDb();
+    migrateAccountIds(db);
+    const before = db.get(sql`SELECT count(*) AS n FROM accounts`);
+    migrateAccountIds(db);
+    const after = db.get(sql`SELECT count(*) AS n FROM accounts`);
+    expect(after).toEqual(before);
+  });
+
+  it('is a no-op on a fresh install (no legacy account column) but still creates accounts', () => {
+    const db = initDb(':memory:');
+    migrateAccountIds(db);
+    expect(() =>
+      db.run(sql`INSERT INTO accounts (name, icon) VALUES ('Cash','cash')`),
+    ).not.toThrow();
+  });
+});
+
+describe('dropLegacyAccountColumn', () => {
+  it('drops the vestigial account text column after backfill', () => {
+    const db = preAccountDb();
+    migrateAccountIds(db);
+    dropLegacyAccountColumn(db);
+    const cols = db
+      .all(sql`PRAGMA table_info(entries)`)
+      .flatMap((r) =>
+        typeof r === 'object' && r !== null && 'name' in r && typeof r.name === 'string'
+          ? [r.name]
+          : [],
+      );
+    expect(cols).toContain('account_id');
+    expect(cols).not.toContain('account');
+  });
+
+  it('is idempotent and safe on an already-clean DB', () => {
+    const db = preAccountDb();
+    migrateAccountIds(db);
+    dropLegacyAccountColumn(db);
+    expect(() => dropLegacyAccountColumn(db)).not.toThrow();
   });
 });
