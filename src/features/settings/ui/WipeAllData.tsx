@@ -12,8 +12,12 @@ export function WipeAllData() {
   const [open, setOpen] = useState(false);
 
   async function handleConfirm(): Promise<void> {
-    await wipeAllDataAction();
-    toast('All data cleared');
+    try {
+      await wipeAllDataAction();
+      toast('All data cleared');
+    } catch {
+      toast.error('Failed to wipe data — try again');
+    }
   }
 
   return (

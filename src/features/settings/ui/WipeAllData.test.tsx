@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@features/settings/actions', () => ({
   wipeAllDataAction: vi.fn(() => Promise.resolve()),
 }));
-vi.mock('@shared/ui/toast', () => ({ toast: vi.fn() }));
+vi.mock('@shared/ui/toast', () => {
+  const toast = Object.assign(vi.fn(), { error: vi.fn(), action: vi.fn() });
+  return { toast };
+});
 
 import { WipeAllData } from './WipeAllData';
 import { wipeAllDataAction } from '@features/settings/actions';
@@ -17,8 +20,6 @@ function stubDialog() {
   HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
     this.open = false;
   };
-  vi.spyOn(HTMLDialogElement.prototype, 'showModal');
-  vi.spyOn(HTMLDialogElement.prototype, 'close');
 }
 
 describe('WipeAllData', () => {
@@ -40,7 +41,17 @@ describe('WipeAllData', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Wipe all data' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete everything' }));
     expect(wipeAllDataAction).toHaveBeenCalledOnce();
-    await Promise.resolve(); // let the awaited action settle before the toast fires
-    expect(toast).toHaveBeenCalledWith('All data cleared');
+    await waitFor(() => expect(toast).toHaveBeenCalledWith('All data cleared'));
+  });
+
+  it('shows an error toast when the wipe fails', async () => {
+    vi.mocked(wipeAllDataAction).mockRejectedValueOnce(new Error('boom'));
+    render(<WipeAllData />);
+    fireEvent.click(screen.getByRole('button', { name: 'Wipe all data' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete everything' }));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('Failed to wipe data — try again'),
+    );
+    expect(toast).not.toHaveBeenCalledWith('All data cleared');
   });
 });
