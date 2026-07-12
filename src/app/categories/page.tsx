@@ -10,7 +10,7 @@ import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/q
 import { EmojiPicker } from '@features/categories/ui/EmojiPicker';
 import { CategoryNameEditor } from '@features/categories/ui/CategoryNameEditor';
 import { AddCategory } from '@features/categories/ui/AddCategory';
-import { deleteCategoryAction } from '@features/entries/actions';
+import { DeleteCategoryButton } from '@features/categories/ui/DeleteCategoryButton';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
 import { PageContainer } from '@shared/ui/PageContainer';
@@ -36,10 +36,9 @@ export default function CategoriesPage() {
       </header>
 
       <section className="panel overflow-hidden">
-        <AddCategory names={counts.map((c) => c.category)} />
         {counts.length === 0 ? (
           <p className="p-5 text-sm" style={{ color: 'var(--color-muted)' }}>
-            No categories yet — add one above, or import some entries.
+            No categories yet — add one below, or import some entries.
           </p>
         ) : (
           <ul className="flex flex-col divide-y">
@@ -55,20 +54,7 @@ export default function CategoriesPage() {
                 <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
                   {c.count}
                 </span>
-                {c.count === 0 && (
-                  <form action={deleteCategoryAction}>
-                    <input type="hidden" name="name" value={c.category} />
-                    <button
-                      type="submit"
-                      aria-label={`Delete ${c.category}`}
-                      title={`Delete ${c.category}`}
-                      className="tap px-1 text-lg leading-none"
-                      style={{ color: 'var(--color-muted)' }}
-                    >
-                      ✕
-                    </button>
-                  </form>
-                )}
+                {c.count === 0 && <DeleteCategoryButton category={c.category} />}
               </li>
             ))}
           </ul>
@@ -80,6 +66,24 @@ export default function CategoriesPage() {
           <option key={c.category} value={c.category} />
         ))}
       </datalist>
+
+      {/* Sticky compose bar — always reachable without scrolling the (long) list, floated clear of the
+          fixed tab bar + the expense FAB that overhangs its top-centre. */}
+      <div
+        className="sticky mt-0"
+        style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom))', zIndex: 'var(--z-header)' }}
+      >
+        <div
+          className="flex items-center rounded-[var(--radius-lg)] border p-2 backdrop-blur-md"
+          style={{
+            background: 'color-mix(in oklab, var(--color-surface-2) 92%, transparent)',
+            borderColor: 'var(--color-border-strong)',
+            boxShadow: 'var(--shadow-2)',
+          }}
+        >
+          <AddCategory names={counts.map((c) => c.category)} />
+        </div>
+      </div>
     </PageContainer>
   );
 }

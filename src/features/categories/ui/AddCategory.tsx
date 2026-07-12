@@ -22,8 +22,7 @@ export function AddCategory({ names }: { names: string[] }) {
         if (!canAdd) e.preventDefault();
         else setDraft(''); // reset the hint/disabled state; the uncontrolled input clears itself
       }}
-      className="flex items-center gap-2 border-b px-4 py-3"
-      style={{ borderColor: 'var(--color-border)' }}
+      className="flex w-full items-center gap-2"
     >
       <input
         name="name"
