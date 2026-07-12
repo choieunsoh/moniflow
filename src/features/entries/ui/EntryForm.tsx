@@ -20,7 +20,6 @@ const fieldStyle = { borderColor: 'var(--color-border)', background: 'var(--colo
 // dashboard's no-client-JS-unless-needed stance as closely as a mutable form allows.
 export function EntryForm({ action, accounts, categories, entry }: EntryFormProps) {
   const [currency, setCurrency] = useState(entry?.currency ?? 'THB');
-  const accountListId = useId();
   const categoryListId = useId();
   const needsManualThb = currency !== 'THB';
 
@@ -52,19 +51,19 @@ export function EntryForm({ action, accounts, categories, entry }: EntryFormProp
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Account
-          <input
+          <select
             name="account"
-            list={accountListId}
-            defaultValue={entry?.account ?? ''}
+            defaultValue={entry?.account ?? accounts[0] ?? ''}
             required
             className={fieldClass}
             style={fieldStyle}
-          />
-          <datalist id={accountListId}>
+          >
             {accounts.map((a) => (
-              <option key={a} value={a} />
+              <option key={a} value={a}>
+                {a}
+              </option>
             ))}
-          </datalist>
+          </select>
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
