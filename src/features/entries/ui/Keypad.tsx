@@ -9,6 +9,9 @@ import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
 import type { IconSet } from '@features/settings/queries';
 import type { EntryRow } from '../schema';
+import { useGridReorder } from '../use-grid-reorder';
+import { reorderCategories } from '@features/categories/actions';
+import { reorderAccounts } from '@features/accounts/actions';
 
 export type KeypadCategory = { name: string; emoji: string; hue?: number };
 export type KeypadAccount = { name: string; icon: string; hue?: number };
@@ -99,6 +102,13 @@ export function Keypad({
   const [view, setView] = useState<'keypad' | 'account' | 'category'>('keypad');
   const [date, setDate] = useState(entry?.date ?? today);
   const [account, setAccount] = useState(entry?.account ?? defaultAccount);
+
+  const catGrid = useGridReorder(categories, (ordered) => {
+    void reorderCategories(ordered.map((c) => c.name));
+  });
+  const accGrid = useGridReorder(accounts, (ordered) => {
+    void reorderAccounts(ordered.map((a) => a.name));
+  });
 
   const isCustomDate = date !== today;
   const amount = evaluate(expr);
@@ -239,27 +249,33 @@ export function Keypad({
         {/* Square 3-col tiles mirroring the category grid: the per-account brand glyph sits on a hue
             disc above the name (AccountIcon), same as CategoryIcon in the category grid below. */}
         <div className="grid grid-cols-3 gap-2">
-          {accounts.map((a) => {
+          {accGrid.items.map((a, i) => {
             const on = account === a.name;
             return (
               <button
                 key={a.name}
                 type="button"
+                {...accGrid.tileProps(i)}
                 onClick={() => {
+                  if (accGrid.consumeDragClick()) return; // a drag just ended — don't select
                   setAccount(a.name);
                   setView('keypad');
                 }}
                 aria-pressed={on}
-                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-[var(--radius-lg)] border px-2 text-center text-xs font-medium transition-colors active:opacity-70"
-                style={
-                  on
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-[var(--radius-lg)] border px-2 text-center text-xs font-medium transition-transform active:opacity-70"
+                style={{
+                  ...(on
                     ? {
                         background: 'var(--color-accent)',
                         color: 'var(--color-on-accent)',
                         borderColor: 'var(--color-accent)',
                       }
-                    : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
-                }
+                    : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }),
+                  ...(accGrid.dragIndex === i
+                    ? { transform: 'scale(1.06)', opacity: 0.9, zIndex: 10, pointerEvents: 'none' }
+                    : {}),
+                  touchAction: 'manipulation',
+                }}
               >
                 <AccountIcon icon={a.icon} name={a.name} size="lg" hue={a.hue} />
                 <span className="line-clamp-3 w-full">{a.name}</span>
@@ -283,22 +299,30 @@ export function Keypad({
           <span className="tnum text-sm font-semibold">{formatBaht(amount ?? 0)}</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {categories.map((c) => (
+          {catGrid.items.map((c, i) => (
             <button
               key={c.name}
               type="submit"
               name="category"
               value={c.name}
-              // When editing, outline the row's current category so it's easy to spot / keep.
-              className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-colors active:opacity-70"
-              style={
-                entry?.category === c.name
+              {...catGrid.tileProps(i)}
+              // A drop synthesizes a click on the tile under the finger — cancel the submit then.
+              onClick={(e) => {
+                if (catGrid.consumeDragClick()) e.preventDefault();
+              }}
+              className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-transform active:opacity-70"
+              style={{
+                ...(entry?.category === c.name
                   ? {
                       borderColor: 'var(--color-accent)',
                       boxShadow: 'inset 0 0 0 1px var(--color-accent)',
                     }
-                  : undefined
-              }
+                  : {}),
+                ...(catGrid.dragIndex === i
+                  ? { transform: 'scale(1.06)', opacity: 0.9, zIndex: 10, pointerEvents: 'none' }
+                  : {}),
+                touchAction: 'manipulation',
+              }}
             >
               <CategoryIcon emoji={c.emoji} name={c.name} size="lg" iconSet={iconSet} hue={c.hue} />
               <span className="w-full truncate text-xs" style={{ color: 'var(--color-muted)' }}>
