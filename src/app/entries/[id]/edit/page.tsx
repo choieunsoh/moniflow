@@ -13,6 +13,13 @@ import {
 } from '@features/entries/queries';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
+import { ensureAccountsTable } from '@features/accounts/schema';
+import {
+  getAccountIconMap,
+  iconForAccount,
+  getAccountHueMap,
+  hueForAccount,
+} from '@features/accounts/queries';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
 import { editEntryAction } from '@features/entries/actions';
@@ -36,6 +43,7 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
 
   if (keypadEditable) {
     ensureCategoriesTable(db);
+    ensureAccountsTable(db);
     ensureSettingsTable(db);
     const emojiMap = getEmojiMap(db);
     const hueMap = getHueMap(db);
@@ -45,7 +53,13 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
       emoji: emojiFor(emojiMap, c.category),
       hue: hueFor(hueMap, c.category),
     }));
-    const accounts = getAccountsByUsage(db);
+    const accountIconMap = getAccountIconMap(db);
+    const accountHueMap = getAccountHueMap(db);
+    const accounts = getAccountsByUsage(db).map((name) => ({
+      name,
+      icon: iconForAccount(accountIconMap, name),
+      hue: hueForAccount(accountHueMap, name),
+    }));
 
     return (
       <PageContainer size="full">

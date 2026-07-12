@@ -6,10 +6,12 @@ import { formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
 import { evaluate } from '../calc';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
+import { AccountIcon } from '@features/accounts/ui/AccountIcon';
 import type { IconSet } from '@features/settings/queries';
 import type { EntryRow } from '../schema';
 
 export type KeypadCategory = { name: string; emoji: string; hue?: number };
+export type KeypadAccount = { name: string; icon: string; hue?: number };
 
 const OPS = '+−×÷';
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'];
@@ -86,7 +88,7 @@ export function Keypad({
   entry,
 }: {
   categories: KeypadCategory[];
-  accounts: string[];
+  accounts: KeypadAccount[];
   defaultAccount: string;
   today: string;
   iconSet: IconSet;
@@ -234,17 +236,17 @@ export function Keypad({
           </button>
           <span className="text-sm font-semibold">Account</span>
         </div>
-        {/* Square 3-col tiles, mirroring the category grid so a per-account icon drops into the slot
-            above the name later. */}
+        {/* Square 3-col tiles mirroring the category grid: the per-account brand glyph sits on a hue
+            disc above the name (AccountIcon), same as CategoryIcon in the category grid below. */}
         <div className="grid grid-cols-3 gap-2">
           {accounts.map((a) => {
-            const on = account === a;
+            const on = account === a.name;
             return (
               <button
-                key={a}
+                key={a.name}
                 type="button"
                 onClick={() => {
-                  setAccount(a);
+                  setAccount(a.name);
                   setView('keypad');
                 }}
                 aria-pressed={on}
@@ -259,8 +261,8 @@ export function Keypad({
                     : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
                 }
               >
-                {/* icon slot — per-account icon goes here later */}
-                <span className="line-clamp-3 w-full">{a}</span>
+                <AccountIcon icon={a.icon} name={a.name} size="lg" hue={a.hue} />
+                <span className="line-clamp-3 w-full">{a.name}</span>
               </button>
             );
           })}

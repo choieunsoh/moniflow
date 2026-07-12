@@ -6,6 +6,13 @@ import { ensureEntriesTable } from '@features/entries/schema';
 import { getAccountsByUsage, getLatestAccount, getCategoryCounts } from '@features/entries/queries';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
+import { ensureAccountsTable } from '@features/accounts/schema';
+import {
+  getAccountIconMap,
+  iconForAccount,
+  getAccountHueMap,
+  hueForAccount,
+} from '@features/accounts/queries';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
 import { Keypad } from '@features/entries/ui/Keypad';
@@ -16,6 +23,7 @@ export default function NewEntryPage() {
   const db = initDb();
   ensureEntriesTable(db);
   ensureCategoriesTable(db);
+  ensureAccountsTable(db);
   ensureSettingsTable(db);
 
   const emojiMap = getEmojiMap(db);
@@ -27,10 +35,17 @@ export default function NewEntryPage() {
     emoji: emojiFor(emojiMap, c.category),
     hue: hueFor(hueMap, c.category),
   }));
-  // Most-used accounts first for the picker grid; default to the account last used so the common
-  // case (same account again) is zero taps.
-  const accounts = getAccountsByUsage(db);
-  const latestAccount = getLatestAccount(db) ?? accounts[0] ?? '';
+  // Most-used accounts first for the picker grid, each with its brand glyph + hue (same shape as the
+  // category tiles). Default to the account last used so the common case (same account again) is zero
+  // taps.
+  const accountIconMap = getAccountIconMap(db);
+  const accountHueMap = getAccountHueMap(db);
+  const accounts = getAccountsByUsage(db).map((name) => ({
+    name,
+    icon: iconForAccount(accountIconMap, name),
+    hue: hueForAccount(accountHueMap, name),
+  }));
+  const latestAccount = getLatestAccount(db) ?? accounts[0]?.name ?? '';
 
   return (
     <PageContainer size="full">
