@@ -255,6 +255,30 @@ export function renameCategory(db: Db, from: string, to: string): void {
   }
 }
 
+// Delete a category — but ONLY when it holds no entries. Moniflow's ledger is lossless, so a used
+// category is protected: this is a no-op if any entry still references it. The guard lives here, not
+// just in the UI, so a stale page can't orphan ledger rows. An empty category's leftover per-category
+// budget is dropped with it. No-op when the name doesn't exist. (Lives here, next to renameCategory,
+// because categories/ must not import entries/budgets — the dependency arrow points the other way.)
+export function deleteCategory(db: Db, name: string): void {
+  const row = db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.name, name))
+    .get();
+  if (!row) return;
+  const used = db
+    .select({ id: entries.id })
+    .from(entries)
+    .where(eq(entries.categoryId, row.id))
+    .get();
+  if (used) return;
+  db.transaction((tx) => {
+    tx.delete(budgets).where(eq(budgets.categoryId, row.id)).run();
+    tx.delete(categories).where(eq(categories.id, row.id)).run();
+  });
+}
+
 // Free-text search across the whole ledger (not cycle-scoped) — matches a substring of the note,
 // category, or account, case-insensitively, expenses only (same spending-tracker scope as the cycle
 // reads). Newest first. LIKE metacharacters in the query are escaped so a literal '_' or '%' can't

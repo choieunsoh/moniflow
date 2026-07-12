@@ -5,9 +5,10 @@ import { redirect } from 'next/navigation';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { parseEntryForm } from './entry-form';
-import { insertEntry, updateEntry, deleteEntry, renameCategory } from './queries';
+import { insertEntry, updateEntry, deleteEntry, renameCategory, deleteCategory } from './queries';
 import { parseMergeInput } from './merge-input';
 import { ensureCategoriesTable } from '@features/categories/schema';
+import { addCategory } from '@features/categories/queries';
 
 // The only feature module allowed to import Next's mutation APIs. Each action: open the DB,
 // parse + validate the form, write, revalidate the whole app (`revalidatePath('/', 'layout')` — one
@@ -55,5 +56,30 @@ export async function mergeCategoryAction(formData: FormData): Promise<void> {
   ensureEntriesTable(db);
   ensureCategoriesTable(db);
   renameCategory(db, input.from, input.to); // rename, or merge when `to` already exists
+  revalidatePath('/', 'layout');
+}
+
+// Create an empty category. Trimmed; blank is ignored. Duplicate names no-op in addCategory.
+export async function addCategoryAction(formData: FormData): Promise<void> {
+  const name = formData.get('name');
+  if (typeof name !== 'string' || !name.trim()) return;
+
+  const db = initDb();
+  ensureEntriesTable(db);
+  ensureCategoriesTable(db);
+  addCategory(db, name.trim());
+  revalidatePath('/', 'layout');
+}
+
+// Delete a category. deleteCategory guards emptiness, so a non-empty one is a no-op even if the UI
+// somehow submits it — the button is only shown at count 0.
+export async function deleteCategoryAction(formData: FormData): Promise<void> {
+  const name = formData.get('name');
+  if (typeof name !== 'string' || !name) return;
+
+  const db = initDb();
+  ensureEntriesTable(db);
+  ensureCategoriesTable(db);
+  deleteCategory(db, name);
   revalidatePath('/', 'layout');
 }

@@ -19,10 +19,11 @@ import {
   getLatestAccount,
   getCategoryCounts,
   renameCategory,
+  deleteCategory,
   getForeignEntries,
   searchEntries,
 } from './queries';
-import { categoryIdFor, setCategoryEmoji } from '@features/categories/queries';
+import { categoryIdFor, setCategoryEmoji, addCategory } from '@features/categories/queries';
 import { setBudget, getBudgets } from '@features/budgets/queries';
 
 function db() {
@@ -275,6 +276,38 @@ describe('getDistinctCategories lists all categories (including empty)', () => {
     categoryIdFor(d, 'rent');
     categoryIdFor(d, 'groceries');
     expect(getDistinctCategories(d)).toEqual(['groceries', 'rent']);
+  });
+});
+
+describe('deleteCategory', () => {
+  it('removes an empty category', () => {
+    const d = db();
+    addCategory(d, 'Snacks');
+    deleteCategory(d, 'Snacks');
+    expect(getCategoryCounts(d)).toEqual([]);
+  });
+
+  it('is a no-op when the category still has entries (lossless — never orphan a ledger row)', () => {
+    const d = db();
+    addEntries(d, [{ date: '2026-07-01', account: 'cash', category: 'Food', amount: -100 }]);
+    deleteCategory(d, 'Food');
+    expect(getCategoryCounts(d)).toEqual([{ category: 'Food', count: 1 }]);
+  });
+
+  it("drops the empty category's leftover budget along with it", () => {
+    const d = db();
+    addCategory(d, 'Snacks');
+    setBudget(d, 'Snacks', 500);
+    deleteCategory(d, 'Snacks');
+    expect(getCategoryCounts(d)).toEqual([]);
+    expect(getBudgets(d).filter((b) => b.category !== null)).toEqual([]);
+  });
+
+  it('is a no-op when the name does not exist', () => {
+    const d = db();
+    addCategory(d, 'Snacks');
+    deleteCategory(d, 'Nope');
+    expect(getCategoryCounts(d)).toEqual([{ category: 'Snacks', count: 0 }]);
   });
 });
 

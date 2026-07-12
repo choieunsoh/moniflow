@@ -10,6 +10,7 @@ import {
   setCategoryHue,
   hueFor,
   categoryIdFor,
+  addCategory,
 } from './queries';
 
 function db() {
@@ -33,6 +34,21 @@ describe('categoryIdFor', () => {
     const second = categoryIdFor(d, 'groceries');
     expect(second).toBe(first);
     expect(getEmojiMap(d)).toEqual({ groceries: '🛒' }); // emoji preserved, not reset to fallback
+  });
+});
+
+describe('addCategory', () => {
+  it('creates a new empty category with the fallback emoji', () => {
+    const d = db();
+    addCategory(d, 'Snacks');
+    expect(getEmojiMap(d)).toEqual({ Snacks: FALLBACK_EMOJI });
+  });
+
+  it('is a no-op on an existing name — keeps its emoji, no duplicate', () => {
+    const d = db();
+    setCategoryEmoji(d, 'Snacks', '🍿');
+    addCategory(d, 'Snacks');
+    expect(getEmojiMap(d)).toEqual({ Snacks: '🍿' });
   });
 });
 

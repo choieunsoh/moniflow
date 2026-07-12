@@ -180,6 +180,16 @@ export function emojiFor(map: Record<string, string>, category: string): string 
   return map[category] ?? FALLBACK_EMOJI;
 }
 
+// Create an empty category (no entries yet) with the fallback emoji — it shows on the list immediately
+// (getCategoryCounts left-joins, so count 0). No-op if the name already exists, so it never clobbers an
+// existing category's emoji/hue. Restyle the icon/colour afterwards with the picker.
+export function addCategory(db: Db, name: string): void {
+  db.insert(categories)
+    .values({ name, emoji: FALLBACK_EMOJI })
+    .onConflictDoNothing({ target: categories.name })
+    .run();
+}
+
 // Only categories with a picked hue land in the map; the rest fall through to the name-derived color.
 export function getHueMap(db: Db): Record<string, number> {
   const rows = db.select({ name: categories.name, hue: categories.hue }).from(categories).all();
