@@ -1,10 +1,11 @@
 # Moniflow
 
-Personal, local-first, **mobile-first spending tracker**. Signed inflow/outflow entries live in a
-local SQLite file and are read back — with **no API layer** — through Next.js Server Components;
+Personal, local-first, **mobile-first spending tracker**. Signed (always-negative) expense entries
+live in a local SQLite file and are read back — with **no API layer** — through Next.js Server Components;
 mutations go through Server Actions. Scoped to a monthly **billing cycle**, presented as a
-phone-sized column with a bottom tab bar. It's a spending tracker: income is stored losslessly but
-every screen shows **expenses only**. Scaffolded on the `portfolio-dashboard` stack.
+phone-sized column with a bottom tab bar. It's a spending tracker: the ledger holds **expenses
+only** — income (inflows) is dropped on CSV import and the keypad enters expenses. Scaffolded on
+the `portfolio-dashboard` stack.
 
 ## Stack
 
@@ -19,7 +20,8 @@ commander (CLI) · Vitest · ESLint 10 (flat) · Prettier 3.
 - **Records (`/records`)** — the cycle's expenses grouped by day; each a swipe-to-edit/delete row;
   live cross-cycle search; tap a category marker to change its icon + colour.
 - **Budgets (`/budgets`)** — standing per-category monthly limits.
-- **Categories (`/categories`)** — rename / merge categories and set each one's icon and colour.
+- **Categories (`/categories`)** — add / rename / merge / delete categories, set each one's icon and
+  colour, and tap a category's entry count to jump to all its records.
 - **Trips (`/trips`)** — foreign-currency spending grouped into trips.
 - **Settings (`/settings`)** — billing-cutoff day and the category icon set (emoji / Phosphor /
   Lucide).

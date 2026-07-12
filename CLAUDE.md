@@ -8,9 +8,12 @@ Moniflow is a personal, local-first, **mobile-first spending tracker**. It store
 entries (inflows/outflows) in a local **SQLite** database and presents them through a small
 **Next.js** web app shaped as a phone-sized column with a bottom tab bar. Single user, no cloud.
 Data is hand-entered (a Monefy-style keypad) or bulk-imported from a **Monefy CSV** (THB home
-currency). It is scoped to a monthly **billing cycle** (a configurable cutoff day). Though the DB
-is lossless (income is stored), it is a **spending tracker** — every UI read surface shows expenses
-only (`amount < 0`), enforced in the queries (`getEntriesInRange`, `groupSum`, `searchEntries`).
+currency). It is scoped to a monthly **billing cycle** (a configurable cutoff day). It is a
+**spending tracker**: the ledger holds outflows only — income (inflows, `amount >= 0`) is dropped
+at CSV import (`parseMonefyCsv`) and the keypad only enters expenses — and every UI read surface
+shows expenses (`amount < 0`), enforced in the queries (`getEntriesInRange`, `groupSum`,
+`searchEntries`). The `amount` column stays signed (schema-level), but in practice every stored row
+is negative.
 Scaffolded from the `portfolio-dashboard` stack.
 
 - **Stack — data layer:** Node 24 (nvm) · TypeScript 5.9 strict (ESM; `module: esnext` +

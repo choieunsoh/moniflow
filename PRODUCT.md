@@ -15,8 +15,8 @@ point — so the design must read as a confident, finished default, not a placeh
 
 ## Product Purpose
 
-A local-first, **mobile-first spending tracker**. Signed inflow/outflow entries live in a local
-SQLite file; Next.js Server Components read them back **directly — no API layer** — and mutations
+A local-first, **mobile-first spending tracker**. Signed (always-negative) expense entries live in a
+local SQLite file; Next.js Server Components read them back **directly — no API layer** — and mutations
 go through Server Actions. The app is scoped to a monthly **billing cycle** (a configurable cutoff
 day) and organised as a phone-sized column with a bottom tab bar:
 
@@ -24,13 +24,15 @@ day) and organised as a phone-sized column with a bottom tab bar:
   ranked category breakdown (chart / list toggle).
 - **Records** — the cycle's expenses grouped by day, each a swipe-to-edit/delete row, with live
   cross-cycle search.
-- **Budgets** — standing per-category monthly limits. **Categories** — rename/merge and pick each
-  category's icon + colour. **Trips** — foreign-currency spending grouped into trips.
+- **Budgets** — standing per-category monthly limits. **Categories** — add/rename/merge/delete, pick
+  each category's icon + colour, and tap a category's count to jump to all its records. **Trips** —
+  foreign-currency spending grouped into trips.
 - Entries are added on a Monefy-style calculator keypad or bulk-imported from a **Monefy CSV**
   (THB home currency; non-THB rows surface in Trips).
 
-It is a **spending tracker**: income is stored losslessly but every UI surface shows expenses
-only. Success is a UI a user fluent in Linear/Stripe/Notion would trust at a glance and a
+It is a **spending tracker**: the ledger holds expenses only — income (inflows) is dropped on CSV
+import and the keypad enters expenses, so every UI surface shows spending. Success is a UI a user
+fluent in Linear/Stripe/Notion would trust at a glance and a
 developer would be happy to inherit and rebrand. It ships as the reference implementation for the
 `create-sqlite-next-app` scaffold.
 
