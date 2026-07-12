@@ -11,6 +11,8 @@ import {
   hueFor,
   categoryIdFor,
   addCategory,
+  getCategoryOrderMap,
+  setCategoryOrder,
 } from './queries';
 
 function db() {
@@ -87,5 +89,35 @@ describe('emoji + hue maps read/write categories', () => {
     const d = db();
     setCategoryEmoji(d, 'ค่าไฟ', '💡');
     expect(getEmojiMap(d)).toEqual({ ค่าไฟ: '💡' });
+  });
+});
+
+describe('setCategoryOrder / getCategoryOrderMap', () => {
+  it('writes a dense sort_order in the given order and reads it back', () => {
+    const d = db();
+    addCategory(d, 'Food');
+    addCategory(d, 'Coffee');
+    addCategory(d, 'Games');
+    setCategoryOrder(d, ['Coffee', 'Games', 'Food']);
+    expect(getCategoryOrderMap(d)).toEqual({ Coffee: 0, Games: 1, Food: 2 });
+  });
+
+  it('leaves an untouched category out of the map (null sort_order)', () => {
+    const d = db();
+    addCategory(d, 'Food');
+    addCategory(d, 'Coffee');
+    setCategoryOrder(d, ['Coffee']); // Food never ordered
+    const map = getCategoryOrderMap(d);
+    expect(map).toEqual({ Coffee: 0 });
+    expect('Food' in map).toBe(false);
+  });
+
+  it('re-orders densely on a subsequent call', () => {
+    const d = db();
+    addCategory(d, 'Food');
+    addCategory(d, 'Coffee');
+    setCategoryOrder(d, ['Food', 'Coffee']);
+    setCategoryOrder(d, ['Coffee', 'Food']);
+    expect(getCategoryOrderMap(d)).toEqual({ Coffee: 0, Food: 1 });
   });
 });

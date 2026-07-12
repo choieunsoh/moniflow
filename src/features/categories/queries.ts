@@ -226,3 +226,26 @@ export function categoryIdFor(db: Db, name: string): number {
   if (!row) throw new Error(`categoryIdFor: could not resolve category "${name}"`);
   return row.id;
 }
+
+// Only categories with a manual sort_order land in the map; unordered ones are absent (caller sorts
+// them last). Mirrors getHueMap.
+export function getCategoryOrderMap(db: Db): Record<string, number> {
+  const rows = db
+    .select({ name: categories.name, sortOrder: categories.sortOrder })
+    .from(categories)
+    .all();
+  const map: Record<string, number> = {};
+  for (const row of rows) if (row.sortOrder !== null) map[row.name] = row.sortOrder;
+  return map;
+}
+
+// Persist a manual order: write a dense 0..n-1 to sort_order across the named categories, in one
+// transaction. Names not present are no-ops (UPDATE ... WHERE name). Materialises the whole visible
+// grid on every drop, so there is never a mix of ordered and half-ordered rows the user dragged.
+export function setCategoryOrder(db: Db, orderedNames: string[]): void {
+  db.transaction((tx) => {
+    for (const [i, name] of orderedNames.entries()) {
+      tx.update(categories).set({ sortOrder: i }).where(eq(categories.name, name)).run();
+    }
+  });
+}

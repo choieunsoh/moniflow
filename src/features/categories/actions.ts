@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { initDb } from '@db/client';
 import { ensureCategoriesTable } from './schema';
-import { setCategoryEmoji, setCategoryHue } from './queries';
+import { setCategoryEmoji, setCategoryHue, setCategoryOrder } from './queries';
 
 // Assign an emoji to a category (upsert). Revalidates the whole app so the emoji shows on records,
 // the donut legend, and the category list at once.
@@ -31,5 +31,14 @@ export async function setCategoryHueAction(formData: FormData): Promise<void> {
   const db = initDb();
   ensureCategoriesTable(db);
   setCategoryHue(db, category, hue);
+  revalidatePath('/', 'layout');
+}
+
+// Persist the keypad's manual category order. Typed args (not FormData) — the client posts the new
+// order as a string[]. Revalidates so the reordered grid is what the next render serves.
+export async function reorderCategories(orderedNames: string[]): Promise<void> {
+  const db = initDb();
+  ensureCategoriesTable(db);
+  setCategoryOrder(db, orderedNames);
   revalidatePath('/', 'layout');
 }
