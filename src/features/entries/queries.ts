@@ -296,6 +296,15 @@ export function searchEntries(db: Db, query: string): EntryRow[] {
     .all();
 }
 
+// All-time expenses for one category, newest first — powers the /categories count link, which wants
+// every record in the category, not just the current cycle (unlike the cycle-scoped chip filter).
+export function getEntriesByCategory(db: Db, category: string): EntryRow[] {
+  return entryRowsQuery(db)
+    .where(and(lt(entries.amount, 0), eq(categories.name, category)))
+    .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
+    .all();
+}
+
 // Foreign-currency rows for the trip view — anything not THB (and not null, which covers legacy
 // or bad-import rows). Ordered by date then id so groupIntoTrips can walk it as one chronological
 // pass without needing to trust the caller's ordering.

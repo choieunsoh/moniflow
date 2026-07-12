@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
-import { getEntriesInRange, searchEntries } from '@features/entries/queries';
+import { getEntriesInRange, searchEntries, getEntriesByCategory } from '@features/entries/queries';
 import { groupByDate } from '@features/entries/by-date';
 import { groupByCategory } from '@features/entries/by-category';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
@@ -31,9 +31,10 @@ export default async function RecordsPage({
     account?: string;
     q?: string;
     view?: string;
+    all?: string;
   }>;
 }) {
-  const { cycle: cycleParam, category, account, q, view } = await searchParams;
+  const { cycle: cycleParam, category, account, q, view, all } = await searchParams;
   const db = initDb();
   ensureEntriesTable(db);
   ensureSettingsTable(db);
@@ -58,11 +59,18 @@ export default async function RecordsPage({
   );
   const filtered = Boolean(category || account);
 
-  // In search mode the view spans all cycles (search results are already newest-first); otherwise
-  // it's the active cycle. Both render as the same SwipeRow list below, grouped either by day
+  // Two modes span ALL cycles (rows already newest-first): text search, and the /categories count
+  // link (?all=1&category=) which wants every record in a category, not just this cycle. Everything
+  // else is the active cycle. All three render as the same SwipeRow list below, grouped by day
   // (default) or by category via ?view=category.
-  const entries = searching ? searchEntries(db, query) : cycleEntries;
-  const ordered = searching ? entries : [...entries].reverse(); // newest first
+  const allCategory = !searching && all === '1' && Boolean(category);
+  const spanAll = searching || allCategory;
+  const entries = searching
+    ? searchEntries(db, query)
+    : allCategory && category
+      ? getEntriesByCategory(db, category)
+      : cycleEntries;
+  const ordered = spanAll ? entries : [...entries].reverse(); // newest first
   const byCategory = view === 'category';
   const sections = byCategory
     ? groupByCategory(ordered).map((g) => ({ key: g.category, entries: g.entries, total: g.total }))
@@ -73,6 +81,7 @@ export default async function RecordsPage({
   const viewHref = (next: 'date' | 'category') => {
     const params = new URLSearchParams();
     if (searching) params.set('q', query);
+    else if (allCategory) params.set('all', '1');
     else params.set('cycle', activeKey);
     if (category) params.set('category', category);
     if (account) params.set('account', account);
@@ -82,7 +91,7 @@ export default async function RecordsPage({
 
   return (
     <PageContainer size="full">
-      {!searching && (
+      {!spanAll && (
         <CycleSelector
           activeKey={activeKey}
           cutoff={cutoff}
@@ -135,7 +144,7 @@ export default async function RecordsPage({
                     </h2>
                   ) : (
                     <h2 className="truncate text-sm font-semibold">
-                      {searching
+                      {spanAll
                         ? formatDayHeadingWithYear(section.key)
                         : formatDayHeading(section.key)}
                     </h2>
@@ -159,7 +168,7 @@ export default async function RecordsPage({
                     hue={hueFor(hueMap, entry.category)}
                     dateLabel={
                       byCategory
-                        ? searching
+                        ? spanAll
                           ? formatDayHeadingWithYear(entry.date)
                           : formatDayHeading(entry.date)
                         : undefined

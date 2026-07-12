@@ -14,6 +14,9 @@ import { DeleteCategoryButton } from '@features/categories/ui/DeleteCategoryButt
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
 import { PageContainer } from '@shared/ui/PageContainer';
+import Link from 'next/link';
+
+const countFmt = new Intl.NumberFormat('en-US');
 
 export default function CategoriesPage() {
   const db = initDb();
@@ -51,9 +54,21 @@ export default function CategoriesPage() {
                   currentHue={hueFor(hueMap, c.category)}
                 />
                 <CategoryNameEditor category={c.category} />
-                <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                  {c.count}
-                </span>
+                {c.count === 0 ? (
+                  <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
+                    0
+                  </span>
+                ) : (
+                  // Tap the count to see those records: filtered to this category, grouped by category.
+                  <Link
+                    href={`/records?category=${encodeURIComponent(c.category)}&view=category&all=1`}
+                    className="tnum tap text-sm"
+                    style={{ color: 'var(--color-muted)' }}
+                    title={`View ${c.category} records`}
+                  >
+                    {countFmt.format(c.count)}
+                  </Link>
+                )}
                 {c.count === 0 && <DeleteCategoryButton category={c.category} />}
               </li>
             ))}
