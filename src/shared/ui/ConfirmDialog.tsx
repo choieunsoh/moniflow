@@ -15,6 +15,10 @@ export type ConfirmDialogProps = {
 // Reusable yes/no confirm on the native <dialog> — same pattern as MoreSheet (showModal gives
 // focus-trap, Esc, ::backdrop, top-layer stacking for free). Deliberately minimal props: no
 // variant/icon/size config-explosion. `destructive` reddens the confirm button (--color-loss).
+//
+// Controlled like MoreSheet: onClose may fire twice per interaction — once synchronously from a
+// click/backdrop handler, then again from the native <dialog> 'close' event dialog.close() dispatches.
+// Pass an idempotent handler (e.g. () => setOpen(false)).
 export function ConfirmDialog({
   open,
   title,
@@ -53,11 +57,12 @@ export function ConfirmDialog({
           </button>
           <button
             type="button"
-            className="btn"
-            style={{
-              background: destructive ? 'var(--color-loss)' : 'var(--color-accent)',
-              color: 'var(--color-on-accent)',
-            }}
+            className={destructive ? 'btn' : 'btn btn-primary'}
+            style={
+              destructive
+                ? { background: 'var(--color-loss)', color: 'var(--color-on-accent)' }
+                : undefined
+            }
             onClick={() => {
               onConfirm();
               onClose();
