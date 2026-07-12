@@ -1,6 +1,11 @@
 import { sqliteTable, integer, text, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
-import { migrateCategoryIds, dropLegacyCategoryColumns } from '@db/migrate';
+import {
+  migrateCategoryIds,
+  dropLegacyCategoryColumns,
+  migrateAccountIds,
+  dropLegacyAccountColumn,
+} from '@db/migrate';
 import type { Db } from '@db/client';
 
 // The money-flow ledger — one row per inflow/outflow. `amount` is signed THB (the converted value)
@@ -12,7 +17,7 @@ export const entries = sqliteTable('entries', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(), // YYYY-MM-DD
   time: text('time'), // 24h 'HH:MM', nullable
-  account: text('account').notNull(),
+  accountId: integer('account_id'), // FK → accounts.id; app enforces non-null on write
   categoryId: integer('category_id'), // FK → categories.id; app enforces non-null on write
   amount: real('amount').notNull(), // signed THB (converted)
   currency: text('currency'),
@@ -24,9 +29,9 @@ export const entries = sqliteTable('entries', {
 export type Entry = typeof entries.$inferSelect;
 export type NewEntry = typeof entries.$inferInsert;
 
-// A read row for the UI: the stored entry plus the joined category NAME. Read queries project this so
-// every display surface keeps working with names while storage uses ids.
-export type EntryRow = Entry & { category: string };
+// A read row for the UI: the stored entry plus the joined category + account NAMEs. Read queries
+// project this so every display surface keeps working with names while storage uses ids.
+export type EntryRow = Entry & { category: string; account: string };
 
 // The write-time input the pure parsers/seed/import produce: a category NAME (resolved to category_id
 // at the DB boundary by the query layer), not an id. Everything else matches NewEntry.
@@ -52,7 +57,7 @@ export function ensureEntriesTable(db: Db): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL,
       time TEXT,
-      account TEXT NOT NULL,
+      account_id INTEGER,
       category_id INTEGER,
       amount REAL NOT NULL,
       currency TEXT,
@@ -63,4 +68,6 @@ export function ensureEntriesTable(db: Db): void {
   `);
   migrateCategoryIds(db);
   dropLegacyCategoryColumns(db);
+  migrateAccountIds(db);
+  dropLegacyAccountColumn(db);
 }

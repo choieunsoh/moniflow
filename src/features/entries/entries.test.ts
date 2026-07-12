@@ -65,7 +65,7 @@ describe('ensureEntriesTable (id-keyed)', () => {
     expect(cols).toContain('category_id');
     expect(cols).not.toContain('category');
     db.insert(entries)
-      .values({ date: '2026-07-01', account: 'cash', categoryId: 1, amount: -5 })
+      .values({ date: '2026-07-01', accountId: 1, categoryId: 1, amount: -5 })
       .run();
     expect(db.select().from(entries).all()).toHaveLength(1);
   });

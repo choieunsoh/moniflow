@@ -17,37 +17,48 @@ import { entries, type EntryRow, type EntryInput } from './schema';
 import { categories } from '@features/categories/schema';
 import { categoryIdFor } from '@features/categories/queries';
 import { budgets } from '@features/budgets/schema';
+import { accounts } from '@features/accounts/schema';
+import { accountIdFor } from '@features/accounts/queries';
 
 // Typed reads/writes for the entries feature. Server Components and the CLI call these directly
 // — no API layer. Column selections infer row types, so no `as` casts are needed.
 
 // Every read that returns entries for the UI projects this shape: the stored columns plus the joined
-// category NAME. getTableColumns keeps it in lockstep with the schema — a new entries column can't be
-// silently dropped from reads. innerJoin because every entry has a category_id after migration and on
-// every write.
-const entryRowColumns = { ...getTableColumns(entries), category: categories.name };
+// category + account NAMEs. getTableColumns keeps it in lockstep with the schema — a new entries
+// column can't be silently dropped from reads. innerJoin because every entry has a category_id and an
+// account_id after migration and on every write.
+const entryRowColumns = {
+  ...getTableColumns(entries),
+  category: categories.name,
+  account: accounts.name,
+};
 
 function entryRowsQuery(db: Db) {
   return db
     .select(entryRowColumns)
     .from(entries)
-    .innerJoin(categories, eq(entries.categoryId, categories.id));
+    .innerJoin(categories, eq(entries.categoryId, categories.id))
+    .innerJoin(accounts, eq(entries.accountId, accounts.id));
 }
 
-// Resolve one write-input's category NAME to its id (creating the category if new).
-function toRow(db: Db, { category, ...rest }: EntryInput) {
-  return { ...rest, categoryId: categoryIdFor(db, category) };
+// Resolve one write-input's category + account NAMEs to their ids (creating rows if new).
+function toRow(db: Db, { category, account, ...rest }: EntryInput) {
+  return { ...rest, categoryId: categoryIdFor(db, category), accountId: accountIdFor(db, account) };
 }
 
-// Bulk: resolve each DISTINCT category name once (an import of ~10k rows spans only a few dozen
-// categories), then map every row through the cached lookup.
+// Bulk: resolve each DISTINCT category/account name once, then map every row through the cached lookup.
 function toRows(db: Db, rows: EntryInput[]) {
-  const ids = new Map<string, number>();
-  for (const name of new Set(rows.map((r) => r.category))) ids.set(name, categoryIdFor(db, name));
-  return rows.map(({ category, ...rest }) => {
-    const categoryId = ids.get(category);
+  const catIds = new Map<string, number>();
+  for (const name of new Set(rows.map((r) => r.category)))
+    catIds.set(name, categoryIdFor(db, name));
+  const acctIds = new Map<string, number>();
+  for (const name of new Set(rows.map((r) => r.account))) acctIds.set(name, accountIdFor(db, name));
+  return rows.map(({ category, account, ...rest }) => {
+    const categoryId = catIds.get(category);
+    const accountId = acctIds.get(account);
     if (categoryId === undefined) throw new Error(`toRows: unresolved category "${category}"`);
-    return { ...rest, categoryId };
+    if (accountId === undefined) throw new Error(`toRows: unresolved account "${account}"`);
+    return { ...rest, categoryId, accountId };
   });
 }
 
@@ -163,20 +174,21 @@ export function getDistinctCategories(db: Db): string[] {
 
 export function getDistinctAccounts(db: Db): string[] {
   return db
-    .selectDistinct({ account: entries.account })
-    .from(entries)
-    .orderBy(entries.account)
+    .select({ name: accounts.name })
+    .from(accounts)
+    .orderBy(accounts.name)
     .all()
-    .map((r) => r.account);
+    .map((r) => r.name);
 }
 
 // Accounts ordered by how often they've been used (most-used first). Drives the quick-entry account
 // grid so the common accounts land at the front.
 export function getAccountsByUsage(db: Db): string[] {
   return db
-    .select({ account: entries.account, count: sql<number>`count(*)` })
-    .from(entries)
-    .groupBy(entries.account)
+    .select({ account: accounts.name, count: sql<number>`count(${entries.id})` })
+    .from(accounts)
+    .leftJoin(entries, eq(entries.accountId, accounts.id))
+    .groupBy(accounts.id)
     .all()
     .sort((a, b) => b.count - a.count)
     .map((r) => r.account);
@@ -186,8 +198,9 @@ export function getAccountsByUsage(db: Db): string[] {
 // the account you last used. `undefined` when the ledger is empty (caller falls back).
 export function getLatestAccount(db: Db): string | undefined {
   return db
-    .select({ account: entries.account })
+    .select({ account: accounts.name })
     .from(entries)
+    .innerJoin(accounts, eq(entries.accountId, accounts.id))
     .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
     .limit(1)
     .get()?.account;
@@ -290,7 +303,7 @@ export function searchEntries(db: Db, query: string): EntryRow[] {
   const has = (col: AnyColumn) => sql`${col} like ${pattern} escape '\\'`;
   return entryRowsQuery(db)
     .where(
-      and(lt(entries.amount, 0), or(has(entries.note), has(categories.name), has(entries.account))),
+      and(lt(entries.amount, 0), or(has(entries.note), has(categories.name), has(accounts.name))),
     )
     .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
     .all();
@@ -313,4 +326,132 @@ export function getForeignEntries(db: Db): EntryRow[] {
     .where(and(isNotNull(entries.currency), ne(entries.currency, 'THB')))
     .orderBy(entries.date, entries.id)
     .all();
+}
+
+export type AccountCount = { account: string; count: number };
+
+// How many rows sit in each account, so the biggest are obvious before a rename/merge. leftJoin so an
+// account with zero entries still shows (count 0). Grouped in SQL; sorted by count in JS (tiny result).
+export function getAccountCounts(db: Db): AccountCount[] {
+  return db
+    .select({ account: accounts.name, count: sql<number>`count(${entries.id})` })
+    .from(accounts)
+    .leftJoin(entries, eq(entries.accountId, accounts.id))
+    .groupBy(accounts.id)
+    .all()
+    .sort((a, b) => b.count - a.count);
+}
+
+// Per-account spending for a cycle (expenses only, magnitudes sorted desc) — feeds the /accounts donut
+// + breakdown. Same shape/scope as getCategoryBreakdown.
+export function getAccountBreakdown(db: Db, start: string, end: string): Breakdown[] {
+  return db
+    .select({
+      key: accounts.name,
+      total: sql<number>`sum(${entries.amount})`,
+      count: sql<number>`count(*)`,
+    })
+    .from(entries)
+    .innerJoin(accounts, eq(entries.accountId, accounts.id))
+    .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
+    .groupBy(accounts.name)
+    .all()
+    .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+}
+
+// Rename an account by id, or MERGE when `to` already names a different account: reassign this
+// account's entries to the target, then delete the now-empty source row. A pure rename keeps the same
+// id (entries never rewritten; icon/hue follow the rename for free). No-op when `from` doesn't exist.
+export function renameAccount(db: Db, from: string, to: string): void {
+  const source = db.select({ id: accounts.id }).from(accounts).where(eq(accounts.name, from)).get();
+  if (!source) return;
+  const target = db.select({ id: accounts.id }).from(accounts).where(eq(accounts.name, to)).get();
+  if (target && target.id !== source.id) {
+    db.transaction((tx) => {
+      tx.update(entries)
+        .set({ accountId: target.id })
+        .where(eq(entries.accountId, source.id))
+        .run();
+      tx.delete(accounts).where(eq(accounts.id, source.id)).run();
+    });
+  } else {
+    db.update(accounts).set({ name: to }).where(eq(accounts.id, source.id)).run();
+  }
+}
+
+// Delete an account — but ONLY when it holds no entries (the ledger is lossless, so a used account is
+// protected; use mergeAccountInto to remove a used one). No-op when the name doesn't exist.
+export function deleteAccount(db: Db, name: string): void {
+  const row = db.select({ id: accounts.id }).from(accounts).where(eq(accounts.name, name)).get();
+  if (!row) return;
+  const used = db
+    .select({ id: entries.id })
+    .from(entries)
+    .where(eq(entries.accountId, row.id))
+    .get();
+  if (used) return;
+  db.delete(accounts).where(eq(accounts.id, row.id)).run();
+}
+
+// A snapshot of a merge, enough to reverse it: the removed source account's display meta + exactly
+// which entry ids were reassigned. Threaded to the client so the Undo toast can call undoMergeAccount.
+export type AccountMergeSnapshot = {
+  source: { name: string; icon: string; hue: number | null };
+  targetName: string;
+  movedIds: number[];
+};
+
+// Merge `from` INTO `to`, capturing an undo snapshot. Reassigns the source's entries to the target and
+// deletes the source row. No-op-ish snapshot (empty movedIds) if either name is missing or equal.
+export function mergeAccountInto(db: Db, from: string, to: string): AccountMergeSnapshot {
+  const empty: AccountMergeSnapshot = {
+    source: { name: from, icon: 'card', hue: null },
+    targetName: to,
+    movedIds: [],
+  };
+  if (from === to) return empty;
+  const source = db
+    .select({ id: accounts.id, name: accounts.name, icon: accounts.icon, hue: accounts.hue })
+    .from(accounts)
+    .where(eq(accounts.name, from))
+    .get();
+  const target = db.select({ id: accounts.id }).from(accounts).where(eq(accounts.name, to)).get();
+  if (!source || !target) return empty;
+  const moved = db
+    .select({ id: entries.id })
+    .from(entries)
+    .where(eq(entries.accountId, source.id))
+    .all()
+    .map((r) => r.id);
+  db.transaction((tx) => {
+    tx.update(entries).set({ accountId: target.id }).where(eq(entries.accountId, source.id)).run();
+    tx.delete(accounts).where(eq(accounts.id, source.id)).run();
+  });
+  return {
+    source: { name: source.name, icon: source.icon, hue: source.hue },
+    targetName: to,
+    movedIds: moved,
+  };
+}
+
+// Reverse a merge: recreate the source account with its old icon/hue, then move exactly the snapshot's
+// entries back onto it. Idempotent-ish — if the source name was recreated meanwhile, onConflictDoNothing
+// keeps its current row and the ids are still reassigned.
+export function undoMergeAccount(db: Db, snap: AccountMergeSnapshot): void {
+  if (snap.movedIds.length === 0) return;
+  db.transaction((tx) => {
+    tx.insert(accounts)
+      .values({ name: snap.source.name, icon: snap.source.icon, hue: snap.source.hue })
+      .onConflictDoNothing({ target: accounts.name })
+      .run();
+    const row = tx
+      .select({ id: accounts.id })
+      .from(accounts)
+      .where(eq(accounts.name, snap.source.name))
+      .get();
+    if (!row) throw new Error(`undoMergeAccount: could not recreate "${snap.source.name}"`);
+    for (const id of snap.movedIds) {
+      tx.update(entries).set({ accountId: row.id }).where(eq(entries.id, id)).run();
+    }
+  });
 }

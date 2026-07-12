@@ -7,6 +7,7 @@ function entry(id: number, category: string, amount: number): EntryRow {
     id,
     date: '2026-07-01',
     time: null,
+    accountId: 1,
     account: 'acct',
     categoryId: 1,
     category,

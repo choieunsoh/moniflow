@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
+import { ensureCategoriesTable } from '@features/categories/schema';
+import { ensureAccountsTable } from '@features/accounts/schema';
 import {
   addEntries,
   getEntries,
@@ -22,8 +24,15 @@ import {
   deleteCategory,
   getForeignEntries,
   searchEntries,
+  getAccountCounts,
+  getAccountBreakdown,
+  renameAccount,
+  deleteAccount,
+  mergeAccountInto,
+  undoMergeAccount,
 } from './queries';
 import { categoryIdFor, setCategoryEmoji, addCategory } from '@features/categories/queries';
+import { addAccount } from '@features/accounts/queries';
 import { setBudget, getBudgets } from '@features/budgets/queries';
 
 function db() {
@@ -490,5 +499,91 @@ describe('getForeignEntries', () => {
       },
     ]);
     expect(getForeignEntries(d)).toHaveLength(0);
+  });
+});
+
+function ledger() {
+  const d = initDb(':memory:');
+  ensureCategoriesTable(d);
+  ensureAccountsTable(d);
+  ensureEntriesTable(d);
+  addEntries(d, [
+    { date: '2026-07-01', account: 'Cash', category: 'food', amount: -100 },
+    { date: '2026-07-02', account: 'Cash', category: 'food', amount: -50 },
+    { date: '2026-07-03', account: 'Bank', category: 'rent', amount: -9000 },
+  ]);
+  return d;
+}
+
+describe('entries ↔ accounts', () => {
+  it('getEntries projects the joined account name', () => {
+    const d = ledger();
+    const rows = getEntries(d);
+    expect(rows.map((r) => r.account).sort()).toEqual(['Bank', 'Cash', 'Cash']);
+  });
+
+  it('getDistinctAccounts reads the accounts table (incl. accounts with no entries)', () => {
+    const d = ledger();
+    expect(getDistinctAccounts(d)).toEqual(['Bank', 'Cash']);
+  });
+
+  it('getAccountsByUsage orders by usage count', () => {
+    const d = ledger();
+    expect(getAccountsByUsage(d)).toEqual(['Cash', 'Bank']);
+  });
+
+  it('getLatestAccount returns the most recent entry account', () => {
+    const d = ledger();
+    expect(getLatestAccount(d)).toBe('Bank');
+  });
+
+  it('getAccountCounts left-joins so a zero-entry account still shows', () => {
+    const d = ledger();
+    addEntries(d, []); // no-op
+    const counts = getAccountCounts(d);
+    expect(counts.find((c) => c.account === 'Cash')?.count).toBe(2);
+    expect(counts.find((c) => c.account === 'Bank')?.count).toBe(1);
+  });
+
+  it('getAccountBreakdown sums expenses per account, sorted by magnitude', () => {
+    const d = ledger();
+    const bd = getAccountBreakdown(d, '2026-07-01', '2026-07-31');
+    expect(bd[0]).toMatchObject({ key: 'Bank', total: -9000, count: 1 });
+    expect(bd[1]).toMatchObject({ key: 'Cash', total: -150, count: 2 });
+  });
+
+  it('renameAccount renames in place (same id, entries untouched)', () => {
+    const d = ledger();
+    renameAccount(d, 'Cash', 'Wallet');
+    expect(getDistinctAccounts(d)).toEqual(['Bank', 'Wallet']);
+    expect(getEntries(d).filter((r) => r.account === 'Wallet')).toHaveLength(2);
+  });
+
+  it('renameAccount MERGES when the target exists (reassigns then deletes source)', () => {
+    const d = ledger();
+    renameAccount(d, 'Cash', 'Bank');
+    expect(getDistinctAccounts(d)).toEqual(['Bank']);
+    expect(getEntries(d).every((r) => r.account === 'Bank')).toBe(true);
+  });
+
+  it('deleteAccount only removes an account with zero entries', () => {
+    const d = ledger();
+    deleteAccount(d, 'Cash'); // has entries → no-op
+    expect(getDistinctAccounts(d)).toContain('Cash');
+    addAccount(d, 'Empty');
+    deleteAccount(d, 'Empty');
+    expect(getDistinctAccounts(d)).not.toContain('Empty');
+  });
+
+  it('mergeAccountInto returns a snapshot and undoMergeAccount restores it', () => {
+    const d = ledger();
+    const snap = mergeAccountInto(d, 'Cash', 'Bank');
+    expect(snap.source.name).toBe('Cash');
+    expect(snap.movedIds).toHaveLength(2);
+    expect(getDistinctAccounts(d)).toEqual(['Bank']);
+
+    undoMergeAccount(d, snap);
+    expect(getDistinctAccounts(d)).toEqual(['Bank', 'Cash']);
+    expect(getEntries(d).filter((r) => r.account === 'Cash')).toHaveLength(2);
   });
 });
