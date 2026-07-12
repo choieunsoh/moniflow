@@ -5,6 +5,7 @@ import { initDb } from '@db/client';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet, ICON_SETS } from '@features/settings/queries';
 import { setCutoffAction, setIconSetAction } from '@features/settings/actions';
+import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { PageContainer } from '@shared/ui/PageContainer';
 
 const ICON_SET_LABELS = {
@@ -83,6 +84,20 @@ export default function SettingsPage() {
             Save
           </button>
         </form>
+      </section>
+
+      <section
+        className="panel flex flex-col gap-3 p-5"
+        style={{ borderColor: 'var(--color-loss)' }}
+      >
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--color-loss)' }}>
+          Danger zone
+        </h2>
+        <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
+          Permanently delete every entry, category, and budget. This cannot be undone — there is no
+          backup yet.
+        </p>
+        <WipeAllData />
       </section>
     </PageContainer>
   );

@@ -4,6 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { initDb } from '@db/client';
 import { ensureSettingsTable } from './schema';
 import { setCutoff, isValidCutoffDay, setIconSet, isIconSet } from './queries';
+import { ensureEntriesTable } from '@features/entries/schema';
+import { ensureCategoriesTable } from '@features/categories/schema';
+import { wipeAllData } from './data';
 
 // Server Action backing the /settings form. Validates before writing (the <input min/max> only
 // constrains well-behaved browsers — this is the real guard), then revalidates both pages that
@@ -31,5 +34,15 @@ export async function setIconSetAction(formData: FormData): Promise<void> {
   const db = initDb();
   ensureSettingsTable(db);
   setIconSet(db, value);
+  revalidatePath('/', 'layout');
+}
+
+// Irreversible: clear every entry, category, and budget, then revalidate the whole app so all
+// surfaces re-render empty. Confirm-gated in the UI (WipeAllData + ConfirmDialog).
+export async function wipeAllDataAction(): Promise<void> {
+  const db = initDb();
+  ensureEntriesTable(db);
+  ensureCategoriesTable(db);
+  wipeAllData(db);
   revalidatePath('/', 'layout');
 }
