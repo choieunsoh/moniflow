@@ -29,7 +29,7 @@ export function WipeAllData() {
       <ConfirmDialog
         open={open}
         title="Wipe all data?"
-        body="Delete all entries, categories, and accounts. This cannot be undone."
+        body="Delete all entries, categories, and budgets. This cannot be undone."
         confirmLabel="Delete everything"
         destructive
         onConfirm={() => {
