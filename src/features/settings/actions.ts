@@ -6,6 +6,7 @@ import { ensureSettingsTable } from './schema';
 import { setCutoff, isValidCutoffDay, setIconSet, isIconSet } from './queries';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { ensureCategoriesTable } from '@features/categories/schema';
+import { ensureBudgetsTable } from '@features/budgets/schema';
 import { wipeAllData } from './data';
 
 // Server Action backing the /settings form. Validates before writing (the <input min/max> only
@@ -43,6 +44,7 @@ export async function wipeAllDataAction(): Promise<void> {
   const db = initDb();
   ensureEntriesTable(db);
   ensureCategoriesTable(db);
+  ensureBudgetsTable(db);
   wipeAllData(db);
   revalidatePath('/', 'layout');
 }
