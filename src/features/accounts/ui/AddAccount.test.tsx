@@ -16,4 +16,20 @@ describe('AddAccount', () => {
     await userEvent.type(input, 'Bank');
     expect(add).toBeEnabled();
   });
+
+  it('treats a whitespace-trimmed collision as existing', async () => {
+    render(<AddAccount names={['Cash']} />);
+    const add = screen.getByRole('button', { name: 'Add' });
+    await userEvent.type(screen.getByLabelText('Add account'), '  Cash  ');
+    expect(add).toBeDisabled();
+    expect(screen.getByText('already exists')).toBeInTheDocument();
+  });
+
+  it('stays disabled for whitespace-only input', async () => {
+    render(<AddAccount names={['Cash']} />);
+    const add = screen.getByRole('button', { name: 'Add' });
+    await userEvent.type(screen.getByLabelText('Add account'), '   ');
+    expect(add).toBeDisabled();
+    expect(screen.queryByText('already exists')).toBeNull();
+  });
 });

@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { mergeAccountAction } from '../actions';
+// ponytail: willMerge is imported laterally from features/categories rather than graduated to
+// shared — a deliberate call while accounts is only the 2nd consumer. Graduate merge-guard (and
+// color) to @shared/ when a 3rd consumer appears.
 import { willMerge } from '@features/categories/merge-guard';
 
 // Tap the account name to rename inline — or type an existing name to merge this account into that one
@@ -18,6 +21,8 @@ export function AccountNameEditor({ account, onDone }: { account: string; onDone
       setEditing(false);
       return;
     }
+    // ponytail: merge-confirm is inert until a page renders <datalist id="account-options"> (the
+    // /accounts page does). Matches CategoryNameEditor's #category-options scoping.
     const existing = Array.from(
       document.querySelectorAll<HTMLOptionElement>('#account-options option'),
       (o) => o.value,
