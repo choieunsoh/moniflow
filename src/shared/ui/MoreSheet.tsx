@@ -42,7 +42,7 @@ export function MoreSheet({ open, onClose }: { open: boolean; onClose: () => voi
           style={{ background: 'var(--color-border-strong)' }}
         />
         <h2 className="px-2 pb-2 text-base font-semibold">More</h2>
-        <ul className="grid grid-cols-3 gap-1">
+        <ul className="grid grid-cols-2 gap-1">
           {LINKS.map(({ href, label, Icon }) => (
             <li key={href}>
               <Link

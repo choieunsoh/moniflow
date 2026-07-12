@@ -1,5 +1,11 @@
 'use server';
 
+// ponytail: unlike categories (whose entries-touching mutate-actions live in entries/actions.ts),
+// the accounts feature owns its own actions.ts and imports the entries-touching QUERY fns
+// (renameAccount/deleteAccount/mergeAccountInto/undoMergeAccount) from entries/queries. Those ops
+// correctly live in entries/queries per the features→db/shared arrow (arrow-compliant); this is a
+// thin, acyclic wrapper coupling (entries/queries never imports accounts/actions). Deliberate: the
+// feature owning its actions reads cleaner than the categories layout. Revisit if it causes churn.
 import { revalidatePath } from 'next/cache';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
