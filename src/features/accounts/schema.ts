@@ -1,5 +1,4 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
 import { migrateAccountIds, dropLegacyAccountColumn } from '@db/migrate';
 import type { Db } from '@db/client';
 
@@ -27,16 +26,6 @@ export type NewAccount = typeof accounts.$inferInsert;
 // invoked here and from ensureEntriesTable so any read path triggers it; dropLegacyAccountColumn then
 // removes the legacy `entries.account` text column once account_id is populated.
 export function ensureAccountsTable(db: Db): void {
-  db.run(sql`
-    CREATE TABLE IF NOT EXISTS accounts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      icon TEXT NOT NULL,
-      hue INTEGER,
-      sort_order INTEGER,
-      archived INTEGER NOT NULL DEFAULT 0
-    )
-  `);
   migrateAccountIds(db);
   dropLegacyAccountColumn(db);
 }
