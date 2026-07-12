@@ -1,10 +1,12 @@
-import { categoryColor } from '@features/categories/color';
+// ponytail: categoryColorBold is imported laterally from features/categories rather than graduated to
+// shared — deliberate while accounts is only the 2nd consumer (graduate color to @shared on a 3rd).
+import { categoryColorBold } from '@features/categories/color';
 import { AccountGlyph } from './AccountGlyph';
 
-// An account marker: the payment-network glyph on a soft hue-tinted disc. `hue` (from the picker)
-// overrides the name-derived color. Pure/presentational — no hooks — so it renders in server OR client
-// components. Unlike CategoryIcon there is no bold white-icon variant: brand marks carry their own
-// colors, so they always sit on the soft tint.
+// An account marker: the payment-network glyph rendered WHITE on a bold hue disc — the same look as a
+// phosphor/lucide CategoryIcon, so accounts and categories read as one system. `hue` (from the picker)
+// overrides the name-derived color; the disc supplies the color, the glyph inherits white via
+// currentColor. Pure/presentational — no hooks — so it renders in server OR client components.
 const SIZES = {
   sm: 'size-7',
   md: 'size-10',
@@ -28,7 +30,7 @@ export function AccountIcon({
     <span
       aria-hidden
       className={`grid shrink-0 place-items-center rounded-full ${SIZES[size]}`}
-      style={{ background: `color-mix(in srgb, ${categoryColor(name, hue)} 22%, transparent)` }}
+      style={{ background: categoryColorBold(name, hue), color: '#fff' }}
     >
       <AccountGlyph icon={icon} size={ICON_PX[size]} />
     </span>

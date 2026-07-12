@@ -2,9 +2,10 @@ import type { ReactElement } from 'react';
 import { FALLBACK_ICON } from '../queries';
 
 // A payment-network glyph resolved from an icon KEY (the divergence from categories, which store a free
-// emoji). Generics use currentColor; brand marks carry their own colors. Unknown keys fall back to the
-// generic card. Pure/presentational — no hooks. `viewBox` is a 24-unit square for every glyph so `size`
-// scales them uniformly.
+// emoji). Every glyph is a monochrome `currentColor` silhouette, so it renders white on AccountIcon's
+// bold hue disc — the same look as a phosphor/lucide CategoryIcon. Unknown keys fall back to the generic
+// card. Pure/presentational — no hooks. `viewBox` is a 24-unit square for every glyph so `size` scales
+// them uniformly.
 type GlyphProps = { size: number };
 
 function Cash({ size }: GlyphProps) {
@@ -43,10 +44,12 @@ function Qr({ size }: GlyphProps) {
   );
 }
 
+// The brand marks are monochrome currentColor silhouettes: they render WHITE on AccountIcon's bold
+// hue disc (the same look as a phosphor/lucide CategoryIcon). Wordmarks for Visa/JCB/Amex; the
+// Mastercard rings and the UnionPay overlapping bars carry the shape identity without color.
 function Visa({ size }: GlyphProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
-      <rect x="1" y="5" width="22" height="14" rx="2" fill="#1a1f71" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
       <text
         x="12"
         y="15.5"
@@ -55,8 +58,8 @@ function Visa({ size }: GlyphProps) {
         fontWeight="700"
         fontStyle="italic"
         fontFamily="Arial, sans-serif"
-        fill="#ffffff"
-        letterSpacing="0.5"
+        fill="currentColor"
+        letterSpacing="0.3"
       >
         VISA
       </text>
@@ -66,47 +69,55 @@ function Visa({ size }: GlyphProps) {
 
 function Mastercard({ size }: GlyphProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
-      <circle cx="9.5" cy="12" r="6" fill="#eb001b" />
-      <circle cx="14.5" cy="12" r="6" fill="#f79e1b" />
-      <path d="M12 7.2a6 6 0 0 0 0 9.6 6 6 0 0 0 0-9.6Z" fill="#ff5f00" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="9.4" cy="12" r="5.4" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="14.6" cy="12" r="5.4" stroke="currentColor" strokeWidth="1.6" />
     </svg>
   );
 }
 
 function Jcb({ size }: GlyphProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
-      <rect x="3" y="6" width="5.5" height="12" rx="2" fill="#0e4c96" />
-      <rect x="9.25" y="6" width="5.5" height="12" rx="2" fill="#d81e05" />
-      <rect x="15.5" y="6" width="5.5" height="12" rx="2" fill="#00a05a" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <text
+        x="12"
+        y="15.5"
+        textAnchor="middle"
+        fontSize="7"
+        fontWeight="700"
+        fontFamily="Arial, sans-serif"
+        fill="currentColor"
+        letterSpacing="0.3"
+      >
+        JCB
+      </text>
     </svg>
   );
 }
 
 function UnionPay({ size }: GlyphProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
-      <rect x="3" y="6" width="7" height="12" rx="2" fill="#e21836" />
-      <rect x="8.5" y="6" width="7" height="12" rx="2" fill="#00447c" />
-      <rect x="14" y="6" width="7" height="12" rx="2" fill="#007b84" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      {/* three overlapping slanted bars — the UnionPay motif, varying opacity for depth in one color */}
+      <path d="M7 6h3l-3 12H4z" fill="currentColor" opacity="0.55" />
+      <path d="M11 6h3l-3 12H8z" fill="currentColor" opacity="0.78" />
+      <path d="M15 6h3l-3 12h-3z" fill="currentColor" />
     </svg>
   );
 }
 
 function Amex({ size }: GlyphProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
-      <rect x="1" y="5" width="22" height="14" rx="2" fill="#2e77bc" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
       <text
         x="12"
-        y="15"
+        y="14.8"
         textAnchor="middle"
-        fontSize="5.2"
+        fontSize="5"
         fontWeight="700"
         fontFamily="Arial, sans-serif"
-        fill="#ffffff"
-        letterSpacing="0.3"
+        fill="currentColor"
+        letterSpacing="0.2"
       >
         AMEX
       </text>
