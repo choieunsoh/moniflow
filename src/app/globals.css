@@ -273,3 +273,45 @@ p {
     transform: none;
   }
 }
+
+/* Toasts — stacked above the bottom bar, centered to the phone column. The region is click-through
+   (pointer-events:none) so it never blocks the bar; each toast re-enables pointer events. z-toast
+   (300) sits above the header/dropdown scale. */
+.toast-region {
+  position: fixed;
+  inset: auto 0 96px 0;
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  padding: 0 1rem;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-2);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  animation: toast-in var(--dur) var(--ease-out);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

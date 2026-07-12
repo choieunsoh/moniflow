@@ -11,6 +11,7 @@ import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
 import { AppHeader } from '@shared/ui/AppHeader';
 import { SearchBox } from '@features/entries/ui/SearchBox';
 import { BottomBar } from '@shared/ui/BottomBar';
+import { ToastRegion } from '@shared/ui/ToastRegion';
 
 // The header search reads SQLite (autocomplete pool), and better-sqlite3 can't be prerendered.
 export const dynamic = 'force-dynamic';
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <main className="flex-1 pb-24">{children}</main>
           </div>
           <BottomBar />
+          <ToastRegion />
         </CategoryPickerProvider>
       </body>
     </html>
