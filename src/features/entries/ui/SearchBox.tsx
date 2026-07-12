@@ -37,13 +37,24 @@ export function SearchBox({ suggestions }: { suggestions: string[] }) {
     router.replace(q ? `/records?q=${encodeURIComponent(q)}` : '/records');
   }
 
-  // Live search: navigate 300ms after the last keystroke. Skips when the URL already shows this
-  // query (initial mount, or right after an immediate navigation) so it never re-fetches for free.
+  // Live search: navigate 300ms after the last keystroke. The focus check is essential — this
+  // component lives in the layout and survives navigation, so `value`/`debounced` outlive the page.
+  // Without it, tapping a nav tab while a search is active resets the URL's `query` to empty while
+  // `debounced` still holds the old text; the mismatch fired router.replace and bounced you straight
+  // back to /records?q=…. Only navigate when the user is actually typing in the field.
   const debounced = useDebouncedValue(value, 300);
   useEffect(() => {
     const q = debounced.trim();
-    if (q !== query) router.replace(q ? `/records?q=${encodeURIComponent(q)}` : '/records');
+    if (q !== query && document.activeElement === inputRef.current) {
+      router.replace(q ? `/records?q=${encodeURIComponent(q)}` : '/records');
+    }
   }, [debounced, query, router]);
+
+  // Follow the URL when it changes from outside the field (nav away, back button, deep link) so the
+  // field never keeps a stale query. Focus-guarded so it never clobbers what the user is typing.
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) setValue(query);
+  }, [query]);
 
   // Focus the field the moment it appears so the user can type straight away.
   useEffect(() => {
