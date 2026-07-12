@@ -12,6 +12,8 @@ import {
   getAccountHueMap,
   hueForAccount,
   setAccountHue,
+  setAccountOrder,
+  getAccountOrderMap,
 } from './queries';
 
 function db() {
@@ -58,5 +60,26 @@ describe('accounts queries', () => {
     addAccount(d, 'Cash');
     addAccount(d, 'Bank');
     expect(listAccounts(d)).toEqual(['Bank', 'Cash']);
+  });
+});
+
+describe('setAccountOrder / getAccountOrderMap', () => {
+  it('writes a dense sort_order in the given order and reads it back', () => {
+    const d = db();
+    addAccount(d, 'Cash');
+    addAccount(d, 'Card');
+    addAccount(d, 'QR');
+    setAccountOrder(d, ['QR', 'Cash', 'Card']);
+    expect(getAccountOrderMap(d)).toEqual({ QR: 0, Cash: 1, Card: 2 });
+  });
+
+  it('leaves an untouched account out of the map', () => {
+    const d = db();
+    addAccount(d, 'Cash');
+    addAccount(d, 'Card');
+    setAccountOrder(d, ['Card']);
+    const map = getAccountOrderMap(d);
+    expect(map).toEqual({ Card: 0 });
+    expect('Cash' in map).toBe(false);
   });
 });

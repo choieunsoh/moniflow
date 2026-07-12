@@ -60,6 +60,28 @@ export function setAccountHue(db: Db, name: string, hue: number | null): void {
     .run();
 }
 
+// Only accounts with a manual sort_order land in the map; unordered ones are absent (caller sorts
+// them last). Mirrors getAccountHueMap.
+export function getAccountOrderMap(db: Db): Record<string, number> {
+  const rows = db
+    .select({ name: accounts.name, sortOrder: accounts.sortOrder })
+    .from(accounts)
+    .all();
+  const map: Record<string, number> = {};
+  for (const row of rows) if (row.sortOrder !== null) map[row.name] = row.sortOrder;
+  return map;
+}
+
+// Persist a manual order: dense 0..n-1 across the named accounts, one transaction. Names not present
+// are no-ops. Materialises the whole visible grid on every drop.
+export function setAccountOrder(db: Db, orderedNames: string[]): void {
+  db.transaction((tx) => {
+    for (const [i, name] of orderedNames.entries()) {
+      tx.update(accounts).set({ sortOrder: i }).where(eq(accounts.name, name)).run();
+    }
+  });
+}
+
 // Create an empty account (no entries yet) with the fallback icon. No-op if the name already exists,
 // so it never clobbers an existing account's icon/hue. Restyle with the picker afterwards.
 export function addAccount(db: Db, name: string): void {

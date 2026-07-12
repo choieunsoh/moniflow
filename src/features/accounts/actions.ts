@@ -10,7 +10,7 @@ import { revalidatePath } from 'next/cache';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { ensureAccountsTable } from './schema';
-import { addAccount, setAccountIcon, setAccountHue } from './queries';
+import { addAccount, setAccountIcon, setAccountHue, setAccountOrder } from './queries';
 import {
   renameAccount,
   deleteAccount,
@@ -98,5 +98,13 @@ export async function undoMergeAndRemoveAccount(snap: AccountMergeSnapshot): Pro
   ensureEntriesTable(db);
   ensureAccountsTable(db);
   undoMergeAccount(db, snap);
+  revalidatePath('/', 'layout');
+}
+
+// Persist the keypad's manual account order. Typed args — the client posts the new order as string[].
+export async function reorderAccounts(orderedNames: string[]): Promise<void> {
+  const db = initDb();
+  ensureAccountsTable(db);
+  setAccountOrder(db, orderedNames);
   revalidatePath('/', 'layout');
 }
