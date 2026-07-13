@@ -24,6 +24,7 @@ import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { CollapseAllButton } from '@features/entries/ui/CollapseAllButton';
 import { SwipeRow } from '@features/entries/ui/SwipeRow';
 import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
+import { CategoryHeaderChip } from '@features/entries/ui/CategoryHeaderChip';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
 // Records = the cycle's expenses grouped by day, newest first. Each day is a light header (date +
@@ -119,6 +120,18 @@ export default async function RecordsPage({
   // Foreign-currency subtotals for the current view (empty when everything is THB), shown next to
   // the THB total so a cycle with a Tokyo week reads "¥84,948  ฿17,000", not THB alone.
   const currencySums = sumByCurrency(entries);
+
+  // Tap a by-category header to filter to just that category (staying grouped); tap the active one
+  // to clear. Mirrors the by-date row chips — preserves the cycle and any account filter. Only the
+  // plain cycle view offers it (spanAll modes ignore the category param, so gating it out below).
+  const headerFilterHref = (key: string) => {
+    const params = new URLSearchParams();
+    params.set('cycle', activeKey);
+    params.set('view', 'category');
+    if (category !== key) params.set('category', key);
+    if (account) params.set('account', account);
+    return `/records?${params.toString()}`;
+  };
 
   // Toggle links preserve the current cycle/search/filter and only flip ?view=.
   const viewHref = (next: 'date' | 'category') => {
@@ -217,7 +230,17 @@ export default async function RecordsPage({
                         hue={hueFor(hueMap, section.key)}
                         size="sm"
                       />
-                      <span className="truncate">{section.key}</span>
+                      {/* Cycle view: the header filters to its category. spanAll modes (search, trip,
+                          all-category) ignore the category param, so they keep a plain label. */}
+                      {spanAll ? (
+                        <span className="truncate">{section.key}</span>
+                      ) : (
+                        <CategoryHeaderChip
+                          href={headerFilterHref(section.key)}
+                          active={category === section.key}
+                          category={section.key}
+                        />
+                      )}
                     </h2>
                   ) : (
                     <h2 className="truncate text-sm font-semibold">
