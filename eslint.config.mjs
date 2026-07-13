@@ -20,6 +20,7 @@ export default defineConfig([
     'next-env.d.ts',
     'drizzle/**', // generated migrations + meta — drizzle-kit owns these
     'data/**', // private financial data (git-ignored)
+    'public/**', // static assets served verbatim (e.g. sw.js — a hand-written worker with worker globals)
   ]),
 
   js.configs.recommended,

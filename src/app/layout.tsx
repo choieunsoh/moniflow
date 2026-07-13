@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { IBM_Plex_Sans } from 'next/font/google';
 import './globals.css';
@@ -12,6 +12,7 @@ import { AppHeader } from '@shared/ui/AppHeader';
 import { SearchBox } from '@features/entries/ui/SearchBox';
 import { BottomBar } from '@shared/ui/BottomBar';
 import { ToastRegion } from '@shared/ui/ToastRegion';
+import { ServiceWorkerRegistrar } from '@shared/ui/ServiceWorkerRegistrar';
 
 // The header search reads SQLite (autocomplete pool), and better-sqlite3 can't be prerendered.
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,14 @@ export const metadata: Metadata = {
   title: 'Moniflow — money, quietly in view',
   description:
     'A calm, private way to watch your money flow — every baht in view, and it never leaves your device.',
+  manifest: '/manifest.webmanifest',
+  // Home-screen launch on iOS: chromeless, dark status bar, "Moniflow" under the icon.
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Moniflow' },
 };
+
+// themeColor lives on viewport, not metadata (Next 16). Matches the app's --color-bg so the
+// standalone chrome (status bar / task switcher) blends into the phone frame.
+export const viewport: Viewport = { themeColor: '#101114' };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   // Autocomplete pool for the header search: distinct categories + accounts, de-duped and sorted.
@@ -57,6 +65,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </div>
           <BottomBar />
           <ToastRegion />
+          <ServiceWorkerRegistrar />
         </CategoryPickerProvider>
       </body>
     </html>
