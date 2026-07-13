@@ -35,6 +35,10 @@ export function CycleSwipe({
   }
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>): void {
+    // A press that lands on an interactive child (category filter links, edit buttons) belongs to
+    // that child — capturing the pointer here would swallow its click and the tap would do nothing.
+    // Swipe-to-change-cycle still works from the donut, headings, and padding around them.
+    if (e.target instanceof Element && e.target.closest('a, button')) return;
     startX.current = e.clientX;
     setDragging(true);
     e.currentTarget.setPointerCapture(e.pointerId);
