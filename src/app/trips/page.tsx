@@ -39,7 +39,7 @@ export default function TripsPage() {
               {/* Tap a trip to open its records — the same currency within its date range. */}
               <Link
                 href={`/records?currency=${trip.currency}&from=${trip.start}&to=${trip.end}`}
-                className="panel tap flex flex-col gap-3 p-5 transition-colors"
+                className="panel flex flex-col gap-3 p-5 transition-colors"
                 style={{ background: 'var(--color-surface)' }}
               >
                 <div className="flex items-center justify-between gap-2">
