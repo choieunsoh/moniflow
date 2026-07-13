@@ -8,6 +8,7 @@ import {
   addEntries,
   getEntries,
   replaceEntries,
+  restoreEntries,
   getCycleSummary,
   getCategoryBreakdown,
   getEntriesInRange,
@@ -95,6 +96,37 @@ describe('replaceEntries', () => {
     }));
     replaceEntries(d, many);
     expect(getEntries(d)).toHaveLength(5000);
+  });
+});
+
+describe('restoreEntries', () => {
+  it('clears every entry (both sources) then inserts the backup set', () => {
+    const d = db();
+    addEntries(d, [
+      { date: '2020-01-01', account: 'a', category: 'old-monefy', amount: -1, source: 'monefy' },
+      { date: '2026-07-01', account: 'me', category: 'old-manual', amount: -9, source: 'manual' },
+    ]);
+    restoreEntries(d, [
+      { date: '2026-07-10', account: 'cash', category: 'restored', amount: -5, source: 'monefy' },
+    ]);
+    const rows = getEntries(d);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].category).toBe('restored');
+  });
+
+  it('leaves budgets intact (a ledger restore is not a wipe)', () => {
+    const d = db();
+    addCategory(d, 'food');
+    setBudget(d, 'food', 1000);
+    restoreEntries(d, [{ date: '2026-07-10', account: 'cash', category: 'x', amount: -5 }]);
+    expect(getBudgets(d)).toHaveLength(1);
+  });
+
+  it('inserts nothing but still clears when given an empty set', () => {
+    const d = db();
+    addEntries(d, [{ date: '2026-07-01', account: 'me', category: 'gone', amount: -9 }]);
+    restoreEntries(d, []);
+    expect(getEntries(d)).toHaveLength(0);
   });
 });
 

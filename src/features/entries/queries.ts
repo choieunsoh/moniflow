@@ -111,6 +111,24 @@ export function replaceEntries(db: Db, rows: EntryInput[]): void {
   });
 }
 
+// True replace-all restore from a full backup: clears EVERY entry (all sources), then inserts the
+// backup rows — atomic, chunked like replaceEntries. Distinct from replaceEntries (which clears only
+// source='monefy' rows): a full restore must not leave old manual rows behind, or they'd duplicate the
+// ones already present in the backup file. Only entries are touched — budgets and category metadata
+// survive, so restoring the ledger never nukes standing config.
+export function restoreEntries(db: Db, rows: EntryInput[]): void {
+  const chunkSize = 500; // matches replaceEntries — stays under SQLite's bound-variable cap
+  db.transaction((tx) => {
+    tx.delete(entries).run();
+    const resolved = toRows(tx, rows);
+    for (let i = 0; i < resolved.length; i += chunkSize) {
+      tx.insert(entries)
+        .values(resolved.slice(i, i + chunkSize))
+        .run();
+    }
+  });
+}
+
 export type Breakdown = { key: string; total: number; count: number };
 
 // moniflow is a spending tracker: cycle reads return expenses only (amount < 0), so the rare income
