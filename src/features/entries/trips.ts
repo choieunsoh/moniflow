@@ -87,6 +87,17 @@ export function formatForeign(amount: number, currency: string): string {
 }
 
 const dmUtc = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+const myUtc = new Intl.DateTimeFormat('en-GB', {
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+// A trip's default heading when it hasn't been named: the month + year of its first day, e.g.
+// "Feb 2024". Distinct per card (unlike a fixed "Name this trip" prompt) and a natural starting name.
+export function formatMonthYear(iso: string): string {
+  return myUtc.format(new Date(`${iso}T00:00:00Z`));
+}
 
 // Trip date-range label, e.g. "01 Mar – 05 Mar 2019" (same year) or "28 Dec 2019 – 03 Jan 2020"
 // (crosses year) — mirrors cycle.ts's (unexported) formatRange so cycle and trip labels read

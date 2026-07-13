@@ -10,6 +10,7 @@ import {
   groupIntoTrips,
   formatForeign,
   formatTripRange,
+  formatMonthYear,
   tripDays,
   tripId,
 } from '@features/entries/trips';
@@ -53,12 +54,12 @@ export default function TripsPage() {
                   className="panel flex flex-col gap-3 p-5 transition-colors"
                   style={{ background: 'var(--color-surface)' }}
                 >
-                  {/* The trip name (or a quiet prompt to add one); pr-8 leaves room for the pencil. */}
+                  {/* The trip name, or a faint month-year default when unnamed; pr-8 clears the pencil. */}
                   <span
                     className="pr-8 text-base font-semibold"
                     style={title ? undefined : { color: 'var(--color-faint)', fontWeight: 500 }}
                   >
-                    {title ?? 'Name this trip'}
+                    {title ?? formatMonthYear(trip.start)}
                   </span>
                   <div className="flex items-center justify-between gap-2">
                     <span className="chip">{trip.currency}</span>

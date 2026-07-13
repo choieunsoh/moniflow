@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { groupIntoTrips, formatForeign, formatTripRange, tripDays, sumByCurrency } from './trips';
+import {
+  groupIntoTrips,
+  formatForeign,
+  formatTripRange,
+  formatMonthYear,
+  tripDays,
+  sumByCurrency,
+} from './trips';
 import type { Entry } from './schema';
 
 // Builds a full Entry row from the fields a test cares about; the shape is fixed but each test
@@ -129,6 +136,12 @@ describe('sumByCurrency', () => {
 
   it('returns an empty array when nothing is foreign', () => {
     expect(sumByCurrency([entry({ id: 1, currency: 'THB', originalAmount: -100 })])).toEqual([]);
+  });
+});
+
+describe('formatMonthYear', () => {
+  it('formats the month and year of a date (UTC, no day)', () => {
+    expect(formatMonthYear('2024-02-08')).toBe('Feb 2024');
   });
 });
 
