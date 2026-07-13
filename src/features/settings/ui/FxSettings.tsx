@@ -35,8 +35,9 @@ export function FxSettings({
           style={{ borderColor: 'var(--color-border)' }}
         />
         <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
-          Your card&apos;s foreign-transaction markup, added on top of the Visa rate so a non-THB
-          entry&apos;s stored baht matches your statement.
+          Total markup over the ECB mid-rate — the card network&apos;s cut (~0.5%) plus your
+          bank&apos;s foreign-transaction fee — so a non-THB entry&apos;s stored baht approximates
+          your statement.
         </p>
         <button type="submit" className="btn btn-primary w-fit">
           Save
@@ -49,8 +50,8 @@ export function FxSettings({
         </button>
         <p className="tnum text-xs" style={{ color: 'var(--color-faint)' }}>
           {asOf === null
-            ? 'No rates cached yet — tap to fetch the latest Visa rates.'
-            : `Visa rates for ${count} ${count === 1 ? 'currency' : 'currencies'}, as of ${asOf}.`}
+            ? 'No rates cached yet — tap to fetch the latest ECB rates.'
+            : `ECB rates for ${count} ${count === 1 ? 'currency' : 'currencies'}, as of ${asOf}.`}
         </p>
       </form>
     </div>

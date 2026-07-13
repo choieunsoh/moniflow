@@ -1,7 +1,5 @@
 'use server';
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { revalidatePath } from 'next/cache';
 import { initDb } from '@db/client';
 import { ensureSettingsTable } from './schema';
@@ -9,13 +7,11 @@ import { setCutoff, isValidCutoffDay, setIconSet, isIconSet } from './queries';
 import { setCardFeePct, isValidCardFeePct, getFxRates, setFxRates } from './queries';
 import type { FxRates } from './queries';
 import { CURRENCIES } from '@features/entries/entry-form';
-import { visaRatesUrl, parseVisaThbPerUnit } from '@features/entries/fx';
+import { frankfurterUrl, parseEcbResponse } from '@features/entries/fx';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { wipeAllData } from './data';
-
-const execFileAsync = promisify(execFile);
 
 // Server Action backing the /settings form. Validates before writing (the <input min/max> only
 // constrains well-behaved browsers — this is the real guard), then revalidates both pages that
@@ -61,38 +57,25 @@ export async function setCardFeePctAction(formData: FormData): Promise<void> {
   revalidatePath('/', 'layout');
 }
 
-// Manually refresh cached Visa rates for every non-THB currency. One HTTP call per currency; a
-// failed pair keeps its last cached value rather than aborting. Rates cached fee-free (pure Visa).
+// Manually refresh cached FX rates from the ECB daily reference rates (frankfurter.dev) — one plain
+// HTTPS call for every non-THB currency at once (works on Node/serverless; no curl, no Cloudflare).
+// On any failure the previous cache is left intact (offline-tolerant). The `asOf` is the ECB fixing
+// date from the response, so the keypad shows the real rate date, not "now".
 export async function refreshFxRatesAction(): Promise<void> {
   const db = initDb();
   ensureSettingsTable(db);
   const next: FxRates = { ...getFxRates(db) };
-  const now = new Date();
-  const asOf = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(now);
-  for (const code of CURRENCIES) {
-    if (code === 'THB') continue;
-    try {
-      // Fetch via a curl subprocess, NOT Node's fetch: usa.visa.com sits behind Cloudflare, which
-      // 403-challenges undici's TLS fingerprint but lets curl through. `-f` fails on any HTTP error
-      // (so a challenge page throws rather than parsing as JSON); `--max-time 8` + the execFile
-      // timeout bound a hung connection. Any failure lands in catch → keeps the last cached rate.
-      const { stdout } = await execFileAsync(
-        'curl',
-        [
-          '-sf',
-          '--max-time',
-          '8',
-          '-A',
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-          visaRatesUrl(code, now),
-        ],
-        { timeout: 10_000, windowsHide: true },
-      );
-      const json: unknown = JSON.parse(stdout);
-      next[code] = { thbPerUnit: parseVisaThbPerUnit(json), asOf };
-    } catch {
-      // Keep the last cached value for this currency — offline-tolerant.
+  try {
+    const res = await fetch(frankfurterUrl(CURRENCIES), { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const json: unknown = await res.json();
+      const { date, thbPerUnit } = parseEcbResponse(json);
+      for (const [code, rate] of Object.entries(thbPerUnit)) {
+        next[code] = { thbPerUnit: rate, asOf: date };
+      }
     }
+  } catch {
+    // Keep the existing cache — offline-tolerant.
   }
   setFxRates(db, next);
   revalidatePath('/', 'layout');

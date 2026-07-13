@@ -1,63 +1,63 @@
 import { describe, it, expect } from 'vitest';
-import { parseVisaThbPerUnit, withFee, toThb, visaRatesUrl } from './fx';
+import { parseEcbResponse, withFee, toThb, frankfurterUrl } from './fx';
 
-// Trimmed real responses captured from usa.visa.com (fromCurr=THB&toCurr=<X>, fee=0). fxRateVisa is
-// THB per 1 unit of X, Visa markup included — matched against Visa's own website to the last digit.
-const VISA_JPY = {
-  conversionFromCurrency: 'THB',
-  conversionToCurrency: 'JPY',
-  fxRateVisa: '0.2075526048',
-  reverseAmount: '4.818055',
-  status: 'success',
-};
-const VISA_USD = {
-  conversionFromCurrency: 'THB',
-  conversionToCurrency: 'USD',
-  fxRateVisa: '33.46996653',
-  reverseAmount: '0.029877',
-  status: 'success',
+// A trimmed real response from api.frankfurter.dev (base=THB). rates are foreign-per-THB; the parser
+// inverts them to THB-per-foreign (e.g. 1/4.8588 ≈ 0.2058 THB per JPY, 1/0.03002 ≈ 33.31 per USD).
+const ECB = {
+  amount: 1,
+  base: 'THB',
+  date: '2026-07-10',
+  rates: {
+    EUR: 0.02626,
+    GBP: 0.02236,
+    HKD: 0.23533,
+    JPY: 4.8588,
+    KRW: 45.172,
+    SGD: 0.03875,
+    USD: 0.03002,
+  },
 };
 
-describe('parseVisaThbPerUnit', () => {
-  it('extracts THB-per-unit from fxRateVisa (JPY < 1, USD ~33) — a direction flip would break these bands', () => {
-    const jpy = parseVisaThbPerUnit(VISA_JPY);
-    const usd = parseVisaThbPerUnit(VISA_USD);
-    expect(jpy).toBeCloseTo(0.2075526048, 6);
-    expect(usd).toBeCloseTo(33.46996653, 6);
-    expect(jpy).toBeGreaterThan(0.05);
-    expect(jpy).toBeLessThan(1);
-    expect(usd).toBeGreaterThan(20);
-    expect(usd).toBeLessThan(50);
+describe('parseEcbResponse', () => {
+  it('inverts foreign-per-THB into THB-per-unit (JPY < 1, USD ~33) and keeps the date', () => {
+    const { date, thbPerUnit } = parseEcbResponse(ECB);
+    expect(date).toBe('2026-07-10');
+    expect(thbPerUnit.JPY).toBeCloseTo(1 / 4.8588, 8); // ≈ 0.205812 THB per JPY
+    expect(thbPerUnit.USD).toBeCloseTo(1 / 0.03002, 8); // ≈ 33.3111 THB per USD
+    expect(thbPerUnit.JPY).toBeGreaterThan(0.05);
+    expect(thbPerUnit.JPY).toBeLessThan(1);
+    expect(thbPerUnit.USD).toBeGreaterThan(20);
+    expect(thbPerUnit.USD).toBeLessThan(50);
   });
 
-  it('throws on a missing or non-numeric fxRateVisa', () => {
-    expect(() => parseVisaThbPerUnit({})).toThrow();
-    expect(() => parseVisaThbPerUnit({ fxRateVisa: 'x' })).toThrow();
-    expect(() => parseVisaThbPerUnit(null)).toThrow();
+  it('throws on a missing/misshaped payload', () => {
+    expect(() => parseEcbResponse({})).toThrow();
+    expect(() => parseEcbResponse({ date: '2026-07-10' })).toThrow();
+    expect(() => parseEcbResponse({ date: '2026-07-10', rates: {} })).toThrow();
+    expect(() => parseEcbResponse(null)).toThrow();
   });
 });
 
 describe('withFee', () => {
   it('layers a percentage markup on the base rate', () => {
-    expect(withFee(33.21, 2)).toBeCloseTo(33.8742, 4);
+    expect(withFee(33.31, 2)).toBeCloseTo(33.9762, 4);
     expect(withFee(0.2, 0)).toBe(0.2);
   });
 });
 
 describe('toThb', () => {
   it('converts a foreign amount at an effective rate, rounded to whole THB', () => {
-    expect(toThb(3000, 0.208)).toBe(624);
-    expect(toThb(20, 33.8742)).toBe(677);
+    expect(toThb(3000, 0.21)).toBe(630);
+    expect(toThb(20, 33.9762)).toBe(680);
   });
 });
 
-describe('visaRatesUrl', () => {
-  it('builds the usa.visa.com URL with fee=0, THB source, foreign target, and an MM/DD/YYYY date', () => {
-    const url = visaRatesUrl('JPY', new Date('2026-07-13T00:00:00Z'));
-    expect(url).toContain('https://usa.visa.com/cmsapi/fx/rates?');
-    expect(url).toContain('fromCurr=THB');
-    expect(url).toContain('toCurr=JPY');
-    expect(url).toContain('fee=0');
-    expect(url).toContain('exchangedate=07%2F13%2F2026');
+describe('frankfurterUrl', () => {
+  it('builds a THB-based URL listing every non-THB currency as symbols', () => {
+    const url = frankfurterUrl(['THB', 'JPY', 'USD']);
+    expect(url).toContain('https://api.frankfurter.dev/v1/latest?');
+    expect(url).toContain('base=THB');
+    expect(url).toContain('symbols=JPY,USD');
+    expect(url).not.toContain('THB,'); // THB excluded from symbols
   });
 });

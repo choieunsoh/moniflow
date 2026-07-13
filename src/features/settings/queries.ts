@@ -58,8 +58,9 @@ export function setIconSet(db: Db, value: IconSet): void {
   });
 }
 
-// Card FX fee % — the user's card foreign-transaction markup, layered onto the pure Visa rate when
-// converting a foreign entry to THB. Reuses the KV table like cutoff/icon-set. Default 2%.
+// Card FX fee % — total markup over the ECB mid-rate (card-network cut + the user's bank
+// foreign-transaction fee), layered on when converting a foreign entry to THB. Reuses the KV table
+// like cutoff/icon-set. Default 2%.
 const CARD_FEE_KEY = 'card_fx_fee_pct';
 const DEFAULT_CARD_FEE = 2;
 
@@ -83,9 +84,9 @@ export function setCardFeePct(db: Db, pct: number): void {
   });
 }
 
-// Cached Visa FX rates, one JSON blob under a single KV key. thbPerUnit is the PURE Visa rate
-// (fee applied later at conversion time); asOf is the en-CA date it was fetched. Offline-tolerant:
-// callers keep the last blob when a refresh fails.
+// Cached ECB reference rates, one JSON blob under a single KV key. thbPerUnit is the mid-rate
+// (fee applied later at conversion time); asOf is the ECB fixing date from the response.
+// Offline-tolerant: callers keep the last blob when a refresh fails.
 const FX_RATES_KEY = 'fx_rates';
 export type FxRateEntry = { thbPerUnit: number; asOf: string };
 export type FxRates = Record<string, FxRateEntry>;

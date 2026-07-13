@@ -102,7 +102,7 @@ export default function SettingsPage() {
       <section className="panel flex flex-col gap-4 p-5">
         <h2 className="text-sm font-semibold">Foreign currency</h2>
         <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
-          The keypad can enter a non-THB expense using the Visa card rate. Set your card fee and
+          The keypad can enter a non-THB expense using ECB reference rates. Set your card fee and
           refresh the rates before a trip.
         </p>
         <FxSettings cardFeePct={cardFeePct} ratesAsOf={ratesAsOf} />
