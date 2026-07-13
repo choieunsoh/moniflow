@@ -163,17 +163,6 @@ export default async function RecordsPage({
               {formatDateRange(from, to)}
             </span>
           </div>
-          <div className="flex items-baseline justify-end gap-3">
-            <span className="tnum text-lg font-semibold">
-              {formatForeign(
-                entries.reduce((s, e) => s + Math.abs(e.originalAmount ?? 0), 0),
-                currency,
-              )}
-            </span>
-            <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-              {formatBaht(Math.abs(total))}
-            </span>
-          </div>
         </div>
       )}
 
@@ -242,12 +231,12 @@ export default async function RecordsPage({
                     ({section.entries.length})
                   </span>
                 </div>
-                <span
-                  className="tnum flex shrink-0 items-baseline gap-2 text-sm"
-                  style={{ color: 'var(--color-muted)' }}
-                >
+                {/* THB in the default ink; foreign currencies muted so THB stays the anchor figure. */}
+                <span className="tnum flex shrink-0 items-baseline gap-2 text-sm">
                   {section.foreign.map((c) => (
-                    <span key={c.currency}>{formatForeign(c.total, c.currency)}</span>
+                    <span key={c.currency} style={{ color: 'var(--color-muted)' }}>
+                      {formatForeign(c.total, c.currency)}
+                    </span>
                   ))}
                   <span>{formatBaht(Math.abs(section.total))}</span>
                 </span>
