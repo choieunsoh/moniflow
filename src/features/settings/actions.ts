@@ -70,6 +70,9 @@ export async function refreshFxRatesAction(): Promise<void> {
     try {
       const res = await fetch(visaRatesUrl(code, now), {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        // Bound each request: the Visa endpoint is undocumented, so a hung (not failed) connection
+        // would otherwise stall the whole action. A timeout aborts into the catch → keeps last rate.
+        signal: AbortSignal.timeout(8000),
       });
       if (!res.ok) continue;
       const json: unknown = await res.json();
