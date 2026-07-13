@@ -13,8 +13,10 @@ import {
   renameCategory,
   deleteCategory,
   setTripTitle,
+  restoreEntries,
 } from './queries';
 import { parseMergeInput } from './merge-input';
+import { parseMonefyCsv } from './import';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { addCategory } from '@features/categories/queries';
 
@@ -99,4 +101,20 @@ export async function deleteCategoryAction(formData: FormData): Promise<void> {
   ensureCategoriesTable(db);
   deleteCategory(db, name);
   revalidatePath('/', 'layout');
+}
+
+// Restore the entire ledger from a Monefy-compatible CSV (a moniflow export, or a real Monefy export).
+// Replace-all: parse, then restoreEntries wipes every existing entry and loads the file's rows. The
+// caller (ImportBackup) reads the file in the browser and confirms first. Returns counts so the client
+// can toast a summary; a malformed/empty file makes parseMonefyCsv yield 0 entries — that still runs a
+// (harmless) clear, so the client guards against an empty parse before calling (see Task 5).
+export async function importBackupAction(
+  csvText: string,
+): Promise<{ imported: number; skipped: number }> {
+  const db = initDb();
+  ensureEntriesTable(db);
+  const { entries, skipped } = parseMonefyCsv(csvText);
+  restoreEntries(db, entries);
+  revalidatePath('/', 'layout');
+  return { imported: entries.length, skipped };
 }
