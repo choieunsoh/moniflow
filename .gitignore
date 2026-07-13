@@ -30,3 +30,5 @@ next-env.d.ts
 
 # Claude Code — personal/local overrides stay out of git; settings.json (shared) is committed
 .claude/settings.local.json
+
+.vercel
