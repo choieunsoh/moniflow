@@ -3,9 +3,16 @@ export const dynamic = 'force-dynamic';
 
 import { initDb } from '@db/client';
 import { ensureSettingsTable } from '@features/settings/schema';
-import { getCutoff, getIconSet, ICON_SETS } from '@features/settings/queries';
+import {
+  getCutoff,
+  getIconSet,
+  ICON_SETS,
+  getCardFeePct,
+  getFxRates,
+} from '@features/settings/queries';
 import { setCutoffAction, setIconSetAction } from '@features/settings/actions';
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
+import { FxSettings } from '@features/settings/ui/FxSettings';
 import { PageContainer } from '@shared/ui/PageContainer';
 
 const ICON_SET_LABELS = {
@@ -19,6 +26,12 @@ export default function SettingsPage() {
   ensureSettingsTable(db);
   const cutoff = getCutoff(db);
   const iconSet = getIconSet(db);
+  const cardFeePct = getCardFeePct(db);
+  const fxRates = getFxRates(db);
+  const ratesAsOf: Record<string, string> = {};
+  for (const [code, entry] of Object.entries(fxRates)) {
+    ratesAsOf[code] = entry.asOf;
+  }
 
   return (
     <PageContainer size="form">
@@ -84,6 +97,15 @@ export default function SettingsPage() {
             Save
           </button>
         </form>
+      </section>
+
+      <section className="panel flex flex-col gap-4 p-5">
+        <h2 className="text-sm font-semibold">Foreign currency</h2>
+        <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
+          The keypad can enter a non-THB expense using the Visa card rate. Set your card fee and
+          refresh the rates before a trip.
+        </p>
+        <FxSettings cardFeePct={cardFeePct} ratesAsOf={ratesAsOf} />
       </section>
 
       <section
