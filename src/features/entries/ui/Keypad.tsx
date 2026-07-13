@@ -9,9 +9,11 @@ import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
 import type { IconSet } from '@features/settings/queries';
 import type { EntryRow } from '../schema';
+import type { Currency } from '../entry-form';
 
 export type KeypadCategory = { name: string; emoji: string; hue?: number };
 export type KeypadAccount = { name: string; icon: string; hue?: number };
+export type KeypadCurrency = { code: Currency; symbol: string };
 
 const OPS = '+−×÷';
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'];

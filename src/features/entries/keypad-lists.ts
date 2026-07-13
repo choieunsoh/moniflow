@@ -1,5 +1,7 @@
 import type { Db } from '@db/client';
-import { getCategoryCounts, getAccountsByUsage } from './queries';
+import { getCategoryCounts, getAccountsByUsage, getCurrencyCounts } from './queries';
+import { CURRENCIES } from './entry-form';
+import { currencySymbol } from '@shared/money';
 import {
   getEmojiMap,
   emojiFor,
@@ -14,7 +16,7 @@ import {
   hueForAccount,
   getAccountOrderMap,
 } from '@features/accounts/queries';
-import type { KeypadCategory, KeypadAccount } from './ui/Keypad';
+import type { KeypadCategory, KeypadAccount, KeypadCurrency } from './ui/Keypad';
 
 // Float manually-ordered rows to the front in their chosen sequence; the rest keep their incoming
 // (count / usage) order. Stable — Array.prototype.sort preserves the order of equal keys (ES2019+),
@@ -50,4 +52,19 @@ export function getKeypadAccounts(db: Db): KeypadAccount[] {
     hue: hueForAccount(hueMap, name),
   }));
   return sortByManualOrder(list, getAccountOrderMap(db));
+}
+
+// The keypad's currency picker: THB pinned first, then the remaining currencies by ledger usage,
+// with never-used ones (rank MAX) trailing in their declared order. Auto-tunes per trip — no manual
+// reorder. Each entry carries its narrowSymbol glyph for the picker chips.
+export function getKeypadCurrencies(db: Db): KeypadCurrency[] {
+  const rank = new Map(getCurrencyCounts(db).map((c, i) => [c.currency, i]));
+  const MAX = Number.MAX_SAFE_INTEGER;
+  const ordered = [...CURRENCIES].sort((a, b) => {
+    if (a === b) return 0;
+    if (a === 'THB') return -1;
+    if (b === 'THB') return 1;
+    return (rank.get(a) ?? MAX) - (rank.get(b) ?? MAX);
+  });
+  return ordered.map((code) => ({ code, symbol: currencySymbol(code) }));
 }

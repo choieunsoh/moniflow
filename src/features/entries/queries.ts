@@ -194,6 +194,19 @@ export function getAccountsByUsage(db: Db): string[] {
     .map((r) => r.account);
 }
 
+// Non-null currency codes seen in the ledger, most-used first. Drives the keypad currency picker's
+// auto-ordering (THB pinned separately in keypad-lists). Nulls (legacy THB rows) are excluded.
+export function getCurrencyCounts(db: Db): { currency: string; count: number }[] {
+  return db
+    .select({ currency: entries.currency, count: sql<number>`count(${entries.id})` })
+    .from(entries)
+    .where(sql`${entries.currency} is not null`)
+    .groupBy(entries.currency)
+    .all()
+    .filter((r): r is { currency: string; count: number } => r.currency !== null)
+    .sort((a, b) => b.count - a.count);
+}
+
 // The account on the most recent entry — the quick-entry form's default, so the next entry starts on
 // the account you last used. `undefined` when the ledger is empty (caller falls back).
 export function getLatestAccount(db: Db): string | undefined {
