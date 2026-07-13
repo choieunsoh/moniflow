@@ -54,6 +54,17 @@ New pure/query pieces in `src/features/entries/`:
 
 ## FX source — Visa, cached, manual refresh, offline-tolerant
 
+> **AMENDMENT (2026-07-13, during implementation):** the FX source shipped as **ECB reference rates
+> via frankfurter.dev**, NOT Visa. Reason: Visa's `usa.visa.com` endpoint 403-challenges any server
+> runtime's `fetch` (Cloudflare); `curl` gets through locally but won't exist on Vercel, the intended
+> deploy target. ECB is plain HTTPS (no key, works on Node/serverless), fetched in one call
+> (`base=THB`), and is the interbank mid — the card-fee knob (`withFee`) now represents the total
+> markup over mid (network cut ~0.5% + bank FX fee) so stored THB still approximates the statement.
+> The code is `frankfurterUrl` + `parseEcbResponse` in `fx.ts`; the cache/keypad/fee machinery below
+> is unchanged. The Visa details below are retained for historical context only. (Also note: this
+> app is local-first SQLite — deploying to Vercel additionally requires migrating off better-sqlite3
+> to a hosted DB, a separate effort.)
+
 ### Fetch (`src/features/entries/fx.ts`, new)
 
 - `fetchVisaThbPerUnit(from: Currency): Promise<number>` — server-side `fetch` to
