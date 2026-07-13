@@ -282,7 +282,12 @@ export function Keypad({
                 </span>
                 <button
                   type="button"
-                  onClick={() => startRefresh(async () => refreshFxRatesAction())}
+                  onClick={() => {
+                    // Drop any seeded/typed rate so the field follows the freshly fetched cache —
+                    // this is what lets ↻ re-price an edited entry at today's rate.
+                    setRateOverride(null);
+                    startRefresh(async () => refreshFxRatesAction());
+                  }}
                   disabled={isRefreshing}
                   aria-label="Refresh FX rates"
                   className="tap justify-center rounded-full px-2 disabled:opacity-40"
