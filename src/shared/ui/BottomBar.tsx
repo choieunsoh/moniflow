@@ -165,7 +165,8 @@ function BarButton({
 // Inline SVG icons — a consistent 24px outline set (stroke=currentColor inherits each tab's color).
 // Simple, familiar glyphs; no icon dependency.
 // Home opens the spending overview (the donut + breakdown), so the tab reads as a trend line rather
-// than a house — and it echoes the moniflow wordmark.
+// than a house — a functional dashboard glyph, deliberately not the 'm' brand mark (that's the
+// wordmark's job; a logo-as-nav-tab would say "moniflow" where the user needs "overview").
 function HomeIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
