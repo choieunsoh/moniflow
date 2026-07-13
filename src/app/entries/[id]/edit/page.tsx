@@ -58,8 +58,8 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
       <PageContainer size="full">
         <header className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">Edit expense</h1>
-          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Adjust the amount, then tap a category to save.
+          <p className="text-sm" style={{ color: 'var(--color-faint)' }}>
+            Tap a category to save your changes.
           </p>
         </header>
         <Keypad

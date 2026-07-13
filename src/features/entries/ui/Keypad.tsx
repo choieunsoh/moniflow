@@ -67,6 +67,30 @@ function Chip({
   );
 }
 
+// A small calendar glyph for the date chip when it's on "Today" (no custom date picked yet). Inline
+// SVG in the app's chrome-icon house style (cf. BottomBar) — stroke inherits the chip's text color.
+function CalendarIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <rect
+        x="2.5"
+        y="3.5"
+        width="11"
+        height="10"
+        rx="1.6"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+      <path
+        d="M2.5 6.4h11 M5.5 2.4v2.2 M10.5 2.4v2.2"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 // Advance the amount expression by one key press, with light guards (no leading operator, no double
 // operator, one decimal point per number). Arithmetic itself is evaluated by ../calc.
 function nextExpr(prev: string, key: string): string {
@@ -170,13 +194,13 @@ export function Keypad({
 
       {/* Amount + inputs + keypad */}
       <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-nowrap items-center gap-2">
           <Chip selected={date === today} onClick={() => setDate(today)}>
             Today
           </Chip>
           <span className="relative inline-flex shrink-0">
             <span className={pillClass} style={chipStyle(isCustomDate)}>
-              {isCustomDate ? formatDayHeading(date) : 'Earlier…'}
+              {isCustomDate ? formatDayHeading(date) : <CalendarIcon />}
             </span>
             <input
               type="date"
@@ -220,11 +244,13 @@ export function Keypad({
             onClick={() => setView('account')}
             aria-haspopup="true"
             aria-label={`Account: ${account}`}
-            className="tap max-w-full shrink-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
+            className="tap min-w-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
             style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
           >
-            <span className="truncate">{account}</span>
-            <span aria-hidden>▾</span>
+            <span className="min-w-0 truncate">{account}</span>
+            <span aria-hidden className="shrink-0">
+              ▾
+            </span>
           </button>
         </div>
 
@@ -243,63 +269,69 @@ export function Keypad({
               4 dp); blank falls back to the cached effective rate. The ↻ button refreshes the ECB
               rates in place; the "as of" date shows how fresh the cached rate is. */}
           {!isThb ? (
-            <div className="mt-1 flex w-full flex-col items-end gap-1 text-sm">
-              <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                <span style={{ color: 'var(--color-muted)' }} className="tnum">
-                  1 {currency} =
-                </span>
-                <input
-                  name="rate-display"
-                  type="number"
-                  inputMode="decimal"
-                  step="any"
-                  min="0"
-                  value={rateStr}
-                  onChange={(e) => setRateOverride(e.target.value)}
-                  placeholder="rate"
-                  aria-label={`THB per 1 ${currency}`}
-                  className="tnum h-9 w-24 rounded-[var(--radius-sm)] border px-2 text-right text-sm"
-                  style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
-                />
-                <span style={{ color: 'var(--color-muted)' }} className="tnum">
-                  THB
+            <div className="mt-1 flex w-full flex-col items-end gap-2">
+              {/* THB hero — for a THB tracker, "what it cost you" is the number that matters, so the
+                  converted baht reads large; the keyed foreign figure above stays the input focus. */}
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-base" style={{ color: 'var(--color-muted)' }}>
+                  =
                 </span>
                 <span
-                  className="tnum font-semibold"
+                  className="tnum text-[1.75rem] leading-none font-bold"
                   style={{ color: hasRate ? 'var(--color-text)' : 'var(--color-faint)' }}
                 >
-                  {hasRate ? `≈ ${formatBaht(thbValue)}` : 'no rate'}
+                  {hasRate ? formatBaht(thbValue) : 'no rate'}
                 </span>
               </div>
+
+              {/* Quiet caption: the editable rate (left) and the ECB source + refresh (right). The
+                  rate input still drives the conversion — what you see is what converts. */}
               <div
-                className="flex items-center gap-2 text-xs"
+                className="flex w-full items-center justify-between gap-2 text-xs"
                 style={{ color: 'var(--color-faint)' }}
               >
-                <span className="tnum">
-                  {ratesAsOf[currency] !== undefined
-                    ? `ECB as of ${ratesAsOf[currency]}`
-                    : 'no rate cached'}
+                <span className="tnum inline-flex items-center gap-1.5">
+                  1 {currency} =
+                  <input
+                    name="rate-display"
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    min="0"
+                    value={rateStr}
+                    onChange={(e) => setRateOverride(e.target.value)}
+                    placeholder="rate"
+                    aria-label={`THB per 1 ${currency}`}
+                    className="tnum h-8 w-20 rounded-[var(--radius-sm)] border px-2 text-right"
+                    style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
+                  />
+                  THB
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Drop any seeded/typed rate so the field follows the freshly fetched cache —
-                    // this is what lets ↻ re-price an edited entry at today's rate.
-                    setRateOverride(null);
-                    startRefresh(async () => refreshFxRatesAction());
-                  }}
-                  disabled={isRefreshing}
-                  aria-label="Refresh FX rates"
-                  className="tap justify-center rounded-full px-2 disabled:opacity-40"
-                  style={{ color: 'var(--color-accent-text)' }}
-                >
-                  <span
-                    aria-hidden
-                    className={isRefreshing ? 'inline-block animate-spin' : undefined}
+                <span className="tnum inline-flex items-center gap-1.5 whitespace-nowrap">
+                  {ratesAsOf[currency] !== undefined
+                    ? `ECB ${ratesAsOf[currency]}`
+                    : 'no rate cached'}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Drop any seeded/typed rate so the field follows the freshly fetched cache —
+                      // this is what lets ↻ re-price an edited entry at today's rate.
+                      setRateOverride(null);
+                      startRefresh(async () => refreshFxRatesAction());
+                    }}
+                    disabled={isRefreshing}
+                    aria-label="Refresh FX rates"
+                    className="tap justify-center rounded-full px-1 disabled:opacity-40"
+                    style={{ color: 'var(--color-accent-text)' }}
                   >
-                    ↻
-                  </span>
-                </button>
+                    <span
+                      aria-hidden
+                      className={isRefreshing ? 'inline-block animate-spin' : undefined}
+                    >
+                      ↻
+                    </span>
+                  </button>
+                </span>
               </div>
             </div>
           ) : null}
