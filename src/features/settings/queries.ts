@@ -57,3 +57,28 @@ export function setIconSet(db: Db, value: IconSet): void {
     tx.insert(settings).values({ key: ICON_SET_KEY, value }).run();
   });
 }
+
+// Card FX fee % — the user's card foreign-transaction markup, layered onto the pure Visa rate when
+// converting a foreign entry to THB. Reuses the KV table like cutoff/icon-set. Default 2%.
+const CARD_FEE_KEY = 'card_fx_fee_pct';
+const DEFAULT_CARD_FEE = 2;
+
+export function isValidCardFeePct(pct: number): boolean {
+  return Number.isFinite(pct) && pct >= 0 && pct <= 10;
+}
+
+export function getCardFeePct(db: Db): number {
+  const [row] = db.select().from(settings).where(eq(settings.key, CARD_FEE_KEY)).all();
+  if (row === undefined) return DEFAULT_CARD_FEE;
+  const pct = Number(row.value);
+  return isValidCardFeePct(pct) ? pct : DEFAULT_CARD_FEE;
+}
+
+export function setCardFeePct(db: Db, pct: number): void {
+  db.transaction((tx) => {
+    tx.delete(settings).where(eq(settings.key, CARD_FEE_KEY)).run();
+    tx.insert(settings)
+      .values({ key: CARD_FEE_KEY, value: String(pct) })
+      .run();
+  });
+}

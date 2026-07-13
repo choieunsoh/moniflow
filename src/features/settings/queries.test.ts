@@ -9,6 +9,9 @@ import {
   getIconSet,
   setIconSet,
   isIconSet,
+  getCardFeePct,
+  setCardFeePct,
+  isValidCardFeePct,
 } from './queries';
 
 describe('getCutoff / setCutoff', () => {
@@ -81,5 +84,40 @@ describe('isValidCutoffDay', () => {
     expect(isValidCutoffDay(29)).toBe(false);
     expect(isValidCutoffDay(18.5)).toBe(false);
     expect(isValidCutoffDay(Number.NaN)).toBe(false);
+  });
+});
+
+describe('getCardFeePct / setCardFeePct', () => {
+  it('defaults to 2 when nothing is stored', () => {
+    const db = initDb(':memory:');
+    ensureSettingsTable(db);
+    expect(getCardFeePct(db)).toBe(2);
+  });
+
+  it('round-trips a stored fee and overwrites on re-write', () => {
+    const db = initDb(':memory:');
+    ensureSettingsTable(db);
+    setCardFeePct(db, 1.5);
+    expect(getCardFeePct(db)).toBe(1.5);
+    setCardFeePct(db, 0);
+    expect(getCardFeePct(db)).toBe(0);
+  });
+
+  it('falls back to 2 if the stored value is out of range', () => {
+    const db = initDb(':memory:');
+    ensureSettingsTable(db);
+    db.run(sql`INSERT INTO settings (key, value) VALUES ('card_fx_fee_pct', '999')`);
+    expect(getCardFeePct(db)).toBe(2);
+  });
+});
+
+describe('isValidCardFeePct', () => {
+  it('accepts 0..10 and rejects negatives, >10, and NaN', () => {
+    expect(isValidCardFeePct(0)).toBe(true);
+    expect(isValidCardFeePct(2)).toBe(true);
+    expect(isValidCardFeePct(10)).toBe(true);
+    expect(isValidCardFeePct(-1)).toBe(false);
+    expect(isValidCardFeePct(10.5)).toBe(false);
+    expect(isValidCardFeePct(Number.NaN)).toBe(false);
   });
 });
