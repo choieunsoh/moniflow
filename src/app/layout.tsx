@@ -29,7 +29,7 @@ const plexSans = IBM_Plex_Sans({
 
 export const metadata: Metadata = {
   title: 'Moniflow — money-flow dashboard',
-  description: 'Track your money flow in a SQLite file. Calm, precise, yours.',
+  description: 'Track your money flow. Calm, precise, yours.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

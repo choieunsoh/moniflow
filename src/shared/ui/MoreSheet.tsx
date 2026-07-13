@@ -65,7 +65,7 @@ export function MoreSheet({ open, onClose }: { open: boolean; onClose: () => voi
           ))}
         </ul>
         <p className="px-2 pt-3 text-xs leading-relaxed" style={{ color: 'var(--color-faint)' }}>
-          Moniflow · money flow. Your data stays in a SQLite file on your machine.
+          Moniflow · money flow. Your data stays on your machine.
         </p>
       </div>
     </dialog>
