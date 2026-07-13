@@ -23,7 +23,11 @@ const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.
 
 // The editable FX rate is shown to 4 decimals (enough for every supported currency; the smallest,
 // KRW, is ~0.023 THB per unit). useGrouping off so the value stays a valid <input type=number>.
-const rateFmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4, useGrouping: false });
+const rateFmt = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 4,
+  useGrouping: false,
+});
 function formatRate(rate: number): string {
   return rateFmt.format(rate);
 }
@@ -119,18 +123,20 @@ export function Keypad({
         ),
       )
     : '';
-  // Preserve an edited foreign row's own rate: its stored effective rate = |THB| / |foreign|.
-  const initialOverride =
+  // Preserve an edited foreign row's own rate: its stored effective rate = |THB| / |foreign|. `null`
+  // means "follow the cached rate" (a new entry); a string is a shown/typed value.
+  const initialOverride: string | null =
     entry && initialCurrency !== 'THB' && entry.originalAmount
       ? formatRate(Math.abs(entry.amount) / Math.abs(entry.originalAmount))
-      : '';
+      : null;
 
   const [expr, setExpr] = useState(initialForeign);
   const [view, setView] = useState<'keypad' | 'account' | 'currency' | 'category'>('keypad');
   const [date, setDate] = useState(entry?.date ?? today);
   const [account, setAccount] = useState(entry?.account ?? defaultAccount);
   const [currency, setCurrency] = useState<Currency>(initialCurrency);
-  const [rateOverride, setRateOverride] = useState(initialOverride);
+  // `null` = follow the cached rate (shown to 4 dp); a string = the value the user typed/edited.
+  const [rateOverride, setRateOverride] = useState<string | null>(initialOverride);
   const [isRefreshing, startRefresh] = useTransition();
 
   const isCustomDate = date !== today;
@@ -139,12 +145,15 @@ export function Keypad({
   const isThb = currency === 'THB';
   const symbol = currencies.find((c) => c.code === currency)?.symbol ?? currency;
 
-  const overrideNum = rateOverride.trim() === '' ? null : Number(rateOverride);
+  // The value shown IN the rate field — and used to convert, so what you see is what converts. When
+  // following the cache (rateOverride === null) it's the fee-inclusive rate to 4 dp, which lets a
+  // refresh update it live; once the user types, their string wins.
+  const cached = rates[currency];
+  const rateStr = rateOverride ?? (cached !== undefined ? formatRate(cached) : '');
+  const rateNum = rateStr.trim() === '' ? null : Number(rateStr);
   const effectiveRate =
-    overrideNum !== null && Number.isFinite(overrideNum) && overrideNum > 0
-      ? overrideNum
-      : (rates[currency] ?? null);
-  const hasRate = isThb || (effectiveRate !== null && effectiveRate > 0);
+    rateNum !== null && Number.isFinite(rateNum) && rateNum > 0 ? rateNum : null;
+  const hasRate = isThb || effectiveRate !== null;
   const thbValue = amount === null ? 0 : isThb ? amount : toThb(amount, effectiveRate ?? 0);
   const canSubmit = validAmount && hasRate && (isThb || thbValue > 0);
   const spaced = expr.replace(/([+−×÷])/g, ' $1 ').trim();
@@ -245,9 +254,9 @@ export function Keypad({
                   inputMode="decimal"
                   step="any"
                   min="0"
-                  value={rateOverride}
+                  value={rateStr}
                   onChange={(e) => setRateOverride(e.target.value)}
-                  placeholder={rates[currency] !== undefined ? formatRate(rates[currency]) : 'rate'}
+                  placeholder="rate"
                   aria-label={`THB per 1 ${currency}`}
                   className="tnum h-9 w-24 rounded-[var(--radius-sm)] border px-2 text-right text-sm"
                   style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
@@ -359,7 +368,7 @@ export function Keypad({
                 type="button"
                 onClick={() => {
                   setCurrency(c.code);
-                  setRateOverride(''); // drop any prior override; fall back to the cached rate
+                  setRateOverride(null); // follow the cached rate for the new currency
                   setView('keypad');
                 }}
                 aria-pressed={on}
