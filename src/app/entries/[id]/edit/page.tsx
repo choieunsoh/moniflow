@@ -22,6 +22,7 @@ import { withFee } from '@features/entries/fx';
 import { editEntryAction } from '@features/entries/actions';
 import { EntryForm } from '@features/entries/ui/EntryForm';
 import { Keypad } from '@features/entries/ui/Keypad';
+import { CloseButton } from '@features/entries/ui/CloseButton';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { todayIso } from '@shared/date';
 
@@ -56,11 +57,14 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
 
     return (
       <PageContainer size="full">
-        <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">Edit expense</h1>
-          <p className="text-sm" style={{ color: 'var(--color-faint)' }}>
-            Tap a category to save your changes.
-          </p>
+        <header className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-semibold">Edit expense</h1>
+            <p className="text-sm" style={{ color: 'var(--color-faint)' }}>
+              Tap a category to save your changes.
+            </p>
+          </div>
+          <CloseButton />
         </header>
         <Keypad
           categories={categories}
@@ -83,11 +87,14 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
 
   return (
     <PageContainer size="form">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Edit entry</h1>
-        <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Update this ledger row.
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">Edit entry</h1>
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            Update this ledger row.
+          </p>
+        </div>
+        <CloseButton />
       </header>
       <EntryForm
         action={editEntryAction}

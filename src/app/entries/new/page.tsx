@@ -15,6 +15,7 @@ import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet, getCardFeePct, getFxRates } from '@features/settings/queries';
 import { withFee } from '@features/entries/fx';
 import { Keypad } from '@features/entries/ui/Keypad';
+import { CloseButton } from '@features/entries/ui/CloseButton';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { todayIso } from '@shared/date';
 
@@ -43,11 +44,14 @@ export default function NewEntryPage() {
 
   return (
     <PageContainer size="full">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Add expense</h1>
-        <p className="text-sm" style={{ color: 'var(--color-faint)' }}>
-          Keypad does math (＋ − × ÷) — tap a category to save.
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">Add expense</h1>
+          <p className="text-sm" style={{ color: 'var(--color-faint)' }}>
+            Keypad does math (＋ − × ÷) — tap a category to save.
+          </p>
+        </div>
+        <CloseButton />
       </header>
       <Keypad
         categories={categories}
