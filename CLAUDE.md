@@ -129,3 +129,7 @@ not inline. Do this by default.
 
 - **Private financial data:** `data/` (source + built `moniflow.db*` incl. `-wal`/`-shm`) is
   git-ignored — never commit it.
+- **Basic-auth gate** (`src/middleware.ts`): set `MONIFLOW_PASSWORD` (in `.env.local`, git-ignored) to
+  password-protect a served instance. Username is ignored. Enforced in production and **fail-closed**
+  (unset → 500, never silently open); off in dev unless the var is set. PWA chrome (manifest, icons,
+  `sw.js`) stays public so home-screen install still works.
