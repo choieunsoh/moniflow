@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { formatBaht } from '@shared/money';
 import { toBars } from '../breakdown';
 import type { Breakdown as BreakdownRow } from '../queries';
@@ -13,6 +14,8 @@ import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 // Pass `limits` (category → monthly limit) to turn budgeted rows into spent-vs-limit meters; rows
 // with no limit keep the plain relative bar. `pacePct` (time elapsed in the cycle) draws the "today"
 // pace tick on each budgeted meter — forwarded straight to BudgetMeter, current cycle only.
+// Pass `cycleKey` to make each row (icon excepted) a tap-through to that category's records for the
+// cycle — home opts in; account breakdowns omit it and stay static.
 export function Breakdown({
   title,
   rows,
@@ -21,6 +24,7 @@ export function Breakdown({
   iconSet = 'emoji',
   limits,
   pacePct,
+  cycleKey,
 }: {
   title: string;
   rows: BreakdownRow[];
@@ -29,6 +33,7 @@ export function Breakdown({
   iconSet?: IconSet;
   limits?: Map<string, number>;
   pacePct?: number;
+  cycleKey?: string;
 }) {
   const bars = toBars(rows);
   return (
@@ -44,22 +49,17 @@ export function Breakdown({
             const spent = Math.abs(b.total);
             const limit = limits?.get(b.key);
             const status = limit === undefined ? null : toBudgetTotal(limit, spent);
-            return (
-              <li key={b.key} className="flex flex-col gap-1">
+            // Icon-excepted tap-through to the category's filtered records — home passes cycleKey.
+            const href = cycleKey
+              ? `/records?cycle=${encodeURIComponent(cycleKey)}&category=${encodeURIComponent(b.key)}`
+              : null;
+            // Row body minus the icon: the label line and the bar/meter. Wrapped in a Link when a
+            // cycleKey is given, else a plain div — the icon (a button) stays a sibling either way,
+            // never nested inside the anchor.
+            const body = (
+              <>
                 <div className="flex items-baseline justify-between text-sm">
                   <span className="flex min-w-0 items-center gap-1.5">
-                    {/* A category breakdown (emojis passed) makes each marker tappable to edit its
-                        icon; needs a CategoryPickerProvider ancestor (the app layout mounts one). An
-                        account breakdown passes no emojis, so the marker is simply absent. */}
-                    {emojis ? (
-                      <CategoryIconButton
-                        emoji={emojiFor(emojis, b.key)}
-                        category={b.key}
-                        iconSet={iconSet}
-                        hue={hues ? hueFor(hues, b.key) : undefined}
-                        size="sm"
-                      />
-                    ) : null}
                     <span className="truncate">{b.key}</span>
                     <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
                       ({b.count})
@@ -83,6 +83,33 @@ export function Breakdown({
                       style={{ width: `${b.pct}%`, background: 'var(--color-accent)' }}
                     />
                   </div>
+                )}
+              </>
+            );
+            return (
+              <li key={b.key} className="flex items-start gap-1.5">
+                {/* A category breakdown (emojis passed) leads with a marker tappable to edit its
+                    icon; needs a CategoryPickerProvider ancestor (the app layout mounts one). An
+                    account breakdown passes no emojis, so the marker is simply absent. */}
+                {emojis ? (
+                  <CategoryIconButton
+                    emoji={emojiFor(emojis, b.key)}
+                    category={b.key}
+                    iconSet={iconSet}
+                    hue={hues ? hueFor(hues, b.key) : undefined}
+                    size="sm"
+                  />
+                ) : null}
+                {href ? (
+                  <Link
+                    href={href}
+                    aria-label={`${b.key} records this cycle`}
+                    className="flex min-w-0 flex-1 flex-col gap-1"
+                  >
+                    {body}
+                  </Link>
+                ) : (
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">{body}</div>
                 )}
               </li>
             );

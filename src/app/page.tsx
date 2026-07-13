@@ -99,6 +99,7 @@ export default async function HomePage({
                 iconSet={iconSet}
                 limits={limits}
                 pacePct={pacePct}
+                cycleKey={activeKey}
               />
             ) : (
               <section className="panel flex flex-col gap-5 p-5">
@@ -152,21 +153,44 @@ export default async function HomePage({
                           </CategoryEditTrigger>
                         );
                       })()}
-                      <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                        <span className="truncate">{s.name}</span>
-                        <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                          ({s.count})
-                        </span>
-                      </span>
-                      <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                        {formatBaht(s.value)}
-                      </span>
-                      <span
-                        className="tnum w-9 shrink-0 text-right"
-                        style={{ color: 'var(--color-faint)' }}
-                      >
-                        {Math.round((s.value / total) * 100)}%
-                      </span>
+                      {/* Icon-excepted tap-through to the category's filtered records for this
+                        cycle. The synthetic "Other" bucket isn't a real category — no records match
+                        it — so it stays static. */}
+                      {(() => {
+                        const inner = (
+                          <>
+                            <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                              <span className="truncate">{s.name}</span>
+                              <span
+                                className="tnum shrink-0"
+                                style={{ color: 'var(--color-muted)' }}
+                              >
+                                ({s.count})
+                              </span>
+                            </span>
+                            <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                              {formatBaht(s.value)}
+                            </span>
+                            <span
+                              className="tnum w-9 shrink-0 text-right"
+                              style={{ color: 'var(--color-faint)' }}
+                            >
+                              {Math.round((s.value / total) * 100)}%
+                            </span>
+                          </>
+                        );
+                        return s.other ? (
+                          <span className="flex min-w-0 flex-1 items-center gap-3">{inner}</span>
+                        ) : (
+                          <Link
+                            href={`/records?cycle=${activeKey}&category=${encodeURIComponent(s.name)}`}
+                            aria-label={`${s.name} records this cycle`}
+                            className="flex min-w-0 flex-1 items-center gap-3"
+                          >
+                            {inner}
+                          </Link>
+                        );
+                      })()}
                     </li>
                   ))}
                 </ul>
