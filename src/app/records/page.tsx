@@ -100,9 +100,21 @@ export default async function RecordsPage({
         : cycleEntries;
   const ordered = spanAll ? entries : [...entries].reverse(); // newest first
   const byCategory = view === 'category';
+  // Each section carries its own foreign-currency subtotals so a date header (by-date) or a category
+  // header (by-category) can read "¥12,000  ฿2,800" when it holds foreign spending — empty otherwise.
   const sections = byCategory
-    ? groupByCategory(ordered).map((g) => ({ key: g.category, entries: g.entries, total: g.total }))
-    : groupByDate(ordered).map((g) => ({ key: g.date, entries: g.entries, total: g.total }));
+    ? groupByCategory(ordered).map((g) => ({
+        key: g.category,
+        entries: g.entries,
+        total: g.total,
+        foreign: sumByCurrency(g.entries),
+      }))
+    : groupByDate(ordered).map((g) => ({
+        key: g.date,
+        entries: g.entries,
+        total: g.total,
+        foreign: sumByCurrency(g.entries),
+      }));
   const total = entries.reduce((sum, e) => sum + e.amount, 0);
   // Foreign-currency subtotals for the current view (empty when everything is THB), shown next to
   // the THB total so a cycle with a Tokyo week reads "¥84,948  ฿17,000", not THB alone.
@@ -230,8 +242,14 @@ export default async function RecordsPage({
                     ({section.entries.length})
                   </span>
                 </div>
-                <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
-                  {formatBaht(Math.abs(section.total))}
+                <span
+                  className="tnum flex shrink-0 items-baseline gap-2 text-sm"
+                  style={{ color: 'var(--color-muted)' }}
+                >
+                  {section.foreign.map((c) => (
+                    <span key={c.currency}>{formatForeign(c.total, c.currency)}</span>
+                  ))}
+                  <span>{formatBaht(Math.abs(section.total))}</span>
                 </span>
               </summary>
               <ul className="panel flex flex-col divide-y overflow-hidden">
