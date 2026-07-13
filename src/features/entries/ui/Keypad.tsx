@@ -255,8 +255,10 @@ export function Keypad({
         </div>
 
         <div className="panel flex flex-col items-end gap-1 px-5 py-4">
-          <span className="tnum text-sm" style={{ color: 'var(--color-faint)' }}>
-            {spaced || ' '}
+          {/* min-h reserves the expression line so the panel doesn't grow (and shove the keypad
+              down) the moment you type the first key — an empty whitespace node collapses to 0. */}
+          <span className="tnum min-h-5 text-sm" style={{ color: 'var(--color-faint)' }}>
+            {spaced}
           </span>
           <span
             className="tnum text-4xl font-semibold"
