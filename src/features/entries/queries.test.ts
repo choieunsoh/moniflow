@@ -128,6 +128,24 @@ describe('restoreEntries', () => {
     restoreEntries(d, []);
     expect(getEntries(d)).toHaveLength(0);
   });
+
+  // Mirrors replaceEntries' large-batch guard: 5000 rows × bound columns exceeds SQLite's 32,766
+  // variable cap, so a single-batch insert throws "too many SQL variables". restoreEntries is the
+  // path most likely to load a full multi-year history, so its chunking gets the same guard.
+  it('inserts a set larger than the SQLite variable cap in one call', () => {
+    const d = db();
+    const many = Array.from({ length: 5000 }, () => ({
+      date: '2026-07-01',
+      account: 'visa',
+      category: 'food',
+      amount: -1,
+      currency: 'THB',
+      originalAmount: -1,
+      note: null,
+    }));
+    restoreEntries(d, many);
+    expect(getEntries(d)).toHaveLength(5000);
+  });
 });
 
 describe('cycle-scoped queries', () => {
