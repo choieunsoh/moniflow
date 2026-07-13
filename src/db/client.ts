@@ -9,7 +9,13 @@ import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 // never back.
 export type Db = BetterSQLite3Database;
 
-export function initDb(path = process.env.MONIFLOW_DB ?? 'data/moniflow.db'): Db {
+// On Vercel the filesystem is read-only except /tmp, so default there to an ephemeral /tmp DB (data
+// does NOT persist across cold starts — fine for a demo, not for real use; see the SQLite→hosted-DB
+// migration note). Locally it stays data/moniflow.db. MONIFLOW_DB overrides either way.
+const defaultDbPath =
+  process.env.MONIFLOW_DB || (process.env.VERCEL ? '/tmp/moniflow.db' : 'data/moniflow.db');
+
+export function initDb(path = defaultDbPath): Db {
   // better-sqlite3 creates the DB file but NOT its parent dir — a fresh checkout has no data/.
   // Ensure it exists so the first run (CLI or dashboard) works without a manual mkdir.
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
