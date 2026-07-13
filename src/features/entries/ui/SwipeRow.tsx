@@ -175,11 +175,13 @@ export function SwipeRow({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
-        className="relative flex cursor-pointer touch-pan-y flex-col gap-2 px-4 py-3 select-none"
+        className="relative flex cursor-pointer touch-pan-y flex-col gap-2 bg-[var(--color-surface)] px-4 py-3 select-none hover:bg-[var(--color-surface-2)]"
         style={{
-          background: 'var(--color-surface)',
           transform: `translateX(${translate}px)`,
-          transition: dragging ? 'none' : 'transform var(--dur) var(--ease-out)',
+          // background-color in the transition so the hover lift fades in; dropped while dragging.
+          transition: dragging
+            ? 'none'
+            : 'transform var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out)',
         }}
       >
         <div className="flex items-center justify-between gap-3">
