@@ -7,10 +7,12 @@ import { ensureEntriesTable } from '@features/entries/schema';
 import { getCategoryCounts } from '@features/entries/queries';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
+import { getKeypadCategories } from '@features/entries/keypad-lists';
 import { EmojiPicker } from '@features/categories/ui/EmojiPicker';
 import { CategoryNameEditor } from '@features/categories/ui/CategoryNameEditor';
 import { AddCategory } from '@features/categories/ui/AddCategory';
 import { DeleteCategoryButton } from '@features/categories/ui/DeleteCategoryButton';
+import { CategoryReorderButton } from '@features/categories/ui/CategoryReorderButton';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getIconSet } from '@features/settings/queries';
 import { PageContainer } from '@shared/ui/PageContainer';
@@ -30,12 +32,19 @@ export default function CategoriesPage() {
 
   return (
     <PageContainer size="full">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Categories</h1>
-        <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Add a category below, or tap one&apos;s icon to restyle it and its name to rename (type an
-          existing name to merge). An unused category (0) can be deleted.
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">Categories</h1>
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            Add a category below, or tap one&apos;s icon to restyle it and its name to rename (type
+            an existing name to merge). An unused category (0) can be deleted.
+          </p>
+        </div>
+        {/* Seeded from the keypad's own list so the sheet shows (and edits) the manual keypad order,
+            not the usage-desc order of the list below. */}
+        {counts.length > 1 && (
+          <CategoryReorderButton items={getKeypadCategories(db)} iconSet={iconSet} />
+        )}
       </header>
 
       <section className="panel overflow-hidden">

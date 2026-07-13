@@ -17,6 +17,8 @@ import { AccountNameEditor } from '@features/accounts/ui/AccountNameEditor';
 import { AddAccount } from '@features/accounts/ui/AddAccount';
 import { DeleteAccountButton } from '@features/accounts/ui/DeleteAccountButton';
 import { AccountMergeButton } from '@features/accounts/ui/AccountMergeButton';
+import { AccountReorderButton } from '@features/accounts/ui/AccountReorderButton';
+import { getKeypadAccounts } from '@features/entries/keypad-lists';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { toBars } from '@features/entries/breakdown';
 import { ensureSettingsTable } from '@features/settings/schema';
@@ -47,13 +49,18 @@ export default function AccountsPage() {
 
   return (
     <PageContainer size="full">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Accounts</h1>
-        <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          This cycle&apos;s spending per account. Tap an icon to restyle it, the name to rename
-          (type an existing name to merge). An unused account can be deleted; a used one can be
-          merged &amp; removed.
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">Accounts</h1>
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            This cycle&apos;s spending per account. Tap an icon to restyle it, the name to rename
+            (type an existing name to merge). An unused account can be deleted; a used one can be
+            merged &amp; removed.
+          </p>
+        </div>
+        {/* Seeded from the keypad's own list so the sheet shows (and edits) the manual keypad order,
+            not the usage-desc order of the list below. */}
+        {counts.length > 1 && <AccountReorderButton items={getKeypadAccounts(db)} />}
       </header>
 
       {breakdown.length > 0 && (

@@ -9,9 +9,6 @@ import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
 import type { IconSet } from '@features/settings/queries';
 import type { EntryRow } from '../schema';
-import { SortableGrid } from './SortableGrid';
-import { reorderCategories } from '@features/categories/actions';
-import { reorderAccounts } from '@features/accounts/actions';
 
 export type KeypadCategory = { name: string; emoji: string; hue?: number };
 export type KeypadAccount = { name: string; icon: string; hue?: number };
@@ -241,45 +238,35 @@ export function Keypad({
         </div>
         {/* Square 3-col tiles mirroring the category grid: the per-account brand glyph sits on a hue
             disc above the name (AccountIcon), same as CategoryIcon in the category grid below. */}
-        <SortableGrid
-          id="keypad-accounts"
-          items={accounts}
-          getId={(a) => a.name}
-          onReorder={(ordered) => void reorderAccounts(ordered.map((a) => a.name))}
-          className="grid grid-cols-3 gap-2"
-        >
-          {(a, tile) => {
+        <div className="grid grid-cols-3 gap-2">
+          {accounts.map((a) => {
             const on = account === a.name;
             return (
               <button
-                ref={tile.setNodeRef}
+                key={a.name}
                 type="button"
-                {...tile.attributes}
-                {...tile.listeners}
                 onClick={() => {
-                  if (tile.justDragged()) return; // a drag just ended — don't select
                   setAccount(a.name);
                   setView('keypad');
                 }}
                 aria-pressed={on}
-                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-[var(--radius-lg)] border px-2 text-center text-xs font-medium active:opacity-70"
-                style={{
-                  ...(on
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-[var(--radius-lg)] border px-2 text-center text-xs font-medium transition-colors active:opacity-70"
+                style={
+                  on
                     ? {
                         background: 'var(--color-accent)',
                         color: 'var(--color-on-accent)',
                         borderColor: 'var(--color-accent)',
                       }
-                    : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }),
-                  ...tile.style,
-                }}
+                    : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
+                }
               >
                 <AccountIcon icon={a.icon} name={a.name} size="lg" hue={a.hue} />
                 <span className="line-clamp-3 w-full">{a.name}</span>
               </button>
             );
-          }}
-        </SortableGrid>
+          })}
+        </div>
       </div>
 
       {/* Category grid — each tile submits the expense with its category. */}
@@ -295,43 +282,30 @@ export function Keypad({
           </button>
           <span className="tnum text-sm font-semibold">{formatBaht(amount ?? 0)}</span>
         </div>
-        <SortableGrid
-          id="keypad-categories"
-          items={categories}
-          getId={(c) => c.name}
-          onReorder={(ordered) => void reorderCategories(ordered.map((c) => c.name))}
-          className="grid grid-cols-3 gap-2"
-        >
-          {(c, tile) => (
+        <div className="grid grid-cols-3 gap-2">
+          {categories.map((c) => (
             <button
-              ref={tile.setNodeRef}
+              key={c.name}
               type="submit"
               name="category"
               value={c.name}
-              {...tile.attributes}
-              {...tile.listeners}
-              // A drop synthesizes a click on the tile under the finger — cancel the submit then.
-              onClick={(e) => {
-                if (tile.justDragged()) e.preventDefault();
-              }}
-              className="panel flex flex-col items-center gap-1 px-2 py-3 text-center active:opacity-70"
-              style={{
-                ...(entry?.category === c.name
+              className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-shadow active:opacity-70"
+              style={
+                entry?.category === c.name
                   ? {
                       borderColor: 'var(--color-accent)',
                       boxShadow: 'inset 0 0 0 1px var(--color-accent)',
                     }
-                  : {}),
-                ...tile.style,
-              }}
+                  : undefined
+              }
             >
               <CategoryIcon emoji={c.emoji} name={c.name} size="lg" iconSet={iconSet} hue={c.hue} />
               <span className="w-full truncate text-xs" style={{ color: 'var(--color-muted)' }}>
                 {c.name}
               </span>
             </button>
-          )}
-        </SortableGrid>
+          ))}
+        </div>
       </div>
     </form>
   );
