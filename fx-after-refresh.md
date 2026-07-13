@@ -1,0 +1,59 @@
+- generic [ref=f6e1]:
+  - generic [ref=f6e2]:
+    - banner [ref=f6e3]:
+      - generic [ref=f6e4]:
+        - link "moniflow home" [ref=f6e5] [cursor=pointer]:
+          - /url: /
+          - generic [ref=f6e6]: moniflow
+        - button "Search records" [ref=f6e14]
+    - main [ref=f6e18]:
+      - generic [ref=f6e19]:
+        - generic [ref=f6e20]:
+          - heading "Settings" [level=1] [ref=f6e21]
+          - paragraph [ref=f6e22]: One global billing-cycle cutoff applies across every account.
+        - generic [ref=f6e24]:
+          - generic [ref=f6e25]: Billing cutoff day
+          - spinbutton "Billing cutoff day" [ref=f6e26]: "18"
+          - paragraph [ref=f6e27]: A cycle runs from this day of one month to the day before it in the next (e.g. 18 → 17 for a cutoff of 18). Changing this reinterprets which cycle every existing entry falls into — no data is modified or lost.
+          - button "Save" [ref=f6e28]
+        - generic [ref=f6e30]:
+          - generic [ref=f6e31]: Category icons
+          - combobox "Category icons" [ref=f6e32]:
+            - option "Emoji (colorful)"
+            - option "Phosphor (line icons)" [selected]
+            - option "Lucide (line icons)"
+          - paragraph [ref=f6e33]: How categories appear everywhere — records, home, the add-expense keypad. Emoji stays the underlying label; the line-icon sets render each category's emoji as a matching icon, falling back to the emoji where no icon exists.
+          - button "Save" [ref=f6e34]
+        - generic [ref=f6e35]:
+          - heading "Foreign currency" [level=2] [ref=f6e36]
+          - paragraph [ref=f6e37]: The keypad can enter a non-THB expense using ECB reference rates. Set your card fee and refresh the rates before a trip.
+          - generic [ref=f6e38]:
+            - generic [ref=f6e39]:
+              - generic [ref=f6e40]: Card FX fee %
+              - spinbutton "Card FX fee %" [ref=f6e41]: "2"
+              - paragraph [ref=f6e42]: Total markup over the ECB mid-rate — the card network's cut (~0.5%) plus your bank's foreign-transaction fee — so a non-THB entry's stored baht approximates your statement.
+              - button "Save" [ref=f6e43]
+            - generic [ref=f6e44]:
+              - button "Refresh FX rates" [active] [ref=f6e45]
+              - paragraph [ref=f6e46]: ECB rates for 7 currencies, as of 2026-07-10.
+        - generic [ref=f6e47]:
+          - heading "Danger zone" [level=2] [ref=f6e48]
+          - paragraph [ref=f6e49]: Permanently delete every entry, category, and budget. This cannot be undone — there is no backup yet.
+          - button "Wipe all data" [ref=f6e50]
+  - navigation "Primary" [ref=f6e51]:
+    - list [ref=f6e52]:
+      - listitem [ref=f6e53]:
+        - link "Home" [ref=f6e54] [cursor=pointer]:
+          - /url: /
+      - listitem [ref=f6e59]:
+        - link "Records" [ref=f6e60] [cursor=pointer]:
+          - /url: /records
+      - listitem [ref=f6e68]:
+        - link "Budgets" [ref=f6e69] [cursor=pointer]:
+          - /url: /budgets
+      - listitem [ref=f6e75]:
+        - button "More" [ref=f6e76]
+    - link "Add expense" [ref=f6e81] [cursor=pointer]:
+      - /url: /entries/new
+  - button "Open Next.js Dev Tools" [ref=f6e89] [cursor=pointer]
+  - alert [ref=f6e93]

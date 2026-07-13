@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { formatBaht, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
@@ -10,6 +10,7 @@ import { isCurrency } from '../entry-form';
 import type { Currency } from '../entry-form';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
+import { refreshFxRatesAction } from '@features/settings/actions';
 import type { IconSet } from '@features/settings/queries';
 import type { EntryRow } from '../schema';
 
@@ -19,6 +20,13 @@ export type KeypadCurrency = { code: Currency; symbol: string };
 
 const OPS = '+−×÷';
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'];
+
+// The editable FX rate is shown to 4 decimals (enough for every supported currency; the smallest,
+// KRW, is ~0.023 THB per unit). useGrouping off so the value stays a valid <input type=number>.
+const rateFmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4, useGrouping: false });
+function formatRate(rate: number): string {
+  return rateFmt.format(rate);
+}
 
 const pillClass =
   'tap shrink-0 justify-center rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors';
@@ -114,7 +122,7 @@ export function Keypad({
   // Preserve an edited foreign row's own rate: its stored effective rate = |THB| / |foreign|.
   const initialOverride =
     entry && initialCurrency !== 'THB' && entry.originalAmount
-      ? String(Math.abs(entry.amount) / Math.abs(entry.originalAmount))
+      ? formatRate(Math.abs(entry.amount) / Math.abs(entry.originalAmount))
       : '';
 
   const [expr, setExpr] = useState(initialForeign);
@@ -123,6 +131,7 @@ export function Keypad({
   const [account, setAccount] = useState(entry?.account ?? defaultAccount);
   const [currency, setCurrency] = useState<Currency>(initialCurrency);
   const [rateOverride, setRateOverride] = useState(initialOverride);
+  const [isRefreshing, startRefresh] = useTransition();
 
   const isCustomDate = date !== today;
   const amount = evaluate(expr); // the FOREIGN figure keyed in
@@ -221,43 +230,70 @@ export function Keypad({
             {isThb ? formatBaht(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
           </span>
 
-          {/* Rate line — only for a non-THB currency. Rate is editable (per-entry override); blank
-              falls back to the cached effective rate. Shows the ≈THB result, or a prompt if there's
-              no rate to convert with. */}
+          {/* Rate line — only for a non-THB currency. Rate is editable (per-entry override, shown to
+              4 dp); blank falls back to the cached effective rate. The ↻ button refreshes the ECB
+              rates in place; the "as of" date shows how fresh the cached rate is. */}
           {!isThb ? (
-            <div className="mt-1 flex w-full flex-wrap items-center justify-end gap-x-2 gap-y-1 text-sm">
-              <span style={{ color: 'var(--color-muted)' }} className="tnum">
-                1 {currency} =
-              </span>
-              <input
-                name="rate-display"
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min="0"
-                value={rateOverride}
-                onChange={(e) => setRateOverride(e.target.value)}
-                placeholder={rates[currency] !== undefined ? String(rates[currency]) : 'rate'}
-                aria-label={`THB per 1 ${currency}`}
-                className="tnum h-9 w-24 rounded-[var(--radius-sm)] border px-2 text-right text-sm"
-                style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
-              />
-              <span style={{ color: 'var(--color-muted)' }} className="tnum">
-                THB
-              </span>
-              <span
-                className="tnum font-semibold"
-                style={{ color: hasRate ? 'var(--color-text)' : 'var(--color-faint)' }}
+            <div className="mt-1 flex w-full flex-col items-end gap-1 text-sm">
+              <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                <span style={{ color: 'var(--color-muted)' }} className="tnum">
+                  1 {currency} =
+                </span>
+                <input
+                  name="rate-display"
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
+                  value={rateOverride}
+                  onChange={(e) => setRateOverride(e.target.value)}
+                  placeholder={rates[currency] !== undefined ? formatRate(rates[currency]) : 'rate'}
+                  aria-label={`THB per 1 ${currency}`}
+                  className="tnum h-9 w-24 rounded-[var(--radius-sm)] border px-2 text-right text-sm"
+                  style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
+                />
+                <span style={{ color: 'var(--color-muted)' }} className="tnum">
+                  THB
+                </span>
+                <span
+                  className="tnum font-semibold"
+                  style={{ color: hasRate ? 'var(--color-text)' : 'var(--color-faint)' }}
+                >
+                  {hasRate ? `≈ ${formatBaht(thbValue)}` : 'no rate'}
+                </span>
+              </div>
+              <div
+                className="flex items-center gap-2 text-xs"
+                style={{ color: 'var(--color-faint)' }}
               >
-                {hasRate ? `≈ ${formatBaht(thbValue)}` : 'no rate'}
-              </span>
+                <span className="tnum">
+                  {ratesAsOf[currency] !== undefined
+                    ? `ECB as of ${ratesAsOf[currency]}`
+                    : 'no rate cached'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => startRefresh(async () => refreshFxRatesAction())}
+                  disabled={isRefreshing}
+                  aria-label="Refresh FX rates"
+                  className="tap justify-center rounded-full px-2 disabled:opacity-40"
+                  style={{ color: 'var(--color-accent-text)' }}
+                >
+                  <span
+                    aria-hidden
+                    className={isRefreshing ? 'inline-block animate-spin' : undefined}
+                  >
+                    ↻
+                  </span>
+                </button>
+              </div>
             </div>
           ) : null}
         </div>
 
         {!isThb && !hasRate ? (
           <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
-            No {currency} rate cached. Refresh FX rates in Settings, or type a rate above.
+            No {currency} rate cached. Tap ↻ above to fetch the latest ECB rates, or type a rate.
           </p>
         ) : null}
 
