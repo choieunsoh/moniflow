@@ -28,8 +28,9 @@ const plexSans = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Moniflow — money-flow dashboard',
-  description: 'Track your money flow. Calm, precise, yours.',
+  title: 'Moniflow — money, quietly in view',
+  description:
+    'A calm, private way to watch your money flow — every baht in view, and it never leaves your device.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
