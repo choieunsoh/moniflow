@@ -7,7 +7,7 @@ export type Currency = (typeof CURRENCIES)[number];
 
 const currencySet = new Set<string>(CURRENCIES);
 
-function isCurrency(value: string): value is Currency {
+export function isCurrency(value: string): value is Currency {
   return currencySet.has(value);
 }
 
