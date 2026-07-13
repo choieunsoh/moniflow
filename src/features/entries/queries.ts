@@ -341,6 +341,16 @@ export function getForeignEntries(db: Db): EntryRow[] {
     .all();
 }
 
+// One trip's rows: a single foreign currency within an inclusive date range, newest first. Mirrors
+// getForeignEntries' predicate (no amount<0 filter — trips count every foreign row, refunds included,
+// same as groupIntoTrips) so the list matches the trip card's count and totals exactly.
+export function getTripEntries(db: Db, currency: string, start: string, end: string): EntryRow[] {
+  return entryRowsQuery(db)
+    .where(and(eq(entries.currency, currency), gte(entries.date, start), lte(entries.date, end)))
+    .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
+    .all();
+}
+
 export type AccountCount = { account: string; count: number };
 
 // How many rows sit in each account, so the biggest are obvious before a rename/merge. leftJoin so an

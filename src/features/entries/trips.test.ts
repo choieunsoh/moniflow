@@ -44,11 +44,23 @@ describe('groupIntoTrips', () => {
       entry({ id: 1, date: '2019-03-01' }),
       entry({ id: 2, date: '2019-03-02' }),
       entry({ id: 3, date: '2019-03-10' }), // 8 days after 03-02
+      entry({ id: 4, date: '2019-03-11' }),
     ];
     const trips = groupIntoTrips(entries);
     expect(trips).toHaveLength(2);
     expect(trips[0]).toMatchObject({ start: '2019-03-01', end: '2019-03-02', count: 2 });
-    expect(trips[1]).toMatchObject({ start: '2019-03-10', end: '2019-03-10', count: 1 });
+    expect(trips[1]).toMatchObject({ start: '2019-03-10', end: '2019-03-11', count: 2 });
+  });
+
+  it('drops single-day runs — foreign spending on one day is online shopping, not a trip', () => {
+    const entries = [
+      entry({ id: 1, date: '2019-03-01' }),
+      entry({ id: 2, date: '2019-03-02' }), // a real 2-day trip
+      entry({ id: 3, date: '2019-03-20' }), // a lone foreign purchase 18 days later
+    ];
+    const trips = groupIntoTrips(entries);
+    expect(trips).toHaveLength(1);
+    expect(trips[0]).toMatchObject({ start: '2019-03-01', end: '2019-03-02' });
   });
 
   it('does not split when the gap equals gapDays exactly (boundary is inclusive)', () => {
@@ -59,7 +71,9 @@ describe('groupIntoTrips', () => {
   it('starts a new trip on a currency change even with no date gap', () => {
     const entries = [
       entry({ id: 1, date: '2019-03-01', currency: 'JPY' }),
-      entry({ id: 2, date: '2019-03-02', currency: 'HKD' }),
+      entry({ id: 2, date: '2019-03-02', currency: 'JPY' }),
+      entry({ id: 3, date: '2019-03-03', currency: 'HKD' }),
+      entry({ id: 4, date: '2019-03-04', currency: 'HKD' }),
     ];
     expect(groupIntoTrips(entries).map((t) => t.currency)).toEqual(['JPY', 'HKD']);
   });

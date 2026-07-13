@@ -40,7 +40,11 @@ export function groupIntoTrips(entries: Entry[], gapDays = 5): Trip[] {
       trip.thbTotal += Math.abs(e.amount);
     }
   }
-  return trips;
+  // A trip spans more than one day. Single-day foreign spending is online shopping in a foreign
+  // currency, not travel, so it's dropped from the Trips view.
+  // ponytail: day-count heuristic only. Two same-currency online buys <=gapDays apart still merge
+  // into a fake multi-day "trip"; tighten to require contiguous days or a min entry count if that bites.
+  return trips.filter((t) => t.start !== t.end);
 }
 
 // Small currency-agnostic money formatter for foreign-currency totals: mirrors formatBaht's shape
@@ -60,11 +64,15 @@ const dmUtc = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short',
 // Trip date-range label, e.g. "01 Mar – 05 Mar 2019" (same year) or "28 Dec 2019 – 03 Jan 2020"
 // (crosses year) — mirrors cycle.ts's (unexported) formatRange so cycle and trip labels read
 // consistently.
-export function formatTripRange(trip: Trip): string {
-  const start = new Date(`${trip.start}T00:00:00Z`);
-  const end = new Date(`${trip.end}T00:00:00Z`);
+export function formatDateRange(startIso: string, endIso: string): string {
+  const start = new Date(`${startIso}T00:00:00Z`);
+  const end = new Date(`${endIso}T00:00:00Z`);
   const sy = start.getUTCFullYear();
   const ey = end.getUTCFullYear();
   const startStr = sy === ey ? dmUtc.format(start) : `${dmUtc.format(start)} ${sy}`;
   return `${startStr} – ${dmUtc.format(end)} ${ey}`;
+}
+
+export function formatTripRange(trip: Trip): string {
+  return formatDateRange(trip.start, trip.end);
 }

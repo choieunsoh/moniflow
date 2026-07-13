@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import type { PointerEvent } from 'react';
 import { useRef, useState } from 'react';
 import { formatBaht, formatSignedBaht } from '@shared/money';
+import { formatForeign } from '../trips';
 import { deleteEntryAction } from '../actions';
 import type { EntryRow } from '../schema';
 import { resolveSwipe, type SwipeSide } from '../swipe';
@@ -26,6 +27,7 @@ export function SwipeRow({
   iconSet,
   hue,
   dateLabel,
+  showForeign = false,
 }: {
   entry: EntryRow;
   emoji: string;
@@ -34,6 +36,8 @@ export function SwipeRow({
   // Set in the by-category view: the row leads with this date instead of the (redundant) category
   // marker + chip, since every row under the section already shares the header's category.
   dateLabel?: string;
+  // Trip view: lead the amount with the foreign original (¥1,200) and keep THB as the muted line.
+  showForeign?: boolean;
 }) {
   const [side, setSide] = useState<SwipeSide>(0); // resting position
   const [offset, setOffset] = useState(0); // live drag offset while dragging
@@ -82,6 +86,13 @@ export function SwipeRow({
 
   const note = entry.note?.trim();
   const translate = dragging ? offset : side * ACTION_W;
+  // In the trip view, surface the foreign original (magnitude) as the headline figure.
+  const foreign =
+    showForeign && entry.currency && entry.currency !== 'THB' && entry.originalAmount != null
+      ? { amount: Math.abs(entry.originalAmount), currency: entry.currency }
+      : null;
+  const baht = entry.amount < 0 ? formatBaht(-entry.amount) : formatSignedBaht(entry.amount);
+  const amountColor = entry.amount < 0 ? 'var(--color-loss)' : 'var(--color-gain)';
 
   return (
     <li className="relative overflow-hidden">
@@ -188,14 +199,29 @@ export function SwipeRow({
               {entry.account}
             </Link>
           </span>
-          <span
-            className="tnum shrink-0 font-medium whitespace-nowrap"
-            style={{ color: entry.amount < 0 ? 'var(--color-loss)' : 'var(--color-gain)' }}
-          >
-            {/* Expense-only: show expenses as magnitudes (the minus is redundant on every row); only
-                the rare income row keeps its signed +green so the exception stays honest. */}
-            {entry.amount < 0 ? formatBaht(-entry.amount) : formatSignedBaht(entry.amount)}
-          </span>
+          {/* Expense-only: show expenses as magnitudes (the minus is redundant on every row); only
+              the rare income row keeps its signed +green so the exception stays honest. In the trip
+              view the foreign original leads and THB drops to a muted second line. */}
+          {foreign ? (
+            <span className="flex shrink-0 flex-col items-end">
+              <span className="tnum font-medium whitespace-nowrap" style={{ color: amountColor }}>
+                {formatForeign(foreign.amount, foreign.currency)}
+              </span>
+              <span
+                className="tnum text-xs whitespace-nowrap"
+                style={{ color: 'var(--color-muted)' }}
+              >
+                {baht}
+              </span>
+            </span>
+          ) : (
+            <span
+              className="tnum shrink-0 font-medium whitespace-nowrap"
+              style={{ color: amountColor }}
+            >
+              {baht}
+            </span>
+          )}
         </div>
         {note ? (
           <div className="truncate text-sm" style={{ color: 'var(--color-muted)' }}>

@@ -4,10 +4,16 @@ import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
-import { getEntriesInRange, searchEntries, getEntriesByCategory } from '@features/entries/queries';
+import {
+  getEntriesInRange,
+  searchEntries,
+  getEntriesByCategory,
+  getTripEntries,
+} from '@features/entries/queries';
 import { groupByDate } from '@features/entries/by-date';
 import { groupByCategory } from '@features/entries/by-category';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
+import { formatDateRange, formatForeign } from '@features/entries/trips';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet } from '@features/settings/queries';
 import { ensureCategoriesTable } from '@features/categories/schema';
@@ -32,9 +38,22 @@ export default async function RecordsPage({
     q?: string;
     view?: string;
     all?: string;
+    currency?: string;
+    from?: string;
+    to?: string;
   }>;
 }) {
-  const { cycle: cycleParam, category, account, q, view, all } = await searchParams;
+  const {
+    cycle: cycleParam,
+    category,
+    account,
+    q,
+    view,
+    all,
+    currency,
+    from,
+    to,
+  } = await searchParams;
   const db = initDb();
   ensureEntriesTable(db);
   ensureSettingsTable(db);
@@ -53,23 +72,32 @@ export default async function RecordsPage({
   const canGoNext = activeKey < currentKey; // cap forward navigation at today's cycle
   const cycle = cycleFromKey(activeKey, cutoff);
   const inCycle = getEntriesInRange(db, cycle.start, cycle.end);
-  // Tap-a-chip filters by category and/or account, scoped to the current cycle.
-  const cycleEntries = inCycle.filter(
-    (e) => (!category || e.category === category) && (!account || e.account === account),
-  );
+  // Tap-a-chip filters by category and/or account. Applied to whichever set is on screen.
+  const applyChips = (rows: typeof inCycle) =>
+    rows.filter(
+      (e) => (!category || e.category === category) && (!account || e.account === account),
+    );
+  const cycleEntries = applyChips(inCycle);
   const filtered = Boolean(category || account);
+
+  // Trip mode: opened from a Trips card — one foreign currency within its date range, across cycles.
+  const tripMode = Boolean(currency && from && to);
+  const tripEntries =
+    currency && from && to ? applyChips(getTripEntries(db, currency, from, to)) : [];
 
   // Two modes span ALL cycles (rows already newest-first): text search, and the /categories count
   // link (?all=1&category=) which wants every record in a category, not just this cycle. Everything
   // else is the active cycle. All three render as the same SwipeRow list below, grouped by day
   // (default) or by category via ?view=category.
-  const allCategory = !searching && all === '1' && Boolean(category);
-  const spanAll = searching || allCategory;
+  const allCategory = !searching && !tripMode && all === '1' && Boolean(category);
+  const spanAll = searching || allCategory || tripMode;
   const entries = searching
     ? searchEntries(db, query)
-    : allCategory && category
-      ? getEntriesByCategory(db, category)
-      : cycleEntries;
+    : tripMode
+      ? tripEntries
+      : allCategory && category
+        ? getEntriesByCategory(db, category)
+        : cycleEntries;
   const ordered = spanAll ? entries : [...entries].reverse(); // newest first
   const byCategory = view === 'category';
   const sections = byCategory
@@ -81,7 +109,11 @@ export default async function RecordsPage({
   const viewHref = (next: 'date' | 'category') => {
     const params = new URLSearchParams();
     if (searching) params.set('q', query);
-    else if (allCategory) params.set('all', '1');
+    else if (tripMode && currency && from && to) {
+      params.set('currency', currency);
+      params.set('from', from);
+      params.set('to', to);
+    } else if (allCategory) params.set('all', '1');
     else params.set('cycle', activeKey);
     if (category) params.set('category', category);
     if (account) params.set('account', account);
@@ -98,6 +130,36 @@ export default async function RecordsPage({
           canGoNext={canGoNext}
           view={byCategory ? 'category' : undefined}
         />
+      )}
+
+      {tripMode && currency && from && to && (
+        <div className="flex flex-col gap-3">
+          <Link
+            href="/trips"
+            className="tap inline-flex w-fit items-center gap-1 text-sm font-medium"
+            style={{ color: 'var(--color-accent-text)' }}
+          >
+            <BackArrow />
+            Trips
+          </Link>
+          <div className="flex items-center justify-between gap-2">
+            <span className="chip">{currency}</span>
+            <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+              {formatDateRange(from, to)}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-end gap-3">
+            <span className="tnum text-lg font-semibold">
+              {formatForeign(
+                entries.reduce((s, e) => s + Math.abs(e.originalAmount ?? 0), 0),
+                currency,
+              )}
+            </span>
+            <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
+              {formatBaht(Math.abs(total))}
+            </span>
+          </div>
+        </div>
       )}
 
       {sections.length > 0 ? (
@@ -166,6 +228,7 @@ export default async function RecordsPage({
                     emoji={emojiFor(emojiMap, entry.category)}
                     iconSet={iconSet}
                     hue={hueFor(hueMap, entry.category)}
+                    showForeign={tripMode}
                     dateLabel={
                       byCategory
                         ? spanAll
@@ -193,6 +256,19 @@ export default async function RecordsPage({
             style={{ color: 'var(--color-accent-text)' }}
           >
             Clear search
+          </Link>
+        </div>
+      ) : tripMode ? (
+        <div className="panel flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            No records in this trip{filtered ? ' match this filter' : ''}.
+          </p>
+          <Link
+            href="/trips"
+            className="text-sm font-medium"
+            style={{ color: 'var(--color-accent-text)' }}
+          >
+            Back to trips
           </Link>
         </div>
       ) : filtered ? (
@@ -232,6 +308,26 @@ function Chevron() {
       style={{ color: 'var(--color-faint)' }}
     >
       <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+// Left-pointing chevron for the "← Trips" back link.
+function BackArrow() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0"
+    >
+      <path d="M15 6l-6 6 6 6" />
     </svg>
   );
 }
