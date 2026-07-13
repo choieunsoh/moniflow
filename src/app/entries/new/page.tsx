@@ -45,8 +45,8 @@ export default function NewEntryPage() {
     <PageContainer size="full">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Add expense</h1>
-        <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Type the amount (＋ − × ÷ work), then choose a category to save.
+        <p className="text-sm" style={{ color: 'var(--color-faint)' }}>
+          Keypad does math (＋ − × ÷) — tap a category to save.
         </p>
       </header>
       <Keypad
