@@ -6,6 +6,7 @@ import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet, ICON_SETS, getCardFeePct } from '@features/settings/queries';
 import { setCutoffAction, setIconSetAction, setCardFeePctAction } from '@features/settings/actions';
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
+import { ImportBackup } from '@features/settings/ui/ImportBackup';
 import { PageContainer } from '@shared/ui/PageContainer';
 
 const ICON_SET_LABELS = {
@@ -116,6 +117,18 @@ export default function SettingsPage() {
         </form>
       </section>
 
+      <section className="panel flex flex-col gap-3 p-5">
+        <h2 className="text-sm font-semibold">Backup</h2>
+        <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
+          Export the whole ledger to a Monefy-compatible CSV, or restore it from one. Restoring
+          replaces every current entry.
+        </p>
+        <a href="/settings/backup/export" download className="btn btn-ghost w-fit">
+          Export CSV
+        </a>
+        <ImportBackup />
+      </section>
+
       <section
         className="panel flex flex-col gap-3 p-5"
         style={{ borderColor: 'var(--color-loss)' }}
@@ -124,8 +137,7 @@ export default function SettingsPage() {
           Danger zone
         </h2>
         <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
-          Permanently delete every entry, category, and budget. This cannot be undone — there is no
-          backup yet.
+          Permanently delete every entry, category, and budget. This cannot be undone.
         </p>
         <WipeAllData />
       </section>
