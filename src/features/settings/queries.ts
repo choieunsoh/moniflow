@@ -82,3 +82,43 @@ export function setCardFeePct(db: Db, pct: number): void {
       .run();
   });
 }
+
+// Cached Visa FX rates, one JSON blob under a single KV key. thbPerUnit is the PURE Visa rate
+// (fee applied later at conversion time); asOf is the en-CA date it was fetched. Offline-tolerant:
+// callers keep the last blob when a refresh fails.
+const FX_RATES_KEY = 'fx_rates';
+export type FxRateEntry = { thbPerUnit: number; asOf: string };
+export type FxRates = Record<string, FxRateEntry>;
+
+function isFxRates(value: unknown): value is FxRates {
+  if (typeof value !== 'object' || value === null) return false;
+  return Object.values(value).every(
+    (v: unknown) =>
+      typeof v === 'object' &&
+      v !== null &&
+      'thbPerUnit' in v &&
+      'asOf' in v &&
+      typeof v.thbPerUnit === 'number' &&
+      typeof v.asOf === 'string',
+  );
+}
+
+export function getFxRates(db: Db): FxRates {
+  const [row] = db.select().from(settings).where(eq(settings.key, FX_RATES_KEY)).all();
+  if (row === undefined) return {};
+  try {
+    const parsed: unknown = JSON.parse(row.value);
+    return isFxRates(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function setFxRates(db: Db, rates: FxRates): void {
+  db.transaction((tx) => {
+    tx.delete(settings).where(eq(settings.key, FX_RATES_KEY)).run();
+    tx.insert(settings)
+      .values({ key: FX_RATES_KEY, value: JSON.stringify(rates) })
+      .run();
+  });
+}

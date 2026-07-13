@@ -12,6 +12,8 @@ import {
   getCardFeePct,
   setCardFeePct,
   isValidCardFeePct,
+  getFxRates,
+  setFxRates,
 } from './queries';
 
 describe('getCutoff / setCutoff', () => {
@@ -119,5 +121,28 @@ describe('isValidCardFeePct', () => {
     expect(isValidCardFeePct(-1)).toBe(false);
     expect(isValidCardFeePct(10.5)).toBe(false);
     expect(isValidCardFeePct(Number.NaN)).toBe(false);
+  });
+});
+
+describe('getFxRates / setFxRates', () => {
+  it('defaults to an empty map', () => {
+    const db = initDb(':memory:');
+    ensureSettingsTable(db);
+    expect(getFxRates(db)).toEqual({});
+  });
+
+  it('round-trips a rate map', () => {
+    const db = initDb(':memory:');
+    ensureSettingsTable(db);
+    const rates = { JPY: { thbPerUnit: 0.2043, asOf: '2026-07-13' } };
+    setFxRates(db, rates);
+    expect(getFxRates(db)).toEqual(rates);
+  });
+
+  it('returns {} when the stored blob is malformed', () => {
+    const db = initDb(':memory:');
+    ensureSettingsTable(db);
+    db.run(sql`INSERT INTO settings (key, value) VALUES ('fx_rates', 'not json')`);
+    expect(getFxRates(db)).toEqual({});
   });
 });
