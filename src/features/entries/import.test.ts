@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseCsv, parseMonefyCsv, SKIP_CATEGORIES } from './import';
+import { serializeMonefyCsv, MONEFY_HEADER } from './import';
 
 describe('parseCsv', () => {
   it('splits simple rows', () => {
@@ -77,5 +78,124 @@ describe('parseMonefyCsv', () => {
 
   it('exposes the skip list for review', () => {
     expect(SKIP_CATEGORIES).toContain('บัตรเครดิท');
+  });
+});
+
+describe('serializeMonefyCsv', () => {
+  it('emits the exact Monefy header', () => {
+    expect(serializeMonefyCsv([])).toBe(MONEFY_HEADER);
+    expect(MONEFY_HEADER).toBe(
+      'date,account,category,amount,currency,converted amount,currency,description',
+    );
+  });
+
+  it('serializes a THB outflow: DD/MM/YYYY date, THB in both currency cols, note last', () => {
+    const csv = serializeMonefyCsv([
+      {
+        date: '2016-01-15',
+        account: '#KTC X VISA',
+        category: 'shopping',
+        amount: -637,
+        currency: 'THB',
+        originalAmount: -637,
+        note: 'lotus',
+      },
+    ]);
+    expect(csv.split('\n')[1]).toBe('15/01/2016,#KTC X VISA,shopping,-637,THB,-637,THB,lotus');
+  });
+
+  it('keeps the original currency + amount for a non-THB row (converted stays THB)', () => {
+    const csv = serializeMonefyCsv([
+      {
+        date: '2019-03-20',
+        account: 'yen',
+        category: 'food',
+        amount: -230,
+        currency: 'JPY',
+        originalAmount: -1000,
+        note: null,
+      },
+    ]);
+    expect(csv.split('\n')[1]).toBe('20/03/2019,yen,food,-1000,JPY,-230,THB,');
+  });
+
+  it('quotes a field that contains a comma and doubles embedded quotes', () => {
+    const csv = serializeMonefyCsv([
+      {
+        date: '2026-07-01',
+        account: 'cash',
+        category: 'food',
+        amount: -50,
+        currency: 'THB',
+        originalAmount: -50,
+        note: 'lunch, with "friends"',
+      },
+    ]);
+    expect(csv.split('\n')[1]).toBe(
+      '01/07/2026,cash,food,-50,THB,-50,THB,"lunch, with ""friends"""',
+    );
+  });
+
+  it('falls back to THB currency and amount when original fields are null', () => {
+    const csv = serializeMonefyCsv([
+      {
+        date: '2026-07-02',
+        account: 'cash',
+        category: 'food',
+        amount: -12,
+        currency: null,
+        originalAmount: null,
+        note: null,
+      },
+    ]);
+    expect(csv.split('\n')[1]).toBe('02/07/2026,cash,food,-12,THB,-12,THB,');
+  });
+});
+
+describe('serialize ↔ parse round-trip', () => {
+  it('parseMonefyCsv(serializeMonefyCsv(rows)) recovers the entry fields', () => {
+    const rows = [
+      {
+        date: '2016-01-15',
+        account: '#KTC X VISA',
+        category: 'shopping',
+        amount: -637,
+        currency: 'THB',
+        originalAmount: -637,
+        note: 'lotus',
+      },
+      {
+        date: '2019-03-20',
+        account: 'yen',
+        category: 'food',
+        amount: -230,
+        currency: 'JPY',
+        originalAmount: -1000,
+        note: null,
+      },
+    ];
+    const { entries } = parseMonefyCsv(serializeMonefyCsv(rows));
+    expect(entries).toEqual([
+      {
+        date: '2016-01-15',
+        account: '#KTC X VISA',
+        category: 'shopping',
+        amount: -637,
+        currency: 'THB',
+        originalAmount: -637,
+        note: 'lotus',
+        source: 'monefy',
+      },
+      {
+        date: '2019-03-20',
+        account: 'yen',
+        category: 'food',
+        amount: -230,
+        currency: 'JPY',
+        originalAmount: -1000,
+        note: null,
+        source: 'monefy',
+      },
+    ]);
   });
 });

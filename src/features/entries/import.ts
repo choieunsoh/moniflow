@@ -1,4 +1,4 @@
-import type { EntryInput } from './schema';
+import type { EntryInput, EntryRow } from './schema';
 
 // Pure Monefy-CSV → entries mapping. No DB, no fs — the CLI reads the file and calls this, which
 // is what makes it unit-testable. The parser handles Monefy's quoting: fields with commas (money
@@ -101,4 +101,58 @@ export function parseMonefyCsv(text: string): ImportResult {
     });
   }
   return { entries, skipped };
+}
+
+// The exact Monefy CSV header — the byte-for-byte inverse of what parseMonefyCsv reads. The 5th and
+// 7th columns are both "currency": the source currency, then the THB home currency (constant).
+export const MONEFY_HEADER =
+  'date,account,category,amount,currency,converted amount,currency,description';
+
+// 'YYYY-MM-DD' (UTC key) → 'DD/MM/YYYY'. UTC (not Bangkok) so it re-parses to the identical key via
+// toIsoDate — a lossless round-trip. en-GB with 2-digit day/month + numeric year renders the slashes.
+const ddmmyyyyFmt = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+function toDdmmyyyy(iso: string): string {
+  return ddmmyyyyFmt.format(new Date(`${iso}T00:00:00Z`));
+}
+
+// Quote a CSV field only when it contains a comma, double-quote, or newline; embedded quotes doubled.
+// Matches exactly what parseCsv round-trips.
+function csvField(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+// Only the columns the export reads — getEntries' EntryRow[] satisfies this structurally, and it keeps
+// the unit tests from having to build a full EntryRow (id/time/accountId/… are irrelevant here).
+type ExportRow = Pick<
+  EntryRow,
+  'date' | 'account' | 'category' | 'amount' | 'currency' | 'originalAmount' | 'note'
+>;
+
+// Pure ledger → Monefy CSV. Inverse of parseMonefyCsv. Amounts emitted plain (no thousands commas);
+// parseCsv strips commas on the way back either way. `time` and `source` have no column in the format
+// and are intentionally not serialized (see the design doc's fidelity caveats).
+export function serializeMonefyCsv(rows: readonly ExportRow[]): string {
+  const lines = [MONEFY_HEADER];
+  for (const r of rows) {
+    const currency = r.currency ?? 'THB';
+    const original = r.originalAmount ?? r.amount;
+    lines.push(
+      [
+        toDdmmyyyy(r.date),
+        csvField(r.account),
+        csvField(r.category),
+        String(original),
+        csvField(currency),
+        String(r.amount),
+        'THB',
+        csvField(r.note ?? ''),
+      ].join(','),
+    );
+  }
+  return lines.join('\n');
 }
