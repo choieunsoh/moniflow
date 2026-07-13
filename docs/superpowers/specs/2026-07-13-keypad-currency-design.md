@@ -56,14 +56,18 @@ New pure/query pieces in `src/features/entries/`:
 
 ### Fetch (`src/features/entries/fx.ts`, new)
 
-- `fetchVisaThbPerUnit(from: Currency, feePct: number): Promise<number>` — server-side `fetch` to
-  `https://usa.visa.com/cmsapi/fx/rates` with query `amount=1&fee=<feePct>&utcConvertedDate=<mm/dd/yyyy>&exchangedate=<mm/dd/yyyy>&fromCurr=<from>&toCurr=THB`
+- `fetchVisaThbPerUnit(from: Currency): Promise<number>` — server-side `fetch` to
+  `https://usa.visa.com/cmsapi/fx/rates` with query `amount=1&fee=0&utcConvertedDate=<mm/dd/yyyy>&exchangedate=<mm/dd/yyyy>&fromCurr=<from>&toCurr=THB`
   and a browser `User-Agent`. The `.com.sg` host is bot-walled (Cloudflare); `usa.visa.com` returns
   clean JSON with a plain fetch — use it.
-- Parse `reverseAmount` / `fxRateWithAdditionalFee` into **THB per 1 unit of `from`** (fee-inclusive
-  figure). Visa's field directions are quirky (the response labels `from`/`to` swapped vs the query),
-  so a pure `parseVisaThbPerUnit(json)` does the extraction and has a self-check test.
-- `feePct` is sent as Visa's `fee` param so the returned rate already includes the card markup.
+- Parse the `reverseAmount` field into **THB per 1 unit of `from`** — verified empirically
+  consistent (USD → 33.21, JPY → 0.2043). A pure `parseVisaThbPerUnit(json)` does the extraction and
+  has a self-check test asserting the value lands in a sane band, so a Visa response-shape change
+  fails loudly instead of storing garbage.
+- **Fetch always uses `fee=0`** (the pure Visa card rate). The card FX fee is applied in code, NOT
+  via Visa's `fee` param: empirically Visa applies its `fee` to the THB→foreign leg, so passing a
+  fee makes a foreign purchase cost *fewer* THB — the wrong direction. Applying the fee ourselves in
+  `toThb` is direction-correct by construction and unit-testable.
 
 ### Cache (reuse the `settings` KV table)
 
@@ -77,7 +81,7 @@ New pure/query pieces in `src/features/entries/`:
 ### Refresh — manual button (no scheduler, no on-load fetch)
 
 - Settings gets a "Refresh FX rates" button → `refreshFxRatesAction` (`settings/actions.ts`): loops
-  the 7 foreign currencies, calls `fetchVisaThbPerUnit(code, cardFeePct)`, writes the blob,
+  the 7 foreign currencies, calls `fetchVisaThbPerUnit(code)` (fee=0), writes the blob,
   `revalidatePath('/', 'layout')`. Shows "as of <date>". A single failed pair keeps its last cached
   value rather than aborting the whole refresh.
 
@@ -85,8 +89,12 @@ New pure/query pieces in `src/features/entries/`:
 
 - Settings key `card_fx_fee_pct`, default **2**. `getCardFeePct(db)` / `setCardFeePct(db, pct)` +
   `isValidCardFeePct` (0–10, one place) in `settings/queries.ts`, wired like the cutoff-day setting.
-- Settings UI: a small number field ("Card FX fee %") + `setCardFeePctAction`. Sent as Visa's `fee`
-  on refresh so stored THB ≈ the card statement.
+- Settings UI: a small number field ("Card FX fee %") + `setCardFeePctAction`.
+- Applied **server-side** when the page builds the rate map, not by Visa and not in the keypad:
+  `effectiveRate = withFee(thbPerUnit, feePct) = thbPerUnit × (1 + feePct/100)`. The cache stays the
+  pure Visa rate; the keypad receives fee-inclusive ("effective") rates and its conversion is a pure
+  `toThb(foreign, effectiveRate) = round(foreign × effectiveRate)`. This keeps one conversion path
+  (no separate cached-vs-override fee handling) and makes edit-mode seeding trivial.
 
 ## Money helper (`src/shared/money.ts`)
 
@@ -99,8 +107,9 @@ New pure/query pieces in `src/features/entries/`:
 
 ## Keypad UI (`src/features/entries/ui/Keypad.tsx`)
 
-New props: `currencies: KeypadCurrency[]`, `rates: Record<string, number>` (thbPerUnit),
-`ratesAsOf: Record<string, string>`, `cardFeePct: number`. Defaults keep today's behaviour.
+New props: `currencies: KeypadCurrency[]`, `rates: Record<string, number>` (fee-inclusive effective
+THB-per-unit), `ratesAsOf: Record<string, string>`. No `cardFeePct` prop — the fee is already baked
+into `rates` server-side.
 
 New state: `currency` (default `'THB'`), `rateOverride` (nullable per-entry rate).
 
@@ -114,8 +123,11 @@ New state: `currency` (default `'THB'`), `rateOverride` (nullable per-entry rate
   - Big number renders the **foreign** amount via `formatCurrency(amount, currency)` (`¥3,000`).
   - A line under the amount panel: `1 JPY = 0.2043 · ≈฿613` — the rate is **editable** (a small
     inline number input bound to `rateOverride`); clearing it falls back to the cached `rates[code]`.
-  - Effective rate = `rateOverride ?? rates[code]`. Converted THB = `toThb(foreignAmount, rate)`
-    (pure, rounded to whole THB — `formatBaht` shows 0 fraction digits anyway). One tiny test.
+  - Effective rate = `rateOverride ?? rates[code]` (both already fee-inclusive). Converted THB =
+    `toThb(foreignAmount, effectiveRate)` = `round(foreignAmount × effectiveRate)` (`formatBaht`
+    shows 0 fraction digits anyway). Pure, one test. The rate line shows the effective (all-in) rate,
+    so `1 JPY = 0.208` reads as "what 1 JPY actually costs me". A manual override is taken as the
+    all-in rate as typed (no extra fee applied — one path).
   - Hidden fields posted: `currency=<code>`, `amount=<foreign>`, `thb=<converted>`.
   - No cached rate **and** no override → the line prompts to refresh/type a rate and the
     Choose-category button is disabled (can't store THB we don't have).
