@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { initDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { getForeignEntries } from '@features/entries/queries';
-import { groupIntoTrips, formatForeign, formatTripRange } from '@features/entries/trips';
+import { groupIntoTrips, formatForeign, formatTripRange, tripDays } from '@features/entries/trips';
 import { formatBaht } from '@shared/money';
 import { PageContainer } from '@shared/ui/PageContainer';
 
@@ -50,7 +50,7 @@ export default function TripsPage() {
                 </div>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                    {trip.count} {trip.count === 1 ? 'entry' : 'entries'}
+                    {tripDays(trip)} days · {trip.count} {trip.count === 1 ? 'entry' : 'entries'}
                   </span>
                   <div className="flex items-baseline gap-3">
                     <span className="tnum text-lg font-semibold">

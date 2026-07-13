@@ -47,6 +47,27 @@ export function groupIntoTrips(entries: Entry[], gapDays = 5): Trip[] {
   return trips.filter((t) => t.start !== t.end);
 }
 
+// Inclusive day span of a trip: 11 Feb – 17 Feb is 7 days, not 6. Single-day runs are already
+// dropped by groupIntoTrips, so this is always >= 2 for a real trip.
+export function tripDays(trip: Trip): number {
+  return daysBetween(trip.start, trip.end) + 1;
+}
+
+export type CurrencySum = { currency: string; total: number };
+
+// Sum the foreign-currency originals in a set of rows, grouped by currency (THB and unpriced rows
+// are skipped). Magnitudes, like the trip totals — "how much moved", refunds included. Insertion
+// order is the first-seen order, which for a date-sorted list reads chronologically.
+export function sumByCurrency(entries: Entry[]): CurrencySum[] {
+  const totals = new Map<string, number>();
+  for (const e of entries) {
+    if (e.currency && e.currency !== 'THB' && e.originalAmount != null) {
+      totals.set(e.currency, (totals.get(e.currency) ?? 0) + Math.abs(e.originalAmount));
+    }
+  }
+  return [...totals].map(([currency, total]) => ({ currency, total }));
+}
+
 // Small currency-agnostic money formatter for foreign-currency totals: mirrors formatBaht's shape
 // (no fraction digits — this ledger treats money as whole units) but takes the ISO 4217 code as a
 // parameter so each trip renders in its own currency's symbol (¥, HK$, ...). Built fresh per call

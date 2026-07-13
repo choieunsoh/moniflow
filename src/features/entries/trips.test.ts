@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupIntoTrips, formatForeign, formatTripRange } from './trips';
+import { groupIntoTrips, formatForeign, formatTripRange, tripDays, sumByCurrency } from './trips';
 import type { Entry } from './schema';
 
 // Builds a full Entry row from the fields a test cares about; the shape is fixed but each test
@@ -90,6 +90,45 @@ describe('groupIntoTrips', () => {
 
   it('returns an empty array for no entries', () => {
     expect(groupIntoTrips([])).toEqual([]);
+  });
+});
+
+describe('tripDays', () => {
+  it('counts the span inclusively (11 Feb – 17 Feb is 7 days)', () => {
+    const trip = groupIntoTrips([
+      entry({ id: 1, date: '2020-02-11' }),
+      entry({ id: 2, date: '2020-02-16' }), // within gapDays so it stays one trip
+      entry({ id: 3, date: '2020-02-17' }),
+    ])[0];
+    expect(tripDays(trip)).toBe(7);
+  });
+
+  it('counts a two-day trip as 2', () => {
+    const trip = groupIntoTrips([
+      entry({ id: 1, date: '2020-02-11' }),
+      entry({ id: 2, date: '2020-02-12' }),
+    ])[0];
+    expect(tripDays(trip)).toBe(2);
+  });
+});
+
+describe('sumByCurrency', () => {
+  it('sums each currency’s original magnitudes and skips THB / unpriced rows', () => {
+    const entries = [
+      entry({ id: 1, currency: 'JPY', originalAmount: -400 }),
+      entry({ id: 2, currency: 'JPY', originalAmount: 100 }), // refund still adds
+      entry({ id: 3, currency: 'HKD', originalAmount: -50 }),
+      entry({ id: 4, currency: 'THB', originalAmount: -999 }),
+      entry({ id: 5, currency: 'JPY', originalAmount: null }),
+    ];
+    expect(sumByCurrency(entries)).toEqual([
+      { currency: 'JPY', total: 500 },
+      { currency: 'HKD', total: 50 },
+    ]);
+  });
+
+  it('returns an empty array when nothing is foreign', () => {
+    expect(sumByCurrency([entry({ id: 1, currency: 'THB', originalAmount: -100 })])).toEqual([]);
   });
 });
 

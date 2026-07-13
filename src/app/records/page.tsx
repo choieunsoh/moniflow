@@ -13,7 +13,7 @@ import {
 import { groupByDate } from '@features/entries/by-date';
 import { groupByCategory } from '@features/entries/by-category';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
-import { formatDateRange, formatForeign } from '@features/entries/trips';
+import { formatDateRange, formatForeign, sumByCurrency } from '@features/entries/trips';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { getCutoff, getIconSet } from '@features/settings/queries';
 import { ensureCategoriesTable } from '@features/categories/schema';
@@ -104,6 +104,9 @@ export default async function RecordsPage({
     ? groupByCategory(ordered).map((g) => ({ key: g.category, entries: g.entries, total: g.total }))
     : groupByDate(ordered).map((g) => ({ key: g.date, entries: g.entries, total: g.total }));
   const total = entries.reduce((sum, e) => sum + e.amount, 0);
+  // Foreign-currency subtotals for the current view (empty when everything is THB), shown next to
+  // the THB total so a cycle with a Tokyo week reads "¥84,948  ฿17,000", not THB alone.
+  const currencySums = sumByCurrency(entries);
 
   // Toggle links preserve the current cycle/search/filter and only flip ?view=.
   const viewHref = (next: 'date' | 'category') => {
@@ -184,7 +187,18 @@ export default async function RecordsPage({
               </span>
               {sections.length > 1 ? <CollapseAllButton /> : null}
             </span>
-            <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
+            <span className="flex items-baseline gap-2">
+              {currencySums.map((c) => (
+                <span
+                  key={c.currency}
+                  className="tnum text-sm"
+                  style={{ color: 'var(--color-muted)' }}
+                >
+                  {formatForeign(c.total, c.currency)}
+                </span>
+              ))}
+              <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
+            </span>
           </div>
           {sections.map((section) => (
             // Native <details> = tap the header to collapse/expand, no JS. Collapsed by default;
