@@ -3,9 +3,17 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { initDb } from '@db/client';
-import { ensureEntriesTable } from './schema';
+import { ensureEntriesTable, ensureTripTitlesTable } from './schema';
 import { parseEntryForm } from './entry-form';
-import { insertEntry, updateEntry, deleteEntry, renameCategory, deleteCategory } from './queries';
+import { tripId } from './trips';
+import {
+  insertEntry,
+  updateEntry,
+  deleteEntry,
+  renameCategory,
+  deleteCategory,
+  setTripTitle,
+} from './queries';
 import { parseMergeInput } from './merge-input';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { addCategory } from '@features/categories/queries';
@@ -56,6 +64,15 @@ export async function mergeCategoryAction(formData: FormData): Promise<void> {
   ensureEntriesTable(db);
   ensureCategoriesTable(db);
   renameCategory(db, input.from, input.to); // rename, or merge when `to` already exists
+  revalidatePath('/', 'layout');
+}
+
+// Name (or rename) a trip. Called directly with args from the Trips rename dialog; an empty title
+// clears the name. Keyed by the trip's stable id so the name survives later entries in the trip.
+export async function renameTrip(currency: string, start: string, title: string): Promise<void> {
+  const db = initDb();
+  ensureTripTitlesTable(db);
+  setTripTitle(db, tripId(currency, start), title);
   revalidatePath('/', 'layout');
 }
 

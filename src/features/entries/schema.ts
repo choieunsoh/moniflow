@@ -73,3 +73,21 @@ export function ensureEntriesTable(db: Db): void {
   migrateAccountIds(db);
   dropLegacyAccountColumn(db);
 }
+
+// Optional user-given names for trips (which are otherwise derived, not stored). Keyed by the trip's
+// stable identity — `${currency}:${start}` (see tripId in trips.ts) — so a name sticks unless the
+// trip's first day itself changes. A row exists only for a named trip; clearing a name deletes it.
+export const tripTitles = sqliteTable('trip_titles', {
+  id: text('id').primaryKey(), // `${currency}:${start}`
+  title: text('title').notNull(),
+});
+export type TripTitle = typeof tripTitles.$inferSelect;
+
+export function ensureTripTitlesTable(db: Db): void {
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS trip_titles (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL
+    )
+  `);
+}

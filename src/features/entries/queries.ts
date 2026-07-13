@@ -13,7 +13,7 @@ import {
   type AnyColumn,
 } from 'drizzle-orm';
 import type { Db } from '@db/client';
-import { entries, type EntryRow, type EntryInput } from './schema';
+import { entries, tripTitles, type EntryRow, type EntryInput } from './schema';
 import { categories } from '@features/categories/schema';
 import { categoryIdFor } from '@features/categories/queries';
 import { budgets } from '@features/budgets/schema';
@@ -349,6 +349,31 @@ export function getTripEntries(db: Db, currency: string, start: string, end: str
     .where(and(eq(entries.currency, currency), gte(entries.date, start), lte(entries.date, end)))
     .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
     .all();
+}
+
+// All trip names as an id → title map, so the Trips page can look each trip up in one read.
+export function getTripTitles(db: Db): Map<string, string> {
+  return new Map(
+    db
+      .select()
+      .from(tripTitles)
+      .all()
+      .map((r) => [r.id, r.title]),
+  );
+}
+
+// Set or clear a trip's name. A blank/whitespace title deletes the row (back to the unnamed default);
+// otherwise upsert on the trip id so renaming is idempotent.
+export function setTripTitle(db: Db, id: string, title: string): void {
+  const trimmed = title.trim();
+  if (!trimmed) {
+    db.delete(tripTitles).where(eq(tripTitles.id, id)).run();
+    return;
+  }
+  db.insert(tripTitles)
+    .values({ id, title: trimmed })
+    .onConflictDoUpdate({ target: tripTitles.id, set: { title: trimmed } })
+    .run();
 }
 
 export type AccountCount = { account: string; count: number };

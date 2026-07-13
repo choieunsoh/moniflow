@@ -9,6 +9,12 @@ export type Trip = {
   thbTotal: number;
 };
 
+// A trip's stable identity for attaching a user-given name: its currency + first day. Survives new
+// entries added later in the trip; only shifts if the trip's earliest day itself moves.
+export function tripId(currency: string, start: string): string {
+  return `${currency}:${start}`;
+}
+
 const DAY_MS = 86_400_000;
 
 // Same technique as cycle.ts's daysBetween: parse as UTC midnight, diff in days. No string surgery.
