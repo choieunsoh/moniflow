@@ -17,3 +17,32 @@ export function formatSignedBaht(amount: number): string {
   const sign = amount > 0 ? '+' : amount < 0 ? '−' : '';
   return `${sign}${baht.format(Math.abs(amount))}`;
 }
+
+// Per-currency Intl formatter, memoized. narrowSymbol → ¥, ₩, $, €, HK$, £, S$, ฿; Intl picks the
+// correct fraction digits per currency automatically (JPY/KRW → 0, most others → 2). Used for
+// foreign-currency entry display on the keypad; THB rollups keep formatBaht above.
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
+function formatterFor(currency: string): Intl.NumberFormat {
+  const existing = currencyFormatters.get(currency);
+  if (existing !== undefined) return existing;
+  const fmt = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    currencyDisplay: 'narrowSymbol',
+  });
+  currencyFormatters.set(currency, fmt);
+  return fmt;
+}
+
+export function formatCurrency(amount: number, currency: string): string {
+  return formatterFor(currency).format(amount);
+}
+
+// Just the symbol glyph (for picker chips), extracted from Intl parts — no hand-maintained table.
+export function currencySymbol(currency: string): string {
+  const part = formatterFor(currency)
+    .formatToParts(0)
+    .find((p) => p.type === 'currency');
+  return part === undefined ? currency : part.value;
+}
