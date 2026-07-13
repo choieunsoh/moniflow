@@ -1,5 +1,7 @@
 'use server';
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { revalidatePath } from 'next/cache';
 import { initDb } from '@db/client';
 import { ensureSettingsTable } from './schema';
@@ -12,6 +14,8 @@ import { ensureEntriesTable } from '@features/entries/schema';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { wipeAllData } from './data';
+
+const execFileAsync = promisify(execFile);
 
 // Server Action backing the /settings form. Validates before writing (the <input min/max> only
 // constrains well-behaved browsers — this is the real guard), then revalidates both pages that
@@ -68,14 +72,23 @@ export async function refreshFxRatesAction(): Promise<void> {
   for (const code of CURRENCIES) {
     if (code === 'THB') continue;
     try {
-      const res = await fetch(visaRatesUrl(code, now), {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-        // Bound each request: the Visa endpoint is undocumented, so a hung (not failed) connection
-        // would otherwise stall the whole action. A timeout aborts into the catch → keeps last rate.
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) continue;
-      const json: unknown = await res.json();
+      // Fetch via a curl subprocess, NOT Node's fetch: usa.visa.com sits behind Cloudflare, which
+      // 403-challenges undici's TLS fingerprint but lets curl through. `-f` fails on any HTTP error
+      // (so a challenge page throws rather than parsing as JSON); `--max-time 8` + the execFile
+      // timeout bound a hung connection. Any failure lands in catch → keeps the last cached rate.
+      const { stdout } = await execFileAsync(
+        'curl',
+        [
+          '-sf',
+          '--max-time',
+          '8',
+          '-A',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          visaRatesUrl(code, now),
+        ],
+        { timeout: 10_000, windowsHide: true },
+      );
+      const json: unknown = JSON.parse(stdout);
       next[code] = { thbPerUnit: parseVisaThbPerUnit(json), asOf };
     } catch {
       // Keep the last cached value for this currency — offline-tolerant.

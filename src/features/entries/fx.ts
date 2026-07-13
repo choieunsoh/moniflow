@@ -4,17 +4,21 @@ import type { Currency } from './entry-form';
 // fetch lives in settings/actions.ts (server) and imports visaRatesUrl + parseVisaThbPerUnit from
 // this module. Kept pure so it is safe to import from the client Keypad (for toThb) too.
 
-// Visa's consumer FX endpoint reports `reverseAmount` = THB per 1 unit of the queried currency when
-// called as fromCurr=<X>&toCurr=THB (verified: USD → 33.21, JPY → 0.2043). The field directions in
-// the rest of the payload are quirky (from/to appear swapped), so we read this one field and assert
-// it is a positive finite number — a response-shape change then throws instead of caching garbage.
+// Visa's consumer FX endpoint reports `fxRateVisa` = THB per 1 unit of the target currency when
+// called as fromCurr=THB&toCurr=<X> (verified against Visa's own website: USD → 33.469967,
+// JPY → 0.207553). This figure already includes Visa's per-currency network markup over the ECB
+// mid-rate (which is dynamic — 0.47% for USD, 0.85% for JPY — so we take Visa's marked-up number
+// directly rather than reconstructing it). NOTE the direction: querying the other way
+// (fromCurr=<X>&toCurr=THB) makes the endpoint apply the markup to the wrong leg and `fxRateVisa`
+// comes back below the mid-rate. We read this one field and assert it is a positive finite number —
+// a response-shape change then throws instead of caching garbage.
 export function parseVisaThbPerUnit(json: unknown): number {
-  if (typeof json !== 'object' || json === null || !('reverseAmount' in json)) {
-    throw new Error('Visa FX response missing reverseAmount');
+  if (typeof json !== 'object' || json === null || !('fxRateVisa' in json)) {
+    throw new Error('Visa FX response missing fxRateVisa');
   }
-  const rate = Number(json.reverseAmount);
+  const rate = Number(json.fxRateVisa);
   if (!Number.isFinite(rate) || rate <= 0) {
-    throw new Error(`Visa FX rate is not a positive number: ${String(json.reverseAmount)}`);
+    throw new Error(`Visa FX rate is not a positive number: ${String(json.fxRateVisa)}`);
   }
   return rate;
 }
@@ -32,9 +36,11 @@ export function toThb(foreign: number, effectiveRate: number): number {
   return Math.round(foreign * effectiveRate);
 }
 
-// The usa.visa.com query URL for one currency → THB, fee=0 (pure rate). Date must be MM/DD/YYYY;
-// URLSearchParams encodes the slashes to %2F. The .com.sg host is Cloudflare-bot-walled — use
-// usa.visa.com, which answers a plain fetch.
+// The usa.visa.com query URL for THB → one foreign currency, fee=0 (Visa markup only, no bank fee).
+// Direction matters: fromCurr=THB&toCurr=<X> yields `fxRateVisa` = THB per 1 X (see parse note).
+// Date must be MM/DD/YYYY; URLSearchParams encodes the slashes to %2F. The .com.sg host is
+// Cloudflare-bot-walled — use usa.visa.com. Note: Node's fetch is also Cloudflare-challenged on this
+// host, so the caller fetches via a curl subprocess (see settings/actions.ts), not fetch().
 export function visaRatesUrl(from: Currency, date: Date): string {
   const mmddyyyy = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
@@ -47,8 +53,8 @@ export function visaRatesUrl(from: Currency, date: Date): string {
     fee: '0',
     utcConvertedDate: mmddyyyy,
     exchangedate: mmddyyyy,
-    fromCurr: from,
-    toCurr: 'THB',
+    fromCurr: 'THB',
+    toCurr: from,
   });
   return `https://usa.visa.com/cmsapi/fx/rates?${params.toString()}`;
 }
