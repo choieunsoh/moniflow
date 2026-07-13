@@ -9,11 +9,16 @@ import {
   getDistinctCategories,
   getEntryById,
 } from '@features/entries/queries';
-import { getKeypadCategories, getKeypadAccounts } from '@features/entries/keypad-lists';
+import {
+  getKeypadCategories,
+  getKeypadAccounts,
+  getKeypadCurrencies,
+} from '@features/entries/keypad-lists';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { ensureAccountsTable } from '@features/accounts/schema';
 import { ensureSettingsTable } from '@features/settings/schema';
-import { getIconSet } from '@features/settings/queries';
+import { getIconSet, getCardFeePct, getFxRates } from '@features/settings/queries';
+import { withFee } from '@features/entries/fx';
 import { editEntryAction } from '@features/entries/actions';
 import { EntryForm } from '@features/entries/ui/EntryForm';
 import { Keypad } from '@features/entries/ui/Keypad';
@@ -29,9 +34,8 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
     notFound();
   }
 
-  // The keypad UI only represents THB expenses; income / foreign-currency rows keep the full form
-  // until the keypad grows currency + direction support.
-  const keypadEditable = entry.amount < 0 && (entry.currency === null || entry.currency === 'THB');
+  // The keypad now handles foreign-currency expenses too; only income stays on the full form.
+  const keypadEditable = entry.amount < 0;
 
   if (keypadEditable) {
     ensureCategoriesTable(db);
@@ -40,6 +44,15 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
     const iconSet = getIconSet(db);
     const categories = getKeypadCategories(db);
     const accounts = getKeypadAccounts(db);
+    const currencies = getKeypadCurrencies(db);
+    const cardFeePct = getCardFeePct(db);
+    const fxRates = getFxRates(db);
+    const rates: Record<string, number> = {};
+    const ratesAsOf: Record<string, string> = {};
+    for (const [code, e] of Object.entries(fxRates)) {
+      rates[code] = withFee(e.thbPerUnit, cardFeePct);
+      ratesAsOf[code] = e.asOf;
+    }
 
     return (
       <PageContainer size="full">
@@ -52,6 +65,9 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
         <Keypad
           categories={categories}
           accounts={accounts}
+          currencies={currencies}
+          rates={rates}
+          ratesAsOf={ratesAsOf}
           defaultAccount={entry.account}
           today={todayIso()}
           iconSet={iconSet}
