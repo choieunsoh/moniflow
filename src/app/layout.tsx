@@ -28,8 +28,8 @@ const plexSans = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Moniflow — local-first money-flow dashboard',
-  description: 'Track your money flow in a local SQLite file. Calm, precise, yours.',
+  title: 'Moniflow — money-flow dashboard',
+  description: 'Track your money flow in a SQLite file. Calm, precise, yours.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
