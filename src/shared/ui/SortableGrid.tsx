@@ -18,6 +18,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { reorderByIds } from '../reorder';
 
 // What each tile receives: the dnd-kit sortable bag (spread `attributes`/`listeners`, wire `setNodeRef`)
@@ -114,6 +115,12 @@ export function SortableGrid<T>({
       id={id}
       sensors={sensors}
       collisionDetection={closestCenter}
+      // Confine the dragged tile to the grid's rect: without this a tile dragged past the right edge
+      // overflows, and dnd-kit auto-scrolls that overflow sideways — spawning a horizontal scrollbar
+      // and even mis-dropping. The grid's width == the scroll container's and it never scrolls
+      // horizontally, so clamping to it means zero horizontal overflow. CSS can't clamp dnd-kit's
+      // inline transform; this modifier can.
+      modifiers={[restrictToParentElement]}
       onDragStart={() => {
         dragged.current = true;
       }}

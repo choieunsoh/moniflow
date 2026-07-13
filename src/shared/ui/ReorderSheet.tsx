@@ -72,7 +72,10 @@ export function ReorderSheet<T>({
             <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
               Drag a tile to change the order.
             </p>
-            <div className="max-h-[60vh] overflow-y-auto">
+            {/* Horizontal containment is handled by SortableGrid's restrictToFirstScrollableAncestor
+                modifier (this element is that ancestor). overflow-x-hidden is a cheap backstop for any
+                sub-pixel spill; overflow-y-auto scrolls the long grid. */}
+            <div className="max-h-[60vh] overflow-x-hidden overflow-y-auto">
               <SortableGrid
                 id={id}
                 items={items}
