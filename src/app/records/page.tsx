@@ -263,7 +263,7 @@ export default async function RecordsPage({
             </details>
           ))}
           <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
-            Swipe a row left to delete · right to edit
+            Tap a row to edit · swipe left to delete
           </p>
         </div>
       ) : searching ? (

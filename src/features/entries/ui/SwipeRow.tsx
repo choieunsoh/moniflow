@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { PointerEvent } from 'react';
 import { useRef, useState } from 'react';
 import { formatBaht, formatSignedBaht } from '@shared/money';
@@ -17,10 +17,11 @@ const ACTION_W = 88;
 // Movement (px) past which a gesture counts as a drag rather than a tap.
 const DRAG_SLOP = 6;
 
-// A swipe-to-reveal ledger row. Drag the row right to reveal Edit (accent, left) or left to reveal
-// Delete (red, right); release past half a panel to rest it open, otherwise it snaps back. Tapping an
-// open row closes it. `touch-action: pan-y` keeps vertical scrolling native — we only own horizontal.
-// Delete/Edit are real DOM controls (a form button + a link), so they stay in the a11y tree.
+// A ledger row. Tap it to edit — a closed row opens the editor, an open row just closes. Drag it left
+// to reveal Delete (red, right); release past half the panel to rest it open, else it snaps back. A
+// vertical drag stays a native scroll and never edits. `touch-action: pan-y` keeps scrolling native.
+// Delete/Edit are real DOM controls (a form button + a link) behind the row, so both stay in the a11y
+// tree for keyboard/AT even though editing is now a tap.
 export function SwipeRow({
   entry,
   emoji,
@@ -42,7 +43,14 @@ export function SwipeRow({
   const [side, setSide] = useState<SwipeSide>(0); // resting position
   const [offset, setOffset] = useState(0); // live drag offset while dragging
   const [dragging, setDragging] = useState(false);
-  const gesture = useRef<{ x: number; base: number; moved: boolean } | null>(null);
+  const gesture = useRef<{
+    x: number;
+    y: number;
+    base: number;
+    movedX: boolean;
+    movedY: boolean;
+  } | null>(null);
+  const router = useRouter();
   const params = useSearchParams();
   const categoryActive = params.get('category') === entry.category;
   const accountActive = params.get('account') === entry.account;
@@ -60,7 +68,13 @@ export function SwipeRow({
   const stopDrag = (e: PointerEvent<HTMLElement>) => e.stopPropagation();
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
-    gesture.current = { x: e.clientX, base: side * ACTION_W, moved: false };
+    gesture.current = {
+      x: e.clientX,
+      y: e.clientY,
+      base: side * ACTION_W,
+      movedX: false,
+      movedY: false,
+    };
     setDragging(true);
     e.currentTarget.setPointerCapture(e.pointerId);
   }
@@ -68,20 +82,46 @@ export function SwipeRow({
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
     const g = gesture.current;
     if (!g) return;
-    const delta = e.clientX - g.x;
-    if (Math.abs(delta) > DRAG_SLOP) g.moved = true;
-    setOffset(Math.max(-ACTION_W, Math.min(ACTION_W, g.base + delta)));
+    const dx = e.clientX - g.x;
+    const dy = e.clientY - g.y;
+    if (Math.abs(dx) > DRAG_SLOP) g.movedX = true;
+    if (Math.abs(dy) > DRAG_SLOP) g.movedY = true;
+    // Left-only drag: Delete lives on the right, revealed by dragging left. Editing is a plain tap now,
+    // so a rightward drag no longer reveals an edit panel — clamp the offset to [-ACTION_W, 0].
+    setOffset(Math.max(-ACTION_W, Math.min(0, g.base + dx)));
   }
 
   function onPointerUp() {
     const g = gesture.current;
     if (!g) return;
-    // A tap (no real movement) on an open row closes it; otherwise snap to the resolved side.
-    const next = g.moved ? resolveSwipe(offset, ACTION_W) : 0;
-    setSide(next);
-    setOffset(next * ACTION_W);
-    setDragging(false);
     gesture.current = null;
+    setDragging(false);
+    if (g.movedX) {
+      // A horizontal drag — snap the Delete panel open or closed.
+      const next = resolveSwipe(offset, ACTION_W);
+      setSide(next);
+      setOffset(next * ACTION_W);
+      return;
+    }
+    if (g.movedY) {
+      // A vertical move is a scroll, never a tap — settle back to the resting side, do nothing.
+      setOffset(side * ACTION_W);
+      return;
+    }
+    // A clean tap: close an open (Delete-revealed) row, or open the editor for a closed one.
+    if (side !== 0) {
+      setSide(0);
+      setOffset(0);
+      return;
+    }
+    router.push(`/entries/${entry.id}/edit`);
+  }
+
+  function onPointerCancel() {
+    // The browser took the gesture over (native scroll) — never treat it as a tap; settle in place.
+    gesture.current = null;
+    setDragging(false);
+    setOffset(side * ACTION_W);
   }
 
   const note = entry.note?.trim();
@@ -96,7 +136,8 @@ export function SwipeRow({
 
   return (
     <li className="relative overflow-hidden">
-      {/* Edit — revealed on a right swipe (row slides right). */}
+      {/* Edit — tapping the row opens it (pointer); this control stays in the DOM behind the row so
+          keyboard/AT users keep a real, focusable edit affordance. No longer revealed by a swipe. */}
       <Link
         href={`/entries/${entry.id}/edit`}
         aria-label={`Edit ${entry.category}`}
@@ -133,8 +174,8 @@ export function SwipeRow({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        className="relative flex touch-pan-y flex-col gap-2 px-4 py-3 select-none"
+        onPointerCancel={onPointerCancel}
+        className="relative flex cursor-pointer touch-pan-y flex-col gap-2 px-4 py-3 select-none"
         style={{
           background: 'var(--color-surface)',
           transform: `translateX(${translate}px)`,
