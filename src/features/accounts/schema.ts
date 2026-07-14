@@ -21,8 +21,8 @@ export const accounts = sqliteTable('accounts', {
 export type Account = typeof accounts.$inferSelect;
 export type NewAccount = typeof accounts.$inferInsert;
 
-export function ensureAccountsTable(db: Db): void {
-  db.run(sql`
+export async function ensureAccountsTable(db: Db): Promise<void> {
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS accounts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,

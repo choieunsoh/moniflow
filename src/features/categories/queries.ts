@@ -213,12 +213,13 @@ export function hueFor(map: Record<string, number>, category: string): number | 
 
 // Resolve a category name to its id, creating the row (fallback emoji) if the name is new. This is the
 // single write-boundary that turns the name-based UI/import into id-based storage. Idempotent.
-export function categoryIdFor(db: Db, name: string): number {
-  db.insert(categories)
+export async function categoryIdFor(db: Db, name: string): Promise<number> {
+  await db
+    .insert(categories)
     .values({ name, emoji: FALLBACK_EMOJI })
     .onConflictDoNothing({ target: categories.name })
     .run();
-  const row = db
+  const row = await db
     .select({ id: categories.id })
     .from(categories)
     .where(eq(categories.name, name))

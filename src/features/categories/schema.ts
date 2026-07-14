@@ -20,8 +20,8 @@ export const categories = sqliteTable('categories', {
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
 
-export function ensureCategoriesTable(db: Db): void {
-  db.run(sql`
+export async function ensureCategoriesTable(db: Db): Promise<void> {
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,

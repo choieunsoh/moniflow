@@ -46,10 +46,10 @@ export type EntryInput = {
 
 // ponytail: ensures the ledger's FK tables (categories, accounts) alongside entries, so calling
 // ensureEntriesTable alone yields a queryable ledger — the invariant migrate.ts used to provide.
-export function ensureEntriesTable(db: Db): void {
-  ensureCategoriesTable(db);
-  ensureAccountsTable(db);
-  db.run(sql`
+export async function ensureEntriesTable(db: Db): Promise<void> {
+  await ensureCategoriesTable(db);
+  await ensureAccountsTable(db);
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL,
@@ -74,8 +74,8 @@ export const tripTitles = sqliteTable('trip_titles', {
 });
 export type TripTitle = typeof tripTitles.$inferSelect;
 
-export function ensureTripTitlesTable(db: Db): void {
-  db.run(sql`
+export async function ensureTripTitlesTable(db: Db): Promise<void> {
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS trip_titles (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL

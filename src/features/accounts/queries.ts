@@ -103,12 +103,17 @@ export function listAccounts(db: Db): string[] {
 
 // Resolve an account name to its id, creating the row (fallback icon) if the name is new. The single
 // write-boundary that turns the name-based UI/import into id-based storage. Idempotent.
-export function accountIdFor(db: Db, name: string): number {
-  db.insert(accounts)
+export async function accountIdFor(db: Db, name: string): Promise<number> {
+  await db
+    .insert(accounts)
     .values({ name, icon: FALLBACK_ICON })
     .onConflictDoNothing({ target: accounts.name })
     .run();
-  const row = db.select({ id: accounts.id }).from(accounts).where(eq(accounts.name, name)).get();
+  const row = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.name, name))
+    .get();
   if (!row) throw new Error(`accountIdFor: could not resolve account "${name}"`);
   return row.id;
 }
