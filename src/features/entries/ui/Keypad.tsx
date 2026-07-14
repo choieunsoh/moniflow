@@ -345,10 +345,15 @@ export function Keypad({
           </p>
         ) : null}
 
+        {/* Single-line input; Enter is swallowed so it doesn't implicitly submit the form (HTML spec)
+            and save the entry prematurely — use the Add button to save. */}
         <input
           name="note"
           placeholder="Note (optional)"
           defaultValue={entry?.note ?? ''}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.preventDefault();
+          }}
           className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
           style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
         />
