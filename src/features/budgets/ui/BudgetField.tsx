@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useBudgetInput } from '../use-budget-input';
+import { useBudgetInput, formatBudgetAmount } from '../use-budget-input';
 import { saveBudget, removeBudget } from '../actions';
 
 // Inline amount editor for one category (or the total, category=''). Sits at the end of the row —
@@ -34,12 +34,14 @@ export function BudgetField({
   return (
     <div className="flex shrink-0 items-center gap-1">
       <input
-        type="number"
+        type="text"
         inputMode="numeric"
-        min="0"
-        step="1"
-        defaultValue={prefill}
-        onBlur={onBlur}
+        defaultValue={formatBudgetAmount(prefill)}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={(e) => {
+          onBlur(e);
+          e.currentTarget.value = formatBudgetAmount(e.currentTarget.value);
+        }}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         aria-label={category ? `${category} monthly limit` : 'Total monthly limit'}
