@@ -58,6 +58,15 @@ export default defineConfig([
   },
 
   {
+    // Standalone Node scripts (npm script hooks, not part of the app bundle): need the Node
+    // globals that browser/worker code doesn't get.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly' },
+    },
+  },
+
+  {
     // Server Action modules ('use server'): Next.js requires every exported function to be
     // `async` so it can compile the file into server-only RPC endpoints, but this codebase's
     // actions wrap synchronous better-sqlite3 calls with no `await` of their own — so

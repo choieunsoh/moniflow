@@ -1,9 +1,5 @@
 /// <reference lib="webworker" />
-import sqlite3InitModule, {
-  type Sqlite3Static,
-  type Database,
-  type BindableValue,
-} from '@sqlite.org/sqlite-wasm';
+import type { Sqlite3Static, Database, BindableValue } from '@sqlite.org/sqlite-wasm';
 
 // drizzle's sqlite-proxy always sends params as a positional array of SQL-bindable values, so the
 // worker types them as BindableValue[] (assignable to the oo1 bind()'s BindingSpec) rather than unknown[].
@@ -70,8 +66,15 @@ function queryRows(sql: string, params: BindableValue[], method: string): unknow
   return rows;
 }
 
+// Runtime-load the self-hosted sqlite3 (public/sqlite3/) so Turbopack never bundles the npm package
+// (whose index.mjs contains an un-resolvable `new Worker(new URL(...))` factory for the worker1
+// promiser, which we never use). turbopackIgnore leaves this import as a runtime URL fetch.
+// locateFile points the loader at the .wasm sitting beside the .mjs.
 async function boot(): Promise<void> {
-  api = await sqlite3InitModule();
+  const { default: sqlite3InitModule } = await import(
+    /* turbopackIgnore: true */ '/sqlite3/sqlite3.mjs'
+  );
+  api = await sqlite3InitModule({ locateFile: (file: string) => `/sqlite3/${file}` });
   const pool = await api.installOpfsSAHPoolVfs({ name: 'moniflow-pool' });
   db = new pool.OpfsSAHPoolDb(DB_FILE);
   for (const ddl of BOOTSTRAP_SQL) runStmt(ddl);
