@@ -31,34 +31,34 @@ export function sortByManualOrder<T extends { name: string }>(
 
 // The keypad's category tiles: count-desc from getCategoryCounts, re-floated by the manual order.
 // Shared by the new-entry and edit routes so their grids can't drift.
-export function getKeypadCategories(db: Db): KeypadCategory[] {
-  const emojiMap = getEmojiMap(db);
-  const hueMap = getHueMap(db);
-  const list = getCategoryCounts(db).map((c) => ({
+export async function getKeypadCategories(db: Db): Promise<KeypadCategory[]> {
+  const emojiMap = await getEmojiMap(db);
+  const hueMap = await getHueMap(db);
+  const list = (await getCategoryCounts(db)).map((c) => ({
     name: c.category,
     emoji: emojiFor(emojiMap, c.category),
     hue: hueFor(hueMap, c.category),
   }));
-  return sortByManualOrder(list, getCategoryOrderMap(db));
+  return sortByManualOrder(list, await getCategoryOrderMap(db));
 }
 
 // The keypad's account tiles: usage-desc from getAccountsByUsage, re-floated by the manual order.
-export function getKeypadAccounts(db: Db): KeypadAccount[] {
-  const iconMap = getAccountIconMap(db);
-  const hueMap = getAccountHueMap(db);
-  const list = getAccountsByUsage(db).map((name) => ({
+export async function getKeypadAccounts(db: Db): Promise<KeypadAccount[]> {
+  const iconMap = await getAccountIconMap(db);
+  const hueMap = await getAccountHueMap(db);
+  const list = (await getAccountsByUsage(db)).map((name) => ({
     name,
     icon: iconForAccount(iconMap, name),
     hue: hueForAccount(hueMap, name),
   }));
-  return sortByManualOrder(list, getAccountOrderMap(db));
+  return sortByManualOrder(list, await getAccountOrderMap(db));
 }
 
 // The keypad's currency picker: THB pinned first, then the remaining currencies by ledger usage,
 // with never-used ones (rank MAX) trailing in their declared order. Auto-tunes per trip — no manual
 // reorder. Each entry carries its narrowSymbol glyph for the picker chips.
-export function getKeypadCurrencies(db: Db): KeypadCurrency[] {
-  const rank = new Map(getCurrencyCounts(db).map((c, i) => [c.currency, i]));
+export async function getKeypadCurrencies(db: Db): Promise<KeypadCurrency[]> {
+  const rank = new Map((await getCurrencyCounts(db)).map((c, i) => [c.currency, i]));
   const MAX = Number.MAX_SAFE_INTEGER;
   const ordered = [...CURRENCIES].sort((a, b) => {
     if (a === b) return 0;
