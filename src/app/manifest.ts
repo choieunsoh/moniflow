@@ -1,5 +1,8 @@
 import type { MetadataRoute } from 'next';
 
+// Rendered once at build time — required under `output: 'export'` (no server to generate it per-request).
+export const dynamic = 'force-static';
+
 // Next serves this at /manifest.webmanifest (linked automatically via metadata.manifest below).
 // standalone + portrait + matching theme/background make the home-screen launch open chromeless,
 // phone-shaped, and dark — same frame the app already renders as.
