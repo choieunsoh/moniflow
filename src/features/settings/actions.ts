@@ -1,5 +1,12 @@
 import { getBrowserDb } from '@db/browser';
-import { setCutoff, isValidCutoffDay, setIconSet, isIconSet } from './queries';
+import {
+  setCutoff,
+  isValidCutoffDay,
+  setIconSet,
+  isIconSet,
+  setFontScale,
+  isFontScale,
+} from './queries';
 import { setCardFeePct, isValidCardFeePct, getFxRates, setFxRates } from './queries';
 import type { FxRates } from './queries';
 import { CURRENCIES } from '@features/entries/entry-form';
@@ -32,6 +39,20 @@ export async function setIconSetAction(formData: FormData): Promise<void> {
   }
   const db = await getBrowserDb();
   await setIconSet(db, value);
+  bumpDataVersion();
+}
+
+// Backing the font-size picker. Validates the value is a known scale, writes OPFS (source of truth),
+// then bumps the data-version — which re-runs useFontScale, resizing the app live and refreshing the
+// localStorage paint cache. The action deliberately does NOT write localStorage or html: single
+// writer = the reconciler hook.
+export async function setFontScaleAction(formData: FormData): Promise<void> {
+  const value = formData.get('fontScale');
+  if (!isFontScale(value)) {
+    throw new Error(`Unknown font scale: ${typeof value === 'string' ? value : 'a file'}`);
+  }
+  const db = await getBrowserDb();
+  await setFontScale(db, value);
   bumpDataVersion();
 }
 
