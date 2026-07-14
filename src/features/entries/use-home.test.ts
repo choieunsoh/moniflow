@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { addEntries } from './queries';
+import { bumpDataVersion } from '@shared/data-version';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 
@@ -43,5 +44,20 @@ describe('useHome', () => {
     const food = data.slices.find((s) => s.name === 'Food');
     expect(food?.value).toBe(150);
     expect(food?.count).toBe(2);
+  });
+
+  it('refetches when the data-version bumps after a write', async () => {
+    const { result } = renderHook(() => useHome('2026-06'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.data?.summary.count).toBe(3);
+
+    const db = await getBrowserDb();
+    await addEntries(db, [
+      { date: '2026-07-04', account: 'Cash', category: 'Food', amount: -30 },
+    ]);
+    act(() => bumpDataVersion());
+
+    await waitFor(() => expect(result.current.data?.summary.count).toBe(4));
+    expect(result.current.data?.total).toBe(200);
   });
 });

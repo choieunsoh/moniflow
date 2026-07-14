@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getBrowserDb } from '@db/browser';
 import { getDistinctCategories, getDistinctAccounts } from './queries';
 import { getIconSet, type IconSet } from '@features/settings/queries';
+import { useDataVersion } from '@shared/data-version';
 
 // Header search's autocomplete pool (distinct categories + accounts, de-duped/sorted) plus the
 // active icon set, both DB-derived — read once via the browser OPFS db after mount. `ready` lets
@@ -16,6 +17,7 @@ export function useSearchSuggestions(): {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [iconSet, setIconSet] = useState<IconSet>('emoji');
   const [ready, setReady] = useState(false);
+  const version = useDataVersion();
 
   useEffect(() => {
     void (async () => {
@@ -29,7 +31,7 @@ export function useSearchSuggestions(): {
       setIconSet(icons);
       setReady(true);
     })();
-  }, []);
+  }, [version]);
 
   return { suggestions, iconSet, ready };
 }

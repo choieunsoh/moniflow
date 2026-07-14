@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { addCategory } from '@features/categories/queries';
 import { addAccount } from '@features/accounts/queries';
 import { setIconSet } from '@features/settings/queries';
+import { bumpDataVersion } from '@shared/data-version';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 
@@ -36,5 +37,19 @@ describe('useSearchSuggestions', () => {
     await waitFor(() => expect(result.current.ready).toBe(true));
     expect(result.current.suggestions).toEqual(['Bank', 'Cash', 'Food', 'Transport']);
     expect(result.current.iconSet).toBe('phosphor');
+  });
+
+  it('refetches when the data-version bumps after a write', async () => {
+    const { result } = renderHook(() => useSearchSuggestions());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.suggestions).toEqual(['Bank', 'Cash', 'Food', 'Transport']);
+
+    const db = await getBrowserDb();
+    await addCategory(db, 'Rent');
+    act(() => bumpDataVersion());
+
+    await waitFor(() =>
+      expect(result.current.suggestions).toEqual(['Bank', 'Cash', 'Food', 'Rent', 'Transport']),
+    );
   });
 });

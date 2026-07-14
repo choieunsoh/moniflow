@@ -10,6 +10,7 @@ import { toBudgetTotal, type BudgetTotal } from '@features/budgets/budget-status
 import { getEmojiMap, getHueMap } from '@features/categories/queries';
 import { toDonutSlices, type DonutSlice } from './donut';
 import { todayIso } from '@shared/date';
+import { useDataVersion } from '@shared/data-version';
 
 export type HomeData = {
   cutoff: number;
@@ -37,6 +38,7 @@ export type HomeData = {
 export function useHome(cycleKey: string | null): { ready: boolean; data: HomeData | null } {
   const [data, setData] = useState<HomeData | null>(null);
   const [ready, setReady] = useState(false);
+  const version = useDataVersion();
 
   useEffect(() => {
     void (async () => {
@@ -101,7 +103,7 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       });
       setReady(true);
     })();
-  }, [cycleKey]);
+  }, [cycleKey, version]);
 
   return { ready, data };
 }
