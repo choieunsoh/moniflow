@@ -1,6 +1,7 @@
 'use client';
 
 import { type ReactNode, Suspense } from 'react';
+import { useFontScale } from '@features/settings/use-font-scale';
 import { useSearchSuggestions } from '@features/entries/use-search-suggestions';
 import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
 import { AppHeader } from './AppHeader';
@@ -15,6 +16,7 @@ import { ServiceWorkerRegistrar } from './ServiceWorkerRegistrar';
 // inline. While !ready, still renders the full frame with an empty suggestion pool and the default
 // icon set — first paint is never blank, the search pool just fills in a tick later.
 export function AppShell({ children }: { children: ReactNode }) {
+  useFontScale();
   // Defaults ([] / 'emoji') from the hook already cover the !ready frame, so `ready` itself isn't
   // read here — the frame renders immediately either way and the pool fills in a tick later.
   const { suggestions, iconSet } = useSearchSuggestions();
