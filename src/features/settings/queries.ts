@@ -117,3 +117,42 @@ export async function setFxRates(db: Db, rates: FxRates): Promise<void> {
     db.insert(settings).values({ key: FX_RATES_KEY, value: JSON.stringify(rates) }),
   ]);
 }
+
+// Whole-app font scale — one KV row driving the root html font-size. Stored as a short enum key;
+// the percent it maps to (FONT_SCALE_PCT) is applied to document.documentElement so the entire
+// rem-based UI scales at once. Mirrors the icon-set KV exactly — no new table, no migration.
+const FONT_SCALE_KEY = 'font_scale';
+export const FONT_SCALES = ['sm', 'md', 'lg', 'xl'] as const;
+export type FontScale = (typeof FONT_SCALES)[number];
+const DEFAULT_FONT_SCALE: FontScale = 'md';
+
+// Percent (not px): resolves against the browser's own default font-size, so a user who raised
+// their browser default for accessibility still scales correctly. Single source for the numbers —
+// the reconciler hook imports this; the pre-paint inline script (layout.tsx) must inline the same
+// literal because it can't import a module (documented there).
+export const FONT_SCALE_PCT: Record<FontScale, string> = {
+  sm: '87.5%',
+  md: '100%',
+  lg: '112.5%',
+  xl: '125%',
+};
+
+// localStorage key for the pre-paint cache (see use-font-scale.ts and layout.tsx).
+export const FONT_SCALE_STORAGE_KEY = 'moniflow_font_scale';
+
+export function isFontScale(value: unknown): value is FontScale {
+  return typeof value === 'string' && FONT_SCALES.some((s) => s === value);
+}
+
+// Falls back to md for a fresh DB or one that predates this setting.
+export async function getFontScale(db: Db): Promise<FontScale> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, FONT_SCALE_KEY)).all();
+  return row !== undefined && isFontScale(row.value) ? row.value : DEFAULT_FONT_SCALE;
+}
+
+export async function setFontScale(db: Db, value: FontScale): Promise<void> {
+  await db.batch([
+    db.delete(settings).where(eq(settings.key, FONT_SCALE_KEY)),
+    db.insert(settings).values({ key: FONT_SCALE_KEY, value }),
+  ]);
+}
