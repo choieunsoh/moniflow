@@ -7,6 +7,7 @@ import { useRef, useState } from 'react';
 import { formatBaht, formatSignedBaht } from '@shared/money';
 import { formatForeign } from '../trips';
 import { deleteEntryAction } from '../actions';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 import type { EntryRow } from '../schema';
 import { resolveSwipe, type SwipeSide } from '../swipe';
 import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
@@ -154,7 +155,7 @@ export function SwipeRow({
 
       {/* Delete — revealed on a left swipe (row slides left). */}
       <form
-        action={deleteEntryAction}
+        action={withSaveToast(deleteEntryAction, 'Entry deleted')}
         className="absolute inset-y-0 right-0"
         style={{ width: ACTION_W }}
       >

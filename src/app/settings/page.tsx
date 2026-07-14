@@ -15,6 +15,7 @@ import { getEntries } from '@features/entries/queries';
 import { serializeMonefyCsv } from '@features/entries/import';
 import { todayIso } from '@shared/date';
 import { toast } from '@shared/ui/toast';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 import { PageContainer } from '@shared/ui/PageContainer';
 
 const ICON_SET_LABELS = {
@@ -78,7 +79,7 @@ export default function SettingsPage() {
       </header>
 
       <section className="panel flex flex-col gap-4 p-5">
-        <form action={setCutoffAction} className="flex flex-col gap-3">
+        <form action={withSaveToast(setCutoffAction)} className="flex flex-col gap-3">
           <label htmlFor="day" className="text-sm font-medium">
             Billing cutoff day
           </label>
@@ -106,7 +107,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="panel flex flex-col gap-4 p-5">
-        <form action={setIconSetAction} className="flex flex-col gap-3">
+        <form action={withSaveToast(setIconSetAction)} className="flex flex-col gap-3">
           <label htmlFor="iconSet" className="text-sm font-medium">
             Category icons
           </label>
@@ -135,7 +136,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="panel flex flex-col gap-4 p-5">
-        <form action={setFontScaleAction} className="flex flex-col gap-3">
+        <form action={withSaveToast(setFontScaleAction)} className="flex flex-col gap-3">
           <label htmlFor="fontScale" className="text-sm font-medium">
             Text size
           </label>
@@ -163,7 +164,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="panel flex flex-col gap-4 p-5">
-        <form action={setCardFeePctAction} className="flex flex-col gap-3">
+        <form action={withSaveToast(setCardFeePctAction)} className="flex flex-col gap-3">
           <label htmlFor="pct" className="text-sm font-medium">
             Card FX fee %
           </label>

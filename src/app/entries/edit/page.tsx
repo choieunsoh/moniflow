@@ -10,6 +10,7 @@ import { Keypad } from '@features/entries/ui/Keypad';
 import { CloseButton } from '@features/entries/ui/CloseButton';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { todayIso } from '@shared/date';
+import { toast } from '@shared/ui/toast';
 
 // The entry + keypad-feeding lists load client-side via useEditEntry against the browser OPFS db. The
 // entry id comes from the query string (?id=) rather than a dynamic [id] segment: `output: 'export'`
@@ -58,6 +59,7 @@ function EditEntryInner() {
 
   async function handleSubmit(formData: FormData): Promise<void> {
     await editEntryAction(formData);
+    toast('Entry saved');
     router.push('/records');
   }
 

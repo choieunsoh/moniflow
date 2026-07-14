@@ -4,6 +4,7 @@ import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBudgetInput, formatBudgetAmount } from '../use-budget-input';
 import { saveBudget, removeBudget } from '../actions';
+import { toast } from '@shared/ui/toast';
 
 // Inline amount editor for one category (or the total, category=''). Sits at the end of the row —
 // a fixed-width, right-aligned number field plus a "×" to clear the budget. The field auto-saves on
@@ -27,6 +28,7 @@ export function BudgetField({
   const { onBlur, onKeyDown } = useBudgetInput(amount, (next) =>
     startTransition(async () => {
       await saveBudget(category, next);
+      toast('Budget set');
       router.refresh(); // guarantee the row re-renders (× + progress bar) even if cache revalidation is slow
     }),
   );
@@ -59,6 +61,7 @@ export function BudgetField({
           onClick={() =>
             startTransition(async () => {
               await removeBudget(category);
+              toast('Budget removed');
               router.refresh();
             })
           }
