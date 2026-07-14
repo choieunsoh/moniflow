@@ -58,9 +58,9 @@ export async function setIconSet(db: Db, value: IconSet): Promise<void> {
 
 // Card FX fee % — total markup over the ECB mid-rate (card-network cut + the user's bank
 // foreign-transaction fee), layered on when converting a foreign entry to THB. Reuses the KV table
-// like cutoff/icon-set. Default 2%.
+// like cutoff/icon-set. Default 2.5%.
 const CARD_FEE_KEY = 'card_fx_fee_pct';
-const DEFAULT_CARD_FEE = 2;
+const DEFAULT_CARD_FEE = 2.5;
 
 export function isValidCardFeePct(pct: number): boolean {
   return Number.isFinite(pct) && pct >= 0 && pct <= 10;
