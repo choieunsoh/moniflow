@@ -6,7 +6,8 @@ describe('budgets schema', () => {
   it('bootstraps a table that accepts a category_id row and a null-category_id (total) row', async () => {
     const db = makeNodeProxyDb();
     await ensureBudgetsTable(db);
-    await db.insert(budgets)
+    await db
+      .insert(budgets)
       .values([
         { categoryId: 1, amount: 5000 },
         { categoryId: null, amount: 30000 },
