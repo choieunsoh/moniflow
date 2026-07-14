@@ -18,7 +18,12 @@ export function makeNodeProxyDb(): SqliteRemoteDatabase<Record<string, never>> {
     // MUST return each row as an ARRAY of column values via stmt.raw(). Returning objects (stmt.all())
     // breaks every query-builder read and diverges from the browser worker (which also returns arrays).
     const rowsAsArrays = stmt.raw().all(...params);
-    if (method === 'get') return { rows: rowsAsArrays[0] ?? [] };
+    // No `?? []` fallback here: drizzle's mapGetResult treats a falsy `rows` as "no row found"
+    // (returns undefined). Coalescing a missing row to `[]` (truthy) broke every not-found .get()
+    // call — e.g. getEntryById(missingId) returned an all-undefined-fields object instead of
+    // undefined, and existence checks (deleteCategory's "used" guard, renameCategory/mergeAccountInto's
+    // target lookup) treated "nothing found" as "something found".
+    if (method === 'get') return { rows: rowsAsArrays[0] };
     return { rows: rowsAsArrays };
   };
 
