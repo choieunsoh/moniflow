@@ -52,9 +52,7 @@ describe('useHome', () => {
     expect(result.current.data?.summary.count).toBe(3);
 
     const db = await getBrowserDb();
-    await addEntries(db, [
-      { date: '2026-07-04', account: 'Cash', category: 'Food', amount: -30 },
-    ]);
+    await addEntries(db, [{ date: '2026-07-04', account: 'Cash', category: 'Food', amount: -30 }]);
     act(() => bumpDataVersion());
 
     await waitFor(() => expect(result.current.data?.summary.count).toBe(4));
