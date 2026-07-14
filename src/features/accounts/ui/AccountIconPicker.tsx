@@ -54,7 +54,7 @@ export function AccountIconPicker({
           </div>
 
           <h2 className="text-sm font-semibold">Icon</h2>
-          <form action={setAccountIconAction} onSubmit={close} className="grid grid-cols-8 gap-1">
+          <form action={setAccountIconAction} onSubmit={close} className="grid grid-cols-4 gap-1">
             <input type="hidden" name="account" value={account} />
             {ACCOUNT_ICONS.map((icon) => (
               <button
@@ -66,7 +66,7 @@ export function AccountIconPicker({
                 title={icon}
                 className="grid aspect-square w-full place-items-center rounded-[var(--radius-sm)] transition-colors hover:bg-[var(--color-surface-2)] active:opacity-70"
               >
-                <AccountGlyph icon={icon} size={22} />
+                <AccountGlyph icon={icon} size={30} />
               </button>
             ))}
           </form>
@@ -85,7 +85,7 @@ export function AccountIconPicker({
                   aria-label={preset.name}
                   aria-pressed={selected}
                   title={preset.name}
-                  className={`size-8 rounded-full transition-transform active:opacity-70 ${
+                  className={`size-11 rounded-full transition-transform active:opacity-70 ${
                     selected ? 'ring-2 ring-offset-2 ring-offset-[var(--color-surface)]' : ''
                   }`}
                   style={{ background: categoryColorBold(preset.name, preset.hue) }}
@@ -99,7 +99,7 @@ export function AccountIconPicker({
               aria-label="Automatic color"
               aria-pressed={hue === undefined}
               title="Auto"
-              className={`grid size-8 place-items-center rounded-full border text-[10px] font-medium transition-colors hover:bg-[var(--color-surface-2)] active:opacity-70 ${
+              className={`grid size-11 place-items-center rounded-full border text-xs font-medium transition-colors hover:bg-[var(--color-surface-2)] active:opacity-70 ${
                 hue === undefined ? 'ring-2 ring-offset-2 ring-offset-[var(--color-surface)]' : ''
               }`}
               style={{ color: 'var(--color-muted)' }}

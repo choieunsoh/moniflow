@@ -53,7 +53,7 @@ export function CategoryPickerDialog({
           </div>
 
           <h2 className="text-sm font-semibold">Icon</h2>
-          <form action={setCategoryEmojiAction} onSubmit={close} className="grid grid-cols-8 gap-1">
+          <form action={setCategoryEmojiAction} onSubmit={close} className="grid grid-cols-6 gap-1">
             <input type="hidden" name="category" value={category} />
             {EMOJI_CHOICES.map((emoji) => {
               const label = EMOJI_LABELS[emoji] ?? emoji;
@@ -66,9 +66,9 @@ export function CategoryPickerDialog({
                   value={emoji}
                   aria-label={`Set ${label}`}
                   title={label}
-                  className="grid aspect-square w-full place-items-center rounded-[var(--radius-sm)] text-xl transition-colors hover:bg-[var(--color-surface-2)] active:opacity-70"
+                  className="grid aspect-square w-full place-items-center rounded-[var(--radius-sm)] text-3xl transition-colors hover:bg-[var(--color-surface-2)] active:opacity-70"
                 >
-                  {Marker ? <Marker size={22} /> : emoji}
+                  {Marker ? <Marker size={28} /> : emoji}
                 </button>
               );
             })}
@@ -88,7 +88,7 @@ export function CategoryPickerDialog({
                   aria-label={preset.name}
                   aria-pressed={selected}
                   title={preset.name}
-                  className={`size-8 rounded-full transition-transform active:opacity-70 ${
+                  className={`size-11 rounded-full transition-transform active:opacity-70 ${
                     selected ? 'ring-2 ring-offset-2 ring-offset-[var(--color-surface)]' : ''
                   }`}
                   style={{ background: categoryColorBold(preset.name, preset.hue) }}
@@ -103,7 +103,7 @@ export function CategoryPickerDialog({
               aria-label="Automatic color"
               aria-pressed={hue === undefined}
               title="Auto"
-              className={`grid size-8 place-items-center rounded-full border text-[10px] font-medium transition-colors hover:bg-[var(--color-surface-2)] active:opacity-70 ${
+              className={`grid size-11 place-items-center rounded-full border text-xs font-medium transition-colors hover:bg-[var(--color-surface-2)] active:opacity-70 ${
                 hue === undefined ? 'ring-2 ring-offset-2 ring-offset-[var(--color-surface)]' : ''
               }`}
               style={{ color: 'var(--color-muted)' }}
