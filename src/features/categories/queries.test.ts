@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { initDb } from '@db/client';
+import { makeNodeProxyDb } from '@db/client';
 import { ensureCategoriesTable } from './schema';
 import {
   getEmojiMap,
@@ -15,109 +15,109 @@ import {
   setCategoryOrder,
 } from './queries';
 
-function db() {
-  const d = initDb(':memory:');
-  ensureCategoriesTable(d);
+async function db() {
+  const d = makeNodeProxyDb();
+  await ensureCategoriesTable(d);
   return d;
 }
 
 describe('categoryIdFor', () => {
-  it('inserts a new category with the fallback emoji and returns its id', () => {
-    const d = db();
-    const id = categoryIdFor(d, 'groceries');
+  it('inserts a new category with the fallback emoji and returns its id', async () => {
+    const d = await db();
+    const id = await categoryIdFor(d, 'groceries');
     expect(id).toBeGreaterThan(0);
-    expect(getEmojiMap(d)).toEqual({ groceries: FALLBACK_EMOJI });
+    expect(await getEmojiMap(d)).toEqual({ groceries: FALLBACK_EMOJI });
   });
 
-  it('returns the existing id for a known name and does not duplicate or overwrite meta', () => {
-    const d = db();
-    setCategoryEmoji(d, 'groceries', '🛒');
-    const first = categoryIdFor(d, 'groceries');
-    const second = categoryIdFor(d, 'groceries');
+  it('returns the existing id for a known name and does not duplicate or overwrite meta', async () => {
+    const d = await db();
+    await setCategoryEmoji(d, 'groceries', '🛒');
+    const first = await categoryIdFor(d, 'groceries');
+    const second = await categoryIdFor(d, 'groceries');
     expect(second).toBe(first);
-    expect(getEmojiMap(d)).toEqual({ groceries: '🛒' }); // emoji preserved, not reset to fallback
+    expect(await getEmojiMap(d)).toEqual({ groceries: '🛒' }); // emoji preserved, not reset to fallback
   });
 });
 
 describe('addCategory', () => {
-  it('creates a new empty category with the fallback emoji', () => {
-    const d = db();
-    addCategory(d, 'Snacks');
-    expect(getEmojiMap(d)).toEqual({ Snacks: FALLBACK_EMOJI });
+  it('creates a new empty category with the fallback emoji', async () => {
+    const d = await db();
+    await addCategory(d, 'Snacks');
+    expect(await getEmojiMap(d)).toEqual({ Snacks: FALLBACK_EMOJI });
   });
 
-  it('is a no-op on an existing name — keeps its emoji, no duplicate', () => {
-    const d = db();
-    setCategoryEmoji(d, 'Snacks', '🍿');
-    addCategory(d, 'Snacks');
-    expect(getEmojiMap(d)).toEqual({ Snacks: '🍿' });
+  it('is a no-op on an existing name — keeps its emoji, no duplicate', async () => {
+    const d = await db();
+    await setCategoryEmoji(d, 'Snacks', '🍿');
+    await addCategory(d, 'Snacks');
+    expect(await getEmojiMap(d)).toEqual({ Snacks: '🍿' });
   });
 });
 
 describe('emoji + hue maps read/write categories', () => {
-  it('upserts an emoji and reads it back keyed by name', () => {
-    const d = db();
-    setCategoryEmoji(d, 'rent', '🏠');
-    expect(emojiFor(getEmojiMap(d), 'rent')).toBe('🏠');
-    expect(emojiFor(getEmojiMap(d), 'unknown')).toBe(FALLBACK_EMOJI);
+  it('upserts an emoji and reads it back keyed by name', async () => {
+    const d = await db();
+    await setCategoryEmoji(d, 'rent', '🏠');
+    expect(emojiFor(await getEmojiMap(d), 'rent')).toBe('🏠');
+    expect(emojiFor(await getEmojiMap(d), 'unknown')).toBe(FALLBACK_EMOJI);
   });
 
-  it('sets and clears a hue (null = auto) without disturbing the emoji', () => {
-    const d = db();
-    setCategoryEmoji(d, 'rent', '🏠');
-    setCategoryHue(d, 'rent', 200);
-    expect(hueFor(getHueMap(d), 'rent')).toBe(200);
-    setCategoryHue(d, 'rent', null);
-    expect(hueFor(getHueMap(d), 'rent')).toBeUndefined();
-    expect(emojiFor(getEmojiMap(d), 'rent')).toBe('🏠'); // still there
+  it('sets and clears a hue (null = auto) without disturbing the emoji', async () => {
+    const d = await db();
+    await setCategoryEmoji(d, 'rent', '🏠');
+    await setCategoryHue(d, 'rent', 200);
+    expect(hueFor(await getHueMap(d), 'rent')).toBe(200);
+    await setCategoryHue(d, 'rent', null);
+    expect(hueFor(await getHueMap(d), 'rent')).toBeUndefined();
+    expect(emojiFor(await getEmojiMap(d), 'rent')).toBe('🏠'); // still there
   });
 
-  it('keeps 0 (red) as a real pick, not "unset"', () => {
-    const d = db();
-    setCategoryHue(d, 'Rent', 0);
-    expect(getHueMap(d)).toEqual({ Rent: 0 });
+  it('keeps 0 (red) as a real pick, not "unset"', async () => {
+    const d = await db();
+    await setCategoryHue(d, 'Rent', 0);
+    expect(await getHueMap(d)).toEqual({ Rent: 0 });
   });
 
-  it('upserts: re-assigning replaces the emoji', () => {
-    const d = db();
-    setCategoryEmoji(d, 'Grab Food', '🍔');
-    setCategoryEmoji(d, 'Grab Food', '🍜');
-    expect(getEmojiMap(d)).toEqual({ 'Grab Food': '🍜' });
+  it('upserts: re-assigning replaces the emoji', async () => {
+    const d = await db();
+    await setCategoryEmoji(d, 'Grab Food', '🍔');
+    await setCategoryEmoji(d, 'Grab Food', '🍜');
+    expect(await getEmojiMap(d)).toEqual({ 'Grab Food': '🍜' });
   });
 
-  it('round-trips a non-ASCII (Thai) category name', () => {
-    const d = db();
-    setCategoryEmoji(d, 'ค่าไฟ', '💡');
-    expect(getEmojiMap(d)).toEqual({ ค่าไฟ: '💡' });
+  it('round-trips a non-ASCII (Thai) category name', async () => {
+    const d = await db();
+    await setCategoryEmoji(d, 'ค่าไฟ', '💡');
+    expect(await getEmojiMap(d)).toEqual({ ค่าไฟ: '💡' });
   });
 });
 
 describe('setCategoryOrder / getCategoryOrderMap', () => {
-  it('writes a dense sort_order in the given order and reads it back', () => {
-    const d = db();
-    addCategory(d, 'Food');
-    addCategory(d, 'Coffee');
-    addCategory(d, 'Games');
-    setCategoryOrder(d, ['Coffee', 'Games', 'Food']);
-    expect(getCategoryOrderMap(d)).toEqual({ Coffee: 0, Games: 1, Food: 2 });
+  it('writes a dense sort_order in the given order and reads it back', async () => {
+    const d = await db();
+    await addCategory(d, 'Food');
+    await addCategory(d, 'Coffee');
+    await addCategory(d, 'Games');
+    await setCategoryOrder(d, ['Coffee', 'Games', 'Food']);
+    expect(await getCategoryOrderMap(d)).toEqual({ Coffee: 0, Games: 1, Food: 2 });
   });
 
-  it('leaves an untouched category out of the map (null sort_order)', () => {
-    const d = db();
-    addCategory(d, 'Food');
-    addCategory(d, 'Coffee');
-    setCategoryOrder(d, ['Coffee']); // Food never ordered
-    const map = getCategoryOrderMap(d);
+  it('leaves an untouched category out of the map (null sort_order)', async () => {
+    const d = await db();
+    await addCategory(d, 'Food');
+    await addCategory(d, 'Coffee');
+    await setCategoryOrder(d, ['Coffee']); // Food never ordered
+    const map = await getCategoryOrderMap(d);
     expect(map).toEqual({ Coffee: 0 });
     expect('Food' in map).toBe(false);
   });
 
-  it('re-orders densely on a subsequent call', () => {
-    const d = db();
-    addCategory(d, 'Food');
-    addCategory(d, 'Coffee');
-    setCategoryOrder(d, ['Food', 'Coffee']);
-    setCategoryOrder(d, ['Coffee', 'Food']);
-    expect(getCategoryOrderMap(d)).toEqual({ Coffee: 0, Food: 1 });
+  it('re-orders densely on a subsequent call', async () => {
+    const d = await db();
+    await addCategory(d, 'Food');
+    await addCategory(d, 'Coffee');
+    await setCategoryOrder(d, ['Food', 'Coffee']);
+    await setCategoryOrder(d, ['Coffee', 'Food']);
+    expect(await getCategoryOrderMap(d)).toEqual({ Coffee: 0, Food: 1 });
   });
 });

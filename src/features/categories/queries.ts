@@ -160,8 +160,11 @@ export const EMOJI_LABELS: Record<string, string> = {
   '🧳': 'Luggage',
 };
 
-export function getEmojiMap(db: Db): Record<string, string> {
-  const rows = db.select({ name: categories.name, emoji: categories.emoji }).from(categories).all();
+export async function getEmojiMap(db: Db): Promise<Record<string, string>> {
+  const rows = await db
+    .select({ name: categories.name, emoji: categories.emoji })
+    .from(categories)
+    .all();
   const map: Record<string, string> = {};
   for (const row of rows) map[row.name] = row.emoji;
   return map;
@@ -169,8 +172,9 @@ export function getEmojiMap(db: Db): Record<string, string> {
 
 // Upsert: assigning an emoji to a category replaces any prior one. Creates the category row if the
 // name is new (a category with no entries yet is now legitimate).
-export function setCategoryEmoji(db: Db, category: string, emoji: string): void {
-  db.insert(categories)
+export async function setCategoryEmoji(db: Db, category: string, emoji: string): Promise<void> {
+  await db
+    .insert(categories)
     .values({ name: category, emoji })
     .onConflictDoUpdate({ target: categories.name, set: { emoji } })
     .run();
@@ -183,16 +187,20 @@ export function emojiFor(map: Record<string, string>, category: string): string 
 // Create an empty category (no entries yet) with the fallback emoji — it shows on the list immediately
 // (getCategoryCounts left-joins, so count 0). No-op if the name already exists, so it never clobbers an
 // existing category's emoji/hue. Restyle the icon/colour afterwards with the picker.
-export function addCategory(db: Db, name: string): void {
-  db.insert(categories)
+export async function addCategory(db: Db, name: string): Promise<void> {
+  await db
+    .insert(categories)
     .values({ name, emoji: FALLBACK_EMOJI })
     .onConflictDoNothing({ target: categories.name })
     .run();
 }
 
 // Only categories with a picked hue land in the map; the rest fall through to the name-derived color.
-export function getHueMap(db: Db): Record<string, number> {
-  const rows = db.select({ name: categories.name, hue: categories.hue }).from(categories).all();
+export async function getHueMap(db: Db): Promise<Record<string, number>> {
+  const rows = await db
+    .select({ name: categories.name, hue: categories.hue })
+    .from(categories)
+    .all();
   const map: Record<string, number> = {};
   for (const row of rows) if (row.hue !== null) map[row.name] = row.hue;
   return map;
@@ -200,8 +208,9 @@ export function getHueMap(db: Db): Record<string, number> {
 
 // Upsert the hue. `null` resets to auto. A new name gets the fallback emoji to satisfy NOT NULL; an
 // existing row keeps its emoji (only hue changes).
-export function setCategoryHue(db: Db, category: string, hue: number | null): void {
-  db.insert(categories)
+export async function setCategoryHue(db: Db, category: string, hue: number | null): Promise<void> {
+  await db
+    .insert(categories)
     .values({ name: category, emoji: FALLBACK_EMOJI, hue })
     .onConflictDoUpdate({ target: categories.name, set: { hue } })
     .run();
@@ -230,8 +239,8 @@ export async function categoryIdFor(db: Db, name: string): Promise<number> {
 
 // Only categories with a manual sort_order land in the map; unordered ones are absent (caller sorts
 // them last). Mirrors getHueMap.
-export function getCategoryOrderMap(db: Db): Record<string, number> {
-  const rows = db
+export async function getCategoryOrderMap(db: Db): Promise<Record<string, number>> {
+  const rows = await db
     .select({ name: categories.name, sortOrder: categories.sortOrder })
     .from(categories)
     .all();
@@ -241,12 +250,12 @@ export function getCategoryOrderMap(db: Db): Record<string, number> {
 }
 
 // Persist a manual order: write a dense 0..n-1 to sort_order across the named categories, in one
-// transaction. Names not present are no-ops (UPDATE ... WHERE name). Materialises the whole visible
+// batch. Names not present are no-ops (UPDATE ... WHERE name). Materialises the whole visible
 // grid on every drop, so there is never a mix of ordered and half-ordered rows the user dragged.
-export function setCategoryOrder(db: Db, orderedNames: string[]): void {
-  db.transaction((tx) => {
-    for (const [i, name] of orderedNames.entries()) {
-      tx.update(categories).set({ sortOrder: i }).where(eq(categories.name, name)).run();
-    }
-  });
+export async function setCategoryOrder(db: Db, orderedNames: string[]): Promise<void> {
+  if (orderedNames.length === 0) return;
+  const mk = (name: string, i: number) =>
+    db.update(categories).set({ sortOrder: i }).where(eq(categories.name, name));
+  const [first, ...rest] = orderedNames;
+  await db.batch([mk(first, 0), ...rest.map((name, i) => mk(name, i + 1))]);
 }
