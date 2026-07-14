@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { addCategoryAction } from '@features/entries/actions';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 
 // Add a new empty category by name. The input is UNCONTROLLED, so React's form reset clears it after a
 // successful submit and the action's FormData still reads the real DOM value; `draft` only mirrors the
@@ -17,7 +18,7 @@ export function AddCategory({ names }: { names: string[] }) {
 
   return (
     <form
-      action={addCategoryAction}
+      action={withSaveToast(addCategoryAction, 'Category added')}
       onSubmit={(e) => {
         if (!canAdd) e.preventDefault();
         else setDraft(''); // reset the hint/disabled state; the uncontrolled input clears itself

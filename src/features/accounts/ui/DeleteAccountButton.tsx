@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { deleteAccountAction } from '../actions';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 
 // Two-tap arm-in-place delete for an unused (count 0) account — mobile-friendly, no modal. First tap
 // arms (muted trash → red "Delete", auto-reverts after 3s); the second commits. ONE button that changes
@@ -20,7 +21,7 @@ export function DeleteAccountButton({ account }: { account: string }) {
   }
 
   return (
-    <form action={deleteAccountAction} className="shrink-0">
+    <form action={withSaveToast(deleteAccountAction, 'Account deleted')} className="shrink-0">
       <input type="hidden" name="name" value={account} />
       <button
         type="button"

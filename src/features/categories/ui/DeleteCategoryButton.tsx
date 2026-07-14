@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { deleteCategoryAction } from '@features/entries/actions';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 
 // Two-tap arm-in-place delete for an unused (count 0) category — mobile-friendly, no modal, no focus
 // loop. First tap arms: the muted trash turns into a red "Delete" confirm that auto-reverts after 3s;
@@ -22,7 +23,7 @@ export function DeleteCategoryButton({ category }: { category: string }) {
   }
 
   return (
-    <form action={deleteCategoryAction} className="shrink-0">
+    <form action={withSaveToast(deleteCategoryAction, 'Category deleted')} className="shrink-0">
       <input type="hidden" name="name" value={category} />
       <button
         type="button"

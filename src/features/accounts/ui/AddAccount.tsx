@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { addAccountAction } from '../actions';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 
 // Add a new empty account by name. The input is UNCONTROLLED, so React's form reset clears it after a
 // successful submit and the action's FormData still reads the real DOM value; `draft` only mirrors the
@@ -16,7 +17,7 @@ export function AddAccount({ names }: { names: string[] }) {
 
   return (
     <form
-      action={addAccountAction}
+      action={withSaveToast(addAccountAction, 'Account added')}
       onSubmit={(e) => {
         if (!canAdd) e.preventDefault();
         else setDraft('');

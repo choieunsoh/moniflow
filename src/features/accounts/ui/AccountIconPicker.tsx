@@ -10,6 +10,7 @@ import { ACCOUNT_ICONS } from '../queries';
 // color (and merge-guard, per AccountNameEditor) to @shared/ when a 3rd consumer appears.
 import { HUE_PRESETS, GRAY_PRESETS, categoryColorBold } from '@features/categories/color';
 import { setAccountIconAction, setAccountHueAction } from '../actions';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 
 // Per-account icon + background picker as a native <dialog> (inherits focus-trap, Esc, ::backdrop from
 // showModal). Tap the account disc to open. Each field is its own server-action form; picking submits and
@@ -54,7 +55,11 @@ export function AccountIconPicker({
           </div>
 
           <h2 className="text-sm font-semibold">Icon</h2>
-          <form action={setAccountIconAction} onSubmit={close} className="grid grid-cols-4 gap-1">
+          <form
+            action={withSaveToast(setAccountIconAction, 'Account updated')}
+            onSubmit={close}
+            className="grid grid-cols-4 gap-1"
+          >
             <input type="hidden" name="account" value={account} />
             {ACCOUNT_ICONS.map((icon) => (
               <button
@@ -72,7 +77,11 @@ export function AccountIconPicker({
           </form>
 
           <h2 className="mt-1 text-sm font-semibold">Background</h2>
-          <form action={setAccountHueAction} onSubmit={close} className="flex flex-wrap gap-2">
+          <form
+            action={withSaveToast(setAccountHueAction, 'Account updated')}
+            onSubmit={close}
+            className="flex flex-wrap gap-2"
+          >
             <input type="hidden" name="account" value={account} />
             {HUE_PRESETS.map((preset) => {
               const selected = hue === preset.hue;
