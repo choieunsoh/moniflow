@@ -30,7 +30,11 @@ export const viewport: Viewport = { themeColor: '#101114' };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={plexSans.variable}>
+    // suppressHydrationWarning: the pre-paint inline script below sets html style.fontSize before
+    // React hydrates, so the client <html> intentionally differs from the server HTML. This suppresses
+    // only THIS element's own attribute mismatch (one level deep), not the tree below — the standard
+    // no-FOUC pattern (same reason next-themes suppresses it for its theme attribute).
+    <html lang="en" className={plexSans.variable} suppressHydrationWarning>
       {/* The whole app is a centered fixed-width phone frame (mobile-only; desktop = same size).
           AppShell is a client component: the header search-suggestion pool + icon set are
           DB-derived and now read via the browser OPFS db, which only exists client-side. */}
