@@ -1,11 +1,7 @@
 import { sqliteTable, integer, text, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
-import {
-  migrateCategoryIds,
-  dropLegacyCategoryColumns,
-  migrateAccountIds,
-  dropLegacyAccountColumn,
-} from '@db/migrate';
+import { ensureCategoriesTable } from '@features/categories/schema';
+import { ensureAccountsTable } from '@features/accounts/schema';
 import type { Db } from '@db/client';
 
 // The money-flow ledger — one row per inflow/outflow. `amount` is signed THB (the converted value)
@@ -48,12 +44,11 @@ export type EntryInput = {
   source?: string;
 };
 
-// ponytail: CREATE TABLE IF NOT EXISTS bootstrap. Fresh installs get category_id + account_id
-// directly; existing text-keyed DBs are upgraded by migrateCategoryIds / migrateAccountIds
-// (idempotent, guarded, invoked here so any page that ensures entries triggers the one-time backfill);
-// dropLegacyCategoryColumns / dropLegacyAccountColumn then remove the now-unused `category` and
-// `account` text columns once their *_id replacements are populated.
+// ponytail: ensures the ledger's FK tables (categories, accounts) alongside entries, so calling
+// ensureEntriesTable alone yields a queryable ledger — the invariant migrate.ts used to provide.
 export function ensureEntriesTable(db: Db): void {
+  ensureCategoriesTable(db);
+  ensureAccountsTable(db);
   db.run(sql`
     CREATE TABLE IF NOT EXISTS entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,10 +63,6 @@ export function ensureEntriesTable(db: Db): void {
       source TEXT NOT NULL DEFAULT 'manual'
     )
   `);
-  migrateCategoryIds(db);
-  dropLegacyCategoryColumns(db);
-  migrateAccountIds(db);
-  dropLegacyAccountColumn(db);
 }
 
 // Optional user-given names for trips (which are otherwise derived, not stored). Keyed by the trip's

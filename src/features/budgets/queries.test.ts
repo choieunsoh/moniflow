@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { initDb } from '@db/client';
+import { ensureCategoriesTable } from '@features/categories/schema';
 import { ensureBudgetsTable } from './schema';
 import { getBudgets, setBudget, deleteBudget } from './queries';
 
 function db() {
   const d = initDb(':memory:');
+  ensureCategoriesTable(d);
   ensureBudgetsTable(d);
   return d;
 }
