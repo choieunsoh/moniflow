@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '@db/client';
+import type { AccountCatalogRow } from '@features/settings/catalog';
 import { accounts } from './schema';
 
 // Shown for any account without an assigned icon. 'card' is the neutral generic glyph.
@@ -116,4 +117,33 @@ export async function accountIdFor(db: Db, name: string): Promise<number> {
     .get();
   if (!row) throw new Error(`accountIdFor: could not resolve account "${name}"`);
   return row.id;
+}
+
+export async function getAccountCatalog(db: Db): Promise<AccountCatalogRow[]> {
+  return db
+    .select({
+      name: accounts.name,
+      icon: accounts.icon,
+      hue: accounts.hue,
+      sortOrder: accounts.sortOrder,
+    })
+    .from(accounts)
+    .orderBy(accounts.name)
+    .all();
+}
+
+// Upsert each row by name — updates the metadata of an existing account, inserts a missing one.
+// NEVER deletes: unlisted accounts may be referenced by entries. One batch.
+export async function restoreAccountCatalog(db: Db, rows: AccountCatalogRow[]): Promise<void> {
+  if (rows.length === 0) return;
+  const mk = (r: AccountCatalogRow) =>
+    db
+      .insert(accounts)
+      .values({ name: r.name, icon: r.icon, hue: r.hue, sortOrder: r.sortOrder })
+      .onConflictDoUpdate({
+        target: accounts.name,
+        set: { icon: r.icon, hue: r.hue, sortOrder: r.sortOrder },
+      });
+  const [first, ...rest] = rows;
+  await db.batch([mk(first), ...rest.map(mk)]);
 }

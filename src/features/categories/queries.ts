@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '@db/client';
+import type { CategoryCatalogRow } from '@features/settings/catalog';
 import { categories } from './schema';
 
 // Shown for any category without an assigned emoji.
@@ -258,4 +259,37 @@ export async function setCategoryOrder(db: Db, orderedNames: string[]): Promise<
     db.update(categories).set({ sortOrder: i }).where(eq(categories.name, name));
   const [first, ...rest] = orderedNames;
   await db.batch([mk(first, 0), ...rest.map((name, i) => mk(name, i + 1))]);
+}
+
+export async function getCategoryCatalog(db: Db): Promise<CategoryCatalogRow[]> {
+  const rows = await db
+    .select({
+      name: categories.name,
+      emoji: categories.emoji,
+      hue: categories.hue,
+      sortOrder: categories.sortOrder,
+      archived: categories.archived,
+    })
+    .from(categories)
+    .orderBy(categories.name)
+    .all();
+  return rows.map((r) => ({ ...r, archived: Boolean(r.archived) }));
+}
+
+// Upsert each row by name — updates the metadata of an existing category, inserts a missing one.
+// NEVER deletes: unlisted categories may be referenced by entries. One batch.
+export async function restoreCategoryCatalog(db: Db, rows: CategoryCatalogRow[]): Promise<void> {
+  if (rows.length === 0) return;
+  const mk = (r: CategoryCatalogRow) => {
+    const archived = r.archived ? 1 : 0; // column is a raw integer flag (schema: integer, notNull default 0)
+    return db
+      .insert(categories)
+      .values({ name: r.name, emoji: r.emoji, hue: r.hue, sortOrder: r.sortOrder, archived })
+      .onConflictDoUpdate({
+        target: categories.name,
+        set: { emoji: r.emoji, hue: r.hue, sortOrder: r.sortOrder, archived },
+      });
+  };
+  const [first, ...rest] = rows;
+  await db.batch([mk(first), ...rest.map(mk)]);
 }
