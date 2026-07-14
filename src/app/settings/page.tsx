@@ -1,12 +1,15 @@
-// Reads the local SQLite DB per request, same as /dashboard — opt out of static generation.
-export const dynamic = 'force-dynamic';
+'use client';
 
-import { initDb } from '@db/client';
-import { ensureSettingsTable } from '@features/settings/schema';
-import { getCutoff, getIconSet, ICON_SETS, getCardFeePct } from '@features/settings/queries';
+import { getBrowserDb } from '@db/browser';
+import { useSettings } from '@features/settings/use-settings';
+import { ICON_SETS } from '@features/settings/queries';
 import { setCutoffAction, setIconSetAction, setCardFeePctAction } from '@features/settings/actions';
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
+import { getEntries } from '@features/entries/queries';
+import { serializeMonefyCsv } from '@features/entries/import';
+import { todayIso } from '@shared/date';
+import { toast } from '@shared/ui/toast';
 import { PageContainer } from '@shared/ui/PageContainer';
 
 const ICON_SET_LABELS = {
@@ -15,12 +18,43 @@ const ICON_SET_LABELS = {
   lucide: 'Lucide (line icons)',
 } as const;
 
+// A static-export app has no GET route handler, so the CSV backup export moves to the client: read
+// the ledger from the browser OPFS db, serialize it (the same Monefy-CSV serializer the old
+// /settings/backup/export route used), then trigger a download via a throwaway <a download>. Mirrors
+// ImportBackup's read-in-the-browser approach for the restore side.
+async function exportBackup(): Promise<void> {
+  try {
+    const db = await getBrowserDb();
+    const csv = serializeMonefyCsv(await getEntries(db));
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `moniflow-${todayIso()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    toast.error("Couldn't export a backup — try again");
+  }
+}
+
 export default function SettingsPage() {
-  const db = initDb();
-  ensureSettingsTable(db);
-  const cutoff = getCutoff(db);
-  const iconSet = getIconSet(db);
-  const cardFeePct = getCardFeePct(db);
+  const { ready, data } = useSettings();
+
+  if (!ready || data === null) {
+    return (
+      <PageContainer size="form">
+        <div
+          className="grid h-32 place-items-center text-sm"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          …
+        </div>
+      </PageContainer>
+    );
+  }
+
+  const { cutoff, iconSet, cardFeePct } = data;
 
   return (
     <PageContainer size="form">
@@ -123,9 +157,15 @@ export default function SettingsPage() {
           Export the whole ledger to a Monefy-compatible CSV, or restore it from one. Restoring
           replaces every current entry.
         </p>
-        <a href="/settings/backup/export" download className="btn btn-ghost w-fit">
+        <button
+          type="button"
+          className="btn btn-ghost w-fit"
+          onClick={() => {
+            void exportBackup();
+          }}
+        >
           Export CSV
-        </a>
+        </button>
         <ImportBackup />
       </section>
 
