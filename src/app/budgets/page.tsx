@@ -1,28 +1,13 @@
-// Reads the local SQLite DB per request, so opt out of static generation (same as /dashboard).
-export const dynamic = 'force-dynamic';
+'use client';
 
-import { initDb } from '@db/client';
-import { ensureEntriesTable } from '@features/entries/schema';
-import { getDistinctCategories, getCategoryBreakdown } from '@features/entries/queries';
-import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
-import { ensureBudgetsTable } from '@features/budgets/schema';
-import { getBudgets } from '@features/budgets/queries';
-import { BudgetField } from '@features/budgets/ui/BudgetField';
-import {
-  toBudgetRows,
-  toBudgetTotal,
-  suggestBudget,
-  type BudgetState,
-  type BudgetRow,
-} from '@features/budgets/budget-status';
-import { ensureSettingsTable } from '@features/settings/schema';
-import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
-import { ensureCategoriesTable } from '@features/categories/schema';
-import { getEmojiMap, getHueMap, emojiFor, hueFor } from '@features/categories/queries';
-import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import { PageContainer } from '@shared/ui/PageContainer';
+import { useBudgetsPage } from '@features/budgets/use-budgets-page';
+import { BudgetField } from '@features/budgets/ui/BudgetField';
+import { suggestBudget, type BudgetState, type BudgetRow } from '@features/budgets/budget-status';
+import { emojiFor, hueFor } from '@features/categories/queries';
+import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
+import type { IconSet } from '@features/settings/queries';
 import { formatBaht } from '@shared/money';
-import { todayIso } from '@shared/date';
 
 // A thin colour-only glance of spend against the limit you set — red over, amber near, accent under.
 // This page is for setting budgets, so the exact "left"/percent figures are intentionally omitted;
@@ -49,40 +34,26 @@ function fieldProps(category: string, limit: number | null, spent: number) {
   };
 }
 
+// Budgets: set a standing monthly limit per category. Cycle spend/limit data loads client-side via
+// useBudgetsPage against the browser OPFS db — this page has no ?cycle= param, it's always the
+// current cycle (setting a limit for a past cycle makes no sense; the limit is standing anyway).
 export default function BudgetsPage() {
-  const db = initDb();
-  ensureEntriesTable(db);
-  ensureBudgetsTable(db);
-  ensureSettingsTable(db);
-  ensureCategoriesTable(db);
+  const { ready, data } = useBudgetsPage();
 
-  const cutoff = getCutoff(db);
-  const cycle = cycleFromKey(currentCycleKey(todayIso(), cutoff), cutoff);
-
-  // This cycle's spend per category (magnitudes — the ledger stores outflow as negative).
-  const breakdown = getCategoryBreakdown(db, cycle.start, cycle.end);
-  const spentByCategory = new Map(breakdown.map((b) => [b.key, Math.abs(b.total)]));
-  const totalSpent = breakdown.reduce((sum, b) => sum + Math.abs(b.total), 0);
-
-  const limits = new Map<string, number>();
-  let totalLimit: number | null = null;
-  for (const b of getBudgets(db)) {
-    if (b.category === null) totalLimit = b.amount;
-    else limits.set(b.category, b.amount);
+  if (!ready || data === null) {
+    return (
+      <PageContainer size="narrow">
+        <div
+          className="grid h-32 place-items-center text-sm"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          …
+        </div>
+      </PageContainer>
+    );
   }
 
-  const emojis = getEmojiMap(db);
-  const hues = getHueMap(db);
-  const iconSet = getIconSet(db);
-
-  const rows = toBudgetRows(getDistinctCategories(db), limits, spentByCategory);
-  const total = toBudgetTotal(totalLimit, totalSpent);
-
-  // A tracker leads with what's live this cycle. "Active" = spent something OR has a limit; the
-  // long tail of categories with neither (historical, idle this cycle) is tucked behind a
-  // disclosure so it stays reachable to budget without burying the rows that matter.
-  const active = rows.filter((r) => r.spent > 0 || r.limit !== null);
-  const dormant = rows.filter((r) => r.spent === 0 && r.limit === null);
+  const { cycleLabel, emojis, hues, iconSet, rows, total, active, dormant } = data;
   const rowProps = { emojis, hues, iconSet };
 
   return (
@@ -98,7 +69,7 @@ export default function BudgetsPage() {
       <section className="panel flex flex-col gap-3 p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold">Total</h2>
-          <span className="chip tnum">{cycle.label}</span>
+          <span className="chip tnum">{cycleLabel}</span>
         </div>
         {/* Row 1: label · amount · × */}
         <div className="flex items-center gap-3">
