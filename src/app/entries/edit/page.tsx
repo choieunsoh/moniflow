@@ -1,6 +1,7 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEditEntry } from '@features/entries/use-edit-entry';
 import { editEntryAction } from '@features/entries/actions';
@@ -10,14 +11,13 @@ import { CloseButton } from '@features/entries/ui/CloseButton';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { todayIso } from '@shared/date';
 
-// The entry + keypad-feeding lists load client-side via useEditEntry against the browser OPFS db
-// (route id comes from useParams — a client component can't await the server `params` Promise).
-// editEntryAction no longer redirects server-side (Plan 2b dropped it), so this page navigates to
-// /records after a successful submit instead.
-export default function EditEntryPage() {
+// The entry + keypad-feeding lists load client-side via useEditEntry against the browser OPFS db. The
+// entry id comes from the query string (?id=) rather than a dynamic [id] segment: `output: 'export'`
+// can't statically render per-id routes, so this is one static /entries/edit page parameterised by
+// ?id=. useSearchParams needs a Suspense boundary under static export, hence the split.
+function EditEntryInner() {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
-  const id = Number(params.id);
+  const id = Number(useSearchParams().get('id'));
   const { ready, data } = useEditEntry(id);
 
   if (!ready) {
@@ -104,5 +104,24 @@ export default function EditEntryPage() {
       </header>
       <EntryForm action={handleSubmit} accounts={accounts} categories={categories} entry={entry} />
     </PageContainer>
+  );
+}
+
+export default function EditEntryPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageContainer size="full">
+          <div
+            className="grid h-32 place-items-center text-sm"
+            style={{ color: 'var(--color-muted)' }}
+          >
+            …
+          </div>
+        </PageContainer>
+      }
+    >
+      <EditEntryInner />
+    </Suspense>
   );
 }

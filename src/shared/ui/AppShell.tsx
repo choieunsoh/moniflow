@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
 import { useSearchSuggestions } from '@features/entries/use-search-suggestions';
 import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
 import { AppHeader } from './AppHeader';
@@ -21,12 +21,22 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <CategoryPickerProvider iconSet={iconSet}>
-      <div className="app-frame mx-auto flex min-h-dvh w-full max-w-[var(--app-max-width)] flex-col">
-        <AppHeader search={<SearchBox suggestions={suggestions} />} />
-        {/* pb clears the fixed bottom bar (bar height + FAB overhang + safe area). */}
-        <main className="flex-1 pb-24">{children}</main>
-      </div>
-      <BottomBar />
+      {/* One Suspense boundary for the whole frame: SearchBox, BottomBar, and every page child read
+          useSearchParams, which `output: 'export'` requires to sit under a Suspense boundary. An
+          ancestor boundary covers all descendants, so this single wrap satisfies them all. The static
+          HTML renders the fallback frame, then hydrates into the live app (all data is client/OPFS). */}
+      <Suspense
+        fallback={
+          <div className="app-frame mx-auto flex min-h-dvh w-full max-w-[var(--app-max-width)] flex-col" />
+        }
+      >
+        <div className="app-frame mx-auto flex min-h-dvh w-full max-w-[var(--app-max-width)] flex-col">
+          <AppHeader search={<SearchBox suggestions={suggestions} />} />
+          {/* pb clears the fixed bottom bar (bar height + FAB overhang + safe area). */}
+          <main className="flex-1 pb-24">{children}</main>
+        </div>
+        <BottomBar />
+      </Suspense>
       <ToastRegion />
       <ServiceWorkerRegistrar />
     </CategoryPickerProvider>

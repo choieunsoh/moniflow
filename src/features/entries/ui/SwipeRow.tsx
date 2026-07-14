@@ -114,7 +114,7 @@ export function SwipeRow({
       setOffset(0);
       return;
     }
-    router.push(`/entries/${entry.id}/edit`);
+    router.push(`/entries/edit?id=${entry.id}`);
   }
 
   function onPointerCancel() {
@@ -139,7 +139,7 @@ export function SwipeRow({
       {/* Edit — tapping the row opens it (pointer); this control stays in the DOM behind the row so
           keyboard/AT users keep a real, focusable edit affordance. No longer revealed by a swipe. */}
       <Link
-        href={`/entries/${entry.id}/edit`}
+        href={`/entries/edit?id=${entry.id}`}
         aria-label={`Edit ${entry.category}`}
         onClick={() => setSide(0)}
         className="absolute inset-y-0 left-0 flex items-center justify-center"
