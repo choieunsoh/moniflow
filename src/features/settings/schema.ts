@@ -15,8 +15,8 @@ export type Setting = typeof settings.$inferSelect;
 // ponytail: CREATE TABLE IF NOT EXISTS bootstrap, same pattern as ensureEntriesTable — no
 // migration runner yet. Upgrade path: `npm run db:generate` + replay at the composition root once
 // the schema stops being trivial.
-export function ensureSettingsTable(db: Db): void {
-  db.run(sql`
+export async function ensureSettingsTable(db: Db): Promise<void> {
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL

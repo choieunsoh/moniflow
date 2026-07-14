@@ -10,20 +10,18 @@ const DEFAULT_CUTOFF = 18;
 
 // Falls back to DEFAULT_CUTOFF for a fresh DB, or one that predates this feature — upgrading is
 // invisible until the user opts into changing it via /settings.
-export function getCutoff(db: Db): number {
-  const [row] = db.select().from(settings).where(eq(settings.key, CUTOFF_KEY)).all();
+export async function getCutoff(db: Db): Promise<number> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, CUTOFF_KEY)).all();
   return row === undefined ? DEFAULT_CUTOFF : Number(row.value);
 }
 
-// Upsert via delete-then-insert inside a transaction — mirrors the replaceEntries pattern already
-// used in entries/queries.ts. Simpler than onConflictDoUpdate for a single-row key.
-export function setCutoff(db: Db, day: number): void {
-  db.transaction((tx) => {
-    tx.delete(settings).where(eq(settings.key, CUTOFF_KEY)).run();
-    tx.insert(settings)
-      .values({ key: CUTOFF_KEY, value: String(day) })
-      .run();
-  });
+// Upsert via delete-then-insert in one batch — mirrors the replaceEntries pattern already used in
+// entries/queries.ts. Simpler than onConflictDoUpdate for a single-row key.
+export async function setCutoff(db: Db, day: number): Promise<void> {
+  await db.batch([
+    db.delete(settings).where(eq(settings.key, CUTOFF_KEY)),
+    db.insert(settings).values({ key: CUTOFF_KEY, value: String(day) }),
+  ]);
 }
 
 // Pure validator, reused by the Server Action so the 1..28 rule lives in exactly one place. 28 is
@@ -46,16 +44,16 @@ export function isIconSet(value: unknown): value is IconSet {
 }
 
 // Falls back to emoji for a fresh DB or one that predates this setting.
-export function getIconSet(db: Db): IconSet {
-  const [row] = db.select().from(settings).where(eq(settings.key, ICON_SET_KEY)).all();
+export async function getIconSet(db: Db): Promise<IconSet> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, ICON_SET_KEY)).all();
   return row !== undefined && isIconSet(row.value) ? row.value : DEFAULT_ICON_SET;
 }
 
-export function setIconSet(db: Db, value: IconSet): void {
-  db.transaction((tx) => {
-    tx.delete(settings).where(eq(settings.key, ICON_SET_KEY)).run();
-    tx.insert(settings).values({ key: ICON_SET_KEY, value }).run();
-  });
+export async function setIconSet(db: Db, value: IconSet): Promise<void> {
+  await db.batch([
+    db.delete(settings).where(eq(settings.key, ICON_SET_KEY)),
+    db.insert(settings).values({ key: ICON_SET_KEY, value }),
+  ]);
 }
 
 // Card FX fee % — total markup over the ECB mid-rate (card-network cut + the user's bank
@@ -68,20 +66,18 @@ export function isValidCardFeePct(pct: number): boolean {
   return Number.isFinite(pct) && pct >= 0 && pct <= 10;
 }
 
-export function getCardFeePct(db: Db): number {
-  const [row] = db.select().from(settings).where(eq(settings.key, CARD_FEE_KEY)).all();
+export async function getCardFeePct(db: Db): Promise<number> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, CARD_FEE_KEY)).all();
   if (row === undefined) return DEFAULT_CARD_FEE;
   const pct = Number(row.value);
   return isValidCardFeePct(pct) ? pct : DEFAULT_CARD_FEE;
 }
 
-export function setCardFeePct(db: Db, pct: number): void {
-  db.transaction((tx) => {
-    tx.delete(settings).where(eq(settings.key, CARD_FEE_KEY)).run();
-    tx.insert(settings)
-      .values({ key: CARD_FEE_KEY, value: String(pct) })
-      .run();
-  });
+export async function setCardFeePct(db: Db, pct: number): Promise<void> {
+  await db.batch([
+    db.delete(settings).where(eq(settings.key, CARD_FEE_KEY)),
+    db.insert(settings).values({ key: CARD_FEE_KEY, value: String(pct) }),
+  ]);
 }
 
 // Cached ECB reference rates, one JSON blob under a single KV key. thbPerUnit is the mid-rate
@@ -104,8 +100,8 @@ function isFxRates(value: unknown): value is FxRates {
   );
 }
 
-export function getFxRates(db: Db): FxRates {
-  const [row] = db.select().from(settings).where(eq(settings.key, FX_RATES_KEY)).all();
+export async function getFxRates(db: Db): Promise<FxRates> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, FX_RATES_KEY)).all();
   if (row === undefined) return {};
   try {
     const parsed: unknown = JSON.parse(row.value);
@@ -115,11 +111,9 @@ export function getFxRates(db: Db): FxRates {
   }
 }
 
-export function setFxRates(db: Db, rates: FxRates): void {
-  db.transaction((tx) => {
-    tx.delete(settings).where(eq(settings.key, FX_RATES_KEY)).run();
-    tx.insert(settings)
-      .values({ key: FX_RATES_KEY, value: JSON.stringify(rates) })
-      .run();
-  });
+export async function setFxRates(db: Db, rates: FxRates): Promise<void> {
+  await db.batch([
+    db.delete(settings).where(eq(settings.key, FX_RATES_KEY)),
+    db.insert(settings).values({ key: FX_RATES_KEY, value: JSON.stringify(rates) }),
+  ]);
 }
