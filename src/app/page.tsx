@@ -114,13 +114,13 @@ export default function HomePage() {
                         const disc = (
                           <span
                             aria-hidden
-                            className="grid size-7 shrink-0 place-items-center rounded-full text-base"
+                            className="grid size-11 shrink-0 place-items-center rounded-full text-2xl"
                             style={{ background: s.color, color: 'var(--color-on-accent)' }}
                           >
                             <CategoryGlyph
                               emoji={emojiFor(emojiMap, s.name)}
                               iconSet={iconSet}
-                              size={18}
+                              size={26}
                             />
                           </span>
                         );

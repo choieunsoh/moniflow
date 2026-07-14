@@ -1,5 +1,6 @@
 import { getBrowserDb } from '@db/browser';
 import { setCategoryEmoji, setCategoryHue, setCategoryOrder } from './queries';
+import { isValidDiscHue } from './color';
 import { bumpDataVersion } from '@shared/data-version';
 
 // Client-side category writes against the browser OPFS db (offline-first — no 'use server'/revalidatePath;
@@ -21,7 +22,7 @@ export async function setCategoryHueAction(formData: FormData): Promise<void> {
   if (typeof category !== 'string' || !category || typeof hueRaw !== 'string') return;
 
   const hue = hueRaw === 'auto' ? null : Number(hueRaw);
-  if (hue !== null && (!Number.isInteger(hue) || hue < 0 || hue > 359)) return;
+  if (hue !== null && !isValidDiscHue(hue)) return;
 
   const db = await getBrowserDb();
   await setCategoryHue(db, category, hue);
