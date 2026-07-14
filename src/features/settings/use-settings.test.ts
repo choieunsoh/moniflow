@@ -29,7 +29,7 @@ describe('useSettings', () => {
 
     expect(data.cutoff).toBe(18);
     expect(data.iconSet).toBe('emoji');
-    expect(data.cardFeePct).toBe(2);
+    expect(data.cardFeePct).toBe(2.5);
     expect(data.fontScale).toBe('md');
   });
 
