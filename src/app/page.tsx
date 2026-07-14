@@ -166,6 +166,7 @@ export default function HomePage() {
                           <span className="flex min-w-0 flex-1 items-center gap-3">{inner}</span>
                         ) : (
                           <Link
+                            prefetch={false}
                             href={`/records?cycle=${activeKey}&category=${encodeURIComponent(s.name)}`}
                             aria-label={`${s.name} records this cycle`}
                             className="flex min-w-0 flex-1 items-center gap-3"
@@ -194,6 +195,7 @@ function ViewLink({ label, active, href }: { label: string; active: boolean; hre
   return (
     <Link
       href={href}
+      prefetch={false}
       aria-current={active ? 'page' : undefined}
       className="flex-1 rounded-[var(--radius-md)] py-2 text-center text-sm font-medium transition-colors duration-150"
       style={{
