@@ -17,8 +17,8 @@ export type NewBudget = typeof budgets.$inferInsert;
 // A read row for the UI: the budget plus the joined category NAME (null for the total row).
 export type BudgetReadRow = Budget & { category: string | null };
 
-export function ensureBudgetsTable(db: Db): void {
-  db.run(sql`
+export async function ensureBudgetsTable(db: Db): Promise<void> {
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS budgets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category_id INTEGER,

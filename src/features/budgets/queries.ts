@@ -6,8 +6,8 @@ import { categoryIdFor } from '@features/categories/queries';
 
 // Read budgets with their category name joined (null for the total row) so the page + budget-status
 // model keep working with names. leftJoin because the total row has a null category_id.
-export function getBudgets(db: Db): BudgetReadRow[] {
-  return db
+export async function getBudgets(db: Db): Promise<BudgetReadRow[]> {
+  return await db
     .select({
       id: budgets.id,
       categoryId: budgets.categoryId,
@@ -23,27 +23,27 @@ export function getBudgets(db: Db): BudgetReadRow[] {
 // never equal in a UNIQUE index, so the total row can't be conflict-upserted. isNull handles the
 // null/total case explicitly; eq(col, null) would compile to an always-false comparison and silently
 // fail to clear the old total row. A per-category budget resolves its name to an id (creating it if new).
-export function setBudget(db: Db, category: string | null, amount: number): void {
-  const categoryId = category === null ? null : categoryIdFor(db, category);
-  db.transaction((tx) => {
-    if (categoryId === null) tx.delete(budgets).where(isNull(budgets.categoryId)).run();
-    else tx.delete(budgets).where(eq(budgets.categoryId, categoryId)).run();
-    tx.insert(budgets).values({ categoryId, amount }).run();
-  });
+export async function setBudget(db: Db, category: string | null, amount: number): Promise<void> {
+  const categoryId = category === null ? null : await categoryIdFor(db, category);
+  const del =
+    categoryId === null
+      ? db.delete(budgets).where(isNull(budgets.categoryId))
+      : db.delete(budgets).where(eq(budgets.categoryId, categoryId));
+  await db.batch([del, db.insert(budgets).values({ categoryId, amount })]);
 }
 
 // A per-category delete must look the category up by name to get its id — there's no longer a category
 // text column on budgets to match against directly. isNull handles the null/total row.
-export function deleteBudget(db: Db, category: string | null): void {
+export async function deleteBudget(db: Db, category: string | null): Promise<void> {
   if (category === null) {
-    db.delete(budgets).where(isNull(budgets.categoryId)).run();
+    await db.delete(budgets).where(isNull(budgets.categoryId)).run();
     return;
   }
-  const row = db
+  const row = await db
     .select({ id: categories.id })
     .from(categories)
     .where(eq(categories.name, category))
     .get();
   if (!row) return; // unknown category → nothing to delete
-  db.delete(budgets).where(eq(budgets.categoryId, row.id)).run();
+  await db.delete(budgets).where(eq(budgets.categoryId, row.id)).run();
 }
