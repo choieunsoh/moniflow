@@ -2,8 +2,13 @@
 
 import { getBrowserDb } from '@db/browser';
 import { useSettings } from '@features/settings/use-settings';
-import { ICON_SETS } from '@features/settings/queries';
-import { setCutoffAction, setIconSetAction, setCardFeePctAction } from '@features/settings/actions';
+import { ICON_SETS, FONT_SCALES } from '@features/settings/queries';
+import {
+  setCutoffAction,
+  setIconSetAction,
+  setCardFeePctAction,
+  setFontScaleAction,
+} from '@features/settings/actions';
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
 import { getEntries } from '@features/entries/queries';
@@ -16,6 +21,13 @@ const ICON_SET_LABELS = {
   emoji: 'Emoji (colorful)',
   phosphor: 'Phosphor (line icons)',
   lucide: 'Lucide (line icons)',
+} as const;
+
+const FONT_SCALE_LABELS = {
+  sm: 'Small',
+  md: 'Default',
+  lg: 'Large',
+  xl: 'Extra Large',
 } as const;
 
 // A static-export app has no GET route handler, so the CSV backup export moves to the client: read
@@ -54,7 +66,7 @@ export default function SettingsPage() {
     );
   }
 
-  const { cutoff, iconSet, cardFeePct } = data;
+  const { cutoff, iconSet, cardFeePct, fontScale } = data;
 
   return (
     <PageContainer size="form">
@@ -115,6 +127,34 @@ export default function SettingsPage() {
             How categories appear everywhere — records, home, the add-expense keypad. Emoji stays
             the underlying label; the line-icon sets render each category&apos;s emoji as a matching
             icon, falling back to the emoji where no icon exists.
+          </p>
+          <button type="submit" className="btn btn-primary w-fit">
+            Save
+          </button>
+        </form>
+      </section>
+
+      <section className="panel flex flex-col gap-4 p-5">
+        <form action={setFontScaleAction} className="flex flex-col gap-3">
+          <label htmlFor="fontScale" className="text-sm font-medium">
+            Text size
+          </label>
+          <select
+            id="fontScale"
+            name="fontScale"
+            defaultValue={fontScale}
+            className="min-h-11 w-full max-w-xs rounded-[var(--radius-sm)] border px-3 py-2 text-base"
+            style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface-2)' }}
+          >
+            {FONT_SCALES.map((scale) => (
+              <option key={scale} value={scale}>
+                {FONT_SCALE_LABELS[scale]}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
+            Scales text across the whole app. The phone frame and tap targets stay the same size —
+            only the type grows or shrinks. Applies as soon as you save.
           </p>
           <button type="submit" className="btn btn-primary w-fit">
             Save

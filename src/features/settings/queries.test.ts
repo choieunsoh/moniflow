@@ -14,6 +14,10 @@ import {
   isValidCardFeePct,
   getFxRates,
   setFxRates,
+  getFontScale,
+  setFontScale,
+  isFontScale,
+  FONT_SCALE_PCT,
 } from './queries';
 
 describe('getCutoff / setCutoff', () => {
@@ -144,5 +148,52 @@ describe('getFxRates / setFxRates', () => {
     await ensureSettingsTable(db);
     await db.run(sql`INSERT INTO settings (key, value) VALUES ('fx_rates', 'not json')`);
     expect(await getFxRates(db)).toEqual({});
+  });
+});
+
+describe('getFontScale / setFontScale', () => {
+  it('defaults to md when nothing is stored', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    expect(await getFontScale(db)).toBe('md');
+  });
+
+  it('round-trips a stored scale and overwrites on re-write', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await setFontScale(db, 'lg');
+    expect(await getFontScale(db)).toBe('lg');
+    await setFontScale(db, 'sm');
+    expect(await getFontScale(db)).toBe('sm');
+  });
+
+  it('falls back to md if the stored value is somehow unknown', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await db.run(sql`INSERT INTO settings (key, value) VALUES ('font_scale', 'huge')`);
+    expect(await getFontScale(db)).toBe('md');
+  });
+});
+
+describe('isFontScale', () => {
+  it('accepts the four known scales and rejects everything else', () => {
+    expect(isFontScale('sm')).toBe(true);
+    expect(isFontScale('md')).toBe(true);
+    expect(isFontScale('lg')).toBe(true);
+    expect(isFontScale('xl')).toBe(true);
+    expect(isFontScale('huge')).toBe(false);
+    expect(isFontScale(undefined)).toBe(false);
+    expect(isFontScale(2)).toBe(false);
+  });
+});
+
+describe('FONT_SCALE_PCT', () => {
+  it('maps every scale to a percent string', () => {
+    expect(FONT_SCALE_PCT).toEqual({
+      sm: '87.5%',
+      md: '100%',
+      lg: '112.5%',
+      xl: '125%',
+    });
   });
 });

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureSettingsTable } from './schema';
-import { setCutoff, setIconSet } from './queries';
+import { setCutoff, setIconSet, setFontScale } from './queries';
 import { bumpDataVersion } from '@shared/data-version';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
@@ -30,6 +30,7 @@ describe('useSettings', () => {
     expect(data.cutoff).toBe(18);
     expect(data.iconSet).toBe('emoji');
     expect(data.cardFeePct).toBe(2);
+    expect(data.fontScale).toBe('md');
   });
 
   it('refetches when the data-version bumps after a write', async () => {
@@ -39,9 +40,11 @@ describe('useSettings', () => {
     const db = await getBrowserDb();
     await setCutoff(db, 25);
     await setIconSet(db, 'phosphor');
+    await setFontScale(db, 'xl');
     act(() => bumpDataVersion());
 
     await waitFor(() => expect(result.current.data?.cutoff).toBe(25));
     expect(result.current.data?.iconSet).toBe('phosphor');
+    expect(result.current.data?.fontScale).toBe('xl');
   });
 });
