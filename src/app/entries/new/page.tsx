@@ -1,46 +1,39 @@
-// Reads the local SQLite DB per request for the category/account lists, so opt out of static gen.
-export const dynamic = 'force-dynamic';
+'use client';
 
-import { initDb } from '@db/client';
-import { ensureEntriesTable } from '@features/entries/schema';
-import { getLatestAccount } from '@features/entries/queries';
-import {
-  getKeypadCategories,
-  getKeypadAccounts,
-  getKeypadCurrencies,
-} from '@features/entries/keypad-lists';
-import { ensureCategoriesTable } from '@features/categories/schema';
-import { ensureAccountsTable } from '@features/accounts/schema';
-import { ensureSettingsTable } from '@features/settings/schema';
-import { getIconSet, getCardFeePct, getFxRates } from '@features/settings/queries';
-import { withFee } from '@features/entries/fx';
+import { useRouter } from 'next/navigation';
+import { useNewEntry } from '@features/entries/use-new-entry';
+import { addEntryAction } from '@features/entries/actions';
 import { Keypad } from '@features/entries/ui/Keypad';
 import { CloseButton } from '@features/entries/ui/CloseButton';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { todayIso } from '@shared/date';
 
+// The keypad-feeding lists load client-side via useNewEntry against the browser OPFS db. The write
+// itself (addEntryAction) no longer redirects server-side (Plan 2b dropped it), so this page navigates
+// home after a successful submit instead.
 export default function NewEntryPage() {
-  const db = initDb();
-  ensureEntriesTable(db);
-  ensureCategoriesTable(db);
-  ensureAccountsTable(db);
-  ensureSettingsTable(db);
+  const router = useRouter();
+  const { ready, data } = useNewEntry();
 
-  const iconSet = getIconSet(db);
-  // Tiles in the user's manual keypad order (count/usage order for anything not yet dragged).
-  const categories = getKeypadCategories(db);
-  const accounts = getKeypadAccounts(db);
-  const currencies = getKeypadCurrencies(db);
-  const cardFeePct = getCardFeePct(db);
-  const fxRates = getFxRates(db);
-  const rates: Record<string, number> = {};
-  const ratesAsOf: Record<string, string> = {};
-  for (const [code, e] of Object.entries(fxRates)) {
-    rates[code] = withFee(e.thbPerUnit, cardFeePct); // effective, fee-inclusive
-    ratesAsOf[code] = e.asOf;
+  if (!ready || data === null) {
+    return (
+      <PageContainer size="full">
+        <div
+          className="grid h-32 place-items-center text-sm"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          …
+        </div>
+      </PageContainer>
+    );
   }
-  // Default to the account last used so the common case (same account again) is zero taps.
-  const latestAccount = getLatestAccount(db) ?? accounts[0]?.name ?? '';
+
+  const { categories, accounts, currencies, rates, ratesAsOf, defaultAccount, iconSet } = data;
+
+  async function handleSubmit(formData: FormData): Promise<void> {
+    await addEntryAction(formData);
+    router.push('/');
+  }
 
   return (
     <PageContainer size="full">
@@ -59,9 +52,10 @@ export default function NewEntryPage() {
         currencies={currencies}
         rates={rates}
         ratesAsOf={ratesAsOf}
-        defaultAccount={latestAccount}
+        defaultAccount={defaultAccount}
         today={todayIso()}
         iconSet={iconSet}
+        action={handleSubmit}
       />
     </PageContainer>
   );
