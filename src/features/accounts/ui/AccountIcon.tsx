@@ -7,13 +7,14 @@ import { AccountGlyph } from './AccountGlyph';
 // phosphor/lucide CategoryIcon, so accounts and categories read as one system. `hue` (from the picker)
 // overrides the name-derived color; the disc supplies the color, the glyph inherits white via
 // currentColor. Pure/presentational — no hooks — so it renders in server OR client components.
+// sm/md share the 44px minimum tap-target floor (size-11); lg stays the roomy grid/dialog size.
 const SIZES = {
-  sm: 'size-7',
-  md: 'size-10',
+  sm: 'size-11',
+  md: 'size-11',
   lg: 'size-14',
 } as const;
 
-const ICON_PX = { sm: 16, md: 22, lg: 28 } as const;
+const ICON_PX = { sm: 26, md: 26, lg: 28 } as const;
 
 export function AccountIcon({
   icon,

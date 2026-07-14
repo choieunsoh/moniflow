@@ -8,13 +8,14 @@ import type { IconSet } from '@features/settings/queries';
 //   lucide   → same, with lucide
 // An emoji with no library mapping falls back to the glyph, so a mixed set degrades gracefully.
 // Pure and presentational — no hooks — so it renders in server OR client components.
+// sm/md share the 44px minimum tap-target floor (size-11); lg stays the roomy grid/dialog size.
 const SIZES = {
-  sm: 'size-7 text-base',
-  md: 'size-10 text-xl',
+  sm: 'size-11 text-2xl',
+  md: 'size-11 text-2xl',
   lg: 'size-14 text-2xl',
 } as const;
 
-const ICON_PX = { sm: 18, md: 24, lg: 30 } as const;
+const ICON_PX = { sm: 26, md: 26, lg: 30 } as const;
 
 export function CategoryIcon({
   emoji,
