@@ -1,5 +1,14 @@
 # WASM-SQLite/OPFS Migration — Plan 1: Async Data Layer + Browser Runtime
 
+> **⚠️ SUPERSEDED (2026-07-14).** This plan was written 2026-07-11, before first-class
+> accounts, the surrogate-id category model, and keypad currency shipped. Its schema
+> assumptions are stale: it targets **4 text-keyed tables** (the real schema is **6
+> surrogate-id tables**), assumes **3 transactional functions** (there are **~9**, several
+> *interactive*), still ports `migrate.ts` (now **deleted**), and Task 4's signature list is
+> ~60% drifted. **Do not execute this file.** A current Plan 1 is being regenerated from the
+> refreshed design (`docs/superpowers/specs/2026-07-11-wasm-sqlite-opfs-pwa-design.md`,
+> refreshed 2026-07-14). Kept for history only.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Convert moniflow's data layer from synchronous server-side `better-sqlite3` to an async `sqlite-proxy` driver that runs WASM SQLite in a Web Worker persisted to OPFS — with every query test green — without yet touching the UI.
