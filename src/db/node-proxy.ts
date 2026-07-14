@@ -27,13 +27,15 @@ export function makeNodeProxyDb(): SqliteRemoteDatabase<Record<string, never>> {
     return { rows: rowsAsArrays };
   };
 
+  // Both callbacks are sync internally but drizzle's sqlite-proxy contract wants Promise-returning
+  // functions — Promise.resolve(...) satisfies that without an unnecessary `async` (no await to make).
   return drizzle(
-    async (query, params, method) => one(query, params, method),
-    async (queries: { sql: string; params: unknown[]; method: string }[]) => {
+    (query, params, method) => Promise.resolve(one(query, params, method)),
+    (queries: { sql: string; params: unknown[]; method: string }[]) => {
       const run = raw.transaction((qs: { sql: string; params: unknown[]; method: string }[]) =>
         qs.map((q) => one(q.sql, q.params, q.method)),
       );
-      return run(queries);
+      return Promise.resolve(run(queries));
     },
   );
 }

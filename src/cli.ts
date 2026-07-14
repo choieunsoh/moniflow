@@ -8,16 +8,16 @@ import { getEntries, getNetFlow, replaceEntries } from '@features/entries/querie
 import { seedEntries } from '@features/entries/seed';
 import { formatBaht } from '@shared/money';
 
-// Composition root: wires shared infra (initDb) to feature modules. This is the one place that
-// knows about every feature — the features themselves stay decoupled.
+// Composition root: wires the in-memory node-proxy db (makeNodeProxyDb) to feature modules. This is
+// the one place that knows about every feature — the features themselves stay decoupled. The browser
+// is the system of record now, so the CLI runs against a throwaway in-memory db (dev-only).
 const program = new Command();
 program.name('moniflow').description('Personal money-flow dashboard CLI');
 
 program
   .command('summary')
   .description('Print net flow across all entries')
-  .option('--db <path>', 'SQLite path', process.env.MONIFLOW_DB ?? 'data/moniflow.db')
-  .action(async (opts: { db: string }) => {
+  .action(async () => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     const count = (await getEntries(db)).length;
@@ -27,8 +27,7 @@ program
 program
   .command('seed')
   .description('Load demo money-flow entries (replaces existing)')
-  .option('--db <path>', 'SQLite path', process.env.MONIFLOW_DB ?? 'data/moniflow.db')
-  .action(async (opts: { db: string }) => {
+  .action(async () => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     const n = await seedEntries(db);
@@ -40,8 +39,7 @@ program
 program
   .command('import <file>')
   .description('Replace the ledger with a Monefy CSV export')
-  .option('--db <path>', 'SQLite path', process.env.MONIFLOW_DB ?? 'data/moniflow.db')
-  .action(async (file: string, opts: { db: string }) => {
+  .action(async (file: string) => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     const { entries, skipped } = parseMonefyCsv(readFileSync(file, 'utf8'));
