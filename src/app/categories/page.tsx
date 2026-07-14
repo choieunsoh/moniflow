@@ -1,34 +1,37 @@
-// Reads the local SQLite DB per request — better-sqlite3 can't be prerendered, and the category list
-// must reflect the latest import/merge/emoji.
-export const dynamic = 'force-dynamic';
+'use client';
 
-import { initDb } from '@db/client';
-import { ensureEntriesTable } from '@features/entries/schema';
-import { getCategoryCounts } from '@features/entries/queries';
-import { ensureCategoriesTable } from '@features/categories/schema';
-import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
-import { getKeypadCategories } from '@features/entries/keypad-lists';
+import { useCategoriesPage } from '@features/categories/use-categories-page';
+import { emojiFor, hueFor } from '@features/categories/queries';
 import { EmojiPicker } from '@features/categories/ui/EmojiPicker';
 import { CategoryNameEditor } from '@features/categories/ui/CategoryNameEditor';
 import { AddCategory } from '@features/categories/ui/AddCategory';
 import { DeleteCategoryButton } from '@features/categories/ui/DeleteCategoryButton';
 import { CategoryReorderButton } from '@features/categories/ui/CategoryReorderButton';
-import { ensureSettingsTable } from '@features/settings/schema';
-import { getIconSet } from '@features/settings/queries';
 import { PageContainer } from '@shared/ui/PageContainer';
 import Link from 'next/link';
 
 const countFmt = new Intl.NumberFormat('en-US');
 
+// Categories list — every category, its usage count, and its emoji/hue. Loads client-side via
+// useCategoriesPage against the browser OPFS db; add/rename/delete/reorder actions bump the
+// data-version, which refetches this list.
 export default function CategoriesPage() {
-  const db = initDb();
-  ensureEntriesTable(db);
-  ensureCategoriesTable(db);
-  ensureSettingsTable(db);
-  const counts = getCategoryCounts(db);
-  const emojiMap = getEmojiMap(db);
-  const hueMap = getHueMap(db);
-  const iconSet = getIconSet(db);
+  const { ready, data } = useCategoriesPage();
+
+  if (!ready || data === null) {
+    return (
+      <PageContainer size="full">
+        <div
+          className="grid h-32 place-items-center text-sm"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          …
+        </div>
+      </PageContainer>
+    );
+  }
+
+  const { counts, emojiMap, hueMap, iconSet, keypadCategories } = data;
 
   return (
     <PageContainer size="full">
@@ -42,9 +45,7 @@ export default function CategoriesPage() {
         </div>
         {/* Seeded from the keypad's own list so the sheet shows (and edits) the manual keypad order,
             not the usage-desc order of the list below. */}
-        {counts.length > 1 && (
-          <CategoryReorderButton items={getKeypadCategories(db)} iconSet={iconSet} />
-        )}
+        {counts.length > 1 && <CategoryReorderButton items={keypadCategories} iconSet={iconSet} />}
       </header>
 
       <section className="panel overflow-hidden">

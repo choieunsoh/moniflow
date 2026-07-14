@@ -1,26 +1,15 @@
-// Reads the local SQLite DB per request (better-sqlite3 can't be prerendered, and the ledger is
-// live data), so opt out of static generation.
-export const dynamic = 'force-dynamic';
+'use client';
 
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
-import { initDb } from '@db/client';
-import { ensureEntriesTable } from '@features/entries/schema';
-import { getCycleSummary, getCategoryBreakdown } from '@features/entries/queries';
-import { cycleFromKey, currentCycleKey, cycleProgress } from '@features/entries/cycle';
-import { ensureSettingsTable } from '@features/settings/schema';
-import { getCutoff, getIconSet } from '@features/settings/queries';
-import { ensureBudgetsTable } from '@features/budgets/schema';
-import { getBudgets } from '@features/budgets/queries';
-import { toBudgetTotal, pacePhrase } from '@features/budgets/budget-status';
+import { useHome } from '@features/entries/use-home';
+import { pacePhrase } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
-import { todayIso } from '@shared/date';
 import { formatBaht } from '@shared/money';
-import { ensureCategoriesTable } from '@features/categories/schema';
-import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
+import { emojiFor, hueFor } from '@features/categories/queries';
 import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
 import { CategoryEditTrigger } from '@features/categories/ui/CategoryPicker';
-import { toDonutSlices } from '@features/entries/donut';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
@@ -30,52 +19,46 @@ import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
 // Home = the expense overview for the current cycle. Chart view: a spending donut with the total
 // spent in the hole plus a colour-keyed legend; List view: the ranked category bars. A ?view= toggle
-// switches them. Expense-only — no net/inflow figures.
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ cycle?: string; view?: string }>;
-}) {
-  const { cycle: cycleParam, view } = await searchParams;
-  const db = initDb();
-  ensureEntriesTable(db);
-  ensureSettingsTable(db);
-  ensureCategoriesTable(db);
-  ensureBudgetsTable(db);
-  const emojiMap = getEmojiMap(db);
-  const hueMap = getHueMap(db);
-  const iconSet = getIconSet(db);
+// switches them. Expense-only — no net/inflow figures. Cycle data loads client-side via useHome
+// against the browser OPFS db (params come from useSearchParams, not a server searchParams prop).
+export default function HomePage() {
+  const params = useSearchParams();
+  const cycleParam = params.get('cycle');
+  const view = params.get('view') ?? undefined;
+  const { ready, data } = useHome(cycleParam);
 
-  const cutoff = getCutoff(db);
-  const currentKey = currentCycleKey(todayIso(), cutoff);
-  const activeKey = cycleParam ?? currentKey;
-  // No future cycles to spend in yet — cap forward navigation at today's cycle.
-  const canGoNext = activeKey < currentKey;
-  const isCurrentCycle = activeKey === currentKey;
-  const cycle = cycleFromKey(activeKey, cutoff);
-  const summary = getCycleSummary(db, cycle.start, cycle.end);
-  const categoryBreakdown = getCategoryBreakdown(db, cycle.start, cycle.end);
+  if (!ready || data === null) {
+    return (
+      <PageContainer size="full">
+        <div
+          className="grid h-32 place-items-center text-sm"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          …
+        </div>
+      </PageContainer>
+    );
+  }
+
+  const {
+    cutoff,
+    activeKey,
+    canGoNext,
+    isCurrentCycle,
+    summary,
+    categoryBreakdown,
+    slices,
+    total,
+    emojiMap,
+    hueMap,
+    iconSet,
+    limits,
+    totalStatus,
+    progress,
+    pacePct,
+  } = data;
 
   const showList = view === 'category';
-  const slices = toDonutSlices(categoryBreakdown);
-  const total = slices.reduce((sum, s) => sum + s.value, 0);
-
-  // Standing budgets: the category=null row is the whole-cycle total; the rest are per-category
-  // caps keyed by name. Spend magnitudes come straight from the category breakdown (totals are
-  // negative — take the abs).
-  const budgetRows = getBudgets(db);
-  const totalLimit = budgetRows.find((b) => b.category === null)?.amount ?? null;
-  const limits = new Map<string, number>();
-  for (const b of budgetRows) {
-    if (b.category !== null) limits.set(b.category, b.amount);
-  }
-  const totalStatus = totalLimit === null ? null : toBudgetTotal(totalLimit, total);
-
-  // Time elapsed in the cycle drives both the standalone header bar and the "today" pace tick on the
-  // budget meters — but a pace mark only makes sense while the cycle is live, so pacePct is undefined
-  // on a past cycle (no tick), matching the header bar hiding there.
-  const progress = cycleProgress(cycle, todayIso());
-  const pacePct = isCurrentCycle ? (progress.day / progress.total) * 100 : undefined;
 
   return (
     <PageContainer size="full">
@@ -183,6 +166,7 @@ export default async function HomePage({
                           <span className="flex min-w-0 flex-1 items-center gap-3">{inner}</span>
                         ) : (
                           <Link
+                            prefetch={false}
                             href={`/records?cycle=${activeKey}&category=${encodeURIComponent(s.name)}`}
                             aria-label={`${s.name} records this cycle`}
                             className="flex min-w-0 flex-1 items-center gap-3"
@@ -211,6 +195,7 @@ function ViewLink({ label, active, href }: { label: string; active: boolean; hre
   return (
     <Link
       href={href}
+      prefetch={false}
       aria-current={active ? 'page' : undefined}
       className="flex-1 rounded-[var(--radius-md)] py-2 text-center text-sm font-medium transition-colors duration-150"
       style={{

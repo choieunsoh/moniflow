@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { migrateCategoryIds, dropLegacyCategoryColumns } from '@db/migrate';
+import { sql } from 'drizzle-orm';
 import type { Db } from '@db/client';
 
 // First-class categories. Each category is a real row with a surrogate `id` PK — entries and budgets
@@ -20,11 +20,15 @@ export const categories = sqliteTable('categories', {
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
 
-// ponytail: CREATE TABLE IF NOT EXISTS bootstrap, matching the other features. The one-time backfill
-// from the legacy text-keyed shape lives in migrateCategoryIds (idempotent, guarded, no-op once done),
-// invoked here and from ensureEntriesTable/ensureBudgetsTable so any read path triggers it;
-// dropLegacyCategoryColumns then removes the legacy `category` columns and the category_meta table.
-export function ensureCategoriesTable(db: Db): void {
-  migrateCategoryIds(db);
-  dropLegacyCategoryColumns(db);
+export async function ensureCategoriesTable(db: Db): Promise<void> {
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      emoji TEXT NOT NULL,
+      hue INTEGER,
+      sort_order INTEGER,
+      archived INTEGER NOT NULL DEFAULT 0
+    )
+  `);
 }

@@ -1,24 +1,12 @@
-export const dynamic = 'force-dynamic';
+'use client';
 
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
-import { initDb } from '@db/client';
-import { ensureEntriesTable } from '@features/entries/schema';
-import {
-  getEntriesInRange,
-  searchEntries,
-  getEntriesByCategory,
-  getTripEntries,
-} from '@features/entries/queries';
-import { groupByDate } from '@features/entries/by-date';
-import { groupByCategory } from '@features/entries/by-category';
-import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
-import { formatDateRange, formatForeign, sumByCurrency } from '@features/entries/trips';
-import { ensureSettingsTable } from '@features/settings/schema';
-import { getCutoff, getIconSet } from '@features/settings/queries';
-import { ensureCategoriesTable } from '@features/categories/schema';
-import { getEmojiMap, emojiFor, getHueMap, hueFor } from '@features/categories/queries';
-import { todayIso, formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
+import { useRecords } from '@features/entries/use-records';
+import { formatDateRange, formatForeign } from '@features/entries/trips';
+import { emojiFor, hueFor } from '@features/categories/queries';
+import { formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { CollapseAllButton } from '@features/entries/ui/CollapseAllButton';
@@ -28,23 +16,22 @@ import { CategoryHeaderChip } from '@features/entries/ui/CategoryHeaderChip';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
 // Records = the cycle's expenses grouped by day, newest first. Each day is a light header (date +
-// day total) over a panel of rows; each row swipes to reveal Edit / Delete.
-export default async function RecordsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    cycle?: string;
-    category?: string;
-    account?: string;
-    q?: string;
-    view?: string;
-    all?: string;
-    currency?: string;
-    from?: string;
-    to?: string;
-  }>;
-}) {
-  const {
+// day total) over a panel of rows; each row swipes to reveal Edit / Delete. Cycle/filter/search data
+// loads client-side via useRecords against the browser OPFS db (params come from useSearchParams,
+// not a server searchParams prop).
+export default function RecordsPage() {
+  const params = useSearchParams();
+  const cycleParam = params.get('cycle') ?? undefined;
+  const category = params.get('category') ?? undefined;
+  const account = params.get('account') ?? undefined;
+  const q = params.get('q') ?? undefined;
+  const view = params.get('view') ?? undefined;
+  const all = params.get('all') ?? undefined;
+  const currency = params.get('currency') ?? undefined;
+  const from = params.get('from') ?? undefined;
+  const to = params.get('to') ?? undefined;
+
+  const { ready, data } = useRecords({
     cycle: cycleParam,
     category,
     account,
@@ -54,99 +41,67 @@ export default async function RecordsPage({
     currency,
     from,
     to,
-  } = await searchParams;
-  const db = initDb();
-  ensureEntriesTable(db);
-  ensureSettingsTable(db);
-  ensureCategoriesTable(db);
-  const emojiMap = getEmojiMap(db);
-  const hueMap = getHueMap(db);
-  const iconSet = getIconSet(db);
+  });
 
-  // Search box now lives in the header (layout); this page just reads ?q= and renders the results.
-  const query = (q ?? '').trim();
-  const searching = query.length > 0;
-
-  const cutoff = getCutoff(db);
-  const currentKey = currentCycleKey(todayIso(), cutoff);
-  const activeKey = cycleParam ?? currentKey;
-  const canGoNext = activeKey < currentKey; // cap forward navigation at today's cycle
-  const cycle = cycleFromKey(activeKey, cutoff);
-  const inCycle = getEntriesInRange(db, cycle.start, cycle.end);
-  // Tap-a-chip filters by category and/or account. Applied to whichever set is on screen.
-  const applyChips = (rows: typeof inCycle) =>
-    rows.filter(
-      (e) => (!category || e.category === category) && (!account || e.account === account),
+  if (!ready || data === null) {
+    return (
+      <PageContainer size="full">
+        <div
+          className="grid h-32 place-items-center text-sm"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          …
+        </div>
+      </PageContainer>
     );
-  const cycleEntries = applyChips(inCycle);
-  const filtered = Boolean(category || account);
+  }
 
-  // Trip mode: opened from a Trips card — one foreign currency within its date range, across cycles.
-  const tripMode = Boolean(currency && from && to);
-  const tripEntries =
-    currency && from && to ? applyChips(getTripEntries(db, currency, from, to)) : [];
-
-  // Two modes span ALL cycles (rows already newest-first): text search, and the /categories count
-  // link (?all=1&category=) which wants every record in a category, not just this cycle. Everything
-  // else is the active cycle. All three render as the same SwipeRow list below, grouped by day
-  // (default) or by category via ?view=category.
-  const allCategory = !searching && !tripMode && all === '1' && Boolean(category);
-  const spanAll = searching || allCategory || tripMode;
-  const entries = searching
-    ? searchEntries(db, query)
-    : tripMode
-      ? tripEntries
-      : allCategory && category
-        ? getEntriesByCategory(db, category)
-        : cycleEntries;
-  const ordered = spanAll ? entries : [...entries].reverse(); // newest first
-  const byCategory = view === 'category';
-  // Each section carries its own foreign-currency subtotals so a date header (by-date) or a category
-  // header (by-category) can read "¥12,000  ฿2,800" when it holds foreign spending — empty otherwise.
-  const sections = byCategory
-    ? groupByCategory(ordered).map((g) => ({
-        key: g.category,
-        entries: g.entries,
-        total: g.total,
-        foreign: sumByCurrency(g.entries),
-      }))
-    : groupByDate(ordered).map((g) => ({
-        key: g.date,
-        entries: g.entries,
-        total: g.total,
-        foreign: sumByCurrency(g.entries),
-      }));
-  const total = entries.reduce((sum, e) => sum + e.amount, 0);
-  // Foreign-currency subtotals for the current view (empty when everything is THB), shown next to
-  // the THB total so a cycle with a Tokyo week reads "¥84,948  ฿17,000", not THB alone.
-  const currencySums = sumByCurrency(entries);
+  const {
+    cutoff,
+    activeKey,
+    canGoNext,
+    emojiMap,
+    hueMap,
+    iconSet,
+    query,
+    searching,
+    tripMode,
+    filtered,
+    allCategory,
+    spanAll,
+    byCategory,
+    entries,
+    sections,
+    total,
+    currencySums,
+  } = data;
 
   // Tap a by-category header to filter to just that category (staying grouped); tap the active one
   // to clear. Mirrors the by-date row chips — preserves the cycle and any account filter. Only the
   // plain cycle view offers it (spanAll modes ignore the category param, so gating it out below).
   const headerFilterHref = (key: string) => {
-    const params = new URLSearchParams();
-    params.set('cycle', activeKey);
-    params.set('view', 'category');
-    if (category !== key) params.set('category', key);
-    if (account) params.set('account', account);
-    return `/records?${params.toString()}`;
+    const p = new URLSearchParams();
+    p.set('cycle', activeKey);
+    p.set('view', 'category');
+    if (category !== key) p.set('category', key);
+    if (account) p.set('account', account);
+    return `/records?${p.toString()}`;
   };
 
   // Toggle links preserve the current cycle/search/filter and only flip ?view=.
   const viewHref = (next: 'date' | 'category') => {
-    const params = new URLSearchParams();
-    if (searching) params.set('q', query);
+    const p = new URLSearchParams();
+    if (searching) p.set('q', query);
     else if (tripMode && currency && from && to) {
-      params.set('currency', currency);
-      params.set('from', from);
-      params.set('to', to);
-    } else if (allCategory) params.set('all', '1');
-    else params.set('cycle', activeKey);
-    if (category) params.set('category', category);
-    if (account) params.set('account', account);
-    if (next === 'category') params.set('view', 'category');
-    return `/records?${params.toString()}`;
+      p.set('currency', currency);
+      p.set('from', from);
+      p.set('to', to);
+    } else if (allCategory) p.set('all', '1');
+    else p.set('cycle', activeKey);
+    if (category) p.set('category', category);
+    if (account) p.set('account', account);
+    if (next === 'category') p.set('view', 'category');
+    return `/records?${p.toString()}`;
   };
 
   return (

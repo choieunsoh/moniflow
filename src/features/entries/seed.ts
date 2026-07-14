@@ -42,8 +42,8 @@ const DEMO: EntryInput[] = [
 ];
 
 // Replaces the table's contents so re-seeding is idempotent. Returns the row count inserted.
-export function seedEntries(db: Db): number {
-  db.delete(entries).run();
-  addEntries(db, DEMO);
+export async function seedEntries(db: Db): Promise<number> {
+  await db.delete(entries).run();
+  await addEntries(db, DEMO);
   return DEMO.length;
 }

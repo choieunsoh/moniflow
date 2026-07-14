@@ -1,6 +1,5 @@
 import { sqliteTable, integer, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
-import { migrateCategoryIds, dropLegacyCategoryColumns } from '@db/migrate';
 import type { Db } from '@db/client';
 
 // Standing budgets — no cycle column; the same limit applies to every billing cycle. The row with
@@ -18,17 +17,12 @@ export type NewBudget = typeof budgets.$inferInsert;
 // A read row for the UI: the budget plus the joined category NAME (null for the total row).
 export type BudgetReadRow = Budget & { category: string | null };
 
-// ponytail: CREATE TABLE IF NOT EXISTS bootstrap; migrateCategoryIds upgrades an existing text-keyed
-// budgets table (adds + backfills category_id) — invoked here so ensuring budgets triggers the
-// backfill; dropLegacyCategoryColumns then removes the now-unused `category` text column.
-export function ensureBudgetsTable(db: Db): void {
-  db.run(sql`
+export async function ensureBudgetsTable(db: Db): Promise<void> {
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS budgets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category_id INTEGER,
       amount REAL NOT NULL
     )
   `);
-  migrateCategoryIds(db);
-  dropLegacyCategoryColumns(db);
 }

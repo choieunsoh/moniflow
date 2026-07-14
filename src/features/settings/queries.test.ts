@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { sql } from 'drizzle-orm';
-import { initDb } from '@db/client';
+import { makeNodeProxyDb } from '@db/client';
 import { ensureSettingsTable } from './schema';
 import {
   getCutoff,
@@ -17,49 +17,49 @@ import {
 } from './queries';
 
 describe('getCutoff / setCutoff', () => {
-  it('defaults to 18 when no cutoff has been stored', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    expect(getCutoff(db)).toBe(18);
+  it('defaults to 18 when no cutoff has been stored', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    expect(await getCutoff(db)).toBe(18);
   });
 
-  it('round-trips a stored cutoff', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    setCutoff(db, 25);
-    expect(getCutoff(db)).toBe(25);
+  it('round-trips a stored cutoff', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await setCutoff(db, 25);
+    expect(await getCutoff(db)).toBe(25);
   });
 
-  it('overwrites rather than duplicating on a second write', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    setCutoff(db, 25);
-    setCutoff(db, 5);
-    expect(getCutoff(db)).toBe(5);
+  it('overwrites rather than duplicating on a second write', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await setCutoff(db, 25);
+    await setCutoff(db, 5);
+    expect(await getCutoff(db)).toBe(5);
   });
 });
 
 describe('getIconSet / setIconSet', () => {
-  it('defaults to emoji when nothing is stored', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    expect(getIconSet(db)).toBe('emoji');
+  it('defaults to emoji when nothing is stored', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    expect(await getIconSet(db)).toBe('emoji');
   });
 
-  it('round-trips a stored icon set', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    setIconSet(db, 'phosphor');
-    expect(getIconSet(db)).toBe('phosphor');
-    setIconSet(db, 'lucide');
-    expect(getIconSet(db)).toBe('lucide');
+  it('round-trips a stored icon set', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await setIconSet(db, 'phosphor');
+    expect(await getIconSet(db)).toBe('phosphor');
+    await setIconSet(db, 'lucide');
+    expect(await getIconSet(db)).toBe('lucide');
   });
 
-  it('falls back to emoji if the stored value is somehow unknown', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    db.run(sql`INSERT INTO settings (key, value) VALUES ('icon_set', 'bogus')`);
-    expect(getIconSet(db)).toBe('emoji');
+  it('falls back to emoji if the stored value is somehow unknown', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await db.run(sql`INSERT INTO settings (key, value) VALUES ('icon_set', 'bogus')`);
+    expect(await getIconSet(db)).toBe('emoji');
   });
 });
 
@@ -90,26 +90,26 @@ describe('isValidCutoffDay', () => {
 });
 
 describe('getCardFeePct / setCardFeePct', () => {
-  it('defaults to 2 when nothing is stored', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    expect(getCardFeePct(db)).toBe(2);
+  it('defaults to 2 when nothing is stored', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    expect(await getCardFeePct(db)).toBe(2);
   });
 
-  it('round-trips a stored fee and overwrites on re-write', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    setCardFeePct(db, 1.5);
-    expect(getCardFeePct(db)).toBe(1.5);
-    setCardFeePct(db, 0);
-    expect(getCardFeePct(db)).toBe(0);
+  it('round-trips a stored fee and overwrites on re-write', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await setCardFeePct(db, 1.5);
+    expect(await getCardFeePct(db)).toBe(1.5);
+    await setCardFeePct(db, 0);
+    expect(await getCardFeePct(db)).toBe(0);
   });
 
-  it('falls back to 2 if the stored value is out of range', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    db.run(sql`INSERT INTO settings (key, value) VALUES ('card_fx_fee_pct', '999')`);
-    expect(getCardFeePct(db)).toBe(2);
+  it('falls back to 2 if the stored value is out of range', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await db.run(sql`INSERT INTO settings (key, value) VALUES ('card_fx_fee_pct', '999')`);
+    expect(await getCardFeePct(db)).toBe(2);
   });
 });
 
@@ -125,24 +125,24 @@ describe('isValidCardFeePct', () => {
 });
 
 describe('getFxRates / setFxRates', () => {
-  it('defaults to an empty map', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    expect(getFxRates(db)).toEqual({});
+  it('defaults to an empty map', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    expect(await getFxRates(db)).toEqual({});
   });
 
-  it('round-trips a rate map', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
+  it('round-trips a rate map', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
     const rates = { JPY: { thbPerUnit: 0.2043, asOf: '2026-07-13' } };
-    setFxRates(db, rates);
-    expect(getFxRates(db)).toEqual(rates);
+    await setFxRates(db, rates);
+    expect(await getFxRates(db)).toEqual(rates);
   });
 
-  it('returns {} when the stored blob is malformed', () => {
-    const db = initDb(':memory:');
-    ensureSettingsTable(db);
-    db.run(sql`INSERT INTO settings (key, value) VALUES ('fx_rates', 'not json')`);
-    expect(getFxRates(db)).toEqual({});
+  it('returns {} when the stored blob is malformed', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await db.run(sql`INSERT INTO settings (key, value) VALUES ('fx_rates', 'not json')`);
+    expect(await getFxRates(db)).toEqual({});
   });
 });

@@ -8,10 +8,6 @@ import { budgets } from '@features/budgets/schema';
 // budgets reference categories, so they're deleted first.
 // ponytail: the accounts table is added by the accounts feature (concern #1); extend this to also
 // `tx.delete(accounts).run()` when that table lands.
-export function wipeAllData(db: Db): void {
-  db.transaction((tx) => {
-    tx.delete(entries).run();
-    tx.delete(budgets).run();
-    tx.delete(categories).run();
-  });
+export async function wipeAllData(db: Db): Promise<void> {
+  await db.batch([db.delete(entries), db.delete(budgets), db.delete(categories)]);
 }

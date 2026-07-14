@@ -1,50 +1,39 @@
-// Reads the local SQLite DB per request — better-sqlite3 can't be prerendered, and the account list +
-// breakdown must reflect the latest import/merge/icon.
-export const dynamic = 'force-dynamic';
+'use client';
 
-import { initDb } from '@db/client';
-import { ensureEntriesTable } from '@features/entries/schema';
-import { getAccountCounts, getAccountBreakdown } from '@features/entries/queries';
-import { ensureAccountsTable } from '@features/accounts/schema';
-import {
-  getAccountIconMap,
-  iconForAccount,
-  getAccountHueMap,
-  hueForAccount,
-} from '@features/accounts/queries';
+import { useAccountsPage } from '@features/accounts/use-accounts-page';
+import { iconForAccount, hueForAccount } from '@features/accounts/queries';
 import { AccountIconPicker } from '@features/accounts/ui/AccountIconPicker';
 import { AccountNameEditor } from '@features/accounts/ui/AccountNameEditor';
 import { AddAccount } from '@features/accounts/ui/AddAccount';
 import { DeleteAccountButton } from '@features/accounts/ui/DeleteAccountButton';
 import { AccountMergeButton } from '@features/accounts/ui/AccountMergeButton';
 import { AccountReorderButton } from '@features/accounts/ui/AccountReorderButton';
-import { getKeypadAccounts } from '@features/entries/keypad-lists';
 import { DonutChart } from '@features/entries/ui/DonutChart';
-import { toBars } from '@features/entries/breakdown';
-import { ensureSettingsTable } from '@features/settings/schema';
-import { getCutoff } from '@features/settings/queries';
-import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { PageContainer } from '@shared/ui/PageContainer';
-import { todayIso } from '@shared/date';
 import { formatBaht } from '@shared/money';
 
 const countFmt = new Intl.NumberFormat('en-US');
 
+// Accounts list + this cycle's spending breakdown. Loads client-side via useAccountsPage against
+// the browser OPFS db; add/rename/delete/merge/reorder actions bump the data-version, which
+// refetches this list. Always the current cycle (no ?cycle= param) — mirrors the server version.
 export default function AccountsPage() {
-  const db = initDb();
-  ensureEntriesTable(db);
-  ensureAccountsTable(db);
-  ensureSettingsTable(db);
+  const { ready, data } = useAccountsPage();
 
-  const counts = getAccountCounts(db);
-  const iconMap = getAccountIconMap(db);
-  const hueMap = getAccountHueMap(db);
+  if (!ready || data === null) {
+    return (
+      <PageContainer size="full">
+        <div
+          className="grid h-32 place-items-center text-sm"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          …
+        </div>
+      </PageContainer>
+    );
+  }
 
-  // Current cycle range, derived exactly like the home page (getCutoff → currentCycleKey → cycleFromKey).
-  const cutoff = getCutoff(db);
-  const cycle = cycleFromKey(currentCycleKey(todayIso(), cutoff), cutoff);
-  const breakdown = getAccountBreakdown(db, cycle.start, cycle.end);
-  const bars = toBars(breakdown);
+  const { counts, iconMap, hueMap, breakdown, bars, keypadAccounts } = data;
   const names = counts.map((c) => c.account);
 
   return (
@@ -60,7 +49,7 @@ export default function AccountsPage() {
         </div>
         {/* Seeded from the keypad's own list so the sheet shows (and edits) the manual keypad order,
             not the usage-desc order of the list below. */}
-        {counts.length > 1 && <AccountReorderButton items={getKeypadAccounts(db)} />}
+        {counts.length > 1 && <AccountReorderButton items={keypadAccounts} />}
       </header>
 
       {breakdown.length > 0 && (

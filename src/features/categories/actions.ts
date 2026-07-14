@@ -1,25 +1,20 @@
-'use server';
-
-import { revalidatePath } from 'next/cache';
-import { initDb } from '@db/client';
-import { ensureCategoriesTable } from './schema';
+import { getBrowserDb } from '@db/browser';
 import { setCategoryEmoji, setCategoryHue, setCategoryOrder } from './queries';
+import { bumpDataVersion } from '@shared/data-version';
 
-// Assign an emoji to a category (upsert). Revalidates the whole app so the emoji shows on records,
-// the donut legend, and the category list at once.
+// Client-side category writes against the browser OPFS db (offline-first — no 'use server'/revalidatePath;
+// the worker bootstraps tables, so no ensure* needed). React 19 form actions accept these client functions
+// directly, so call sites are unchanged. Each write bumps the shared data-version store so live read-hooks
+// (Plan 2b) refetch.
 export async function setCategoryEmojiAction(formData: FormData): Promise<void> {
   const category = formData.get('category');
   const emoji = formData.get('emoji');
   if (typeof category !== 'string' || typeof emoji !== 'string' || !category || !emoji) return;
-
-  const db = initDb();
-  ensureCategoriesTable(db);
-  setCategoryEmoji(db, category, emoji);
-  revalidatePath('/', 'layout');
+  const db = await getBrowserDb();
+  await setCategoryEmoji(db, category, emoji);
+  bumpDataVersion();
 }
 
-// Set (or reset, via "auto") a category's disc hue. Revalidates the whole app so the color updates on
-// records, the keypad, and the breakdown at once.
 export async function setCategoryHueAction(formData: FormData): Promise<void> {
   const category = formData.get('category');
   const hueRaw = formData.get('hue');
@@ -28,17 +23,15 @@ export async function setCategoryHueAction(formData: FormData): Promise<void> {
   const hue = hueRaw === 'auto' ? null : Number(hueRaw);
   if (hue !== null && (!Number.isInteger(hue) || hue < 0 || hue > 359)) return;
 
-  const db = initDb();
-  ensureCategoriesTable(db);
-  setCategoryHue(db, category, hue);
-  revalidatePath('/', 'layout');
+  const db = await getBrowserDb();
+  await setCategoryHue(db, category, hue);
+  bumpDataVersion();
 }
 
-// Persist the keypad's manual category order. Typed args (not FormData) — the client posts the new
-// order as a string[]. Revalidates so the reordered grid is what the next render serves.
+// Persist the keypad's manual category order. Typed args (not FormData) — the client posts the new order
+// as a string[].
 export async function reorderCategories(orderedNames: string[]): Promise<void> {
-  const db = initDb();
-  ensureCategoriesTable(db);
-  setCategoryOrder(db, orderedNames);
-  revalidatePath('/', 'layout');
+  const db = await getBrowserDb();
+  await setCategoryOrder(db, orderedNames);
+  bumpDataVersion();
 }

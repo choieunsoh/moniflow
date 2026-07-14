@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { migrateAccountIds, dropLegacyAccountColumn } from '@db/migrate';
+import { sql } from 'drizzle-orm';
 import type { Db } from '@db/client';
 
 // First-class accounts. Each account is a real row with a surrogate `id` PK — entries reference it by
@@ -21,11 +21,15 @@ export const accounts = sqliteTable('accounts', {
 export type Account = typeof accounts.$inferSelect;
 export type NewAccount = typeof accounts.$inferInsert;
 
-// ponytail: CREATE TABLE IF NOT EXISTS bootstrap, matching the other features. The one-time backfill
-// from the legacy text-keyed shape lives in migrateAccountIds (idempotent, guarded, no-op once done),
-// invoked here and from ensureEntriesTable so any read path triggers it; dropLegacyAccountColumn then
-// removes the legacy `entries.account` text column once account_id is populated.
-export function ensureAccountsTable(db: Db): void {
-  migrateAccountIds(db);
-  dropLegacyAccountColumn(db);
+export async function ensureAccountsTable(db: Db): Promise<void> {
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      icon TEXT NOT NULL,
+      hue INTEGER,
+      sort_order INTEGER,
+      archived INTEGER NOT NULL DEFAULT 0
+    )
+  `);
 }

@@ -69,6 +69,7 @@ export function BottomBar() {
             the bar (half above / half over it), the single primary action. */}
         <Link
           href="/entries/new"
+          prefetch={false}
           aria-label="Add expense"
           className="absolute top-0 left-1/2 grid size-16 -translate-x-1/2 -translate-y-1/3 place-items-center rounded-full transition-transform duration-200 active:scale-95"
           style={{
@@ -127,6 +128,7 @@ function BarTab({
     <li>
       <Link
         href={href}
+        prefetch={false}
         aria-current={active ? 'page' : undefined}
         className="group flex min-h-[44px] w-full flex-col items-center justify-center gap-1 pt-2 pb-1 transition-colors duration-200"
         style={{ color: tabColor(active) }}

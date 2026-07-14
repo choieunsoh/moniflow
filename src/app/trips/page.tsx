@@ -1,13 +1,8 @@
-// Reads the local SQLite DB per request (better-sqlite3 can't be prerendered, and the ledger is
-// live data), so opt out of static generation.
-export const dynamic = 'force-dynamic';
+'use client';
 
 import Link from 'next/link';
-import { initDb } from '@db/client';
-import { ensureEntriesTable, ensureTripTitlesTable } from '@features/entries/schema';
-import { getForeignEntries, getTripTitles } from '@features/entries/queries';
+import { useTrips } from '@features/entries/use-trips';
 import {
-  groupIntoTrips,
   formatForeign,
   formatTripRange,
   formatMonthYear,
@@ -18,12 +13,24 @@ import { formatBaht } from '@shared/money';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { TripRename } from '@features/entries/ui/TripRename';
 
+// Trips page's data loads client-side via useTrips against the browser OPFS db.
 export default function TripsPage() {
-  const db = initDb();
-  ensureEntriesTable(db);
-  ensureTripTitlesTable(db);
-  const trips = groupIntoTrips(getForeignEntries(db));
-  const titles = getTripTitles(db);
+  const { ready, data } = useTrips();
+
+  if (!ready || data === null) {
+    return (
+      <PageContainer size="full">
+        <div
+          className="grid h-32 place-items-center text-sm"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          …
+        </div>
+      </PageContainer>
+    );
+  }
+
+  const { trips, titles } = data;
 
   return (
     <PageContainer size="full">

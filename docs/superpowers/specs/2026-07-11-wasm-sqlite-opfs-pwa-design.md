@@ -232,6 +232,27 @@ unchanged.
 - Keep the commander CLI as a dev-only tool on the Node shim, or delete it. Lean: keep (cheap).
 - Service-worker/manifest: hand-rolled minimal vs. a helper. Lean: minimal hand-rolled (YAGNI).
 
+## Plan split & the Turbopack bundling resolution (2026-07-14)
+
+Plan 1 (async data layer) is **done** on `feat/wasm-sqlite-opfs-pwa` (tests-only green; see
+`docs/superpowers/plans/2026-07-14-wasm-sqlite-opfs-plan-1-data-layer.md`). The UI half is split:
+
+- **Plan 2a — prove the browser runtime:** solve the sqlite3-wasm/Turbopack bundling blocker, convert
+  **one** page (home `/`) end-to-end to a client component loading via `getBrowserDb`, and do the
+  **first live OPFS/WASM browser verification**. De-risks the whole approach before bulk work.
+- **Plan 2b — the rest:** the remaining 10 pages + 5 `actions.ts` + `settings/backup/export/route.ts`,
+  delete `middleware.ts` + `force-dynamic` + `revalidatePath`, `next.config` → `output: 'export'`.
+
+**Bundling blocker + fix.** `@sqlite.org/sqlite-wasm` (3.53.0, only exports `.`=`index.mjs`) does not
+bundle under Turbopack: `index.mjs` pulls in `sqlite3-worker1.mjs`, whose legacy **OPFS-proxy VFS** does
+`new Worker(new URL(proxyUri, import.meta.url))` with a runtime `proxyUri` → "Can't resolve <dynamic>".
+We use the **SAHPool** VFS and never need that proxy worker. Resolution (**self-host in `/public`**):
+copy the sqlite3 dist (`sqlite3.mjs` + `sqlite3.wasm`) into `public/sqlite3/`; in `worker.ts` load it at
+runtime via `await import(/* turbopackIgnore: true */ '/sqlite3/sqlite3.mjs')` so Turbopack skips it and
+`sqlite3-worker1.mjs` never enters the graph; keep the npm package as a **type-only** import for type
+safety. `new Worker(new URL('./worker.ts', import.meta.url))` (our worker) is the supported Turbopack
+idiom and stays. The spike also settles `locateFile` so the `.wasm` resolves beside the `.mjs`.
+
 ## Superseded
 
 The original `.sqlite`-blob-first backup framing (superseded by the shipped CSV seam) and the
