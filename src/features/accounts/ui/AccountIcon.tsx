@@ -1,6 +1,6 @@
 // ponytail: categoryColorBold is imported laterally from features/categories rather than graduated to
 // shared — deliberate while accounts is only the 2nd consumer (graduate color to @shared on a 3rd).
-import { categoryColorBold } from '@features/categories/color';
+import { categoryColorBold, discForeground } from '@features/categories/color';
 import { AccountGlyph } from './AccountGlyph';
 
 // An account marker: the payment-network glyph rendered WHITE on a bold hue disc — the same look as a
@@ -31,7 +31,7 @@ export function AccountIcon({
     <span
       aria-hidden
       className={`grid shrink-0 place-items-center rounded-full ${SIZES[size]}`}
-      style={{ background: categoryColorBold(name, hue), color: '#fff' }}
+      style={{ background: categoryColorBold(name, hue), color: discForeground(hue) }}
     >
       <AccountGlyph icon={icon} size={ICON_PX[size]} />
     </span>

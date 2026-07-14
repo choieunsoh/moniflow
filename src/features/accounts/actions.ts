@@ -12,6 +12,7 @@
 import { getBrowserDb } from '@db/browser';
 import { bumpDataVersion } from '@shared/data-version';
 import { addAccount, setAccountIcon, setAccountHue, setAccountOrder } from './queries';
+import { isValidDiscHue } from '@features/categories/color';
 import {
   renameAccount,
   deleteAccount,
@@ -45,7 +46,7 @@ export async function setAccountHueAction(formData: FormData): Promise<void> {
   const hueRaw = formData.get('hue');
   if (typeof account !== 'string' || !account || typeof hueRaw !== 'string') return;
   const hue = hueRaw === 'auto' ? null : Number(hueRaw);
-  if (hue !== null && (!Number.isInteger(hue) || hue < 0 || hue > 359)) return;
+  if (hue !== null && !isValidDiscHue(hue)) return;
   const db = await getBrowserDb();
   await setAccountHue(db, account, hue);
   bumpDataVersion();

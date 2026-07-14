@@ -5,7 +5,7 @@ import { EMOJI_CHOICES, EMOJI_LABELS } from '../queries';
 import { CategoryIcon } from './CategoryIcon';
 import { CategoryNameEditor } from './CategoryNameEditor';
 import { iconMapFor } from '../icon-for';
-import { categoryColorBold, HUE_PRESETS } from '../color';
+import { categoryColorBold, HUE_PRESETS, GRAY_PRESETS } from '../color';
 import { setCategoryEmojiAction, setCategoryHueAction } from '../actions';
 import type { IconSet } from '@features/settings/queries';
 
@@ -89,6 +89,26 @@ export function CategoryPickerDialog({
                   aria-pressed={selected}
                   title={preset.name}
                   className={`size-11 rounded-full transition-transform active:opacity-70 ${
+                    selected ? 'ring-2 ring-offset-2 ring-offset-[var(--color-surface)]' : ''
+                  }`}
+                  style={{ background: categoryColorBold(preset.name, preset.hue) }}
+                />
+              );
+            })}
+            {/* Neutral ramp (black→white). Bordered so the black and white ends stay defined against
+                the dialog surface. */}
+            {GRAY_PRESETS.map((preset) => {
+              const selected = hue === preset.hue;
+              return (
+                <button
+                  key={preset.hue}
+                  type="submit"
+                  name="hue"
+                  value={preset.hue}
+                  aria-label={preset.name}
+                  aria-pressed={selected}
+                  title={preset.name}
+                  className={`size-11 rounded-full border border-[var(--color-border)] transition-transform active:opacity-70 ${
                     selected ? 'ring-2 ring-offset-2 ring-offset-[var(--color-surface)]' : ''
                   }`}
                   style={{ background: categoryColorBold(preset.name, preset.hue) }}

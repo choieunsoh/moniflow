@@ -8,7 +8,7 @@ import { ACCOUNT_ICONS } from '../queries';
 // ponytail: HUE_PRESETS/categoryColorBold are imported laterally from features/categories rather
 // than graduated to shared — a deliberate call while accounts is only the 2nd consumer. Graduate
 // color (and merge-guard, per AccountNameEditor) to @shared/ when a 3rd consumer appears.
-import { HUE_PRESETS, categoryColorBold } from '@features/categories/color';
+import { HUE_PRESETS, GRAY_PRESETS, categoryColorBold } from '@features/categories/color';
 import { setAccountIconAction, setAccountHueAction } from '../actions';
 
 // Per-account icon + background picker as a native <dialog> (inherits focus-trap, Esc, ::backdrop from
@@ -86,6 +86,25 @@ export function AccountIconPicker({
                   aria-pressed={selected}
                   title={preset.name}
                   className={`size-11 rounded-full transition-transform active:opacity-70 ${
+                    selected ? 'ring-2 ring-offset-2 ring-offset-[var(--color-surface)]' : ''
+                  }`}
+                  style={{ background: categoryColorBold(preset.name, preset.hue) }}
+                />
+              );
+            })}
+            {/* Neutral ramp (black→white); bordered so the ends stay defined against the surface. */}
+            {GRAY_PRESETS.map((preset) => {
+              const selected = hue === preset.hue;
+              return (
+                <button
+                  key={preset.hue}
+                  type="submit"
+                  name="hue"
+                  value={preset.hue}
+                  aria-label={preset.name}
+                  aria-pressed={selected}
+                  title={preset.name}
+                  className={`size-11 rounded-full border border-[var(--color-border)] transition-transform active:opacity-70 ${
                     selected ? 'ring-2 ring-offset-2 ring-offset-[var(--color-surface)]' : ''
                   }`}
                   style={{ background: categoryColorBold(preset.name, preset.hue) }}

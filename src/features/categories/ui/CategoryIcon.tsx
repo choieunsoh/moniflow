@@ -1,4 +1,4 @@
-import { categoryColor, categoryColorBold } from '../color';
+import { categoryColor, categoryColorBold, discForeground } from '../color';
 import { iconMapFor } from '../icon-for';
 import type { IconSet } from '@features/settings/queries';
 
@@ -40,7 +40,7 @@ export function CategoryIcon({
         className={`grid shrink-0 place-items-center rounded-full ${SIZES[size]}`}
         style={{ background: categoryColorBold(name, hue) }}
       >
-        <Icon size={ICON_PX[size]} color="#fff" />
+        <Icon size={ICON_PX[size]} color={discForeground(hue)} />
       </span>
     );
   }
