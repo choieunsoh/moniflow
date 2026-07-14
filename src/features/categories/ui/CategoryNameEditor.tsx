@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { mergeCategoryAction } from '@features/entries/actions';
 import { willMerge } from '../merge-guard';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 
 // Tap the category name to rename it inline — or type an existing name to merge this category into
 // that one (the shared #category-options datalist autocompletes). Collapsed to a plain label until
@@ -74,7 +75,7 @@ export function CategoryNameEditor({
 
   return (
     <form
-      action={mergeCategoryAction}
+      action={withSaveToast(mergeCategoryAction, 'Category saved')}
       onSubmit={() => onDone?.()}
       className="flex min-w-0 flex-1 items-center gap-2"
     >

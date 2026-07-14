@@ -11,10 +11,15 @@ import {
 } from '@features/settings/actions';
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
+import { ImportCatalog } from '@features/settings/ui/ImportCatalog';
 import { getEntries } from '@features/entries/queries';
 import { serializeMonefyCsv } from '@features/entries/import';
+import { getCategoryCatalog } from '@features/categories/queries';
+import { getAccountCatalog } from '@features/accounts/queries';
+import { serializeCatalogJson } from '@features/settings/catalog';
 import { todayIso } from '@shared/date';
 import { toast } from '@shared/ui/toast';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 import { PageContainer } from '@shared/ui/PageContainer';
 
 const ICON_SET_LABELS = {
@@ -50,6 +55,29 @@ async function exportBackup(): Promise<void> {
   }
 }
 
+// The category emoji/hue/order and account icon/hue/order don't round-trip through the Monefy CSV
+// (it only knows entry rows), so this is a second, supplementary JSON export/restore covering just
+// that display metadata. Same throwaway-<a download> pattern as exportBackup.
+async function exportCatalog(): Promise<void> {
+  try {
+    const db = await getBrowserDb();
+    const [categories, accounts] = await Promise.all([
+      getCategoryCatalog(db),
+      getAccountCatalog(db),
+    ]);
+    const json = serializeCatalogJson({ version: 1, categories, accounts });
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `moniflow-catalog-${todayIso()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    toast.error("Couldn't export categories & accounts — try again");
+  }
+}
+
 export default function SettingsPage() {
   const { ready, data } = useSettings();
 
@@ -78,7 +106,7 @@ export default function SettingsPage() {
       </header>
 
       <section className="panel flex flex-col gap-4 p-5">
-        <form action={setCutoffAction} className="flex flex-col gap-3">
+        <form action={withSaveToast(setCutoffAction)} className="flex flex-col gap-3">
           <label htmlFor="day" className="text-sm font-medium">
             Billing cutoff day
           </label>
@@ -106,7 +134,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="panel flex flex-col gap-4 p-5">
-        <form action={setIconSetAction} className="flex flex-col gap-3">
+        <form action={withSaveToast(setIconSetAction)} className="flex flex-col gap-3">
           <label htmlFor="iconSet" className="text-sm font-medium">
             Category icons
           </label>
@@ -135,7 +163,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="panel flex flex-col gap-4 p-5">
-        <form action={setFontScaleAction} className="flex flex-col gap-3">
+        <form action={withSaveToast(setFontScaleAction)} className="flex flex-col gap-3">
           <label htmlFor="fontScale" className="text-sm font-medium">
             Text size
           </label>
@@ -163,7 +191,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="panel flex flex-col gap-4 p-5">
-        <form action={setCardFeePctAction} className="flex flex-col gap-3">
+        <form action={withSaveToast(setCardFeePctAction)} className="flex flex-col gap-3">
           <label htmlFor="pct" className="text-sm font-medium">
             Card FX fee %
           </label>
@@ -195,7 +223,8 @@ export default function SettingsPage() {
         <h2 className="text-sm font-semibold">Backup</h2>
         <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
           Export the whole ledger to a Monefy-compatible CSV, or restore it from one. Restoring
-          replaces every current entry.
+          replaces every current entry. The CSV can&apos;t carry category/account emoji, icon, hue,
+          or order — export those separately below and restore is a non-destructive merge.
         </p>
         <button
           type="button"
@@ -207,6 +236,16 @@ export default function SettingsPage() {
           Export CSV
         </button>
         <ImportBackup />
+        <button
+          type="button"
+          className="btn btn-ghost w-fit"
+          onClick={() => {
+            void exportCatalog();
+          }}
+        >
+          Export categories &amp; accounts
+        </button>
+        <ImportCatalog />
       </section>
 
       <section

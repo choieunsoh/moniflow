@@ -6,6 +6,7 @@ import { mergeAccountAction } from '../actions';
 // shared — a deliberate call while accounts is only the 2nd consumer. Graduate merge-guard (and
 // color) to @shared/ when a 3rd consumer appears.
 import { willMerge } from '@features/categories/merge-guard';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 
 // Tap the account name to rename inline — or type an existing name to merge this account into that one
 // (#account-options autocompletes). Saves on blur or Enter; a blur that's unchanged or empty collapses
@@ -55,7 +56,7 @@ export function AccountNameEditor({ account, onDone }: { account: string; onDone
 
   return (
     <form
-      action={mergeAccountAction}
+      action={withSaveToast(mergeAccountAction, 'Account saved')}
       onSubmit={() => onDone?.()}
       className="flex min-w-0 flex-1 items-center gap-2"
     >

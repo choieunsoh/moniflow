@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useBudgetInput } from './use-budget-input';
+import { useBudgetInput, formatBudgetAmount } from './use-budget-input';
 
 // Fabricate just the fields the handlers read.
 const blur = (value: string) => ({ currentTarget: { value } });
@@ -49,5 +49,26 @@ describe('useBudgetInput', () => {
     const { result } = renderHook(() => useBudgetInput(undefined, onSave));
     result.current.onKeyDown(enter(blurFn));
     expect(blurFn).toHaveBeenCalledOnce();
+  });
+});
+
+describe('formatBudgetAmount', () => {
+  it('groups thousands, passes through blank and non-numeric', () => {
+    expect(formatBudgetAmount('')).toBe('');
+    expect(formatBudgetAmount('  ')).toBe('');
+    expect(formatBudgetAmount('30000')).toBe('30,000');
+    expect(formatBudgetAmount('30,000')).toBe('30,000');
+    expect(formatBudgetAmount('abc')).toBe('abc');
+  });
+});
+
+describe('useBudgetInput commit tolerates grouping', () => {
+  it('commits a grouped string as its numeric value and no-ops on re-blur', () => {
+    const saved: number[] = [];
+    const { result } = renderHook(() => useBudgetInput(undefined, (n) => saved.push(n)));
+    result.current.onBlur({ currentTarget: { value: '30,000' } });
+    expect(saved).toEqual([30000]);
+    result.current.onBlur({ currentTarget: { value: '30,000' } }); // unchanged → no second write
+    expect(saved).toEqual([30000]);
   });
 });

@@ -13,6 +13,8 @@ import {
   addCategory,
   getCategoryOrderMap,
   setCategoryOrder,
+  getCategoryCatalog,
+  restoreCategoryCatalog,
 } from './queries';
 
 async function db() {
@@ -119,5 +121,23 @@ describe('setCategoryOrder / getCategoryOrderMap', () => {
     await setCategoryOrder(d, ['Food', 'Coffee']);
     await setCategoryOrder(d, ['Coffee', 'Food']);
     expect(await getCategoryOrderMap(d)).toEqual({ Coffee: 0, Food: 1 });
+  });
+});
+
+describe('category catalog read/restore', () => {
+  it('reads back rows and upserts by name without deleting unlisted', async () => {
+    const d = await db();
+    await addCategory(d, 'Keep'); // pre-existing, NOT in the restore payload
+    await restoreCategoryCatalog(d, [
+      { name: 'Food', emoji: '🍔', hue: 12, sortOrder: 0, archived: false },
+    ]);
+    await restoreCategoryCatalog(d, [
+      { name: 'Food', emoji: '🍜', hue: null, sortOrder: 3, archived: true }, // updates existing
+    ]);
+    const rows = await getCategoryCatalog(d);
+    const names = rows.map((r) => r.name);
+    expect(names).toContain('Keep'); // never deleted
+    const food = rows.find((r) => r.name === 'Food');
+    expect(food).toEqual({ name: 'Food', emoji: '🍜', hue: null, sortOrder: 3, archived: true });
   });
 });

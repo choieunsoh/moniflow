@@ -194,64 +194,72 @@ export function Keypad({
 
       {/* Amount + inputs + keypad */}
       <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
-        <div className="flex flex-nowrap items-center gap-2">
-          <Chip selected={date === today} onClick={() => setDate(today)}>
-            Today
-          </Chip>
-          <span className="relative inline-flex shrink-0">
-            <span className={pillClass} style={chipStyle(isCustomDate)}>
-              {isCustomDate ? formatDayHeading(date) : <CalendarIcon />}
+        {/* Two logical halves — date controls (left) and currency+account (right). flex-wrap +
+            justify-between keeps them apart on one line but lets the right half drop to a second line
+            when they'd collide (e.g. a long account name at a larger font size), instead of squeezing
+            the account into an over-truncated sliver. Truncation stays as the last-resort fallback. */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Chip selected={date === today} onClick={() => setDate(today)}>
+              Today
+            </Chip>
+            <span className="relative inline-flex shrink-0">
+              <span className={pillClass} style={chipStyle(isCustomDate)}>
+                {isCustomDate ? formatDayHeading(date) : <CalendarIcon />}
+              </span>
+              <input
+                type="date"
+                name="date"
+                value={date}
+                max={today}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v && v <= today) setDate(v);
+                }}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker();
+                  } catch {
+                    // no-op: browser without showPicker, or a picker already open
+                  }
+                }}
+                aria-label="Pick another date"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
             </span>
-            <input
-              type="date"
-              name="date"
-              value={date}
-              max={today}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v && v <= today) setDate(v);
-              }}
-              onClick={(e) => {
-                try {
-                  e.currentTarget.showPicker();
-                } catch {
-                  // no-op: browser without showPicker, or a picker already open
-                }
-              }}
-              aria-label="Pick another date"
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            />
-          </span>
+          </div>
 
-          {/* Currency chip → opens the currency grid. */}
-          <button
-            type="button"
-            onClick={() => setView('currency')}
-            aria-haspopup="true"
-            aria-label={`Currency: ${currency}`}
-            className="tap ml-auto shrink-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
-            style={chipStyle(!isThb)}
-          >
-            <span className="tnum">
-              {symbol} {currency}
-            </span>
-            <span aria-hidden>▾</span>
-          </button>
+          <div className="flex min-w-0 items-center gap-2">
+            {/* Currency chip → opens the currency grid. */}
+            <button
+              type="button"
+              onClick={() => setView('currency')}
+              aria-haspopup="true"
+              aria-label={`Currency: ${currency}`}
+              className="tap shrink-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
+              style={chipStyle(!isThb)}
+            >
+              <span className="tnum">
+                {symbol} {currency}
+              </span>
+              <span aria-hidden>▾</span>
+            </button>
 
-          {/* Account chip → opens the account grid. */}
-          <button
-            type="button"
-            onClick={() => setView('account')}
-            aria-haspopup="true"
-            aria-label={`Account: ${account}`}
-            className="tap min-w-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
-            style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
-          >
-            <span className="min-w-0 truncate">{account}</span>
-            <span aria-hidden className="shrink-0">
-              ▾
-            </span>
-          </button>
+            {/* Account chip → opens the account grid. */}
+            <button
+              type="button"
+              onClick={() => setView('account')}
+              aria-haspopup="true"
+              aria-label={`Account: ${account}`}
+              className="tap min-w-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
+              style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
+            >
+              <span className="min-w-0 truncate">{account}</span>
+              <span aria-hidden className="shrink-0">
+                ▾
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="panel flex flex-col items-end gap-1 px-5 py-4">
@@ -345,10 +353,15 @@ export function Keypad({
           </p>
         ) : null}
 
+        {/* Single-line input; Enter is swallowed so it doesn't implicitly submit the form (HTML spec)
+            and save the entry prematurely — use the Add button to save. */}
         <input
           name="note"
           placeholder="Note (optional)"
           defaultValue={entry?.note ?? ''}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.preventDefault();
+          }}
           className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
           style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
         />

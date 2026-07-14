@@ -8,6 +8,7 @@ import { iconMapFor } from '../icon-for';
 import { categoryColorBold, HUE_PRESETS, GRAY_PRESETS } from '../color';
 import { setCategoryEmojiAction, setCategoryHueAction } from '../actions';
 import type { IconSet } from '@features/settings/queries';
+import { withSaveToast } from '@shared/ui/with-save-toast';
 
 // The icon + background picker as a *controlled* native <dialog>: the caller owns the ref (and calls
 // showModal) and passes which category is being edited. `category === null` renders an empty dialog
@@ -53,7 +54,11 @@ export function CategoryPickerDialog({
           </div>
 
           <h2 className="text-sm font-semibold">Icon</h2>
-          <form action={setCategoryEmojiAction} onSubmit={close} className="grid grid-cols-6 gap-1">
+          <form
+            action={withSaveToast(setCategoryEmojiAction, 'Category updated')}
+            onSubmit={close}
+            className="grid grid-cols-6 gap-1"
+          >
             <input type="hidden" name="category" value={category} />
             {EMOJI_CHOICES.map((emoji) => {
               const label = EMOJI_LABELS[emoji] ?? emoji;
@@ -75,7 +80,11 @@ export function CategoryPickerDialog({
           </form>
 
           <h2 className="mt-1 text-sm font-semibold">Background</h2>
-          <form action={setCategoryHueAction} onSubmit={close} className="flex flex-wrap gap-2">
+          <form
+            action={withSaveToast(setCategoryHueAction, 'Category updated')}
+            onSubmit={close}
+            className="flex flex-wrap gap-2"
+          >
             <input type="hidden" name="category" value={category} />
             {HUE_PRESETS.map((preset) => {
               const selected = hue === preset.hue;

@@ -158,9 +158,15 @@ export function EntryForm({ action, accounts, categories, entry }: EntryFormProp
 
       <label className="flex flex-col gap-1 text-sm">
         Note
+        {/* Single-line input, but Enter is swallowed: a text input inside the form implicitly submits
+            on Enter (HTML spec), which saved the entry prematurely. preventDefault on Enter keeps the
+            field single-line and stops the accidental save (use the button to save). */}
         <input
           name="note"
           defaultValue={entry?.note ?? ''}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.preventDefault();
+          }}
           className={fieldClass}
           style={fieldStyle}
         />

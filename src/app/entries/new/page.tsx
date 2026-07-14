@@ -7,6 +7,7 @@ import { Keypad } from '@features/entries/ui/Keypad';
 import { CloseButton } from '@features/entries/ui/CloseButton';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { todayIso } from '@shared/date';
+import { toast } from '@shared/ui/toast';
 
 // The keypad-feeding lists load client-side via useNewEntry against the browser OPFS db. The write
 // itself (addEntryAction) no longer redirects server-side (Plan 2b dropped it), so this page navigates
@@ -32,6 +33,7 @@ export default function NewEntryPage() {
 
   async function handleSubmit(formData: FormData): Promise<void> {
     await addEntryAction(formData);
+    toast('Entry saved'); // module-level store + layout ToastRegion persist across the navigation
     router.push('/');
   }
 

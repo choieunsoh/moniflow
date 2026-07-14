@@ -17,7 +17,7 @@ export function useBudgetInput(saved: number | undefined, onSave: (amount: numbe
     (raw: string) => {
       const trimmed = raw.trim();
       if (trimmed === '') return;
-      const amount = Number(trimmed);
+      const amount = Number(trimmed.replace(/,/g, '')); // tolerate grouped input (e.g. "30,000")
       if (!Number.isFinite(amount) || amount < 0) return;
       if (amount === committed.current) return;
       committed.current = amount;
@@ -36,4 +36,14 @@ export function useBudgetInput(saved: number | undefined, onSave: (amount: numbe
   }, []);
 
   return { onBlur, onKeyDown };
+}
+
+// Group a raw budget string for display (grouped thousands, no ฿ — the field carries .tnum). Blank
+// stays blank; anything non-numeric passes through unchanged so a mid-edit value isn't mangled.
+const budgetFmt = new Intl.NumberFormat('en-US');
+export function formatBudgetAmount(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed === '') return '';
+  const n = Number(trimmed.replace(/,/g, ''));
+  return Number.isFinite(n) ? budgetFmt.format(n) : trimmed;
 }

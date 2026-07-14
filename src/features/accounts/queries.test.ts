@@ -14,6 +14,8 @@ import {
   setAccountHue,
   setAccountOrder,
   getAccountOrderMap,
+  getAccountCatalog,
+  restoreAccountCatalog,
 } from './queries';
 
 async function db() {
@@ -81,5 +83,19 @@ describe('setAccountOrder / getAccountOrderMap', () => {
     const map = await getAccountOrderMap(d);
     expect(map).toEqual({ Card: 0 });
     expect('Cash' in map).toBe(false);
+  });
+});
+
+describe('account catalog read/restore', () => {
+  it('reads back rows and upserts by name without deleting unlisted', async () => {
+    const d = await db();
+    await addAccount(d, 'Keep'); // pre-existing, NOT in the restore payload
+    await restoreAccountCatalog(d, [{ name: 'Cash', icon: 'cash', hue: 12, sortOrder: 0 }]);
+    await restoreAccountCatalog(d, [{ name: 'Cash', icon: 'qr', hue: null, sortOrder: 3 }]); // updates existing
+    const rows = await getAccountCatalog(d);
+    const names = rows.map((r) => r.name);
+    expect(names).toContain('Keep'); // never deleted
+    const cash = rows.find((r) => r.name === 'Cash');
+    expect(cash).toEqual({ name: 'Cash', icon: 'qr', hue: null, sortOrder: 3 });
   });
 });

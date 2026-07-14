@@ -94,10 +94,10 @@ describe('isValidCutoffDay', () => {
 });
 
 describe('getCardFeePct / setCardFeePct', () => {
-  it('defaults to 2 when nothing is stored', async () => {
+  it('defaults to 2.5 when nothing is stored', async () => {
     const db = makeNodeProxyDb();
     await ensureSettingsTable(db);
-    expect(await getCardFeePct(db)).toBe(2);
+    expect(await getCardFeePct(db)).toBe(2.5);
   });
 
   it('round-trips a stored fee and overwrites on re-write', async () => {
@@ -109,11 +109,11 @@ describe('getCardFeePct / setCardFeePct', () => {
     expect(await getCardFeePct(db)).toBe(0);
   });
 
-  it('falls back to 2 if the stored value is out of range', async () => {
+  it('falls back to 2.5 if the stored value is out of range', async () => {
     const db = makeNodeProxyDb();
     await ensureSettingsTable(db);
     await db.run(sql`INSERT INTO settings (key, value) VALUES ('card_fx_fee_pct', '999')`);
-    expect(await getCardFeePct(db)).toBe(2);
+    expect(await getCardFeePct(db)).toBe(2.5);
   });
 });
 
