@@ -4,6 +4,7 @@ import { PageContainer } from '@shared/ui/PageContainer';
 import { useBudgetsPage } from '@features/budgets/use-budgets-page';
 import { BudgetField } from '@features/budgets/ui/BudgetField';
 import { suggestBudget, type BudgetState, type BudgetRow } from '@features/budgets/budget-status';
+import { formatBudgetAmount } from '@features/budgets/use-budget-input';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import type { IconSet } from '@features/settings/queries';
@@ -24,13 +25,20 @@ const METER: Record<BudgetState, string> = {
 // the placeholder as a hint, not a filled value, so leaving an untouched row never auto-saves it.
 // `amount` is the committed baseline the field diffs against on blur (undefined until a budget
 // actually exists), so the empty field is a clean no-op on blur.
+//
+// The placeholder formats through formatBudgetAmount — the field's OWN formatter, the same one that
+// renders prefill and reformats on blur — not formatBaht. A placeholder is a preview of the value it
+// becomes once you accept it, so "฿9,000.00" was wrong twice over: the ฿ isn't in the field (it's a
+// bare number input) and the satang aren't either. formatBaht is the ledger formatter and states
+// satang by design; a budget is a round target, which is the whole point of suggestBudget rounding up
+// to a tidy step. Keep these two in step: whatever the field renders, the placeholder should mimic.
 function fieldProps(category: string, limit: number | null, spent: number) {
   const suggestion = limit === null ? suggestBudget(spent) : null;
   return {
     category,
     amount: limit ?? undefined,
     prefill: limit !== null ? String(limit) : '',
-    placeholder: suggestion !== null ? formatBaht(suggestion) : 'Amount',
+    placeholder: suggestion !== null ? formatBudgetAmount(String(suggestion)) : 'Amount',
   };
 }
 
