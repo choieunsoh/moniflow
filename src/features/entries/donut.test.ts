@@ -37,14 +37,13 @@ describe('buildDonutOption', () => {
     expect(opt.graphic[1].style.text).toBe('7 · Spent'); // 5 + 2 transactions
   });
 
-  it('renders the hole total through the shared formatter, satang and all', () => {
-    // The hole shows the same cycle total as the breakdown beside it, so it must not round to its
-    // own answer: ฿1,234.56 in the list and ฿1,235 in the donut is one screen contradicting itself.
+  it('rounds the hole to whole baht — it is a glance figure, not a ledger row', () => {
+    // Deliberate: the exact ฿1,354.56 is on the breakdown beside it. The hole stays short.
     const opt = buildDonutOption([row('a', -1234.56, 1), row('b', -120, 1)], palette);
-    expect(opt.graphic[0].style.text).toBe('฿1,354.56');
+    expect(opt.graphic[0].style.text).toBe('฿1,355');
   });
 
-  it('keeps a whole total plain in the hole', () => {
+  it('never renders the hole with a trailing .00 after rounding', () => {
     const opt = buildDonutOption([row('a', -30, 5), row('b', -20, 2)], palette);
     expect(opt.graphic[0].style.text).toBe('฿50');
   });
