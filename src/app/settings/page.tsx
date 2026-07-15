@@ -42,7 +42,8 @@ const FONT_SCALE_LABELS = {
 async function exportBackup(): Promise<void> {
   try {
     const db = await getBrowserDb();
-    const csv = serializeMonefyCsv(await getEntries(db));
+    const rows = await getEntries(db);
+    const csv = serializeMonefyCsv(rows);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -50,6 +51,10 @@ async function exportBackup(): Promise<void> {
     a.download = `moniflow-${todayIso()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    // States the row count, which the browser's own download chrome can't: a silent success is
+    // indistinguishable from a swallowed failure, and the count is what tells you the file is the
+    // whole ledger and not an empty header. Mirrors the "Restored N entries" toast on the way back in.
+    toast(`Exported ${rows.length} entries`);
   } catch {
     toast.error("Couldn't export a backup — try again");
   }
@@ -73,6 +78,9 @@ async function exportCatalog(): Promise<void> {
     a.download = `moniflow-catalog-${todayIso()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    // Counts both, since this file carries two independent lists and "exported" alone wouldn't say
+    // whether either was empty. Mirrors "Categories & accounts restored" on the way back in.
+    toast(`Exported ${categories.length} categories & ${accounts.length} accounts`);
   } catch {
     toast.error("Couldn't export categories & accounts — try again");
   }
