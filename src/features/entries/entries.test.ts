@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable, entries } from './schema';
-import { addEntries, getEntries, getNetFlow } from './queries';
+import { addEntries, getEntries } from './queries';
 
 // Proves the feature is wired end-to-end through its public API: connection → table bootstrap →
 // insert → typed read → signed net. Also exercises the @db/client path alias at runtime.
@@ -15,8 +15,12 @@ describe('entries feature (in-memory)', () => {
       { date: '2026-07-02', account: 'cash', category: 'rent', amount: -12000 },
     ]);
 
-    expect(await getEntries(db)).toHaveLength(2);
-    expect(await getNetFlow(db)).toBe(38000);
+    const rows = await getEntries(db);
+    expect(rows).toHaveLength(2);
+    // Sums here rather than through a getNetFlow query: netting the whole table was only ever the
+    // CLI's `summary` command, and it went with the CLI. The assertion still earns its place —
+    // it proves the sign survives the round-trip, which is what the +/- fixture above is for.
+    expect(rows.reduce((sum, r) => sum + r.amount, 0)).toBe(38000);
   });
 
   it('stores original currency + amount alongside the THB amount', async () => {

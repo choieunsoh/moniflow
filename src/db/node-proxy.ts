@@ -2,8 +2,8 @@ import Database from 'better-sqlite3';
 import { drizzle, type SqliteRemoteDatabase } from 'drizzle-orm/sqlite-proxy';
 
 // Node-side backend for the async sqlite-proxy driver: an in-memory better-sqlite3 database. Used by
-// Vitest and the CLI so tests exercise the SAME async driver + row shaping the browser worker
-// (src/db/worker.ts) runs. Keep the row shaping identical across both backends.
+// Vitest ONLY — nothing that ships reaches it — so tests exercise the SAME async driver + row shaping
+// the browser worker (src/db/worker.ts) runs. Keep the row shaping identical across both backends.
 export function makeNodeProxyDb(): SqliteRemoteDatabase<Record<string, never>> {
   const raw = new Database(':memory:');
   raw.pragma('journal_mode = WAL');

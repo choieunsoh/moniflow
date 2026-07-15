@@ -77,12 +77,6 @@ export async function getEntries(db: Db): Promise<EntryRow[]> {
   return await entryRowsQuery(db).all();
 }
 
-// ponytail: nets in JS over the full table — fine at scaffold scale. Upgrade to SQL aggregates
-// (sum/count) if the ledger grows past what's cheap to load.
-export async function getNetFlow(db: Db): Promise<number> {
-  return (await getEntries(db)).reduce((sum, r) => sum + r.amount, 0);
-}
-
 export type Summary = { net: number; inflow: number; outflow: number; count: number };
 
 // Cycle rollup figures. inflow/outflow are split by sign; the home page uses only `count` today
@@ -99,28 +93,16 @@ function summarize(rows: EntryRow[]): Summary {
   );
 }
 
-// Replace the imported ledger from an immutable Monefy export, leaving hand-entered ('manual')
-// rows untouched — only 'monefy'-sourced rows are cleared. Chunked inside a transaction: a single
-// insert of the ~10.7k-row export exceeds SQLite's bound-variable cap, and delete + inserts must
-// be atomic so a failure can't leave a half ledger.
-export async function replaceEntries(db: Db, rows: EntryInput[]): Promise<void> {
-  const chunkSize = 500; // stays under SQLite's bound-variable cap
-  const resolved = await toRows(db, rows);
-  const inserts = [];
-  for (let i = 0; i < resolved.length; i += chunkSize)
-    inserts.push(db.insert(entries).values(resolved.slice(i, i + chunkSize)));
-  // ponytail: name->id creation ran in toRows (above), outside this batch; the delete+inserts stay
-  // atomic. First element (delete) makes the array a non-empty tuple for db.batch.
-  await db.batch([db.delete(entries).where(eq(entries.source, 'monefy')), ...inserts]);
-}
-
-// True replace-all restore from a full backup: clears EVERY entry (all sources), then inserts the
-// backup rows — atomic, chunked like replaceEntries. Distinct from replaceEntries (which clears only
-// source='monefy' rows): a full restore must not leave old manual rows behind, or they'd duplicate the
-// ones already present in the backup file. Only entries are touched — budgets and category metadata
-// survive, so restoring the ledger never nukes standing config.
+// Replace-all restore from a full backup: clears EVERY entry, then inserts the backup rows. Chunked
+// inside one batch — a single insert of a ~10.7k-row export exceeds SQLite's 32,766 bound-variable
+// cap, and the delete + inserts must be atomic so a failure can't leave a half ledger. Only entries
+// are touched — budgets and category metadata survive, so restoring the ledger never nukes standing
+// config.
+//
+// ponytail: name->id creation runs in toRows (above), outside this batch; the delete+inserts stay
+// atomic. First element (delete) makes the array a non-empty tuple for db.batch.
 export async function restoreEntries(db: Db, rows: EntryInput[]): Promise<void> {
-  const chunkSize = 500;
+  const chunkSize = 500; // stays under SQLite's bound-variable cap
   const resolved = await toRows(db, rows);
   const inserts = [];
   for (let i = 0; i < resolved.length; i += chunkSize)

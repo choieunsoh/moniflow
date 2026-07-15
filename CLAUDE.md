@@ -17,8 +17,8 @@ is negative.
 Scaffolded from the `portfolio-dashboard` stack.
 
 - **Stack — data layer:** Node 24 (nvm) · TypeScript 5.9 strict (ESM; `module: esnext` +
-  `moduleResolution: bundler`, extensionless relative imports) · tsx · better-sqlite3 +
-  drizzle-orm (storage/ORM) · drizzle-kit (migrations) · commander (CLI) · Vitest.
+  `moduleResolution: bundler`, extensionless relative imports) · better-sqlite3 (tests only) +
+  drizzle-orm (storage/ORM) · drizzle-kit (migrations) · Vitest.
 - **Stack — web layer:** Next.js 16 App Router · React 19 · Tailwind CSS v4 · ECharts 6 ·
   Phosphor / Lucide (switchable category icon sets). Server Components read SQLite **directly** via
   the query module — no API layer; **mutations go through Server Actions** (`'use server'`
@@ -29,7 +29,6 @@ Scaffolded from the `portfolio-dashboard` stack.
 ## Commands
 
 ```bash
-npm run dev             # commander CLI entrypoint (tsx src/cli.ts) — e.g. `npm run dev -- summary`
 npm run dev:web         # Next.js dev server (127.0.0.1:4010, Turbopack)
 npm run build:web       # next build — production web build
 npm run typecheck       # tsc --noEmit (strict)
@@ -89,10 +88,9 @@ src/
 │   ├── budgets/            # standing per-category monthly limits
 │   ├── categories/         # category display meta (emoji + hue) and the icon-set system
 │   └── settings/           # key-value store: billing cutoff day, icon set
-├── shared/
-│   ├── ui/                 # cross-feature shell: PageContainer, AppHeader, BottomBar, MoreSheet…
-│   ├── money.ts, date.ts   # (@shared) THB Intl formatter, Bangkok-tz date helpers
-└── cli.ts                  # commander composition root — summary / seed / import <csv>
+└── shared/
+    ├── ui/                 # cross-feature shell: PageContainer, AppHeader, BottomBar, MoreSheet…
+    └── money.ts, date.ts   # (@shared) THB Intl formatter, Bangkok-tz date helpers
 ```
 
 Each feature's `schema.ts` is its drizzle table + `ensure<Table>Table(db)` bootstrap; `queries.ts`

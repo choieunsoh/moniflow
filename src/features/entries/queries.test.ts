@@ -7,7 +7,6 @@ import { ensureAccountsTable } from '@features/accounts/schema';
 import {
   addEntries,
   getEntries,
-  replaceEntries,
   restoreEntries,
   getCycleSummary,
   getCategoryBreakdown,
@@ -55,50 +54,6 @@ describe('entries read rows carry the joined category name', () => {
   });
 });
 
-describe('replaceEntries', () => {
-  it('replaces monefy-sourced rows but keeps hand-entered (manual) ones', async () => {
-    const d = await db();
-    await addEntries(d, [
-      { date: '2020-01-01', account: 'a', category: 'imported-old', amount: -1, source: 'monefy' },
-      { date: '2026-07-01', account: 'me', category: 'hand-entered', amount: -9, source: 'manual' },
-    ]);
-    await replaceEntries(d, [
-      { date: '2026-07-02', account: 'b', category: 'imported-new', amount: -2, source: 'monefy' },
-    ]);
-    const cats = (await getEntries(d)).map((r) => r.category).sort();
-    expect(cats).toEqual(['hand-entered', 'imported-new']); // old monefy gone, manual kept, new added
-  });
-
-  it('with no rows, clears monefy rows but leaves manual ones', async () => {
-    const d = await db();
-    await addEntries(d, [
-      { date: '2020-01-01', account: 'a', category: 'imported', amount: -1, source: 'monefy' },
-      { date: '2026-07-01', account: 'me', category: 'manual', amount: -9, source: 'manual' },
-    ]);
-    await replaceEntries(d, []);
-    expect((await getEntries(d)).map((r) => r.category)).toEqual(['manual']);
-  });
-
-  // 5000 rows × 7 bound columns = 35,000 params — over SQLite's 32,766 variable cap. This size is
-  // deliberate: a single-batch insert (the pre-fix bug) throws "too many SQL variables" here, so
-  // reverting the chunking would fail this test. A smaller set would pass either way and guard
-  // nothing.
-  it('inserts a set larger than the SQLite variable cap in one call', async () => {
-    const d = await db();
-    const many = Array.from({ length: 5000 }, () => ({
-      date: '2026-07-01',
-      account: 'visa',
-      category: 'food',
-      amount: -1,
-      currency: 'THB',
-      originalAmount: -1,
-      note: null,
-    }));
-    await replaceEntries(d, many);
-    expect(await getEntries(d)).toHaveLength(5000);
-  });
-});
-
 describe('restoreEntries', () => {
   it('clears every entry (both sources) then inserts the backup set', async () => {
     const d = await db();
@@ -129,9 +84,10 @@ describe('restoreEntries', () => {
     expect(await getEntries(d)).toHaveLength(0);
   });
 
-  // Mirrors replaceEntries' large-batch guard: 5000 rows × bound columns exceeds SQLite's 32,766
-  // variable cap, so a single-batch insert throws "too many SQL variables". restoreEntries is the
-  // path most likely to load a full multi-year history, so its chunking gets the same guard.
+  // 5000 rows × 7 bound columns = 35,000 params — over SQLite's 32,766 variable cap, so a
+  // single-batch insert (the pre-fix bug) throws "too many SQL variables". The size is deliberate:
+  // reverting the chunking must fail this test, and a smaller set would pass either way and guard
+  // nothing. restoreEntries loads a full multi-year history, so it's the path that needs the guard.
   it('inserts a set larger than the SQLite variable cap in one call', async () => {
     const d = await db();
     const many = Array.from({ length: 5000 }, () => ({
