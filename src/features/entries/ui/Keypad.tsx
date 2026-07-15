@@ -161,17 +161,13 @@ export function Keypad({
 
       {/* Amount + inputs + keypad */}
       <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
-        {/* × · date — then currency · account pushed right (ml-auto on the currency chip). This one
+        {/* date — then currency · account · × pushed right (ml-auto on the currency chip). This one
             row is also the page's chrome: it carries the close control, which is what lets the route
             drop its "Add expense" title block entirely and start the keypad ~90px higher. The × only
             renders on this view — the inner steps have their own "‹ Back", and two back-ish controls
             on one screen would be ambiguous. The account is the only chip that can run long, so it
             alone shrinks (min-w-0 → truncate) once the slack is spent. */}
         <div className="flex items-center gap-2">
-          {/* mr-1 buys a little more than the gap alone: × discards a keyed amount, so it should not
-              sit a thumb's width from the date chip. */}
-          <CloseButton className="mr-1 -ml-1" />
-
           {/* Date chip → the native picker. One control that always states the date it will save:
               "Today" is simply the human name for today's, so no second reset button is needed. */}
           <span className="relative inline-flex shrink-0">
@@ -232,6 +228,14 @@ export function Keypad({
               ▾
             </span>
           </button>
+
+          {/* × closes the flow, and sits where a dismiss belongs: the right edge, exactly where it sat
+              when this was a page header. A back chevron would go top-left, but this isn't one (see
+              CloseButton) — putting an × there would borrow the back button's position for a glyph
+              that doesn't mean back. Every other × in the app right-aligns too (search clear, budget
+              clear). ml-1 buys a little over the gap: × discards a keyed amount, so it shouldn't sit a
+              thumb's width from the account chip. */}
+          <CloseButton className="-mr-1 ml-1" />
         </div>
 
         <div className="panel flex flex-col items-end gap-1 px-5 py-4">
