@@ -1,7 +1,7 @@
 'use client';
 
-import { getBrowserDb } from '@db/browser';
 import { useSettings } from '@features/settings/use-settings';
+import { useBackupData } from '@features/settings/use-backup-data';
 import { ICON_SETS, FONT_SCALES } from '@features/settings/queries';
 import {
   setCutoffAction,
@@ -12,11 +12,6 @@ import {
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
 import { ImportCatalog } from '@features/settings/ui/ImportCatalog';
-import { getEntries } from '@features/entries/queries';
-import { serializeMonefyCsv } from '@features/entries/import';
-import { getCategoryCatalog } from '@features/categories/queries';
-import { getAccountCatalog } from '@features/accounts/queries';
-import { serializeCatalogJson } from '@features/settings/catalog';
 import { todayIso } from '@shared/date';
 import { saveFile } from '@shared/save-file';
 import { toast } from '@shared/ui/toast';
@@ -36,51 +31,30 @@ const FONT_SCALE_LABELS = {
   xl: 'Extra Large',
 } as const;
 
-// A static-export app has no GET route handler, so the CSV backup export moves to the client: read
-// the ledger from the browser OPFS db, serialize it (the same Monefy-CSV serializer the old
-// /settings/backup/export route used), then hand the file to saveFile — the OS share sheet where
-// there is one (Drive, Gmail…), a download otherwise. Mirrors ImportBackup's read-in-the-browser
-// approach for the restore side.
-async function exportBackup(): Promise<void> {
+// A static-export app has no GET route handler, so both backup exports happen in the client: the
+// files are serialized on mount by useBackupData, and the tap only hands one to saveFile — the OS
+// share sheet where there is one (Drive, Gmail…), a download otherwise.
+//
+// Nothing is awaited before saveFile ON PURPOSE. navigator.share() must be reached while the tap's
+// transient user activation is still live; awaiting the OPFS read here (which is what this used to
+// do) makes Android Chrome reject the sheet with NotAllowedError, and the export silently fell back
+// to a download. Keep these handlers synchronous up to the saveFile call.
+async function exportFile(name: string, type: string, text: string, done: string): Promise<void> {
   try {
-    const db = await getBrowserDb();
-    const rows = await getEntries(db);
-    await saveFile(
-      `moniflow-${todayIso()}.csv`,
-      'text/csv;charset=utf-8',
-      serializeMonefyCsv(rows),
-    );
-    // States the row count, which the browser's own download chrome can't: a silent success is
+    await saveFile(name, type, text);
+    // States the count, which the browser's own download chrome can't: a silent success is
     // indistinguishable from a swallowed failure, and the count is what tells you the file is the
     // whole ledger and not an empty header. Mirrors the "Restored N entries" toast on the way back in.
-    toast(`Exported ${rows.length} entries`);
+    toast(done);
   } catch {
-    toast.error("Couldn't export a backup — try again");
-  }
-}
-
-// The category emoji/hue/order and account icon/hue/order don't round-trip through the Monefy CSV
-// (it only knows entry rows), so this is a second, supplementary JSON export/restore covering just
-// that display metadata.
-async function exportCatalog(): Promise<void> {
-  try {
-    const db = await getBrowserDb();
-    const [categories, accounts] = await Promise.all([
-      getCategoryCatalog(db),
-      getAccountCatalog(db),
-    ]);
-    const json = serializeCatalogJson({ version: 1, categories, accounts });
-    await saveFile(`moniflow-catalog-${todayIso()}.json`, 'application/json', json);
-    // Counts both, since this file carries two independent lists and "exported" alone wouldn't say
-    // whether either was empty. Mirrors "Categories & accounts restored" on the way back in.
-    toast(`Exported ${categories.length} categories & ${accounts.length} accounts`);
-  } catch {
-    toast.error("Couldn't export categories & accounts — try again");
+    toast.error("Couldn't export — try again");
   }
 }
 
 export default function SettingsPage() {
   const { ready, data } = useSettings();
+  // Serialized ahead of the tap so the export handlers can reach navigator.share synchronously.
+  const { ready: backupReady, data: backup } = useBackupData();
 
   if (!ready || data === null) {
     return (
@@ -232,8 +206,15 @@ export default function SettingsPage() {
         <button
           type="button"
           className="btn btn-ghost w-fit"
+          disabled={!backupReady || backup === null}
           onClick={() => {
-            void exportBackup();
+            if (backup === null) return;
+            void exportFile(
+              `moniflow-${todayIso()}.csv`,
+              'text/csv;charset=utf-8',
+              backup.csv,
+              `Exported ${backup.entryCount} entries`,
+            );
           }}
         >
           Export CSV
@@ -242,8 +223,15 @@ export default function SettingsPage() {
         <button
           type="button"
           className="btn btn-ghost w-fit"
+          disabled={!backupReady || backup === null}
           onClick={() => {
-            void exportCatalog();
+            if (backup === null) return;
+            void exportFile(
+              `moniflow-catalog-${todayIso()}.json`,
+              'application/json',
+              backup.catalogJson,
+              `Exported ${backup.categoryCount} categories & ${backup.accountCount} accounts`,
+            );
           }}
         >
           Export categories &amp; accounts
