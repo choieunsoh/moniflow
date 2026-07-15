@@ -199,8 +199,8 @@ export default function SettingsPage() {
           Export the whole ledger to a Monefy-compatible CSV, or restore it from one. On a phone the
           CSV opens the share sheet, so a backup can go straight to Drive; elsewhere it downloads.
           Restoring replaces every current entry. The CSV can&apos;t carry category/account emoji,
-          icon, hue, or order — export those separately below (that one always downloads; Chrome
-          won&apos;t put a .json in the share sheet) and restore is a non-destructive merge.
+          icon, hue, or order — export those separately below (a .txt, because Chrome only shares
+          certain file types; it&apos;s still JSON inside) and restore is a non-destructive merge.
         </p>
         <button
           type="button"

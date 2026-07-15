@@ -29,9 +29,12 @@ export type BackupData = {
 // nothing anyway: a download writes the same bytes without it.
 const CSV_MIME = 'text/csv';
 
-// .json is not on Chromium's allowlist at all — extension or MIME — so the catalog can never ride
-// the share sheet and always falls back to a download. Left honest rather than disguised as .txt.
-const CATALOG_MIME = 'application/json';
+// The catalog is JSON but ships as .txt/text/plain, because Chromium's allowlist has no JSON entry —
+// neither '.json' nor 'application/json' — so a .json share is refused outright (NotAllowedError) and
+// only ever downloads. '.txt' + 'text/plain' are both permitted, and the bytes are identical JSON, so
+// the extension is the only thing that changes. Restore reads the content, not the name, and its
+// picker accepts both — a .json exported before this still restores.
+const CATALOG_MIME = 'text/plain';
 
 // Both backup files, serialized up front rather than on the Export tap.
 //
@@ -65,7 +68,7 @@ export function useBackupData(): { ready: boolean; data: BackupData | null } {
         csv: { name: `moniflow-${day}.csv`, type: CSV_MIME, text: serializeMonefyCsv(rows) },
         entryCount: rows.length,
         catalog: {
-          name: `moniflow-catalog-${day}.json`,
+          name: `moniflow-catalog-${day}.txt`,
           type: CATALOG_MIME,
           text: serializeCatalogJson({ version: 1, categories, accounts }),
         },
