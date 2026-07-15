@@ -5,7 +5,6 @@ import {
   FALLBACK_ICON,
   addAccount,
   accountIdFor,
-  listAccounts,
   getAccountIconMap,
   iconForAccount,
   setAccountIcon,
@@ -24,12 +23,20 @@ async function db() {
   return d;
 }
 
+// "Which accounts exist", via the catalog read that actually ships. There used to be a listAccounts
+// query for this, but it was a strict subset of getAccountCatalog (same table, same alphabetical
+// order, fewer columns) that nothing outside these tests ever called — so the assertions moved onto
+// the live query rather than keeping a parallel one alive for the test's benefit.
+async function accountNames(d: Awaited<ReturnType<typeof db>>): Promise<string[]> {
+  return (await getAccountCatalog(d)).map((r) => r.name);
+}
+
 describe('accounts queries', () => {
   it('addAccount creates a row with the fallback icon and no-ops on a dup', async () => {
     const d = await db();
     await addAccount(d, 'Cash');
     await addAccount(d, 'Cash');
-    expect(await listAccounts(d)).toEqual(['Cash']);
+    expect(await accountNames(d)).toEqual(['Cash']);
     expect(iconForAccount(await getAccountIconMap(d), 'Cash')).toBe(FALLBACK_ICON);
   });
 
@@ -38,7 +45,7 @@ describe('accounts queries', () => {
     const first = await accountIdFor(d, 'Bank');
     const again = await accountIdFor(d, 'Bank');
     expect(first).toBe(again);
-    expect(await listAccounts(d)).toEqual(['Bank']);
+    expect(await accountNames(d)).toEqual(['Bank']);
   });
 
   it('setAccountIcon upserts the icon key', async () => {
@@ -57,11 +64,13 @@ describe('accounts queries', () => {
     expect(hueForAccount(await getAccountHueMap(d), 'Visa')).toBeUndefined();
   });
 
-  it('listAccounts is alphabetical', async () => {
+  // Inherited from the retired listAccounts test. getAccountCatalog orders by name and had no guard
+  // of its own, so the assertion is worth more here than it was there.
+  it('getAccountCatalog is alphabetical, not insertion-ordered', async () => {
     const d = await db();
     await addAccount(d, 'Cash');
     await addAccount(d, 'Bank');
-    expect(await listAccounts(d)).toEqual(['Bank', 'Cash']);
+    expect(await accountNames(d)).toEqual(['Bank', 'Cash']);
   });
 });
 
