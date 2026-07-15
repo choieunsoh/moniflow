@@ -1,3 +1,36 @@
+export const OPS = '+−×÷';
+
+// The most decimals a keyed figure may carry. Satang is the smallest THB unit, and every supported
+// foreign currency is 2-decimal or coarser (JPY/KRW have none), so 2 is the floor for all of them.
+const MAX_DECIMALS = 2;
+
+// The digits of the number currently being keyed — i.e. after the last operator.
+function currentSegment(expr: string): string {
+  return expr.split(/[+−×÷]/).pop() ?? '';
+}
+
+// Advance the amount expression by one key press, with light guards (no leading operator, no double
+// operator, one decimal point per number, at most 2 decimals). Arithmetic itself is `evaluate`.
+// Lives here rather than in the Keypad component so the guards are unit-testable without mounting it.
+export function nextExpr(prev: string, key: string): string {
+  if (key === '⌫') return prev.slice(0, -1);
+  const last = prev.slice(-1);
+  if (OPS.includes(key)) {
+    if (prev === '') return prev;
+    return OPS.includes(last) ? prev.slice(0, -1) + key : prev + key;
+  }
+  if (key === '.') {
+    if (currentSegment(prev).includes('.')) return prev;
+    return prev === '' || OPS.includes(last) ? prev + '0.' : prev + '.';
+  }
+  // digit — refuse it once this number already has its 2 decimals, so the keypad can't key in
+  // precision the ledger would then round away when it renders.
+  const segment = currentSegment(prev);
+  const dot = segment.indexOf('.');
+  if (dot !== -1 && segment.length - dot - 1 >= MAX_DECIMALS) return prev;
+  return prev + key;
+}
+
 // A tiny, safe arithmetic evaluator for the entry keypad — supports + − × ÷ over decimals with the
 // usual ×/÷ before +/− precedence, left-to-right. No eval / Function. Returns null for empty or
 // malformed input and for division by zero, so callers can gate submission on a real number.

@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { formatBaht, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
-import { evaluate } from '../calc';
+import { evaluate, nextExpr, OPS } from '../calc';
 import { toThb } from '../fx';
 import { isCurrency } from '../entry-form';
 import type { Currency } from '../entry-form';
@@ -18,7 +18,6 @@ export type KeypadCategory = { name: string; emoji: string; hue?: number };
 export type KeypadAccount = { name: string; icon: string; hue?: number };
 export type KeypadCurrency = { code: Currency; symbol: string };
 
-const OPS = '+−×÷';
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'];
 
 // The editable FX rate is shown to 4 decimals (enough for every supported currency; the smallest,
@@ -64,23 +63,6 @@ function CalendarIcon() {
       />
     </svg>
   );
-}
-
-// Advance the amount expression by one key press, with light guards (no leading operator, no double
-// operator, one decimal point per number). Arithmetic itself is evaluated by ../calc.
-function nextExpr(prev: string, key: string): string {
-  if (key === '⌫') return prev.slice(0, -1);
-  const last = prev.slice(-1);
-  if (OPS.includes(key)) {
-    if (prev === '') return prev;
-    return OPS.includes(last) ? prev.slice(0, -1) + key : prev + key;
-  }
-  if (key === '.') {
-    const segment = prev.split(/[+−×÷]/).pop() ?? '';
-    if (segment.includes('.')) return prev;
-    return prev === '' || OPS.includes(last) ? prev + '0.' : prev + '.';
-  }
-  return prev + key; // digit
 }
 
 // Monefy-style expense entry: a calculator keypad for the amount, then a category grid that submits.
