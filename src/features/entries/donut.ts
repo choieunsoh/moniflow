@@ -1,3 +1,4 @@
+import { formatBahtWhole } from '@shared/money';
 import type { Breakdown } from './queries';
 
 // Calm, non-semantic categorical palette for the spending donut. Deliberately avoids the gain-green
@@ -59,10 +60,6 @@ export type DonutPalette = {
   font: string;
 };
 
-function baht(v: number): string {
-  return `฿${new Intl.NumberFormat('en-US').format(Math.round(v))}`;
-}
-
 // Returns a plain ECharts option: a doughnut of spending-by-category with the total spent rendered in
 // the hole (two graphic texts, since a canvas center label can't be a CSS-styled element). The label
 // line carries the transaction count too — "62 · Spent" — summed from the slices (incl. Other).
@@ -78,14 +75,19 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
       borderColor: p.border,
       borderWidth: 1,
       textStyle: { color: p.text, fontFamily: 'inherit' },
-      valueFormatter: (v: number) => baht(v),
+      valueFormatter: (v: number) => formatBahtWhole(v),
     },
     graphic: [
       {
         type: 'text',
         left: 'center',
         top: '42%',
-        style: { text: baht(total), fill: p.text, font: `600 24px ${p.font}`, textAlign: 'center' },
+        style: {
+          text: formatBahtWhole(total),
+          fill: p.text,
+          font: `600 24px ${p.font}`,
+          textAlign: 'center',
+        },
       },
       {
         type: 'text',

@@ -1,10 +1,14 @@
-import { formatBaht } from '@shared/money';
+import { formatBahtWhole } from '@shared/money';
 import { meterColorVar, type BudgetTotal } from '../budget-status';
 
 // Shared budget progress meter: a bar filled to `pct` in the state color, with a caption on the
 // right — "over ฿600" when past the limit, else the percent used. Renders ONLY the bar + caption;
 // the caller renders its own header/label line (category row vs. total) above it. Pure and
 // server-renderable — no client state.
+//
+// The caption rounds (formatBahtWhole): this meter is a home-page glance figure, like the donut hole
+// it sits under. "over ฿600" answers how bad, not by exactly how much — the ledger surfaces state
+// their satang. Only the home page mounts this (directly and via Breakdown).
 //
 // `pacePct` (0–100, time elapsed in the cycle) draws a "today" tick on the track: fill left of the
 // tick = spending under pace, past it = over pace. Passed only for the current cycle (undefined on a
@@ -13,7 +17,7 @@ import { meterColorVar, type BudgetTotal } from '../budget-status';
 export function BudgetMeter({ status, pacePct }: { status: BudgetTotal; pacePct?: number }) {
   const caption =
     status.state === 'over'
-      ? `over ${formatBaht(Math.abs(status.remaining))}`
+      ? `over ${formatBahtWhole(Math.abs(status.remaining))}`
       : `${Math.round(status.pct)}%`;
   const fill = meterColorVar(status.state);
   return (

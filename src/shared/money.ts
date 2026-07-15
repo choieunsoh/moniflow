@@ -1,21 +1,61 @@
 // Cross-feature THB formatter. Lives in @shared because money rendering is not owned by any one
-// feature. narrowSymbol → ฿ (not the default "THB " prefix); no fraction digits for ledger sums.
+// feature. narrowSymbol → ฿ (not the default "THB " prefix).
+//
+// Money always states its satang: ฿228.00, never ฿228. `amount` is a real column and the keypad
+// stores what you key in, so rounding ฿1,234.56 to ฿1,235 here made every THB surface disagree with
+// the ledger it reads from (the foreign formatter below never did — Intl gives THB 2 digits by
+// default). The two digits are unconditional so a column of amounts shares one shape and the decimal
+// points line up under .tnum; Intl rounds to them itself, which also absorbs the IEEE-754 drift that
+// summed reals carry (1234.56 + 120 → 1354.5600000000002 → ฿1,354.56).
 const baht = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'THB',
   currencyDisplay: 'narrowSymbol',
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 export function formatBaht(amount: number): string {
   return baht.format(amount);
 }
 
+// Whole-baht THB, for glance figures that would rather be short than exact — the donut hole, where
+// ฿1,355 beats ฿1,354.56 as the biggest number on the page and the ranked breakdown beside it
+// carries the precise total. Not for ledger rows: those state their satang via formatBaht.
+const bahtWhole = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'THB',
+  currencyDisplay: 'narrowSymbol',
+  maximumFractionDigits: 0,
+});
+
+export function formatBahtWhole(amount: number): string {
+  return bahtWhole.format(amount);
+}
+
+// THB as keyed, for the keypad's amount: it echoes the figure you typed rather than restating it as
+// a ledger row, so ฿123 stays ฿123 and ฿123.1 stays ฿123.1. Padding an input to ฿123.10 puts digits
+// on screen the user didn't type — and a 0 that appears under the cursor by itself reads like the
+// keypad took a keystroke it didn't. Grouping and the 2-decimal cap still apply; the entry becomes a
+// ledger figure (฿123.10) once it's saved and Records renders it via formatBaht.
+const bahtKeyed = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'THB',
+  currencyDisplay: 'narrowSymbol',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+export function formatBahtKeyed(amount: number): string {
+  return bahtKeyed.format(amount);
+}
+
 // Signed for the ledger: an explicit +/− (U+2212 true minus) so gain/loss reads without relying
-// on color alone — the sign survives grayscale and color blindness.
+// on color alone — the sign survives grayscale and color blindness. Formats through formatBaht so
+// the ledger's signed figures carry satang exactly like every unsigned one.
 export function formatSignedBaht(amount: number): string {
   const sign = amount > 0 ? '+' : amount < 0 ? '−' : '';
-  return `${sign}${baht.format(Math.abs(amount))}`;
+  return `${sign}${formatBaht(Math.abs(amount))}`;
 }
 
 // Per-currency Intl formatter, memoized. narrowSymbol → ¥, ₩, $, €, HK$, £, S$, ฿; Intl picks the

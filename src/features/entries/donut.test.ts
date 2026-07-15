@@ -36,4 +36,15 @@ describe('buildDonutOption', () => {
     const opt = buildDonutOption([row('a', -30, 5), row('b', -20, 2)], palette);
     expect(opt.graphic[1].style.text).toBe('7 · Spent'); // 5 + 2 transactions
   });
+
+  it('rounds the hole to whole baht — it is a glance figure, not a ledger row', () => {
+    // Deliberate: the exact ฿1,354.56 is on the breakdown beside it. The hole stays short.
+    const opt = buildDonutOption([row('a', -1234.56, 1), row('b', -120, 1)], palette);
+    expect(opt.graphic[0].style.text).toBe('฿1,355');
+  });
+
+  it('never renders the hole with a trailing .00 after rounding', () => {
+    const opt = buildDonutOption([row('a', -30, 5), row('b', -20, 2)], palette);
+    expect(opt.graphic[0].style.text).toBe('฿50');
+  });
 });

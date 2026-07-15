@@ -6,7 +6,7 @@ import { PageContainer } from '@shared/ui/PageContainer';
 import { useHome } from '@features/entries/use-home';
 import { pacePhrase } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
-import { formatBaht } from '@shared/money';
+import { formatBahtWhole } from '@shared/money';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
 import { CategoryEditTrigger } from '@features/categories/ui/CategoryPicker';
@@ -92,7 +92,7 @@ export default function HomePage() {
                     <div className="flex items-baseline justify-between text-sm">
                       <span style={{ color: 'var(--color-muted)' }}>Total budget</span>
                       <span className="tnum" style={{ color: 'var(--color-text)' }}>
-                        {formatBaht(total)} / {formatBaht(totalStatus.limit ?? 0)}
+                        {formatBahtWhole(total)} / {formatBahtWhole(totalStatus.limit ?? 0)}
                       </span>
                     </div>
                     <BudgetMeter status={totalStatus} pacePct={pacePct} />
@@ -152,7 +152,7 @@ export default function HomePage() {
                               </span>
                             </span>
                             <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                              {formatBaht(s.value)}
+                              {formatBahtWhole(s.value)}
                             </span>
                             <span
                               className="tnum w-9 shrink-0 text-right"

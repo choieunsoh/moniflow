@@ -37,7 +37,8 @@ export function useAccountsPage(): { ready: boolean; data: AccountsPageData | nu
 
   useEffect(() => {
     void (async () => {
-      setReady(false);
+      // No setReady(false) on refetch — see use-categories-page: it unmounted the page (and with it
+      // the open reorder sheet) on every version bump. `ready` means "loaded once", not "not stale".
       const db = await getBrowserDb();
       const [counts, iconMap, hueMap, cutoff, keypadAccounts] = await Promise.all([
         getAccountCounts(db),

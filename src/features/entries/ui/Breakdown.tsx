@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { formatBaht } from '@shared/money';
+import { formatBahtWhole } from '@shared/money';
 import { toBars } from '../breakdown';
 import type { Breakdown as BreakdownRow } from '../queries';
 import { emojiFor, hueFor } from '@features/categories/queries';
@@ -67,8 +67,8 @@ export function Breakdown({
                   </span>
                   <span className="tnum" style={{ color: 'var(--color-text)' }}>
                     {status
-                      ? `${formatBaht(spent)} / ${formatBaht(status.limit ?? 0)}`
-                      : formatBaht(spent)}
+                      ? `${formatBahtWhole(spent)} / ${formatBahtWhole(status.limit ?? 0)}`
+                      : formatBahtWhole(spent)}
                   </span>
                 </div>
                 {status ? (

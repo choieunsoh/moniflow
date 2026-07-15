@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { formatBaht, formatCurrency } from '@shared/money';
+import { formatBahtKeyed, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
-import { evaluate } from '../calc';
+import { evaluate, nextExpr, OPS } from '../calc';
 import { toThb } from '../fx';
 import { isCurrency } from '../entry-form';
 import type { Currency } from '../entry-form';
@@ -18,7 +18,6 @@ export type KeypadCategory = { name: string; emoji: string; hue?: number };
 export type KeypadAccount = { name: string; icon: string; hue?: number };
 export type KeypadCurrency = { code: Currency; symbol: string };
 
-const OPS = '+−×÷';
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'];
 
 // The editable FX rate is shown to 4 decimals (enough for every supported currency; the smallest,
@@ -32,9 +31,6 @@ function formatRate(rate: number): string {
   return rateFmt.format(rate);
 }
 
-const pillClass =
-  'tap shrink-0 justify-center rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors';
-
 function chipStyle(selected: boolean): React.CSSProperties {
   return selected
     ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
@@ -45,30 +41,8 @@ function chipStyle(selected: boolean): React.CSSProperties {
       };
 }
 
-function Chip({
-  selected,
-  onClick,
-  children,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`${pillClass} active:opacity-70`}
-      style={chipStyle(selected)}
-    >
-      {children}
-    </button>
-  );
-}
-
-// A small calendar glyph for the date chip when it's on "Today" (no custom date picked yet). Inline
-// SVG in the app's chrome-icon house style (cf. BottomBar) — stroke inherits the chip's text color.
+// The date chip's leading glyph, marking the chip as the date control whatever label it carries.
+// Inline SVG in the app's chrome-icon house style (cf. BottomBar) — stroke inherits the chip's color.
 function CalendarIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
@@ -91,23 +65,11 @@ function CalendarIcon() {
   );
 }
 
-// Advance the amount expression by one key press, with light guards (no leading operator, no double
-// operator, one decimal point per number). Arithmetic itself is evaluated by ../calc.
-function nextExpr(prev: string, key: string): string {
-  if (key === '⌫') return prev.slice(0, -1);
-  const last = prev.slice(-1);
-  if (OPS.includes(key)) {
-    if (prev === '') return prev;
-    return OPS.includes(last) ? prev.slice(0, -1) + key : prev + key;
-  }
-  if (key === '.') {
-    const segment = prev.split(/[+−×÷]/).pop() ?? '';
-    if (segment.includes('.')) return prev;
-    return prev === '' || OPS.includes(last) ? prev + '0.' : prev + '.';
-  }
-  return prev + key; // digit
-}
-
+// Every ฿ here renders via formatBahtKeyed, not formatBaht: the keypad echoes the figure you keyed
+// (฿123, ฿123.1) instead of restating it as a ledger row (฿123.00, ฿123.10). It becomes a ledger
+// figure the moment it's saved — Records and the rest state their satang. Don't "fix" this back to
+// formatBaht; padding an input with digits the user didn't type is the bug, not the inconsistency.
+//
 // Monefy-style expense entry: a calculator keypad for the amount, then a category grid that submits.
 // Four views (keypad / account / currency / category) toggle via `hidden` inside one always-mounted
 // <form>. The amount you key in is in the selected `currency`; for a non-THB currency the THB value
@@ -194,72 +156,71 @@ export function Keypad({
 
       {/* Amount + inputs + keypad */}
       <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
-        {/* Two logical halves — date controls (left) and currency+account (right). flex-wrap +
-            justify-between keeps them apart on one line but lets the right half drop to a second line
-            when they'd collide (e.g. a long account name at a larger font size), instead of squeezing
-            the account into an over-truncated sliver. Truncation stays as the last-resort fallback. */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Chip selected={date === today} onClick={() => setDate(today)}>
-              Today
-            </Chip>
-            <span className="relative inline-flex shrink-0">
-              <span className={pillClass} style={chipStyle(isCustomDate)}>
-                {isCustomDate ? formatDayHeading(date) : <CalendarIcon />}
-              </span>
-              <input
-                type="date"
-                name="date"
-                value={date}
-                max={today}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v && v <= today) setDate(v);
-                }}
-                onClick={(e) => {
-                  try {
-                    e.currentTarget.showPicker();
-                  } catch {
-                    // no-op: browser without showPicker, or a picker already open
-                  }
-                }}
-                aria-label="Pick another date"
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              />
+        {/* date · currency · account, one row. All three are content-sized peers — three attributes
+            of the entry, not a hierarchy — so justify-between spends the slack on the gaps and pins
+            the row to the panel's edges below. The account is the only one that can run long, so it
+            alone shrinks (min-w-0 → truncate) once the gaps are spent. */}
+        <div className="flex items-center justify-between gap-2">
+          {/* Date chip → the native picker. One control that always states the date it will save:
+              "Today" is simply the human name for today's, so no second reset button is needed. */}
+          <span className="relative inline-flex shrink-0">
+            <span
+              className="tap justify-center gap-1.5 rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors"
+              style={chipStyle(isCustomDate)}
+            >
+              <CalendarIcon />
+              {isCustomDate ? formatDayHeading(date) : 'Today'}
             </span>
-          </div>
+            <input
+              type="date"
+              name="date"
+              value={date}
+              max={today}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v && v <= today) setDate(v);
+              }}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker();
+                } catch {
+                  // no-op: browser without showPicker, or a picker already open
+                }
+              }}
+              aria-label={`Date: ${formatDayHeading(date)}. Pick another date`}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </span>
 
-          <div className="flex min-w-0 items-center gap-2">
-            {/* Currency chip → opens the currency grid. */}
-            <button
-              type="button"
-              onClick={() => setView('currency')}
-              aria-haspopup="true"
-              aria-label={`Currency: ${currency}`}
-              className="tap shrink-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
-              style={chipStyle(!isThb)}
-            >
-              <span className="tnum">
-                {symbol} {currency}
-              </span>
-              <span aria-hidden>▾</span>
-            </button>
+          {/* Currency chip → opens the currency grid. */}
+          <button
+            type="button"
+            onClick={() => setView('currency')}
+            aria-haspopup="true"
+            aria-label={`Currency: ${currency}`}
+            className="tap shrink-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
+            style={chipStyle(!isThb)}
+          >
+            <span className="tnum">
+              {symbol} {currency}
+            </span>
+            <span aria-hidden>▾</span>
+          </button>
 
-            {/* Account chip → opens the account grid. */}
-            <button
-              type="button"
-              onClick={() => setView('account')}
-              aria-haspopup="true"
-              aria-label={`Account: ${account}`}
-              className="tap min-w-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
-              style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
-            >
-              <span className="min-w-0 truncate">{account}</span>
-              <span aria-hidden className="shrink-0">
-                ▾
-              </span>
-            </button>
-          </div>
+          {/* Account chip → opens the account grid. */}
+          <button
+            type="button"
+            onClick={() => setView('account')}
+            aria-haspopup="true"
+            aria-label={`Account: ${account}`}
+            className="tap min-w-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
+            style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
+          >
+            <span className="min-w-0 truncate">{account}</span>
+            <span aria-hidden className="shrink-0">
+              ▾
+            </span>
+          </button>
         </div>
 
         <div className="panel flex flex-col items-end gap-1 px-5 py-4">
@@ -272,7 +233,7 @@ export function Keypad({
             className="tnum text-4xl font-semibold"
             style={{ color: validAmount ? 'var(--color-text)' : 'var(--color-faint)' }}
           >
-            {isThb ? formatBaht(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
+            {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
           </span>
 
           {/* Rate line — only for a non-THB currency. Rate is editable (per-entry override, shown to
@@ -290,7 +251,7 @@ export function Keypad({
                   className="tnum text-[1.75rem] leading-none font-bold"
                   style={{ color: hasRate ? 'var(--color-text)' : 'var(--color-faint)' }}
                 >
-                  {hasRate ? formatBaht(thbValue) : 'no rate'}
+                  {hasRate ? formatBahtKeyed(thbValue) : 'no rate'}
                 </span>
               </div>
 
@@ -353,19 +314,6 @@ export function Keypad({
           </p>
         ) : null}
 
-        {/* Single-line input; Enter is swallowed so it doesn't implicitly submit the form (HTML spec)
-            and save the entry prematurely — use the Add button to save. */}
-        <input
-          name="note"
-          placeholder="Note (optional)"
-          defaultValue={entry?.note ?? ''}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') e.preventDefault();
-          }}
-          className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
-          style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
-        />
-
         <div className="grid grid-cols-4 gap-2">
           {KEYS.map((key) => {
             const isOp = OPS.includes(key);
@@ -386,6 +334,26 @@ export function Keypad({
             );
           })}
         </div>
+
+        {/* The note sits between the keypad and the category step, following the order you fill them
+            in: key the amount, annotate it, then pick the category that saves it. Enter never submits
+            implicitly (HTML spec) — it advances to the category grid, the same as the button below,
+            and blurs first so the on-screen keyboard uncovers the grid it's advancing to. */}
+        <input
+          name="note"
+          placeholder="Note (optional)"
+          defaultValue={entry?.note ?? ''}
+          enterKeyHint="next"
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            if (!canSubmit) return;
+            e.currentTarget.blur();
+            setView('category');
+          }}
+          className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
+          style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
+        />
 
         <button
           type="button"
@@ -503,7 +471,7 @@ export function Keypad({
           >
             ‹ Back
           </button>
-          <span className="tnum text-sm font-semibold">{formatBaht(thbValue)}</span>
+          <span className="tnum text-sm font-semibold">{formatBahtKeyed(thbValue)}</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {categories.map((c) => (

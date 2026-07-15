@@ -1,5 +1,48 @@
 import { describe, expect, it } from 'vitest';
-import { evaluate } from './calc';
+import { evaluate, nextExpr } from './calc';
+
+// Type the whole string one key at a time, the way the keypad feeds it.
+const type = (keys: string): string => [...keys].reduce(nextExpr, '');
+
+describe('nextExpr', () => {
+  it('appends digits and a single decimal point', () => {
+    expect(type('1234.56')).toBe('1234.56');
+    expect(type('.5')).toBe('0.5'); // a leading '.' opens with a zero
+  });
+
+  it('stops at 2 decimals — the ledger renders satang, so it must not take a third', () => {
+    expect(type('1234.567')).toBe('1234.56');
+    expect(type('1.9999')).toBe('1.99');
+  });
+
+  it('counts the decimals of the number being keyed, not the whole expression', () => {
+    // The cap is per-operand: 1.99 is full, but 2.5 after the + still has room.
+    expect(type('1.99+2.5')).toBe('1.99+2.5');
+    expect(type('1.99+2.567')).toBe('1.99+2.56');
+  });
+
+  it('leaves whole numbers alone — the cap only applies past a decimal point', () => {
+    expect(type('123456')).toBe('123456');
+  });
+
+  it('refuses a second decimal point in one number', () => {
+    expect(type('1.2.3')).toBe('1.23');
+  });
+
+  it('never opens with an operator, and replaces a doubled one', () => {
+    expect(type('+')).toBe('');
+    expect(type('1+×')).toBe('1×');
+  });
+
+  it('backspaces the last character', () => {
+    expect(nextExpr('1234.56', '⌫')).toBe('1234.5');
+    expect(nextExpr('', '⌫')).toBe('');
+  });
+
+  it('keys a figure that evaluate() then reads back exactly', () => {
+    expect(evaluate(type('1234.56'))).toBe(1234.56);
+  });
+});
 
 describe('evaluate', () => {
   it('returns null for empty / operator-only input', () => {
