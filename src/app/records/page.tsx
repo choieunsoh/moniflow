@@ -258,7 +258,7 @@ export default function RecordsPage() {
                     emoji={emojiFor(emojiMap, entry.category)}
                     iconSet={iconSet}
                     hue={hueFor(hueMap, entry.category)}
-                    showForeign={tripMode}
+                    foreignLeads={tripMode}
                     // Each row states what its header doesn't: the date under a category/account
                     // header, and the axis the header already names is dropped.
                     dateLabel={

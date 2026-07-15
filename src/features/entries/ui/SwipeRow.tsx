@@ -37,7 +37,7 @@ export function SwipeRow({
   dateLabel,
   hideCategory = false,
   hideAccount = false,
-  showForeign = false,
+  foreignLeads = false,
 }: {
   entry: EntryRow;
   emoji: string;
@@ -50,8 +50,10 @@ export function SwipeRow({
   hideCategory?: boolean;
   // Grouped by account: the account badge would repeat the header on every row.
   hideAccount?: boolean;
-  // Trip view: lead the amount with the foreign original (¥1,200) and keep THB as the muted line.
-  showForeign?: boolean;
+  // Trip view: put the foreign original (¥1,200) on top and THB on the muted line beneath. Off — the
+  // ledger's default — stacks them the other way up, THB leading. Not "show foreign": a foreign row
+  // shows both figures either way, this only picks which one is the headline.
+  foreignLeads?: boolean;
 }) {
   const [side, setSide] = useState<SwipeSide>(0); // resting position
   const [offset, setOffset] = useState(0); // live drag offset while dragging
@@ -139,9 +141,10 @@ export function SwipeRow({
 
   const note = entry.note?.trim();
   const translate = dragging ? offset : side * ACTION_W;
-  // In the trip view, surface the foreign original (magnitude) as the headline figure.
+  // A foreign row always shows both figures — what it cost in THB and what you actually handed over.
+  // Only the emphasis flips (see foreignLeads): the pair is stacked either way.
   const foreign =
-    showForeign && entry.currency && entry.currency !== 'THB' && entry.originalAmount != null
+    entry.currency && entry.currency !== 'THB' && entry.originalAmount != null
       ? { amount: Math.abs(entry.originalAmount), currency: entry.currency }
       : null;
   const baht = entry.amount < 0 ? formatBaht(-entry.amount) : formatSignedBaht(entry.amount);
@@ -273,15 +276,17 @@ export function SwipeRow({
               the rare income row keeps its signed +green so the exception stays honest. In the trip
               view the foreign original leads and THB drops to a muted second line. */}
           {foreign ? (
+            // Both figures, stacked, with the one you think in on top: inside a trip that's the local
+            // currency you're paying in; back in the ledger it's the THB the cycle is denominated in.
             <span className="flex shrink-0 flex-col items-end">
               <span className="tnum font-medium whitespace-nowrap" style={{ color: amountColor }}>
-                {formatForeign(foreign.amount, foreign.currency)}
+                {foreignLeads ? formatForeign(foreign.amount, foreign.currency) : baht}
               </span>
               <span
                 className="tnum text-xs whitespace-nowrap"
                 style={{ color: 'var(--color-muted)' }}
               >
-                {baht}
+                {foreignLeads ? baht : formatForeign(foreign.amount, foreign.currency)}
               </span>
             </span>
           ) : (
