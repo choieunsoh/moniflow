@@ -27,7 +27,11 @@ export function useCategoriesPage(): { ready: boolean; data: CategoriesPageData 
 
   useEffect(() => {
     void (async () => {
-      setReady(false);
+      // Deliberately no setReady(false) here: a version bump refetches, it does not un-load the page.
+      // Dropping back to `ready: false` sent the page through its !ready branch on every mutation,
+      // unmounting the whole tree — which silently closed the reorder sheet (an open <dialog> can't
+      // survive its node being replaced) on the very drop that persisted the order. Keeping the last
+      // data on screen while the refetch runs is also one less flash per rename/delete/add.
       const db = await getBrowserDb();
       const [counts, emojiMap, hueMap, iconSet, keypadCategories] = await Promise.all([
         getCategoryCounts(db),
