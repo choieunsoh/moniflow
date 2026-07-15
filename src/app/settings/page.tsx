@@ -18,6 +18,7 @@ import { getCategoryCatalog } from '@features/categories/queries';
 import { getAccountCatalog } from '@features/accounts/queries';
 import { serializeCatalogJson } from '@features/settings/catalog';
 import { todayIso } from '@shared/date';
+import { saveFile } from '@shared/save-file';
 import { toast } from '@shared/ui/toast';
 import { withSaveToast } from '@shared/ui/with-save-toast';
 import { PageContainer } from '@shared/ui/PageContainer';
@@ -37,20 +38,18 @@ const FONT_SCALE_LABELS = {
 
 // A static-export app has no GET route handler, so the CSV backup export moves to the client: read
 // the ledger from the browser OPFS db, serialize it (the same Monefy-CSV serializer the old
-// /settings/backup/export route used), then trigger a download via a throwaway <a download>. Mirrors
-// ImportBackup's read-in-the-browser approach for the restore side.
+// /settings/backup/export route used), then hand the file to saveFile — the OS share sheet where
+// there is one (Drive, Gmail…), a download otherwise. Mirrors ImportBackup's read-in-the-browser
+// approach for the restore side.
 async function exportBackup(): Promise<void> {
   try {
     const db = await getBrowserDb();
     const rows = await getEntries(db);
-    const csv = serializeMonefyCsv(rows);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `moniflow-${todayIso()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    await saveFile(
+      `moniflow-${todayIso()}.csv`,
+      'text/csv;charset=utf-8',
+      serializeMonefyCsv(rows),
+    );
     // States the row count, which the browser's own download chrome can't: a silent success is
     // indistinguishable from a swallowed failure, and the count is what tells you the file is the
     // whole ledger and not an empty header. Mirrors the "Restored N entries" toast on the way back in.
@@ -62,7 +61,7 @@ async function exportBackup(): Promise<void> {
 
 // The category emoji/hue/order and account icon/hue/order don't round-trip through the Monefy CSV
 // (it only knows entry rows), so this is a second, supplementary JSON export/restore covering just
-// that display metadata. Same throwaway-<a download> pattern as exportBackup.
+// that display metadata.
 async function exportCatalog(): Promise<void> {
   try {
     const db = await getBrowserDb();
@@ -71,13 +70,7 @@ async function exportCatalog(): Promise<void> {
       getAccountCatalog(db),
     ]);
     const json = serializeCatalogJson({ version: 1, categories, accounts });
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `moniflow-catalog-${todayIso()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    await saveFile(`moniflow-catalog-${todayIso()}.json`, 'application/json', json);
     // Counts both, since this file carries two independent lists and "exported" alone wouldn't say
     // whether either was empty. Mirrors "Categories & accounts restored" on the way back in.
     toast(`Exported ${categories.length} categories & ${accounts.length} accounts`);
@@ -230,9 +223,11 @@ export default function SettingsPage() {
       <section className="panel flex flex-col gap-3 p-5">
         <h2 className="text-sm font-semibold">Backup</h2>
         <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
-          Export the whole ledger to a Monefy-compatible CSV, or restore it from one. Restoring
-          replaces every current entry. The CSV can&apos;t carry category/account emoji, icon, hue,
-          or order — export those separately below and restore is a non-destructive merge.
+          Export the whole ledger to a Monefy-compatible CSV, or restore it from one. On a phone
+          this opens the share sheet, so a backup can go straight to Drive; elsewhere it downloads.
+          Restoring replaces every current entry. The CSV can&apos;t carry category/account emoji,
+          icon, hue, or order — export those separately below and restore is a non-destructive
+          merge.
         </p>
         <button
           type="button"
