@@ -9,9 +9,9 @@ the `portfolio-dashboard` stack.
 
 ## Stack
 
-Node 24 · TypeScript 5.9 (strict, ESM) · Next.js 16 (App Router) · React 19 · Tailwind CSS v4 ·
-Drizzle ORM + better-sqlite3 · ECharts 6 · Phosphor / Lucide (switchable category icon sets) ·
-commander (CLI) · Vitest · ESLint 10 (flat) · Prettier 3.
+Node 24 · TypeScript 5.9 (strict, ESM) · Next.js 16 (App Router, static export) · React 19 ·
+Tailwind CSS v4 · Drizzle ORM over SQLite WASM in the browser (OPFS) · ECharts 6 ·
+Phosphor / Lucide (switchable category icon sets) · Vitest · ESLint 10 (flat) · Prettier 3.
 
 ## What's in it
 
@@ -35,14 +35,16 @@ surface in Trips).
 ```bash
 npm install
 npm run dev:web            # web app → http://127.0.0.1:4010
-npm run dev -- seed        # CLI: replace the ledger with demo data
-npm run dev -- import <file.csv>   # CLI: import a Monefy CSV export
-npm run dev -- summary     # CLI: entry count + net money flow
 npm test                   # vitest
 ```
 
-The SQLite file defaults to `data/moniflow.db` (override with `MONIFLOW_DB` or `--db <path>`).
-`data/` is git-ignored — never commit it.
+The ledger lives in the **browser**, in a SQLite database on OPFS — there is no server and no local
+`.db` file to point at. To load data, open **Settings → Backup** and restore a Monefy CSV export; to
+get it out again, "Export CSV" there writes the same format back.
+
+OPFS is scoped per **origin**, so `127.0.0.1:4010` (dev) and whatever host serves the built `out/`
+each keep their own separate ledger. `localhost:4010` is a _different_ origin from `127.0.0.1:4010`
+and gets its own database too — pick one and stay on it, or your data will appear to vanish.
 
 Quality gates — before every commit, format your changes then run the checks separately so
 failures surface individually:

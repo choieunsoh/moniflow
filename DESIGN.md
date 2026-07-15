@@ -87,8 +87,8 @@ touch target clears 44px (`.btn`, `.tap`). Shared classes live in `globals.css`:
   stacking for free. `.menu` is the elevated combobox dropdown (records search) with a short rise-in.
 - **Bottom nav** — the active tab carries **three** signals (an `accent-soft` pill behind the icon,
   `accent-text` colour, and a heavier label) so the current section survives grayscale.
-- **Empty state teaches** — no data explains how to add entries (the keypad or the CLI `seed`
-  command), it doesn't just say "no data".
+- **Empty state teaches** — no data explains how to add entries (the keypad, or restoring a Monefy
+  CSV from Settings), it doesn't just say "no data".
 
 ## Layout
 

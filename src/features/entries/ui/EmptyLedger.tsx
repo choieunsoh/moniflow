@@ -1,6 +1,9 @@
-// Empty state teaches the interface instead of saying "no data". A fresh scaffold has an empty
-// SQLite file, so this is the first thing most people see — it points them at the seed command
-// (instant demo data) and the shape of a real entry.
+import Link from 'next/link';
+
+// Empty state teaches the interface instead of saying "no data". It used to print `npm run dev -- seed`,
+// which stopped working when the browser became the system of record (the CLI's db was a throwaway
+// in-memory one) and is gone entirely now — so it points at the two ways data actually gets in: key one
+// expense on the keypad, or restore a whole history from a Monefy CSV. Both are reachable from here.
 export function EmptyLedger() {
   return (
     <div className="panel flex flex-col items-center gap-5 px-6 py-16 text-center">
@@ -22,17 +25,17 @@ export function EmptyLedger() {
       <div className="flex max-w-md flex-col gap-2">
         <h2 className="text-lg font-semibold">No entries yet</h2>
         <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          Moniflow reads a local SQLite file. Load a few sample inflows and outflows to see the
-          dashboard come alive, then replace them with your own.
+          Tap{' '}
+          <span className="font-medium" style={{ color: 'var(--color-accent-text)' }}>
+            +
+          </span>{' '}
+          below to key in your first expense. Already tracking elsewhere? Restore a Monefy CSV
+          export to bring your whole history in at once.
         </p>
       </div>
-      <pre
-        className="tnum overflow-x-auto rounded-[var(--radius-md)] px-4 py-3 text-left text-sm"
-        style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
-      >
-        <span style={{ color: 'var(--color-faint)' }}># load demo data, then reload</span>
-        {'\n'}npm run dev -- seed
-      </pre>
+      <Link href="/settings" className="btn btn-ghost">
+        Restore from a backup
+      </Link>
     </div>
   );
 }
