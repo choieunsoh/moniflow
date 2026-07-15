@@ -44,9 +44,20 @@ describe('useBackupData', () => {
     if (data === null) throw new Error('unreachable — ready implies data');
 
     expect(data.entryCount).toBe(1);
-    expect(data.csv).toContain('Coffee');
-    expect(data.csv.split('\n')[0]).toContain('date'); // the Monefy header row
-    expect(JSON.parse(data.catalogJson)).toMatchObject({ version: 1 });
+    expect(data.csv.text).toContain('Coffee');
+    expect(data.csv.text.split('\n')[0]).toContain('date'); // the Monefy header row
+    expect(data.csv.name).toMatch(/^moniflow-\d{4}-\d{2}-\d{2}\.csv$/); // .csv earns the allowlist
+    expect(JSON.parse(data.catalog.text)).toMatchObject({ version: 1 });
+  });
+
+  // The bug that cost an afternoon: Chromium string-compares the shared file's content type against
+  // its allowlist, so a charset parameter makes the share sheet fail with NotAllowedError while
+  // canShare() still answers true. Anything but a bare 'text/csv' silently breaks sharing on Android.
+  it('sends the CSV as exactly text/csv, with no charset parameter', async () => {
+    const { result } = renderHook(() => useBackupData());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    expect(result.current.data?.csv.type).toBe('text/csv');
   });
 
   it('re-serializes when the data-version bumps, so a restore cannot leave a stale file', async () => {
@@ -59,6 +70,6 @@ describe('useBackupData', () => {
     act(() => bumpDataVersion());
 
     await waitFor(() => expect(result.current.data?.entryCount).toBe(2));
-    expect(result.current.data?.csv).toContain('Food');
+    expect(result.current.data?.csv.text).toContain('Food');
   });
 });

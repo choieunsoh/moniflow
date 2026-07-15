@@ -7,15 +7,31 @@ import { serializeMonefyCsv } from '@features/entries/import';
 import { getCategoryCatalog } from '@features/categories/queries';
 import { getAccountCatalog } from '@features/accounts/queries';
 import { serializeCatalogJson } from './catalog';
+import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 
+// Everything saveFile needs, so the tap passes a payload straight through without composing one.
+export type BackupFile = { name: string; type: string; text: string };
+
 export type BackupData = {
-  csv: string;
+  csv: BackupFile;
   entryCount: number;
-  catalogJson: string;
+  catalog: BackupFile;
   categoryCount: number;
   accountCount: number;
 };
+
+// The CSV's MIME must stay EXACTLY 'text/csv'. Chromium gates shared files on an allowlist and
+// compares the content type with string equality (share_service_impl.cc: `if (content_type ==
+// permitted)`), so 'text/csv;charset=utf-8' — what this used to send — fails the match and the share
+// sheet is refused with NotAllowedError. canShare() does NOT run that check and answers true either
+// way, so a charset parameter creeping back in would break sharing silently. The parameter buys
+// nothing anyway: a download writes the same bytes without it.
+const CSV_MIME = 'text/csv';
+
+// .json is not on Chromium's allowlist at all — extension or MIME — so the catalog can never ride
+// the share sheet and always falls back to a download. Left honest rather than disguised as .txt.
+const CATALOG_MIME = 'application/json';
 
 // Both backup files, serialized up front rather than on the Export tap.
 //
@@ -44,10 +60,15 @@ export function useBackupData(): { ready: boolean; data: BackupData | null } {
         getAccountCatalog(db),
       ]);
       if (!live) return; // a bumpDataVersion mid-read would otherwise publish the older ledger
+      const day = todayIso();
       setData({
-        csv: serializeMonefyCsv(rows),
+        csv: { name: `moniflow-${day}.csv`, type: CSV_MIME, text: serializeMonefyCsv(rows) },
         entryCount: rows.length,
-        catalogJson: serializeCatalogJson({ version: 1, categories, accounts }),
+        catalog: {
+          name: `moniflow-catalog-${day}.json`,
+          type: CATALOG_MIME,
+          text: serializeCatalogJson({ version: 1, categories, accounts }),
+        },
         categoryCount: categories.length,
         accountCount: accounts.length,
       });
