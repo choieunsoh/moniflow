@@ -46,9 +46,23 @@ describe('withFee', () => {
 });
 
 describe('toThb', () => {
-  it('converts a foreign amount at an effective rate, rounded to whole THB', () => {
+  it('converts a foreign amount at an effective rate, rounded to satang', () => {
     expect(toThb(3000, 0.21)).toBe(630);
-    expect(toThb(20, 33.9762)).toBe(680);
+    expect(toThb(20, 33.9762)).toBe(679.52);
+    expect(toThb(107, 34.1234)).toBe(3651.2);
+  });
+
+  // Regression: this rounded to whole baht while the ledger displayed whole baht too. Once money.ts
+  // began stating satang the rounding became a silent write-time loss of up to 50 satang per foreign
+  // entry — and the keypad showed "= ฿3,651.00" for arithmetic that reads 3,651.20.
+  it('keeps the satang a whole-baht rounding would have eaten', () => {
+    expect(toThb(107, 34.1234)).not.toBe(3651);
+  });
+
+  // The product of two reals carries IEEE-754 drift (107 × 34.1234 → 3651.2038000000004); rounding to
+  // satang is what keeps a stored amount at real money precision rather than passing the noise on.
+  it('does not leak float drift into the stored amount', () => {
+    expect(toThb(0.1 + 0.2, 10)).toBe(3);
   });
 });
 

@@ -51,8 +51,16 @@ export function withFee(baseRate: number, feePct: number): number {
   return baseRate * (1 + feePct / 100);
 }
 
-// Foreign amount → whole THB at an already-fee-inclusive (effective) rate. The ledger shows THB with
-// no fraction digits, so rounding to whole baht here matches display and keeps sums clean.
+// Foreign amount → THB at an already-fee-inclusive (effective) rate, rounded to satang: the smallest
+// real THB unit, and exactly the precision formatBaht renders, so what's stored agrees with what's
+// shown. Rounding to satang (not skipping the round) also keeps the product of two reals from leaking
+// IEEE-754 drift into the ledger — 107 × 34.1234 is 3651.2038000000004.
+//
+// This rounded to WHOLE baht until money.ts started stating satang (฿3,651.20). Once display gained
+// its two digits, the whole-baht round here became a silent write-time loss of up to 50 satang on
+// every foreign entry, surfacing as a keypad that answered "= ฿3,651.00" to arithmetic reading
+// 3,651.20. THB entries never went through here and kept their satang, so the two paths disagreed.
+// Don't reintroduce the whole-baht round: the ledger has fraction digits now.
 export function toThb(foreign: number, effectiveRate: number): number {
-  return Math.round(foreign * effectiveRate);
+  return Math.round(foreign * effectiveRate * 100) / 100;
 }

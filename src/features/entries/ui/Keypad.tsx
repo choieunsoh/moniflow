@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { formatBahtKeyed, formatCurrency } from '@shared/money';
+import { formatBaht, formatBahtKeyed, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
 import { evaluate, nextExpr, OPS } from '../calc';
@@ -65,10 +65,14 @@ function CalendarIcon() {
   );
 }
 
-// Every ฿ here renders via formatBahtKeyed, not formatBaht: the keypad echoes the figure you keyed
-// (฿123, ฿123.1) instead of restating it as a ledger row (฿123.00, ฿123.10). It becomes a ledger
-// figure the moment it's saved — Records and the rest state their satang. Don't "fix" this back to
-// formatBaht; padding an input with digits the user didn't type is the bug, not the inconsistency.
+// Which ฿ formatter applies here turns on ONE question: did the user key this figure, or did we
+// compute it?
+//   KEYED (formatBahtKeyed) — echo it back as typed: ฿123 stays ฿123, ฿123.1 stays ฿123.1. Padding an
+//     input to ฿123.10 puts digits on screen the user didn't type. Don't "fix" this to formatBaht.
+//   COMPUTED (formatBaht) — a foreign amount × the FX rate is our arithmetic, not their keystrokes,
+//     so it states its satang like any ledger figure: ฿3,651.20, never ฿3,651.2. formatBahtKeyed's
+//     minimumFractionDigits:0 drops that trailing zero, which is right for an input and wrong for
+//     money we worked out — 107 × 34.1234 rendering as "฿3,651.2" is the bug that motivated the split.
 //
 // Monefy-style expense entry: a calculator keypad for the amount, then a category grid that submits.
 // Four views (keypad / account / currency / category) toggle via `hidden` inside one always-mounted
@@ -251,7 +255,7 @@ export function Keypad({
                   className="tnum text-[1.75rem] leading-none font-bold"
                   style={{ color: hasRate ? 'var(--color-text)' : 'var(--color-faint)' }}
                 >
-                  {hasRate ? formatBahtKeyed(thbValue) : 'no rate'}
+                  {hasRate ? formatBaht(thbValue) : 'no rate'}
                 </span>
               </div>
 
@@ -471,7 +475,11 @@ export function Keypad({
           >
             ‹ Back
           </button>
-          <span className="tnum text-sm font-semibold">{formatBahtKeyed(thbValue)}</span>
+          {/* Same figure, either provenance: for THB it IS the keyed amount, for a foreign currency
+              it's the converted one — so it formats by whichever it is. */}
+          <span className="tnum text-sm font-semibold">
+            {isThb ? formatBahtKeyed(thbValue) : formatBaht(thbValue)}
+          </span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {categories.map((c) => (
