@@ -9,7 +9,7 @@
     "dev:web": "next dev -H 127.0.0.1 -p 4010",
     "prebuild:web": "npm run copy:sqlite3",
     "build:web": "next build",
-    "start:web": "next start -H 127.0.0.1 -p 4010",
+    "start:web": "npx -y serve out -l 4010",
     "deploy:web": "vercel --prod",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
@@ -20,8 +20,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push"
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

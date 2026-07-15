@@ -96,12 +96,6 @@ export async function addAccount(db: Db, name: string): Promise<void> {
     .run();
 }
 
-// All account names, alphabetical — the source of truth for "what accounts exist".
-export async function listAccounts(db: Db): Promise<string[]> {
-  const rows = await db.select({ name: accounts.name }).from(accounts).orderBy(accounts.name).all();
-  return rows.map((r) => r.name);
-}
-
 // Resolve an account name to its id, creating the row (fallback icon) if the name is new. The single
 // write-boundary that turns the name-based UI/import into id-based storage. Idempotent.
 export async function accountIdFor(db: Db, name: string): Promise<number> {
