@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   formatBaht,
   formatBahtWhole,
+  formatBahtKeyed,
   formatSignedBaht,
   formatCurrency,
   currencySymbol,
@@ -33,6 +34,19 @@ describe('formatBahtWhole', () => {
   it('rounds away the satang for glance figures like the donut hole', () => {
     expect(formatBahtWhole(1354.56)).toBe('฿1,355');
     expect(formatBahtWhole(228)).toBe('฿228');
+  });
+});
+
+describe('formatBahtKeyed', () => {
+  it('echoes the figure as keyed — it pads nothing on and rounds nothing away', () => {
+    expect(formatBahtKeyed(123)).toBe('฿123'); // not ฿123.00
+    expect(formatBahtKeyed(123.1)).toBe('฿123.1'); // not ฿123.10
+    expect(formatBahtKeyed(123.12)).toBe('฿123.12');
+  });
+
+  it('still groups thousands and caps at the 2 decimals the keypad allows', () => {
+    expect(formatBahtKeyed(1234.5)).toBe('฿1,234.5');
+    expect(formatBahtKeyed(1234.567)).toBe('฿1,234.57');
   });
 });
 

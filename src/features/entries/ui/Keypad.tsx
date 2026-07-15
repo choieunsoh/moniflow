@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { formatBaht, formatCurrency } from '@shared/money';
+import { formatBahtKeyed, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
 import { evaluate, nextExpr, OPS } from '../calc';
@@ -65,6 +65,11 @@ function CalendarIcon() {
   );
 }
 
+// Every ฿ here renders via formatBahtKeyed, not formatBaht: the keypad echoes the figure you keyed
+// (฿123, ฿123.1) instead of restating it as a ledger row (฿123.00, ฿123.10). It becomes a ledger
+// figure the moment it's saved — Records and the rest state their satang. Don't "fix" this back to
+// formatBaht; padding an input with digits the user didn't type is the bug, not the inconsistency.
+//
 // Monefy-style expense entry: a calculator keypad for the amount, then a category grid that submits.
 // Four views (keypad / account / currency / category) toggle via `hidden` inside one always-mounted
 // <form>. The amount you key in is in the selected `currency`; for a non-THB currency the THB value
@@ -228,7 +233,7 @@ export function Keypad({
             className="tnum text-4xl font-semibold"
             style={{ color: validAmount ? 'var(--color-text)' : 'var(--color-faint)' }}
           >
-            {isThb ? formatBaht(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
+            {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
           </span>
 
           {/* Rate line — only for a non-THB currency. Rate is editable (per-entry override, shown to
@@ -246,7 +251,7 @@ export function Keypad({
                   className="tnum text-[1.75rem] leading-none font-bold"
                   style={{ color: hasRate ? 'var(--color-text)' : 'var(--color-faint)' }}
                 >
-                  {hasRate ? formatBaht(thbValue) : 'no rate'}
+                  {hasRate ? formatBahtKeyed(thbValue) : 'no rate'}
                 </span>
               </div>
 
@@ -466,7 +471,7 @@ export function Keypad({
           >
             ‹ Back
           </button>
-          <span className="tnum text-sm font-semibold">{formatBaht(thbValue)}</span>
+          <span className="tnum text-sm font-semibold">{formatBahtKeyed(thbValue)}</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {categories.map((c) => (

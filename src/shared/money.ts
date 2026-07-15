@@ -33,6 +33,23 @@ export function formatBahtWhole(amount: number): string {
   return bahtWhole.format(amount);
 }
 
+// THB as keyed, for the keypad's amount: it echoes the figure you typed rather than restating it as
+// a ledger row, so ฿123 stays ฿123 and ฿123.1 stays ฿123.1. Padding an input to ฿123.10 puts digits
+// on screen the user didn't type — and a 0 that appears under the cursor by itself reads like the
+// keypad took a keystroke it didn't. Grouping and the 2-decimal cap still apply; the entry becomes a
+// ledger figure (฿123.10) once it's saved and Records renders it via formatBaht.
+const bahtKeyed = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'THB',
+  currencyDisplay: 'narrowSymbol',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+export function formatBahtKeyed(amount: number): string {
+  return bahtKeyed.format(amount);
+}
+
 // Signed for the ledger: an explicit +/− (U+2212 true minus) so gain/loss reads without relying
 // on color alone — the sign survives grayscale and color blindness. Formats through formatBaht so
 // the ledger's signed figures carry satang exactly like every unsigned one.
