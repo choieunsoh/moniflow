@@ -32,9 +32,6 @@ function formatRate(rate: number): string {
   return rateFmt.format(rate);
 }
 
-const pillClass =
-  'tap shrink-0 justify-center rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors';
-
 function chipStyle(selected: boolean): React.CSSProperties {
   return selected
     ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
@@ -45,30 +42,8 @@ function chipStyle(selected: boolean): React.CSSProperties {
       };
 }
 
-function Chip({
-  selected,
-  onClick,
-  children,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`${pillClass} active:opacity-70`}
-      style={chipStyle(selected)}
-    >
-      {children}
-    </button>
-  );
-}
-
-// A small calendar glyph for the date chip when it's on "Today" (no custom date picked yet). Inline
-// SVG in the app's chrome-icon house style (cf. BottomBar) — stroke inherits the chip's text color.
+// The date chip's leading glyph, marking the chip as the date control whatever label it carries.
+// Inline SVG in the app's chrome-icon house style (cf. BottomBar) — stroke inherits the chip's color.
 function CalendarIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
@@ -194,72 +169,71 @@ export function Keypad({
 
       {/* Amount + inputs + keypad */}
       <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
-        {/* Two logical halves — date controls (left) and currency+account (right). flex-wrap +
-            justify-between keeps them apart on one line but lets the right half drop to a second line
-            when they'd collide (e.g. a long account name at a larger font size), instead of squeezing
-            the account into an over-truncated sliver. Truncation stays as the last-resort fallback. */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Chip selected={date === today} onClick={() => setDate(today)}>
-              Today
-            </Chip>
-            <span className="relative inline-flex shrink-0">
-              <span className={pillClass} style={chipStyle(isCustomDate)}>
-                {isCustomDate ? formatDayHeading(date) : <CalendarIcon />}
-              </span>
-              <input
-                type="date"
-                name="date"
-                value={date}
-                max={today}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v && v <= today) setDate(v);
-                }}
-                onClick={(e) => {
-                  try {
-                    e.currentTarget.showPicker();
-                  } catch {
-                    // no-op: browser without showPicker, or a picker already open
-                  }
-                }}
-                aria-label="Pick another date"
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              />
+        {/* date · currency · account, one row. All three are content-sized peers — three attributes
+            of the entry, not a hierarchy — so justify-between spends the slack on the gaps and pins
+            the row to the panel's edges below. The account is the only one that can run long, so it
+            alone shrinks (min-w-0 → truncate) once the gaps are spent. */}
+        <div className="flex items-center justify-between gap-2">
+          {/* Date chip → the native picker. One control that always states the date it will save:
+              "Today" is simply the human name for today's, so no second reset button is needed. */}
+          <span className="relative inline-flex shrink-0">
+            <span
+              className="tap justify-center gap-1.5 rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors"
+              style={chipStyle(isCustomDate)}
+            >
+              <CalendarIcon />
+              {isCustomDate ? formatDayHeading(date) : 'Today'}
             </span>
-          </div>
+            <input
+              type="date"
+              name="date"
+              value={date}
+              max={today}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v && v <= today) setDate(v);
+              }}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker();
+                } catch {
+                  // no-op: browser without showPicker, or a picker already open
+                }
+              }}
+              aria-label={`Date: ${formatDayHeading(date)}. Pick another date`}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </span>
 
-          <div className="flex min-w-0 items-center gap-2">
-            {/* Currency chip → opens the currency grid. */}
-            <button
-              type="button"
-              onClick={() => setView('currency')}
-              aria-haspopup="true"
-              aria-label={`Currency: ${currency}`}
-              className="tap shrink-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
-              style={chipStyle(!isThb)}
-            >
-              <span className="tnum">
-                {symbol} {currency}
-              </span>
-              <span aria-hidden>▾</span>
-            </button>
+          {/* Currency chip → opens the currency grid. */}
+          <button
+            type="button"
+            onClick={() => setView('currency')}
+            aria-haspopup="true"
+            aria-label={`Currency: ${currency}`}
+            className="tap shrink-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
+            style={chipStyle(!isThb)}
+          >
+            <span className="tnum">
+              {symbol} {currency}
+            </span>
+            <span aria-hidden>▾</span>
+          </button>
 
-            {/* Account chip → opens the account grid. */}
-            <button
-              type="button"
-              onClick={() => setView('account')}
-              aria-haspopup="true"
-              aria-label={`Account: ${account}`}
-              className="tap min-w-0 justify-center gap-1.5 rounded-full px-4 text-sm font-medium active:opacity-70"
-              style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
-            >
-              <span className="min-w-0 truncate">{account}</span>
-              <span aria-hidden className="shrink-0">
-                ▾
-              </span>
-            </button>
-          </div>
+          {/* Account chip → opens the account grid. */}
+          <button
+            type="button"
+            onClick={() => setView('account')}
+            aria-haspopup="true"
+            aria-label={`Account: ${account}`}
+            className="tap min-w-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
+            style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
+          >
+            <span className="min-w-0 truncate">{account}</span>
+            <span aria-hidden className="shrink-0">
+              ▾
+            </span>
+          </button>
         </div>
 
         <div className="panel flex flex-col items-end gap-1 px-5 py-4">
@@ -353,19 +327,6 @@ export function Keypad({
           </p>
         ) : null}
 
-        {/* Single-line input; Enter is swallowed so it doesn't implicitly submit the form (HTML spec)
-            and save the entry prematurely — use the Add button to save. */}
-        <input
-          name="note"
-          placeholder="Note (optional)"
-          defaultValue={entry?.note ?? ''}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') e.preventDefault();
-          }}
-          className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
-          style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
-        />
-
         <div className="grid grid-cols-4 gap-2">
           {KEYS.map((key) => {
             const isOp = OPS.includes(key);
@@ -386,6 +347,26 @@ export function Keypad({
             );
           })}
         </div>
+
+        {/* The note sits between the keypad and the category step, following the order you fill them
+            in: key the amount, annotate it, then pick the category that saves it. Enter never submits
+            implicitly (HTML spec) — it advances to the category grid, the same as the button below,
+            and blurs first so the on-screen keyboard uncovers the grid it's advancing to. */}
+        <input
+          name="note"
+          placeholder="Note (optional)"
+          defaultValue={entry?.note ?? ''}
+          enterKeyHint="next"
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            if (!canSubmit) return;
+            e.currentTarget.blur();
+            setView('category');
+          }}
+          className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
+          style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
+        />
 
         <button
           type="button"
