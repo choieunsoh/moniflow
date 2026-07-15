@@ -10,6 +10,7 @@ import { isCurrency } from '../entry-form';
 import type { Currency } from '../entry-form';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
+import { CloseButton } from './CloseButton';
 import { refreshFxRatesAction } from '@features/settings/actions';
 import type { IconSet } from '@features/settings/queries';
 import type { EntryRow } from '../schema';
@@ -160,11 +161,17 @@ export function Keypad({
 
       {/* Amount + inputs + keypad */}
       <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
-        {/* date · currency · account, one row. All three are content-sized peers — three attributes
-            of the entry, not a hierarchy — so justify-between spends the slack on the gaps and pins
-            the row to the panel's edges below. The account is the only one that can run long, so it
-            alone shrinks (min-w-0 → truncate) once the gaps are spent. */}
-        <div className="flex items-center justify-between gap-2">
+        {/* × · date — then currency · account pushed right (ml-auto on the currency chip). This one
+            row is also the page's chrome: it carries the close control, which is what lets the route
+            drop its "Add expense" title block entirely and start the keypad ~90px higher. The × only
+            renders on this view — the inner steps have their own "‹ Back", and two back-ish controls
+            on one screen would be ambiguous. The account is the only chip that can run long, so it
+            alone shrinks (min-w-0 → truncate) once the slack is spent. */}
+        <div className="flex items-center gap-2">
+          {/* mr-1 buys a little more than the gap alone: × discards a keyed amount, so it should not
+              sit a thumb's width from the date chip. */}
+          <CloseButton className="mr-1 -ml-1" />
+
           {/* Date chip → the native picker. One control that always states the date it will save:
               "Today" is simply the human name for today's, so no second reset button is needed. */}
           <span className="relative inline-flex shrink-0">
@@ -202,7 +209,7 @@ export function Keypad({
             onClick={() => setView('currency')}
             aria-haspopup="true"
             aria-label={`Currency: ${currency}`}
-            className="tap shrink-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
+            className="tap ml-auto shrink-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
             style={chipStyle(!isThb)}
           >
             <span className="tnum">

@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useNewEntry } from '@features/entries/use-new-entry';
 import { addEntryAction } from '@features/entries/actions';
 import { Keypad } from '@features/entries/ui/Keypad';
-import { CloseButton } from '@features/entries/ui/CloseButton';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { todayIso } from '@shared/date';
 import { toast } from '@shared/ui/toast';
@@ -39,15 +38,12 @@ export default function NewEntryPage() {
 
   return (
     <PageContainer size="full">
-      <header className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">Add expense</h1>
-          <p className="text-sm" style={{ color: 'var(--color-faint)' }}>
-            Keypad does math (＋ − × ÷) — tap a category to save.
-          </p>
-        </div>
-        <CloseButton />
-      </header>
+      {/* The visible title and its "keypad does math / tap a category to save" caption are gone: the
+          screen says both already (the accent ＋ − × ÷ keys, the "Choose category" button), and the
+          ~90px they cost was the difference between that button sitting above or below the fold on a
+          412px frame. The heading stays for screen readers, which have no keypad to look at, and the
+          close control moved into the keypad's own date/currency/account row. */}
+      <h1 className="sr-only">Add expense</h1>
       <Keypad
         categories={categories}
         accounts={accounts}
