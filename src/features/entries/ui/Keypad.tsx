@@ -493,28 +493,44 @@ export function Keypad({
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {categories.map((c) => (
-            <button
-              key={c.name}
-              type="submit"
-              name="category"
-              value={c.name}
-              className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-shadow active:opacity-70"
-              style={
-                entry?.category === c.name
-                  ? {
-                      borderColor: 'var(--color-accent)',
-                      boxShadow: 'inset 0 0 0 1px var(--color-accent)',
-                    }
-                  : undefined
-              }
-            >
-              <CategoryIcon emoji={c.emoji} name={c.name} size="lg" iconSet={iconSet} hue={c.hue} />
-              <span className="w-full truncate text-xs" style={{ color: 'var(--color-muted)' }}>
-                {c.name}
-              </span>
-            </button>
-          ))}
+          {categories.map((c) => {
+            // Only ever true when editing: this marks the expense's current category, since a tap
+            // submits rather than toggles. Filled (not outlined) to match the Account picker above —
+            // the label has to come along, because --color-muted on the accent fill is 2.4:1.
+            const on = entry?.category === c.name;
+            return (
+              <button
+                key={c.name}
+                type="submit"
+                name="category"
+                value={c.name}
+                aria-current={on ? 'true' : undefined}
+                className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-colors active:opacity-70"
+                style={
+                  on
+                    ? {
+                        background: 'var(--color-accent)',
+                        borderColor: 'var(--color-accent)',
+                      }
+                    : undefined
+                }
+              >
+                <CategoryIcon
+                  emoji={c.emoji}
+                  name={c.name}
+                  size="lg"
+                  iconSet={iconSet}
+                  hue={c.hue}
+                />
+                <span
+                  className="w-full truncate text-xs"
+                  style={{ color: on ? 'var(--color-on-accent)' : 'var(--color-muted)' }}
+                >
+                  {c.name}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </form>
