@@ -1,4 +1,4 @@
-import { formatBaht } from '@shared/money';
+import { formatBahtWhole } from '@shared/money';
 import type { Breakdown } from './queries';
 
 // Calm, non-semantic categorical palette for the spending donut. Deliberately avoids the gain-green
@@ -60,15 +60,6 @@ export type DonutPalette = {
   font: string;
 };
 
-// The donut rounds to whole baht: the hole is a glance figure, not a ledger row, and the biggest
-// number on the page reads better short (฿1,355 over ฿1,354.56). The ranked breakdown beside it
-// carries the exact total, so the satang are never more than a glance away. Rounds the value and
-// formats through the shared formatter rather than hand-rolling ฿ + grouping again — an integer
-// renders plain, so this is only ever a whole-baht string.
-function glanceBaht(v: number): string {
-  return formatBaht(Math.round(v));
-}
-
 // Returns a plain ECharts option: a doughnut of spending-by-category with the total spent rendered in
 // the hole (two graphic texts, since a canvas center label can't be a CSS-styled element). The label
 // line carries the transaction count too — "62 · Spent" — summed from the slices (incl. Other).
@@ -84,7 +75,7 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
       borderColor: p.border,
       borderWidth: 1,
       textStyle: { color: p.text, fontFamily: 'inherit' },
-      valueFormatter: (v: number) => glanceBaht(v),
+      valueFormatter: (v: number) => formatBahtWhole(v),
     },
     graphic: [
       {
@@ -92,7 +83,7 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
         left: 'center',
         top: '42%',
         style: {
-          text: glanceBaht(total),
+          text: formatBahtWhole(total),
           fill: p.text,
           font: `600 24px ${p.font}`,
           textAlign: 'center',

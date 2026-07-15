@@ -1,18 +1,13 @@
 // Cross-feature THB formatter. Lives in @shared because money rendering is not owned by any one
 // feature. narrowSymbol → ฿ (not the default "THB " prefix).
 //
-// Satang or nothing: `amount` is a real column and the keypad stores what you key in, so rounding
-// ฿1,234.56 to ฿1,235 here made every THB surface disagree with the ledger it reads from — the
-// foreign-currency formatter below never did (Intl gives THB 2 digits by default). A whole amount
-// still renders plain (฿120, not ฿120.00) because most entries are whole baht and a column of
-// trailing .00 is noise; once there are satang, both digits show (฿1,234.50, never ฿1,234.5).
-const bahtWhole = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'THB',
-  currencyDisplay: 'narrowSymbol',
-  maximumFractionDigits: 0,
-});
-const bahtSatang = new Intl.NumberFormat('en-US', {
+// Money always states its satang: ฿228.00, never ฿228. `amount` is a real column and the keypad
+// stores what you key in, so rounding ฿1,234.56 to ฿1,235 here made every THB surface disagree with
+// the ledger it reads from (the foreign formatter below never did — Intl gives THB 2 digits by
+// default). The two digits are unconditional so a column of amounts shares one shape and the decimal
+// points line up under .tnum; Intl rounds to them itself, which also absorbs the IEEE-754 drift that
+// summed reals carry (1234.56 + 120 → 1354.5600000000002 → ฿1,354.56).
+const baht = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'THB',
   currencyDisplay: 'narrowSymbol',
@@ -21,11 +16,21 @@ const bahtSatang = new Intl.NumberFormat('en-US', {
 });
 
 export function formatBaht(amount: number): string {
-  // Round to satang BEFORE the whole-number test, or IEEE-754 drift decides the format: summing
-  // reals lands on 1354.5600000000002 (→ .56, fine) but also 119.99999999999999, which is ฿120 and
-  // must not render as ฿120.00 just because the bits say it isn't an integer.
-  const satang = Math.round(amount * 100) / 100;
-  return Number.isInteger(satang) ? bahtWhole.format(satang) : bahtSatang.format(satang);
+  return baht.format(amount);
+}
+
+// Whole-baht THB, for glance figures that would rather be short than exact — the donut hole, where
+// ฿1,355 beats ฿1,354.56 as the biggest number on the page and the ranked breakdown beside it
+// carries the precise total. Not for ledger rows: those state their satang via formatBaht.
+const bahtWhole = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'THB',
+  currencyDisplay: 'narrowSymbol',
+  maximumFractionDigits: 0,
+});
+
+export function formatBahtWhole(amount: number): string {
+  return bahtWhole.format(amount);
 }
 
 // Signed for the ledger: an explicit +/− (U+2212 true minus) so gain/loss reads without relying

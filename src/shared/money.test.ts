@@ -1,17 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { formatBaht, formatSignedBaht, formatCurrency, currencySymbol } from './money';
+import {
+  formatBaht,
+  formatBahtWhole,
+  formatSignedBaht,
+  formatCurrency,
+  currencySymbol,
+} from './money';
 
 describe('formatBaht', () => {
-  it('keeps a whole baht amount plain — no trailing .00 to read past', () => {
-    expect(formatBaht(120)).toBe('฿120');
-    expect(formatBaht(30000)).toBe('฿30,000');
+  it('always states the satang — ฿XXX.XX, even when the amount is whole', () => {
+    expect(formatBaht(228)).toBe('฿228.00');
+    expect(formatBaht(30000)).toBe('฿30,000.00');
   });
 
   it('shows the satang when there are any, instead of rounding them away', () => {
     expect(formatBaht(1234.56)).toBe('฿1,234.56');
-  });
-
-  it('pads to a full 2 decimals so money never reads as ฿1,234.5', () => {
     expect(formatBaht(1234.5)).toBe('฿1,234.50');
   });
 
@@ -20,16 +23,23 @@ describe('formatBaht', () => {
   });
 
   it('absorbs float drift from summed reals rather than inventing satang', () => {
-    // 1234.56 + 120 in IEEE-754 lands on 1354.5600000000002; 0.1 + 0.2 → 0.30000000000000004.
+    // 1234.56 + 120 in IEEE-754 lands on 1354.5600000000002.
     expect(formatBaht(1234.56 + 120)).toBe('฿1,354.56');
-    expect(formatBaht(119.99999999999999)).toBe('฿120');
+    expect(formatBaht(119.99999999999999)).toBe('฿120.00');
+  });
+});
+
+describe('formatBahtWhole', () => {
+  it('rounds away the satang for glance figures like the donut hole', () => {
+    expect(formatBahtWhole(1354.56)).toBe('฿1,355');
+    expect(formatBahtWhole(228)).toBe('฿228');
   });
 });
 
 describe('formatSignedBaht', () => {
   it('carries the satang through the signed ledger form', () => {
     expect(formatSignedBaht(-1234.56)).toBe('−฿1,234.56');
-    expect(formatSignedBaht(120)).toBe('+฿120');
+    expect(formatSignedBaht(120)).toBe('+฿120.00');
   });
 });
 
