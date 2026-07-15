@@ -50,14 +50,19 @@ describe('useBackupData', () => {
     expect(JSON.parse(data.catalog.text)).toMatchObject({ version: 1 });
   });
 
-  // The bug that cost an afternoon: Chromium string-compares the shared file's content type against
-  // its allowlist, so a charset parameter makes the share sheet fail with NotAllowedError while
-  // canShare() still answers true. Anything but a bare 'text/csv' silently breaks sharing on Android.
-  it('sends the CSV as exactly text/csv, with no charset parameter', async () => {
+  // Both files must clear Chromium's shared-file allowlist, which string-compares the content type
+  // and the extension. A charset parameter, or .json/application/json, fails the match and the share
+  // sheet is refused with NotAllowedError — while canShare() still answers true, so nothing surfaces
+  // but a silent download. Only a real phone ever notices, hence these two assertions.
+  it('names and types both files so Chromium will put them in the share sheet', async () => {
     const { result } = renderHook(() => useBackupData());
     await waitFor(() => expect(result.current.ready).toBe(true));
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — ready implies data');
 
-    expect(result.current.data?.csv.type).toBe('text/csv');
+    expect(data.csv.type).toBe('text/csv'); // NOT 'text/csv;charset=utf-8'
+    expect(data.catalog.type).toBe('text/plain'); // NOT 'application/json'
+    expect(data.catalog.name).toMatch(/\.txt$/); // NOT .json — it is JSON, under a shareable name
   });
 
   it('re-serializes when the data-version bumps, so a restore cannot leave a stale file', async () => {

@@ -47,7 +47,10 @@ export function ImportCatalog() {
         ref={inputRef}
         data-testid="catalog-file"
         type="file"
-        accept=".json,application/json"
+        // .txt is what the export writes (Chromium only shares permitted extensions, and .json isn't
+        // one); .json stays accepted so backups taken before that rename still restore. The parse is
+        // content-based either way — the extension never decides anything here.
+        accept=".txt,.json,text/plain,application/json"
         className="hidden"
         onChange={(e) => {
           void handleFile(e);
