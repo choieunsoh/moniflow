@@ -1,7 +1,7 @@
 'use client';
 
 import { useSettings } from '@features/settings/use-settings';
-import { useBackupData } from '@features/settings/use-backup-data';
+import { useBackupData, type BackupFile } from '@features/settings/use-backup-data';
 import { ICON_SETS, FONT_SCALES } from '@features/settings/queries';
 import {
   setCutoffAction,
@@ -12,7 +12,6 @@ import {
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
 import { ImportCatalog } from '@features/settings/ui/ImportCatalog';
-import { todayIso } from '@shared/date';
 import { saveFile } from '@shared/save-file';
 import { toast } from '@shared/ui/toast';
 import { withSaveToast } from '@shared/ui/with-save-toast';
@@ -39,9 +38,9 @@ const FONT_SCALE_LABELS = {
 // transient user activation is still live; awaiting the OPFS read here (which is what this used to
 // do) makes Android Chrome reject the sheet with NotAllowedError, and the export silently fell back
 // to a download. Keep these handlers synchronous up to the saveFile call.
-async function exportFile(name: string, type: string, text: string, done: string): Promise<void> {
+async function exportFile(file: BackupFile, done: string): Promise<void> {
   try {
-    await saveFile(name, type, text);
+    await saveFile(file.name, file.type, file.text);
     // States the count, which the browser's own download chrome can't: a silent success is
     // indistinguishable from a swallowed failure, and the count is what tells you the file is the
     // whole ledger and not an empty header. Mirrors the "Restored N entries" toast on the way back in.
@@ -197,11 +196,11 @@ export default function SettingsPage() {
       <section className="panel flex flex-col gap-3 p-5">
         <h2 className="text-sm font-semibold">Backup</h2>
         <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
-          Export the whole ledger to a Monefy-compatible CSV, or restore it from one. On a phone
-          this opens the share sheet, so a backup can go straight to Drive; elsewhere it downloads.
+          Export the whole ledger to a Monefy-compatible CSV, or restore it from one. On a phone the
+          CSV opens the share sheet, so a backup can go straight to Drive; elsewhere it downloads.
           Restoring replaces every current entry. The CSV can&apos;t carry category/account emoji,
-          icon, hue, or order — export those separately below and restore is a non-destructive
-          merge.
+          icon, hue, or order — export those separately below (that one always downloads; Chrome
+          won&apos;t put a .json in the share sheet) and restore is a non-destructive merge.
         </p>
         <button
           type="button"
@@ -209,12 +208,7 @@ export default function SettingsPage() {
           disabled={!backupReady || backup === null}
           onClick={() => {
             if (backup === null) return;
-            void exportFile(
-              `moniflow-${todayIso()}.csv`,
-              'text/csv;charset=utf-8',
-              backup.csv,
-              `Exported ${backup.entryCount} entries`,
-            );
+            void exportFile(backup.csv, `Exported ${backup.entryCount} entries`);
           }}
         >
           Export CSV
@@ -227,9 +221,7 @@ export default function SettingsPage() {
           onClick={() => {
             if (backup === null) return;
             void exportFile(
-              `moniflow-catalog-${todayIso()}.json`,
-              'application/json',
-              backup.catalogJson,
+              backup.catalog,
               `Exported ${backup.categoryCount} categories & ${backup.accountCount} accounts`,
             );
           }}
