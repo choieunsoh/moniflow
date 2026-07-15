@@ -23,23 +23,37 @@ const DRAG_SLOP = 6;
 // vertical drag stays a native scroll and never edits. `touch-action: pan-y` keeps scrolling native.
 // Delete/Edit are real DOM controls (a form button + a link) behind the row, so both stay in the a11y
 // tree for keyboard/AT even though editing is now a tap.
+// A row states every field its section header doesn't. One rule, applied per field: whatever the
+// header already says is dropped from the rows beneath it, so nothing is repeated N times down a
+// section. The three groupings land as:
+//   by date     → [marker][category][account]   (the header is the day)
+//   by category → [date][account]               (the header is the category)
+//   by account  → [marker][category][date]      (the header is the account)
 export function SwipeRow({
   entry,
   emoji,
   iconSet,
   hue,
   dateLabel,
-  showForeign = false,
+  hideCategory = false,
+  hideAccount = false,
+  foreignLeads = false,
 }: {
   entry: EntryRow;
   emoji: string;
   iconSet: IconSet;
   hue?: number;
-  // Set in the by-category view: the row leads with this date instead of the (redundant) category
-  // marker + chip, since every row under the section already shares the header's category.
+  // The row's own date, preformatted by the caller (it alone knows whether the view spans years).
+  // Set whenever the section header isn't a day; omitted under a day header, which already says it.
   dateLabel?: string;
-  // Trip view: lead the amount with the foreign original (¥1,200) and keep THB as the muted line.
-  showForeign?: boolean;
+  // Grouped by category: the marker + chip would repeat the header on every row.
+  hideCategory?: boolean;
+  // Grouped by account: the account badge would repeat the header on every row.
+  hideAccount?: boolean;
+  // Trip view: put the foreign original (¥1,200) on top and THB on the muted line beneath. Off — the
+  // ledger's default — stacks them the other way up, THB leading. Not "show foreign": a foreign row
+  // shows both figures either way, this only picks which one is the headline.
+  foreignLeads?: boolean;
 }) {
   const [side, setSide] = useState<SwipeSide>(0); // resting position
   const [offset, setOffset] = useState(0); // live drag offset while dragging
@@ -127,9 +141,10 @@ export function SwipeRow({
 
   const note = entry.note?.trim();
   const translate = dragging ? offset : side * ACTION_W;
-  // In the trip view, surface the foreign original (magnitude) as the headline figure.
+  // A foreign row always shows both figures — what it cost in THB and what you actually handed over.
+  // Only the emphasis flips (see foreignLeads): the pair is stacked either way.
   const foreign =
-    showForeign && entry.currency && entry.currency !== 'THB' && entry.originalAmount != null
+    entry.currency && entry.currency !== 'THB' && entry.originalAmount != null
       ? { amount: Math.abs(entry.originalAmount), currency: entry.currency }
       : null;
   const baht = entry.amount < 0 ? formatBaht(-entry.amount) : formatSignedBaht(entry.amount);
@@ -187,10 +202,7 @@ export function SwipeRow({
       >
         <div className="flex items-center justify-between gap-3">
           <span className="flex min-w-0 items-center gap-2">
-            {dateLabel ? (
-              // By-category view: the category is the section header, so lead with the date instead.
-              <span className="shrink-0 text-sm font-medium">{dateLabel}</span>
-            ) : (
+            {hideCategory ? null : (
               <>
                 {/* Tap the marker to edit this category's icon + background via the page's shared
                     picker dialog (one per page, not one per row). stopDrag keeps the press from
@@ -227,35 +239,54 @@ export function SwipeRow({
                 </Link>
               </>
             )}
+            {/* The date carries the row when it stands in for a hidden category (by-category view);
+                beside a category it's secondary metadata, so it drops to the account badge's weight
+                rather than outshouting the category it sits next to. */}
+            {dateLabel ? (
+              hideCategory ? (
+                <span className="tnum shrink-0 text-sm font-medium">{dateLabel}</span>
+              ) : (
+                <span
+                  className="tnum shrink-0 text-xs whitespace-nowrap"
+                  style={{ color: 'var(--color-faint)' }}
+                >
+                  {dateLabel}
+                </span>
+              )
+            ) : null}
             {/* Account as a lighter outline badge so it reads as secondary to the category. */}
-            <Link
-              href={toggleHref('account', entry.account, accountActive)}
-              onPointerDown={stopDrag}
-              aria-label={
-                accountActive ? `Clear ${entry.account} filter` : `Filter by ${entry.account}`
-              }
-              className="shrink-0 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap transition-opacity active:opacity-70"
-              style={{
-                borderColor: accountActive ? 'var(--color-accent-text)' : 'var(--color-border)',
-                color: accountActive ? 'var(--color-accent-text)' : 'var(--color-faint)',
-              }}
-            >
-              {entry.account}
-            </Link>
+            {hideAccount ? null : (
+              <Link
+                href={toggleHref('account', entry.account, accountActive)}
+                onPointerDown={stopDrag}
+                aria-label={
+                  accountActive ? `Clear ${entry.account} filter` : `Filter by ${entry.account}`
+                }
+                className="shrink-0 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap transition-opacity active:opacity-70"
+                style={{
+                  borderColor: accountActive ? 'var(--color-accent-text)' : 'var(--color-border)',
+                  color: accountActive ? 'var(--color-accent-text)' : 'var(--color-faint)',
+                }}
+              >
+                {entry.account}
+              </Link>
+            )}
           </span>
           {/* Expense-only: show expenses as magnitudes (the minus is redundant on every row); only
               the rare income row keeps its signed +green so the exception stays honest. In the trip
               view the foreign original leads and THB drops to a muted second line. */}
           {foreign ? (
+            // Both figures, stacked, with the one you think in on top: inside a trip that's the local
+            // currency you're paying in; back in the ledger it's the THB the cycle is denominated in.
             <span className="flex shrink-0 flex-col items-end">
               <span className="tnum font-medium whitespace-nowrap" style={{ color: amountColor }}>
-                {formatForeign(foreign.amount, foreign.currency)}
+                {foreignLeads ? formatForeign(foreign.amount, foreign.currency) : baht}
               </span>
               <span
                 className="tnum text-xs whitespace-nowrap"
                 style={{ color: 'var(--color-muted)' }}
               >
-                {baht}
+                {foreignLeads ? baht : formatForeign(foreign.amount, foreign.currency)}
               </span>
             </span>
           ) : (

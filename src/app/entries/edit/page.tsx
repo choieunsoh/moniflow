@@ -44,7 +44,7 @@ function EditEntryInner() {
               This entry may have already been deleted.
             </p>
           </div>
-          <CloseButton />
+          <CloseButton className="-mr-1" />
         </header>
         <Link
           href="/records"
@@ -67,15 +67,10 @@ function EditEntryInner() {
     const { entry, categories, accounts, currencies, rates, ratesAsOf, iconSet } = data;
     return (
       <PageContainer size="full">
-        <header className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold">Edit expense</h1>
-            <p className="text-sm" style={{ color: 'var(--color-faint)' }}>
-              Tap a category to save your changes.
-            </p>
-          </div>
-          <CloseButton />
-        </header>
+        {/* Title + caption dropped and the close moved into the keypad's chip row — see the new-entry
+            route for the reasoning. The two branches below keep their headers: neither renders a
+            Keypad, so there's no chip row for the × to live in. */}
+        <h1 className="sr-only">Edit expense</h1>
         <Keypad
           categories={categories}
           accounts={accounts}

@@ -19,7 +19,8 @@ describe('useRecords', () => {
     // Cutoff defaults to 18, so 2026-07-01..03 fall in the cycle keyed '2026-06'.
     await addEntries(db, [
       { date: '2026-07-01', account: 'Cash', category: 'Food', amount: -100 },
-      { date: '2026-07-02', account: 'Cash', category: 'Food', amount: -50 },
+      // A second account in the cycle, so the by-account grouping has more than one bucket to rank.
+      { date: '2026-07-02', account: 'Bangkok Bank', category: 'Food', amount: -50 },
       { date: '2026-07-03', account: 'Cash', category: 'Transport', amount: -20 },
       // A different cycle — only reachable via search/all-category, not the default cycle view.
       {
@@ -66,6 +67,24 @@ describe('useRecords', () => {
     expect(data.total).toBe(-170);
     expect(data.sections).toHaveLength(3); // one per distinct day
     expect(data.sections[0]?.key).toBe('2026-07-03'); // newest first
+  });
+
+  it('groups the cycle by account, largest spend first', async () => {
+    const { result } = renderHook(() => useRecords({ cycle: '2026-06', view: 'account' }));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const { data } = result.current;
+    expect(data?.groupBy).toBe('account');
+    // Cash holds -100 + -20; Bangkok Bank just -50, so Cash ranks first.
+    expect(data?.sections.map((s) => s.key)).toEqual(['Cash', 'Bangkok Bank']);
+    expect(data?.sections[0]?.total).toBe(-120);
+    expect(data?.sections[1]?.total).toBe(-50);
+    expect(data?.total).toBe(-170); // the cycle total is unchanged by how it's grouped
+  });
+
+  it('falls back to date grouping for an unrecognised view param', async () => {
+    const { result } = renderHook(() => useRecords({ cycle: '2026-06', view: 'bogus' }));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.data?.groupBy).toBe('date');
   });
 
   it('filters by category chip within the cycle', async () => {

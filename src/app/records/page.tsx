@@ -3,16 +3,18 @@
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
-import { useRecords } from '@features/entries/use-records';
+import { useRecords, type RecordsGroupBy } from '@features/entries/use-records';
 import { formatDateRange, formatForeign } from '@features/entries/trips';
 import { emojiFor, hueFor } from '@features/categories/queries';
+import { iconForAccount, hueForAccount } from '@features/accounts/queries';
 import { formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
 import { formatBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { CollapseAllButton } from '@features/entries/ui/CollapseAllButton';
 import { SwipeRow } from '@features/entries/ui/SwipeRow';
 import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
-import { CategoryHeaderChip } from '@features/entries/ui/CategoryHeaderChip';
+import { AccountIcon } from '@features/accounts/ui/AccountIcon';
+import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
 // Records = the cycle's expenses grouped by day, newest first. Each day is a light header (date +
@@ -62,6 +64,8 @@ export default function RecordsPage() {
     canGoNext,
     emojiMap,
     hueMap,
+    accountIconMap,
+    accountHueMap,
     iconSet,
     query,
     searching,
@@ -69,27 +73,32 @@ export default function RecordsPage() {
     filtered,
     allCategory,
     spanAll,
-    byCategory,
+    groupBy,
     entries,
     sections,
     total,
     currencySums,
   } = data;
 
-  // Tap a by-category header to filter to just that category (staying grouped); tap the active one
-  // to clear. Mirrors the by-date row chips — preserves the cycle and any account filter. Only the
-  // plain cycle view offers it (spanAll modes ignore the category param, so gating it out below).
+  // Tap a section header to filter to just that bucket (staying grouped); tap the active one to
+  // clear. Mirrors the row chips — preserves the cycle, the grouping, and the other axis's filter,
+  // so a category filter survives a tap on an account header and vice versa. Only the plain cycle
+  // view offers it (spanAll modes ignore both params, so the callers gate it out below).
   const headerFilterHref = (key: string) => {
+    const byAccount = groupBy === 'account';
+    const active = byAccount ? account : category;
+    const other = byAccount ? category : account;
     const p = new URLSearchParams();
     p.set('cycle', activeKey);
-    p.set('view', 'category');
-    if (category !== key) p.set('category', key);
-    if (account) p.set('account', account);
+    p.set('view', groupBy);
+    if (active !== key) p.set(byAccount ? 'account' : 'category', key);
+    if (other) p.set(byAccount ? 'category' : 'account', other);
     return `/records?${p.toString()}`;
   };
 
-  // Toggle links preserve the current cycle/search/filter and only flip ?view=.
-  const viewHref = (next: 'date' | 'category') => {
+  // Tab links preserve the current cycle/search/filter and only flip ?view=. 'date' is the default,
+  // so it drops the param entirely rather than spelling out the fallback.
+  const viewHref = (next: RecordsGroupBy) => {
     const p = new URLSearchParams();
     if (searching) p.set('q', query);
     else if (tripMode && currency && from && to) {
@@ -100,7 +109,7 @@ export default function RecordsPage() {
     else p.set('cycle', activeKey);
     if (category) p.set('category', category);
     if (account) p.set('account', account);
-    if (next === 'category') p.set('view', 'category');
+    if (next !== 'date') p.set('view', next);
     return `/records?${p.toString()}`;
   };
 
@@ -111,7 +120,7 @@ export default function RecordsPage() {
           activeKey={activeKey}
           cutoff={cutoff}
           canGoNext={canGoNext}
-          view={byCategory ? 'category' : undefined}
+          view={groupBy !== 'date' ? groupBy : undefined}
         />
       )}
 
@@ -136,10 +145,21 @@ export default function RecordsPage() {
 
       {sections.length > 0 ? (
         <div className="flex flex-col gap-5">
-          {/* Group-by toggle — flips the same entries between day and category sections. */}
+          {/* Group-by tabs — flip the same entries between day, category and account sections. Text,
+              not icons: a tag vs a wallet isn't self-evident the way the BottomBar's home/search
+              glyphs are, and this is a control you read once rather than hit blind. */}
           <div className="panel flex gap-1 p-1">
-            <ViewLink label="By date" active={!byCategory} href={viewHref('date')} />
-            <ViewLink label="By category" active={byCategory} href={viewHref('category')} />
+            <ViewLink label="By date" active={groupBy === 'date'} href={viewHref('date')} />
+            <ViewLink
+              label="By category"
+              active={groupBy === 'category'}
+              href={viewHref('category')}
+            />
+            <ViewLink
+              label="By account"
+              active={groupBy === 'account'}
+              href={viewHref('account')}
+            />
           </div>
           {/* Summary of the current view (respects the active filter / search). */}
           <div className="flex items-baseline justify-between px-1">
@@ -176,32 +196,43 @@ export default function RecordsPage() {
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <Chevron />
-                  {byCategory ? (
-                    <h2 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
-                      <CategoryIconButton
-                        category={section.key}
-                        emoji={emojiFor(emojiMap, section.key)}
-                        iconSet={iconSet}
-                        hue={hueFor(hueMap, section.key)}
-                        size="sm"
-                      />
-                      {/* Cycle view: the header filters to its category. spanAll modes (search, trip,
-                          all-category) ignore the category param, so they keep a plain label. */}
-                      {spanAll ? (
-                        <span className="truncate">{section.key}</span>
-                      ) : (
-                        <CategoryHeaderChip
-                          href={headerFilterHref(section.key)}
-                          active={category === section.key}
-                          category={section.key}
-                        />
-                      )}
-                    </h2>
-                  ) : (
+                  {groupBy === 'date' ? (
                     <h2 className="truncate text-sm font-semibold">
                       {spanAll
                         ? formatDayHeadingWithYear(section.key)
                         : formatDayHeading(section.key)}
+                    </h2>
+                  ) : (
+                    <h2 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                      {/* Category markers double as the icon/colour editor; account markers don't —
+                          accounts are edited on their own page, so this stays a plain marker. */}
+                      {groupBy === 'category' ? (
+                        <CategoryIconButton
+                          category={section.key}
+                          emoji={emojiFor(emojiMap, section.key)}
+                          iconSet={iconSet}
+                          hue={hueFor(hueMap, section.key)}
+                          size="sm"
+                        />
+                      ) : (
+                        <AccountIcon
+                          icon={iconForAccount(accountIconMap, section.key)}
+                          name={section.key}
+                          hue={hueForAccount(accountHueMap, section.key)}
+                          size="sm"
+                        />
+                      )}
+                      {/* Cycle view: the header filters to its own bucket. spanAll modes (search,
+                          trip, all-category) ignore these params, so they keep a plain label. */}
+                      {spanAll ? (
+                        <span className="truncate">{section.key}</span>
+                      ) : (
+                        <HeaderFilterChip
+                          href={headerFilterHref(section.key)}
+                          active={(groupBy === 'account' ? account : category) === section.key}
+                          label={section.key}
+                        />
+                      )}
                     </h2>
                   )}
                   {/* Entry count sits next to the title (date or category); total stays right. */}
@@ -227,14 +258,18 @@ export default function RecordsPage() {
                     emoji={emojiFor(emojiMap, entry.category)}
                     iconSet={iconSet}
                     hue={hueFor(hueMap, entry.category)}
-                    showForeign={tripMode}
+                    foreignLeads={tripMode}
+                    // Each row states what its header doesn't: the date under a category/account
+                    // header, and the axis the header already names is dropped.
                     dateLabel={
-                      byCategory
+                      groupBy !== 'date'
                         ? spanAll
                           ? formatDayHeadingWithYear(entry.date)
                           : formatDayHeading(entry.date)
                         : undefined
                     }
+                    hideCategory={groupBy === 'category'}
+                    hideAccount={groupBy === 'account'}
                   />
                 ))}
               </ul>

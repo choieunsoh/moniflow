@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { formatBahtKeyed, formatCurrency } from '@shared/money';
+import { formatBaht, formatBahtKeyed, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
 import { evaluate, nextExpr, OPS } from '../calc';
@@ -10,6 +10,7 @@ import { isCurrency } from '../entry-form';
 import type { Currency } from '../entry-form';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
+import { CloseButton } from './CloseButton';
 import { refreshFxRatesAction } from '@features/settings/actions';
 import type { IconSet } from '@features/settings/queries';
 import type { EntryRow } from '../schema';
@@ -65,10 +66,14 @@ function CalendarIcon() {
   );
 }
 
-// Every ฿ here renders via formatBahtKeyed, not formatBaht: the keypad echoes the figure you keyed
-// (฿123, ฿123.1) instead of restating it as a ledger row (฿123.00, ฿123.10). It becomes a ledger
-// figure the moment it's saved — Records and the rest state their satang. Don't "fix" this back to
-// formatBaht; padding an input with digits the user didn't type is the bug, not the inconsistency.
+// Which ฿ formatter applies here turns on ONE question: did the user key this figure, or did we
+// compute it?
+//   KEYED (formatBahtKeyed) — echo it back as typed: ฿123 stays ฿123, ฿123.1 stays ฿123.1. Padding an
+//     input to ฿123.10 puts digits on screen the user didn't type. Don't "fix" this to formatBaht.
+//   COMPUTED (formatBaht) — a foreign amount × the FX rate is our arithmetic, not their keystrokes,
+//     so it states its satang like any ledger figure: ฿3,651.20, never ฿3,651.2. formatBahtKeyed's
+//     minimumFractionDigits:0 drops that trailing zero, which is right for an input and wrong for
+//     money we worked out — 107 × 34.1234 rendering as "฿3,651.2" is the bug that motivated the split.
 //
 // Monefy-style expense entry: a calculator keypad for the amount, then a category grid that submits.
 // Four views (keypad / account / currency / category) toggle via `hidden` inside one always-mounted
@@ -156,11 +161,13 @@ export function Keypad({
 
       {/* Amount + inputs + keypad */}
       <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
-        {/* date · currency · account, one row. All three are content-sized peers — three attributes
-            of the entry, not a hierarchy — so justify-between spends the slack on the gaps and pins
-            the row to the panel's edges below. The account is the only one that can run long, so it
-            alone shrinks (min-w-0 → truncate) once the gaps are spent. */}
-        <div className="flex items-center justify-between gap-2">
+        {/* date — then currency · account · × pushed right (ml-auto on the currency chip). This one
+            row is also the page's chrome: it carries the close control, which is what lets the route
+            drop its "Add expense" title block entirely and start the keypad ~90px higher. The × only
+            renders on this view — the inner steps have their own "‹ Back", and two back-ish controls
+            on one screen would be ambiguous. The account is the only chip that can run long, so it
+            alone shrinks (min-w-0 → truncate) once the slack is spent. */}
+        <div className="flex items-center gap-2">
           {/* Date chip → the native picker. One control that always states the date it will save:
               "Today" is simply the human name for today's, so no second reset button is needed. */}
           <span className="relative inline-flex shrink-0">
@@ -198,7 +205,7 @@ export function Keypad({
             onClick={() => setView('currency')}
             aria-haspopup="true"
             aria-label={`Currency: ${currency}`}
-            className="tap shrink-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
+            className="tap ml-auto shrink-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
             style={chipStyle(!isThb)}
           >
             <span className="tnum">
@@ -221,6 +228,14 @@ export function Keypad({
               ▾
             </span>
           </button>
+
+          {/* × closes the flow, and sits where a dismiss belongs: the right edge, exactly where it sat
+              when this was a page header. A back chevron would go top-left, but this isn't one (see
+              CloseButton) — putting an × there would borrow the back button's position for a glyph
+              that doesn't mean back. Every other × in the app right-aligns too (search clear, budget
+              clear). ml-1 buys a little over the gap: × discards a keyed amount, so it shouldn't sit a
+              thumb's width from the account chip. */}
+          <CloseButton className="-mr-1 ml-1" />
         </div>
 
         <div className="panel flex flex-col items-end gap-1 px-5 py-4">
@@ -251,7 +266,7 @@ export function Keypad({
                   className="tnum text-[1.75rem] leading-none font-bold"
                   style={{ color: hasRate ? 'var(--color-text)' : 'var(--color-faint)' }}
                 >
-                  {hasRate ? formatBahtKeyed(thbValue) : 'no rate'}
+                  {hasRate ? formatBaht(thbValue) : 'no rate'}
                 </span>
               </div>
 
@@ -471,7 +486,11 @@ export function Keypad({
           >
             ‹ Back
           </button>
-          <span className="tnum text-sm font-semibold">{formatBahtKeyed(thbValue)}</span>
+          {/* Same figure, either provenance: for THB it IS the keyed amount, for a foreign currency
+              it's the converted one — so it formats by whichever it is. */}
+          <span className="tnum text-sm font-semibold">
+            {isThb ? formatBahtKeyed(thbValue) : formatBaht(thbValue)}
+          </span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {categories.map((c) => (

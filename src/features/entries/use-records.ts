@@ -5,11 +5,12 @@ import { getBrowserDb } from '@db/browser';
 import { getEntriesInRange, searchEntries, getEntriesByCategory, getTripEntries } from './queries';
 import type { EntryRow } from './schema';
 import { groupByDate } from './by-date';
-import { groupByCategory } from './by-category';
+import { groupBySpend } from './by-spend';
 import { cycleFromKey, currentCycleKey } from './cycle';
 import { sumByCurrency, type CurrencySum } from './trips';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getEmojiMap, getHueMap } from '@features/categories/queries';
+import { getAccountIconMap, getAccountHueMap } from '@features/accounts/queries';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 
@@ -32,12 +33,18 @@ export type RecordsSection = {
   foreign: CurrencySum[];
 };
 
+// The Records group-by tab. One three-way value rather than a pair of booleans, which would admit an
+// illegal "both" state; `?view=` carries it in the URL and anything unrecognised falls back to 'date'.
+export type RecordsGroupBy = 'date' | 'category' | 'account';
+
 export type RecordsData = {
   cutoff: number;
   activeKey: string;
   canGoNext: boolean;
   emojiMap: Record<string, string>;
   hueMap: Record<string, number>;
+  accountIconMap: Record<string, string>;
+  accountHueMap: Record<string, number>;
   iconSet: IconSet;
   query: string;
   searching: boolean;
@@ -45,7 +52,7 @@ export type RecordsData = {
   filtered: boolean;
   allCategory: boolean;
   spanAll: boolean;
-  byCategory: boolean;
+  groupBy: RecordsGroupBy;
   entries: EntryRow[];
   sections: RecordsSection[];
   total: number;
@@ -65,10 +72,12 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
     void (async () => {
       setReady(false);
       const db = await getBrowserDb();
-      const [cutoff, emojiMap, hueMap, iconSet] = await Promise.all([
+      const [cutoff, emojiMap, hueMap, accountIconMap, accountHueMap, iconSet] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
         getHueMap(db),
+        getAccountIconMap(db),
+        getAccountHueMap(db),
         getIconSet(db),
       ]);
 
@@ -106,22 +115,21 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
             ? await getEntriesByCategory(db, category)
             : cycleEntries;
       const ordered = spanAll ? entries : [...entries].reverse(); // newest first
-      const byCategory = view === 'category';
-      // Each section carries its own foreign-currency subtotals so a date header (by-date) or a category
-      // header (by-category) can read "¥12,000  ฿2,800" when it holds foreign spending — empty otherwise.
-      const sections = byCategory
-        ? groupByCategory(ordered).map((g) => ({
-            key: g.category,
-            entries: g.entries,
-            total: g.total,
-            foreign: sumByCurrency(g.entries),
-          }))
-        : groupByDate(ordered).map((g) => ({
-            key: g.date,
-            entries: g.entries,
-            total: g.total,
-            foreign: sumByCurrency(g.entries),
-          }));
+      const groupBy: RecordsGroupBy =
+        view === 'category' ? 'category' : view === 'account' ? 'account' : 'date';
+      // Each section carries its own foreign-currency subtotals so any header — a day, a category, or
+      // an account — can read "¥12,000  ฿2,800" when it holds foreign spending; empty otherwise.
+      // Date ranks chronologically; category and account both rank by spend, so they share groupBySpend.
+      const grouped =
+        groupBy === 'date'
+          ? groupByDate(ordered).map((g) => ({ key: g.date, entries: g.entries, total: g.total }))
+          : groupBySpend(ordered, groupBy === 'category' ? (e) => e.category : (e) => e.account);
+      const sections = grouped.map((g) => ({
+        key: g.key,
+        entries: g.entries,
+        total: g.total,
+        foreign: sumByCurrency(g.entries),
+      }));
       const total = entries.reduce((sum, e) => sum + e.amount, 0);
       const currencySums = sumByCurrency(entries);
 
@@ -131,6 +139,8 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
         canGoNext,
         emojiMap,
         hueMap,
+        accountIconMap,
+        accountHueMap,
         iconSet,
         query,
         searching,
@@ -138,7 +148,7 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
         filtered,
         allCategory,
         spanAll,
-        byCategory,
+        groupBy,
         entries,
         sections,
         total,
