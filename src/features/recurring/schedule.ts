@@ -52,6 +52,26 @@ export function clampDay(year: number, month: number, day: number): string {
   return `${year}-${pad2(month)}-${pad2(Math.min(day, daysInMonth(year, month)))}`;
 }
 
+// The next time (month, day) comes around, at or after today. `month` null = monthly (this month's
+// `day` or next month's); a month given with `intervalMonths === 12` = yearly (this year's
+// `month`/`day` or next year's). Pre-clamped for short months.
+export function nextOccurrence(
+  day: number,
+  month: number | null,
+  todayIso: string,
+  intervalMonths: number,
+): string {
+  const [y, m] = todayIso.split('-').map(Number);
+  if (intervalMonths === 12 && month !== null) {
+    const thisYear = clampDay(y, month, day);
+    return thisYear >= todayIso ? thisYear : clampDay(y + 1, month, day);
+  }
+  const thisMonth = clampDay(y, m, day);
+  if (thisMonth >= todayIso) return thisMonth;
+  const total = y * 12 + (m - 1) + 1;
+  return clampDay(Math.floor(total / 12), (total % 12) + 1, day);
+}
+
 // The i-th due date (0-based). i = 0 is the rule's first post, which equals startDate.
 export function dueDateAt(rule: Rule, i: number): string {
   const [sy, sm] = ymOf(rule.startDate);

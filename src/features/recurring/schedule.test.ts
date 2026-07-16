@@ -7,6 +7,7 @@ import {
   duePosts,
   progressOf,
   noteFor,
+  nextOccurrence,
   type Rule,
 } from './schedule';
 
@@ -180,5 +181,29 @@ describe('noteFor', () => {
 
   it('leaves a subscription note bare', () => {
     expect(noteFor({ name: 'Netflix', totalCount: null }, 3)).toBe('Netflix');
+  });
+});
+
+describe('nextOccurrence', () => {
+  it('returns this month when the day has not passed', () => {
+    expect(nextOccurrence(20, null, '2026-07-10', 1)).toBe('2026-07-20');
+  });
+  it('rolls to next month when the day has passed', () => {
+    expect(nextOccurrence(5, null, '2026-07-10', 1)).toBe('2026-08-05');
+  });
+  it('returns today when the day IS today', () => {
+    expect(nextOccurrence(10, null, '2026-07-10', 1)).toBe('2026-07-10');
+  });
+  it('clamps a 31st monthly rule to a short month', () => {
+    expect(nextOccurrence(31, null, '2026-02-01', 1)).toBe('2026-02-28');
+  });
+  it('rolls a monthly December day into next January', () => {
+    expect(nextOccurrence(5, null, '2026-12-10', 1)).toBe('2027-01-05');
+  });
+  it('returns this year for a yearly rule whose month is ahead', () => {
+    expect(nextOccurrence(5, 3, '2026-01-10', 12)).toBe('2026-03-05');
+  });
+  it('rolls a yearly rule to next year when its month has passed', () => {
+    expect(nextOccurrence(5, 3, '2026-07-10', 12)).toBe('2027-03-05');
   });
 });

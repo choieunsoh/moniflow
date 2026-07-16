@@ -1,5 +1,5 @@
 import { isCurrency } from '@features/entries/entry-form';
-import { clampDay } from './schedule';
+import { nextOccurrence } from './schedule';
 
 // Pure FormData → rule parser. Mirrors entries/entry-form.ts's shape: a discriminated result rather
 // than a throw, so the form can render the message. Validation lives HERE, not in the <input min/max>
@@ -38,27 +38,6 @@ function optionalNumber(formData: FormData, key: string): number | null {
 // The rule this parse is REPLACING, when editing. Only the two fields that decide whether the
 // schedule anchor may move.
 export type CurrentRule = { startDate: string; intervalMonths: number };
-
-// The next time (month, day) comes around, at or after today. `month` null = monthly, so the next
-// occurrence is this month or the next one; a month given = yearly, so it is this year or the next.
-// Pre-clamped, so a 31st rule landing in February stores '2026-02-28' while `day` stays 31 — which is
-// what lets schedule.ts return to the 31st in March.
-function nextOccurrence(
-  day: number,
-  month: number | null,
-  todayIso: string,
-  intervalMonths: number,
-): string {
-  const [y, m] = todayIso.split('-').map(Number);
-  if (intervalMonths === 12 && month !== null) {
-    const thisYear = clampDay(y, month, day);
-    return thisYear >= todayIso ? thisYear : clampDay(y + 1, month, day);
-  }
-  const thisMonth = clampDay(y, m, day);
-  if (thisMonth >= todayIso) return thisMonth;
-  const total = y * 12 + (m - 1) + 1;
-  return clampDay(Math.floor(total / 12), (total % 12) + 1, day);
-}
 
 // startDate is the sequence's ANCHOR: schedule.ts steps from its year-month, and paidCount measures
 // lastPosted against it. Recomputing it on every edit therefore silently rewrites how many payments
