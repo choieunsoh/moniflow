@@ -140,6 +140,15 @@ describe('duePosts', () => {
   it('posts nothing for a finished installment', () => {
     expect(duePosts({ ...fridge, lastPosted: '2027-03-01' }, '2030-01-01')).toEqual([]);
   });
+
+  it('steps a yearly rule once per year, not once per month', () => {
+    const icloud: Rule = { ...netflix, intervalMonths: 12 };
+    expect(duePosts(icloud, '2028-09-01')).toEqual([
+      { date: '2026-07-05', seq: 1 },
+      { date: '2027-07-05', seq: 2 },
+      { date: '2028-07-05', seq: 3 },
+    ]);
+  });
 });
 
 describe('progressOf', () => {
