@@ -58,17 +58,31 @@ describe('recurrences table', () => {
 
   // The ONE documented drift failure: schema.ts and worker.ts's BOOTSTRAP_SQL must agree.
   // Tests run against the Node shim (schema.ts), so only this guard or a browser catches it.
-  it('is present in the shipping BOOTSTRAP_SQL', () => {
+  // Checks every column's type + modifiers (not just its name), so a drifted DEFAULT, a flipped
+  // NOT NULL, a type change, or a dropped column all fail this test.
+  it('is present in the shipping BOOTSTRAP_SQL with every column, type, and modifier intact', () => {
     const worker = readFileSync('src/db/worker.ts', 'utf8');
-    expect(worker).toMatch(/CREATE TABLE IF NOT EXISTS recurrences/);
-    for (const col of [
-      'interval_months',
-      'total_count',
-      'start_seq',
-      'start_date',
-      'last_posted',
+    const match = /CREATE TABLE IF NOT EXISTS recurrences \(([^;]*?)\)\s*`/.exec(worker);
+    expect(match).not.toBeNull();
+    const body = match === null ? '' : match[1];
+    const normalized = body.replace(/\s+/g, ' ').trim();
+    for (const columnDef of [
+      'id INTEGER PRIMARY KEY AUTOINCREMENT',
+      'name TEXT NOT NULL',
+      'day INTEGER NOT NULL',
+      'interval_months INTEGER NOT NULL DEFAULT 1',
+      'account_id INTEGER',
+      'category_id INTEGER',
+      'amount REAL NOT NULL',
+      'currency TEXT',
+      'rate REAL',
+      'total_count INTEGER',
+      'start_seq INTEGER NOT NULL DEFAULT 1',
+      'start_date TEXT NOT NULL',
+      'last_posted TEXT',
+      'archived INTEGER NOT NULL DEFAULT 0',
     ]) {
-      expect(worker).toContain(col);
+      expect(normalized).toContain(columnDef);
     }
   });
 });
