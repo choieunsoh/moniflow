@@ -18,6 +18,16 @@ import { ordinal } from '../ordinal';
 const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'];
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+// Month number (1-based) → short name, via Intl (a fixed UTC day in that month, formatted). No
+// hand-maintained name table; matches the app's Intl-only date policy.
+const monthFmt = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' });
+const monthLongFmt = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' });
+function monthName(m: number, long = false): string {
+  const d = new Date(Date.UTC(2020, m - 1, 1));
+  return (long ? monthLongFmt : monthFmt).format(d);
+}
 
 // Same 4-dp rate display as the keypad — enough for every supported currency (KRW, the smallest, is
 // ~0.023 THB/unit). useGrouping off so the value stays a valid <input type=number>.
@@ -104,6 +114,14 @@ export function RuleKeypad({
   );
   const [day, setDay] = useState(rule?.day ?? Number(today.split('-')[2]));
   const [intervalMonths, setIntervalMonths] = useState(rule?.intervalMonths ?? 1);
+  // Which month a yearly rule renews in (1–12). Seeded from an edited yearly rule's startDate, else
+  // today's month, so switching a monthly rule to yearly starts on a sensible default. Only ever
+  // submitted (and only read by the parser) when the cadence is yearly.
+  const [month, setMonth] = useState(
+    rule?.intervalMonths === 12
+      ? Number(rule.startDate.split('-')[1])
+      : Number(today.split('-')[1]),
+  );
   const [account, setAccount] = useState(ruleAccount ?? defaultAccount);
   const [currency, setCurrency] = useState<Currency>(initialCurrency);
   // '' = follow the live rate on each due date (the rule default). A typed value pins it.
@@ -138,6 +156,7 @@ export function RuleKeypad({
       <input type="hidden" name="name" value={name} />
       <input type="hidden" name="day" value={day} />
       <input type="hidden" name="intervalMonths" value={intervalMonths} />
+      {isYearly ? <input type="hidden" name="month" value={month} /> : null}
       <input type="hidden" name="account" value={account} />
       <input type="hidden" name="currency" value={currency} />
       <input type="hidden" name="amount" value={validAmount ? String(amount) : ''} />
@@ -155,13 +174,18 @@ export function RuleKeypad({
             type="button"
             onClick={() => setView('schedule')}
             aria-haspopup="true"
-            aria-label={`Schedule: ${ordinal(day)}, ${isYearly ? 'yearly' : 'monthly'}`}
+            aria-label={
+              isYearly
+                ? `Schedule: every ${monthName(month, true)} ${ordinal(day)}`
+                : `Schedule: monthly on the ${ordinal(day)}`
+            }
             className="tap shrink-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors active:opacity-70"
             style={chipStyle(isYearly)}
           >
             <RepeatIcon />
+            {/* Yearly needs the month to be unambiguous ("Jul 16th"); monthly is just the day. */}
+            {isYearly ? <span>{monthName(month)}</span> : null}
             <span className="tnum">{ordinal(day)}</span>
-            {isYearly ? '/yr' : ''}
           </button>
 
           <button
@@ -369,10 +393,40 @@ export function RuleKeypad({
         </div>
 
         <p className="px-1 text-xs" style={{ color: 'var(--color-faint)' }}>
-          {isYearly ? 'Posts once a year on the ' : 'Posts every month on the '}
+          {isYearly
+            ? `Posts once a year, every ${monthName(month, true)} `
+            : 'Posts every month on the '}
           {ordinal(day)}
           {day > 28 ? ' — short months post on their last day.' : '.'}
         </p>
+
+        {/* A yearly rule needs a month too. It comes FIRST because it's the coarser choice, and
+            tapping one stays on this view so you can then pick the day; only the day tap returns to
+            the keypad, which keeps the two-part choice from closing half-made. */}
+        {isYearly ? (
+          <div className="grid grid-cols-6 gap-2">
+            {MONTHS.map((m) => {
+              const on = m === month;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMonth(m)}
+                  aria-pressed={on}
+                  aria-label={monthName(m, true)}
+                  className="tap aspect-square justify-center rounded-[var(--radius-md)] text-xs font-medium transition-colors active:opacity-70"
+                  style={
+                    on
+                      ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
+                      : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
+                  }
+                >
+                  {monthName(m)}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-7 gap-2">
           {DAYS.map((d) => {

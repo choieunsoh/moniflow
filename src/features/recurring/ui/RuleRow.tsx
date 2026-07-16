@@ -105,6 +105,7 @@ export function RuleRow({
   // what it costs in baht beneath.
   const isForeign = rule.currency !== null && rule.currency !== 'THB';
   const progress = rule.progress;
+  const categoryName = meta?.categoryName ?? '';
 
   return (
     <li className="relative overflow-hidden">
@@ -205,13 +206,20 @@ export function RuleRow({
             </span>
           )}
         </div>
-        {/* Second line carries the one thing the row's own header can't: how far through an
-            installment you are. Nothing else goes here — the cadence is the section header's job and
-            the day is the chip's, and restating either on every row is the noise SwipeRow's
-            drop-what-the-header-said rule exists to prevent. */}
-        {progress.total !== null ? (
-          <div className="tnum truncate text-sm" style={{ color: 'var(--color-muted)' }}>
-            {progress.paid} of {progress.total} paid · {progress.remaining} left
+        {/* Second line: the category this rule posts to, then an installment's progress when there is
+            one. The category is the icon's name spelled out — the marker gives the colour at a glance,
+            this makes it unambiguous (two categories can share a hue). Cadence and day are the section
+            header's and the chip's jobs, so they stay off this line, per SwipeRow's
+            drop-what-the-header-said rule. */}
+        {categoryName || progress.total !== null ? (
+          <div className="truncate text-sm" style={{ color: 'var(--color-muted)' }}>
+            {categoryName}
+            {categoryName && progress.total !== null ? ' · ' : ''}
+            {progress.total !== null ? (
+              <span className="tnum">
+                {progress.paid} of {progress.total} paid · {progress.remaining} left
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>

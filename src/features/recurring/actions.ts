@@ -5,7 +5,7 @@ import { accountIdFor } from '@features/accounts/queries';
 import { bumpDataVersion } from '@shared/data-version';
 import { todayIso } from '@shared/date';
 import { parseRuleForm, type RuleInput } from './rule-form';
-import { addRule, updateRule, archiveRule } from './queries';
+import { addRule, updateRule, archiveRule, getRule } from './queries';
 import type { NewRecurrence } from './schema';
 
 // The feature's client-side write layer against the browser OPFS db — plain async functions, not
@@ -32,11 +32,21 @@ export async function addRuleAction(formData: FormData): Promise<void> {
 
 // Editing never touches lastPosted: the pointer is the sweep's alone. Changing an amount or rate
 // affects FUTURE posts only — already-posted entries are ordinary ledger rows and stay as they were.
+//
+// It hands the parser the CURRENT rule so the schedule anchor (startDate) is kept when the schedule
+// is unchanged. Recomputing startDate from today on every edit would silently rewind paidCount — a
+// mid-installment edit would drop the paid count and the sweep would repost payments as duplicates.
+// The parser moves the anchor only when the cadence or a yearly rule's month actually changed.
 export async function editRuleAction(formData: FormData): Promise<void> {
-  const result = parseRuleForm(formData, todayIso());
-  if (!result.ok) throw new Error(result.error);
   const id = Number(formData.get('id'));
   const db = await getBrowserDb();
+  const existing = await getRule(db, id);
+  const result = parseRuleForm(
+    formData,
+    todayIso(),
+    existing && { startDate: existing.startDate, intervalMonths: existing.intervalMonths },
+  );
+  if (!result.ok) throw new Error(result.error);
   await updateRule(db, id, await toRow(db, result.rule));
   bumpDataVersion();
 }
