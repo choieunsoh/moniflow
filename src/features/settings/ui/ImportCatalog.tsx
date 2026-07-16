@@ -5,7 +5,9 @@ import { getBrowserDb } from '@db/browser';
 import { parseCatalogJson } from '@features/settings/catalog';
 import { restoreCategoryCatalog } from '@features/categories/queries';
 import { restoreAccountCatalog } from '@features/accounts/queries';
+import { restoreRecurrencesFromCatalog } from '@features/recurring/queries';
 import { bumpDataVersion } from '@shared/data-version';
+import { todayIso } from '@shared/date';
 import { toast } from '@shared/ui/toast';
 
 // Restore category/account display metadata (emoji/hue/order/archived, icon/hue/order) from the
@@ -27,8 +29,9 @@ export function ImportCatalog() {
       const db = await getBrowserDb();
       await restoreCategoryCatalog(db, data.categories);
       await restoreAccountCatalog(db, data.accounts);
+      await restoreRecurrencesFromCatalog(db, data.recurrences, todayIso());
       bumpDataVersion();
-      toast('Categories & accounts restored');
+      toast('Categories, accounts & rules restored');
     } catch {
       toast.error("Couldn't restore categories & accounts — try again");
     }

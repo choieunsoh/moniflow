@@ -6,6 +6,7 @@ import { getEntries } from '@features/entries/queries';
 import { serializeMonefyCsv } from '@features/entries/import';
 import { getCategoryCatalog } from '@features/categories/queries';
 import { getAccountCatalog } from '@features/accounts/queries';
+import { getRuleCatalog } from '@features/recurring/queries';
 import { serializeCatalogJson } from './catalog';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
@@ -57,10 +58,11 @@ export function useBackupData(): { ready: boolean; data: BackupData | null } {
     void (async () => {
       setReady(false);
       const db = await getBrowserDb();
-      const [rows, categories, accounts] = await Promise.all([
+      const [rows, categories, accounts, recurrences] = await Promise.all([
         getEntries(db),
         getCategoryCatalog(db),
         getAccountCatalog(db),
+        getRuleCatalog(db),
       ]);
       if (!live) return; // a bumpDataVersion mid-read would otherwise publish the older ledger
       const day = todayIso();
@@ -70,7 +72,7 @@ export function useBackupData(): { ready: boolean; data: BackupData | null } {
         catalog: {
           name: `moniflow-catalog-${day}.txt`,
           type: CATALOG_MIME,
-          text: serializeCatalogJson({ version: 1, categories, accounts, recurrences: [] }),
+          text: serializeCatalogJson({ version: 2, categories, accounts, recurrences }),
         },
         categoryCount: categories.length,
         accountCount: accounts.length,
