@@ -54,20 +54,24 @@ describe('useRecurringCatalog', () => {
       categoryHue: 200,
       accountName: 'Visa',
     });
-    expect(catalog.categoryNames).toEqual(['Streaming']);
-    expect(catalog.accountNames).toEqual(['Visa']);
     expect(catalog.iconSet).toBe('emoji');
   });
 
-  it('refetches when the data-version bumps after a catalog write', async () => {
+  it('refetches when the data-version bumps after a rule is added', async () => {
     const db = await getBrowserDb();
     const { result } = renderHook(() => useRecurringCatalog());
     await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.catalog?.accountNames).toEqual([]);
+    expect(result.current.catalog?.metaById).toEqual({});
 
-    await accountIdFor(db, 'Cash');
+    const categoryId = await categoryIdFor(db, 'Streaming');
+    const accountId = await accountIdFor(db, 'Cash');
+    await addRule(db, { ...netflix, categoryId, accountId });
     act(() => bumpDataVersion());
 
-    await waitFor(() => expect(result.current.catalog?.accountNames).toEqual(['Cash']));
+    await waitFor(() =>
+      expect(Object.values(result.current.catalog?.metaById ?? {})).toContainEqual(
+        expect.objectContaining({ categoryName: 'Streaming', accountName: 'Cash' }),
+      ),
+    );
   });
 });

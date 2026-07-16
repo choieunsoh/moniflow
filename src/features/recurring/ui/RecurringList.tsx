@@ -1,40 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
-import { FALLBACK_EMOJI } from '@features/categories/queries';
+import Link from 'next/link';
 import type { IconSet } from '@features/settings/queries';
-import { formatBaht, formatBahtWhole } from '@shared/money';
+import { formatBahtWhole } from '@shared/money';
 import { ConfirmDialog } from '@shared/ui/ConfirmDialog';
 import { withSaveToast } from '@shared/ui/with-save-toast';
 import { archiveRuleAction } from '../actions';
 import type { RuleMeta } from '../queries';
 import type { RuleView } from '../use-recurring';
-import { RuleForm } from './RuleForm';
-
-// 1st/2nd/3rd/4th…, correct for the 1–31 day-of-month range this renders (11th/12th/13th are the
-// only irregular cases; 21st/22nd/23rd/31st fall out of the n % 10 switch).
-function ordinal(n: number): string {
-  const rem100 = n % 100;
-  if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
-  switch (n % 10) {
-    case 1:
-      return `${n}st`;
-    case 2:
-      return `${n}nd`;
-    case 3:
-      return `${n}rd`;
-    default:
-      return `${n}th`;
-  }
-}
-
-function amountLabel(rule: RuleView): string {
-  return rule.currency === null || rule.currency === 'THB'
-    ? formatBaht(rule.amount)
-    : `${rule.currency} ${rule.amount}`;
-}
+import { RuleRow } from './RuleRow';
 
 async function archive(rule: RuleView): Promise<void> {
   const fd = new FormData();
@@ -46,128 +21,118 @@ export type RecurringListProps = {
   rules: RuleView[];
   monthlyTotal: number;
   metaById: Record<number, RuleMeta>;
-  categoryNames: string[];
-  accountNames: string[];
   iconSet: IconSet;
 };
 
-// The /recurring page's body: the committed-per-month header, one row per standing rule, and the
-// add/edit/archive flows. A single RuleForm dialog is shared across "add" and every row's "edit"
-// (like CategoryPickerDialog) rather than one dialog per row.
-export function RecurringList({
-  rules,
-  monthlyTotal,
-  metaById,
-  categoryNames,
-  accountNames,
-  iconSet,
-}: RecurringListProps) {
-  const [editing, setEditing] = useState<RuleView | 'new' | null>(null);
-  const [archiving, setArchiving] = useState<RuleView | null>(null);
+type Section = { key: string; label: string; rules: RuleView[]; total: number; unit: string };
 
-  const formRule = editing === 'new' || editing === null ? null : editing;
+// Split by cadence, the way Records splits by day: each section is a real bucket with its own total,
+// and a bucket with nothing in it doesn't render. Monthly leads because it is the common case.
+//
+// Each section states its total in ITS OWN unit, and says which. A yearly section normalised to a
+// monthly contribution would sum tidily into the header — and would also tell you a ฿1,200/yr domain
+// renewal costs ฿100, which is false. The header is the one place a per-month roll-up belongs; a
+// section says what you actually pay and how often.
+function sectionsOf(rules: RuleView[]): Section[] {
+  const monthly = rules.filter((r) => r.intervalMonths !== 12);
+  const yearly = rules.filter((r) => r.intervalMonths === 12);
+  // monthlyThb is amortised, so a yearly rule's own outlay is that × 12.
+  const sum = (rs: RuleView[], factor: number) => rs.reduce((t, r) => t + r.monthlyThb * factor, 0);
+  return [
+    { key: 'monthly', label: 'Monthly', rules: monthly, total: sum(monthly, 1), unit: '/ mo' },
+    { key: 'yearly', label: 'Yearly', rules: yearly, total: sum(yearly, 12), unit: '/ yr' },
+  ].filter((s) => s.rules.length > 0);
+}
+
+// The /recurring body, built to the Records page's vocabulary: a summary line, then cadence sections
+// whose headers sit OUTSIDE the panel that holds their rows (a panel inside a panel is a nested card),
+// then swipe rows. The header block Records doesn't have isn't here either — the More sheet already
+// named this page on the way in.
+export function RecurringList({ rules, monthlyTotal, metaById, iconSet }: RecurringListProps) {
+  const [archiving, setArchiving] = useState<RuleView | null>(null);
+  const sections = sectionsOf(rules);
+
+  if (rules.length === 0) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="panel flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            Nothing repeats yet. Add a subscription, a bill, or an installment and it will post
+            itself on the day it is due.
+          </p>
+          <Link href="/recurring/new" className="btn btn-primary">
+            Add a rule
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Recurring</h1>
-        <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Standing rules that post themselves — subscriptions, bills, installments.
-        </p>
-      </header>
-
-      <section className="panel flex flex-col gap-3 p-5">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-medium" style={{ color: 'var(--color-muted)' }}>
-            Committed
+    <div className="flex flex-col gap-5">
+      {/* Summary of what is standing — count left, committed-per-month right, mirroring the Records
+          summary line. This is the ONE per-month roll-up on the page: yearly rules amortised, foreign
+          rules priced at their pinned rate or the cached one. The sections below each state their own
+          unit instead, so no figure here has to be read twice. */}
+      <div className="flex items-baseline justify-between px-1">
+        <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+          {rules.length} {rules.length === 1 ? 'rule' : 'rules'}
+        </span>
+        <span className="flex items-baseline gap-1.5">
+          <span className="tnum text-sm font-semibold">{formatBahtWhole(monthlyTotal)}</span>
+          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            / month
           </span>
-          <span className="tnum text-xl font-semibold">
-            {formatBahtWhole(monthlyTotal)} <span className="text-sm font-normal">/ month</span>
-          </span>
-        </div>
-      </section>
+        </span>
+      </div>
 
-      <section className="panel p-5">
-        <div className="mb-1 flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold">Rules</h2>
-          <button
-            type="button"
-            onClick={() => setEditing('new')}
-            className="tap inline-flex items-center gap-1 rounded-[var(--radius-sm)] px-2 text-sm font-medium"
-            style={{ color: 'var(--color-accent)' }}
-          >
-            <Plus size={18} aria-hidden />
-            Add rule
-          </button>
-        </div>
-
-        {rules.length === 0 ? (
-          <p className="mt-3 text-sm" style={{ color: 'var(--color-muted)' }}>
-            No recurring rules yet — add a subscription, bill, or installment above.
-          </p>
-        ) : (
-          <ul className="flex flex-col">
-            {rules.map((rule) => {
-              const meta = metaById[rule.id];
-              return (
-                <li key={rule.id} className="flex flex-col gap-2 border-b py-3 last:border-0">
-                  <button
-                    type="button"
-                    onClick={() => setEditing(rule)}
-                    className="tap flex min-w-0 flex-1 items-center gap-3 text-left"
-                  >
-                    <CategoryIcon
-                      emoji={meta?.categoryEmoji ?? FALLBACK_EMOJI}
-                      name={meta?.categoryName ?? ''}
-                      hue={meta?.categoryHue ?? undefined}
-                      iconSet={iconSet}
-                      size="sm"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{rule.name}</span>
-                      <span className="block text-xs" style={{ color: 'var(--color-faint)' }}>
-                        {ordinal(rule.day)}
-                        {rule.intervalMonths === 12 ? '/yr' : ''}
-                        {rule.progress.total !== null &&
-                          ` · ${rule.progress.paid} of ${rule.progress.total} paid · ${rule.progress.remaining} left`}
-                      </span>
-                    </span>
-                    <span className="tnum shrink-0 text-sm font-medium">{amountLabel(rule)}</span>
-                  </button>
-                  <div className="flex justify-end pl-10">
-                    <button
-                      type="button"
-                      onClick={() => setArchiving(rule)}
-                      aria-label={`Archive ${rule.name}`}
-                      title={`Archive ${rule.name}`}
-                      className="tap shrink-0 rounded-[var(--radius-sm)] px-2"
-                      style={{ color: 'var(--color-faint)' }}
-                    >
-                      <Trash2 size={18} aria-hidden />
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
+      {sections.map((section) => (
+        // Native <details> = tap the header to collapse/expand, no JS — the same disclosure Records
+        // uses for its day sections.
+        <details open key={section.key} className="flex flex-col gap-2">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Chevron />
+              <h2 className="truncate text-sm font-semibold">{section.label}</h2>
+              <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
+                ({section.rules.length})
+              </span>
+            </div>
+            <span className="flex shrink-0 items-baseline gap-1">
+              <span className="tnum text-sm">{formatBahtWhole(section.total)}</span>
+              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                {section.unit}
+              </span>
+            </span>
+          </summary>
+          <ul className="panel flex flex-col divide-y overflow-hidden">
+            {section.rules.map((rule) => (
+              <RuleRow
+                key={rule.id}
+                rule={rule}
+                meta={metaById[rule.id]}
+                iconSet={iconSet}
+                onArchive={setArchiving}
+              />
+            ))}
           </ul>
-        )}
-      </section>
+        </details>
+      ))}
 
-      <RuleForm
-        open={editing !== null}
-        rule={formRule}
-        meta={formRule ? metaById[formRule.id] : undefined}
-        categoryNames={categoryNames}
-        accountNames={accountNames}
-        onClose={() => setEditing(null)}
-      />
+      <Link href="/recurring/new" className="btn btn-ghost w-full">
+        Add a rule
+      </Link>
+
+      <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
+        Tap a rule to edit · swipe left to archive
+      </p>
 
       <ConfirmDialog
         open={archiving !== null}
         title="Archive this rule?"
         body={
           archiving
-            ? `"${archiving.name}" will stop posting new entries. Past entries stay in your ledger, and you can un-archive it later.`
+            ? `"${archiving.name}" will stop posting new entries. Past entries stay in your ledger.`
             : ''
         }
         confirmLabel="Archive"
@@ -178,5 +143,27 @@ export function RecurringList({
         onClose={() => setArchiving(null)}
       />
     </div>
+  );
+}
+
+// A disclosure caret: points right when collapsed, rotates down when an ancestor <details> is open.
+// Same glyph and rotation the Records sections use.
+function Chevron() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0 transition-transform duration-150 [[open]_&]:rotate-90"
+      style={{ color: 'var(--color-faint)' }}
+    >
+      <path d="M9 6l6 6-6 6" />
+    </svg>
   );
 }
