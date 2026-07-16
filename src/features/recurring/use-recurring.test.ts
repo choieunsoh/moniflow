@@ -58,4 +58,32 @@ describe('useRecurring', () => {
     await waitFor(() => expect(result.current.ready).toBe(true));
     expect(result.current.monthlyTotal).toBe(15100); // 15000 + 1200/12
   });
+
+  it('values a pinned-rate FX rule at amount * rate / intervalMonths, with no network call', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    listRules.mockResolvedValue([
+      rule({ id: 1, currency: 'USD', amount: 10, rate: 36, intervalMonths: 2 }),
+    ]);
+    const { useRecurring } = await import('./use-recurring');
+    const { result } = renderHook(() => useRecurring());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    // Discriminates both the * rate and the / intervalMonths steps: 10 * 36 / 2 = 180, not 360 (no
+    // /intervalMonths) and not 10 (no * rate).
+    expect(result.current.rules[0].monthlyThb).toBe(180);
+    expect(result.current.monthlyTotal).toBe(180);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('contributes 0 for an FX rule with no pinned rate — not NaN, not the raw foreign amount', async () => {
+    listRules.mockResolvedValue([
+      rule({ id: 1, currency: 'USD', amount: 10, rate: null, intervalMonths: 1 }),
+    ]);
+    const { useRecurring } = await import('./use-recurring');
+    const { result } = renderHook(() => useRecurring());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.rules[0].monthlyThb).toBe(0);
+    expect(result.current.monthlyTotal).toBe(0);
+  });
 });

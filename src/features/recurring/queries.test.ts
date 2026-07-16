@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable, entries } from '@features/entries/schema';
 import { ensureRecurrencesTable, recurrences, type NewRecurrence } from './schema';
+import { categoryIdFor, setCategoryEmoji, setCategoryHue } from '@features/categories/queries';
+import { accountIdFor } from '@features/accounts/queries';
 import {
   listRules,
   getRule,
@@ -11,6 +13,7 @@ import {
   markPosted,
   rewindRecurrences,
   postRecurringEntries,
+  listRuleMeta,
 } from './queries';
 
 async function db() {
@@ -143,5 +146,48 @@ describe('postRecurringEntries', () => {
     const d = await db();
     await postRecurringEntries(d, []);
     expect(await d.select().from(entries).all()).toEqual([]);
+  });
+});
+
+describe('listRuleMeta', () => {
+  it("resolves a rule's categoryId/accountId to display names, emoji, and hue", async () => {
+    const d = await db();
+    const categoryId = await categoryIdFor(d, 'Streaming');
+    await setCategoryEmoji(d, 'Streaming', '🎬');
+    await setCategoryHue(d, 'Streaming', 200);
+    const accountId = await accountIdFor(d, 'Visa');
+    await addRule(d, { ...netflix, categoryId, accountId });
+
+    const rows = await listRuleMeta(d);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      categoryName: 'Streaming',
+      categoryEmoji: '🎬',
+      categoryHue: 200,
+      accountName: 'Visa',
+    });
+  });
+
+  // The query leftJoins (not innerJoins) both FKs because they're nullable columns — a rule with no
+  // category/account assigned yet must still show up on the /recurring page, just with blank markers.
+  // An innerJoin would silently DROP such a rule from the list.
+  it('still returns a rule whose categoryId/accountId is null (leftJoin, not innerJoin)', async () => {
+    const d = await db();
+    await addRule(d, { ...netflix, categoryId: null, accountId: null });
+
+    const rows = await listRuleMeta(d);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      categoryName: null,
+      categoryEmoji: null,
+      categoryHue: null,
+      accountName: null,
+    });
+  });
+
+  it('excludes archived rules, matching listRules', async () => {
+    const d = await db();
+    await addRule(d, { ...netflix, archived: 1 });
+    expect(await listRuleMeta(d)).toEqual([]);
   });
 });
