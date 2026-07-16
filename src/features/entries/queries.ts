@@ -19,6 +19,7 @@ import { categoryIdFor } from '@features/categories/queries';
 import { budgets } from '@features/budgets/schema';
 import { accounts } from '@features/accounts/schema';
 import { accountIdFor, FALLBACK_ICON } from '@features/accounts/queries';
+import { recurrences } from '@features/recurring/schema';
 
 // Typed reads/writes for the entries feature. Server Components and the CLI call these directly
 // — no API layer. Column selections infer row types, so no `as` casts are needed.
@@ -304,6 +305,16 @@ export async function deleteCategory(db: Db, name: string): Promise<void> {
     .where(eq(entries.categoryId, row.id))
     .get();
   if (used) return;
+  // A rule that has never posted references a category with zero entries — so the entries guard
+  // above does not see it. Deleting anyway would leave the rule pointing at a dangling id, and the
+  // sweep's rows would then fail entryRowsQuery's innerJoin and vanish from every read surface
+  // silently. Refuse instead.
+  const ruled = await db
+    .select({ id: recurrences.id })
+    .from(recurrences)
+    .where(eq(recurrences.categoryId, row.id))
+    .get();
+  if (ruled) return;
   await db.batch([
     db.delete(budgets).where(eq(budgets.categoryId, row.id)),
     db.delete(categories).where(eq(categories.id, row.id)),
@@ -455,6 +466,14 @@ export async function deleteAccount(db: Db, name: string): Promise<void> {
     .where(eq(entries.accountId, row.id))
     .get();
   if (used) return;
+  // Same reasoning as deleteCategory: a never-posted rule holds an account id the entries guard
+  // cannot see, and a dangling account_id makes the sweep's rows vanish from every read surface.
+  const ruled = await db
+    .select({ id: recurrences.id })
+    .from(recurrences)
+    .where(eq(recurrences.accountId, row.id))
+    .get();
+  if (ruled) return;
   await db.delete(accounts).where(eq(accounts.id, row.id)).run();
 }
 
