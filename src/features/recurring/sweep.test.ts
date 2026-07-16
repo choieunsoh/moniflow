@@ -117,12 +117,16 @@ describe('runSweep', () => {
       currency: 'USD',
       startDate: '2026-07-05',
     });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ base: 'THB', date: '2026-07-05', rates: { USD: 0.0275 } }), {
         status: 200,
       }),
     );
     await runSweep(d, '2026-07-20');
+    // The rule is due 2026-07-05 but the sweep runs on 2026-07-20 — the fixing fetched must be the
+    // due date's, not today's, or a subscription due on the 5th silently converts at today's rate.
+    expect(fetchSpy.mock.calls[0][0]).toContain('/v1/2026-07-05');
+    expect(fetchSpy.mock.calls[0][0]).not.toContain('2026-07-20');
     const [row] = await d.select().from(entries).all();
     expect(row.amount).toBeCloseTo(-Math.round((9.99 / 0.0275) * 100) / 100, 2);
     expect(row.originalAmount).toBe(-9.99);
@@ -131,9 +135,13 @@ describe('runSweep', () => {
 
   it('isolates a failing rule: the others still post and the failed one keeps its pointer', async () => {
     const d = await db();
+    // The failing rule is added FIRST so listRules (ordered by id ascending) processes it first.
+    // If that ordering were reversed, Rent would post and commit before Netflix ever throws, and a
+    // buggy whole-loop catch (wrapping the entire `for`, not just one rule's body) would pass this
+    // test identically — the isolation it's meant to prove would go untested.
+    await addRule(d, { ...rent, name: 'Netflix', amount: 9.99, currency: 'USD' });
     await addRule(d, rent);
     // A foreign rule with no cached rate and no network — resolveRate throws for this one only.
-    await addRule(d, { ...rent, name: 'Netflix', amount: 9.99, currency: 'USD' });
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'));
     expect(await runSweep(d, '2026-07-20')).toBe(1);
     const rules = await listRules(d);
