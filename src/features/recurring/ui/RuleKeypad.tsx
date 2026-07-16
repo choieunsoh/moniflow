@@ -183,9 +183,8 @@ export function RuleKeypad({
             style={chipStyle(isYearly)}
           >
             <RepeatIcon />
-            {/* The chip shows only the day — the accent fill already marks it as yearly, and the month
-                is chosen (and stated in full) inside the schedule view. The aria-label above still
-                names the month so a screen reader knows it without opening the picker. */}
+            {/* Yearly needs the month to be unambiguous ("Jul 16th"); monthly is just the day. */}
+            {isYearly ? <span>{monthName(month)}</span> : null}
             <span className="tnum">{ordinal(day)}</span>
           </button>
 
