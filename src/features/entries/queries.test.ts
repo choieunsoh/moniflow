@@ -4,6 +4,8 @@ import { ensureEntriesTable } from './schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { ensureAccountsTable } from '@features/accounts/schema';
+import { ensureRecurrencesTable } from '@features/recurring/schema';
+import { addRule } from '@features/recurring/queries';
 import {
   addEntries,
   getEntries,
@@ -32,13 +34,14 @@ import {
   undoMergeAccount,
 } from './queries';
 import { categoryIdFor, setCategoryEmoji, addCategory } from '@features/categories/queries';
-import { addAccount } from '@features/accounts/queries';
+import { addAccount, accountIdFor } from '@features/accounts/queries';
 import { setBudget, getBudgets } from '@features/budgets/queries';
 
 async function db() {
   const d = makeNodeProxyDb();
   await ensureEntriesTable(d); // also bootstraps the categories + accounts tables
   await ensureBudgetsTable(d); // needed: renameCategory's merge path deletes budgets rows
+  await ensureRecurrencesTable(d); // needed: delete-guard tests point a rule at a category/account
   return d;
 }
 
@@ -522,6 +525,7 @@ async function ledger() {
   await ensureCategoriesTable(d);
   await ensureAccountsTable(d);
   await ensureEntriesTable(d);
+  await ensureRecurrencesTable(d); // needed: deleteAccount now also guards against recurrences
   await addEntries(d, [
     { date: '2026-07-01', account: 'Cash', category: 'food', amount: -100 },
     { date: '2026-07-02', account: 'Cash', category: 'food', amount: -50 },
@@ -608,5 +612,48 @@ describe('entries ↔ accounts', () => {
     await undoMergeAccount(d, snap);
     expect(await getDistinctAccounts(d)).toEqual(['Bank', 'Cash']);
     expect((await getEntries(d)).filter((r) => r.account === 'Cash')).toHaveLength(2);
+  });
+});
+
+describe('delete guards protect recurring rules', () => {
+  it('refuses to delete a category a rule points at, even with zero entries', async () => {
+    const d = await db();
+    const categoryId = await categoryIdFor(d, 'subscriptions');
+    await addRule(d, {
+      name: 'Netflix',
+      day: 5,
+      intervalMonths: 1,
+      accountId: 1,
+      categoryId,
+      amount: 9.99,
+      currency: 'USD',
+      startDate: '2026-07-05',
+    });
+    await deleteCategory(d, 'subscriptions');
+    expect(await getDistinctCategories(d)).toContain('subscriptions');
+  });
+
+  it('refuses to delete an account a rule points at, even with zero entries', async () => {
+    const d = await db();
+    const accountId = await accountIdFor(d, 'visa');
+    await addRule(d, {
+      name: 'Netflix',
+      day: 5,
+      intervalMonths: 1,
+      accountId,
+      categoryId: 1,
+      amount: 9.99,
+      currency: 'USD',
+      startDate: '2026-07-05',
+    });
+    await deleteAccount(d, 'visa');
+    expect(await getDistinctAccounts(d)).toContain('visa');
+  });
+
+  it('still deletes a category no rule and no entry references', async () => {
+    const d = await db();
+    await categoryIdFor(d, 'unused');
+    await deleteCategory(d, 'unused');
+    expect(await getDistinctCategories(d)).not.toContain('unused');
   });
 });

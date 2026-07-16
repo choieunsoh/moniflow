@@ -3,6 +3,7 @@
 import { type ReactNode, Suspense } from 'react';
 import { useFontScale } from '@features/settings/use-font-scale';
 import { useSearchSuggestions } from '@features/entries/use-search-suggestions';
+import { useRecurringSweep } from '@features/recurring/use-recurring-sweep';
 import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
 import { AppHeader } from './AppHeader';
 import { SearchBox } from '@features/entries/ui/SearchBox';
@@ -17,6 +18,9 @@ import { ServiceWorkerRegistrar } from './ServiceWorkerRegistrar';
 // icon set — first paint is never blank, the search pool just fills in a tick later.
 export function AppShell({ children }: { children: ReactNode }) {
   useFontScale();
+  // There is no server, so opening the app is the schedule: catch the ledger up on whatever
+  // recurring rules came due while it was closed, once per app open.
+  useRecurringSweep();
   // Defaults ([] / 'emoji') from the hook already cover the !ready frame, so `ready` itself isn't
   // read here — the frame renders immediately either way and the pool fills in a tick later.
   const { suggestions, iconSet } = useSearchSuggestions();

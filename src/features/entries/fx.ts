@@ -12,9 +12,15 @@ import type { Currency } from './entry-form';
 // The frankfurter query URL: one call for every non-THB currency, based in THB. Response shape is
 // { base:'THB', date:'YYYY-MM-DD', rates:{ JPY: <JPY per 1 THB>, ... } } — note the rates are
 // foreign-per-THB, so parseEcbResponse inverts them to THB-per-foreign.
-export function frankfurterUrl(currencies: readonly Currency[]): string {
+//
+// `date` selects a historical fixing (/v1/2026-07-05) instead of the latest one. The recurring sweep
+// needs this: a subscription due on the 5th must convert at the 5th's rate even when the app is not
+// opened until the 20th. The response shape is identical, so parseEcbResponse is unchanged.
+// ECB publishes no weekend/holiday fixing; frankfurter answers those dates with the previous
+// fixing, which is the desired behaviour, not an error case.
+export function frankfurterUrl(currencies: readonly Currency[], date?: string): string {
   const symbols = currencies.filter((c) => c !== 'THB').join(',');
-  return `https://api.frankfurter.dev/v1/latest?base=THB&symbols=${symbols}`;
+  return `https://api.frankfurter.dev/v1/${date ?? 'latest'}?base=THB&symbols=${symbols}`;
 }
 
 // Parse a frankfurter response into the fixing date + a { code → THB-per-1-unit } map (inverting the

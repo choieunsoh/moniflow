@@ -4,6 +4,7 @@ import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { ensureAccountsTable } from '@features/accounts/schema';
+import { ensureRecurrencesTable } from '@features/recurring/schema';
 import { restoreEntries } from '@features/entries/queries';
 import { bumpDataVersion } from '@shared/data-version';
 
@@ -27,6 +28,7 @@ describe('useBackupData', () => {
     await ensureEntriesTable(db);
     await ensureCategoriesTable(db);
     await ensureAccountsTable(db);
+    await ensureRecurrencesTable(db);
     vi.mocked(getBrowserDb).mockResolvedValue(db);
   });
 
@@ -47,7 +49,7 @@ describe('useBackupData', () => {
     expect(data.csv.text).toContain('Coffee');
     expect(data.csv.text.split('\n')[0]).toContain('date'); // the Monefy header row
     expect(data.csv.name).toMatch(/^moniflow-\d{4}-\d{2}-\d{2}\.csv$/); // .csv earns the allowlist
-    expect(JSON.parse(data.catalog.text)).toMatchObject({ version: 1 });
+    expect(JSON.parse(data.catalog.text)).toMatchObject({ version: 2 });
   });
 
   // Both files must clear Chromium's shared-file allowlist, which string-compares the content type

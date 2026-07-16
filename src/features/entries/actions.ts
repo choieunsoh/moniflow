@@ -13,6 +13,7 @@ import {
 import { parseMergeInput } from './merge-input';
 import { parseMonefyCsv } from './import';
 import { addCategory } from '@features/categories/queries';
+import { rewindRecurrences } from '@features/recurring/queries';
 import { bumpDataVersion } from '@shared/data-version';
 
 // The feature's write layer, now client-side against the browser OPFS db (offline-first — no
@@ -94,15 +95,24 @@ export async function deleteCategoryAction(formData: FormData): Promise<void> {
 // Returns counts so the client can toast a summary. An empty/all-income file yields 0 entries (parseMonefyCsv
 // does not throw); this refuses that — it throws before restoreEntries, so such a file can never silently
 // clear the ledger.
+//
+// The CSV carries no rule id, so after a replace-all the ledger and the recurring rules are strangers: a
+// rule may claim it posted through July while the restored ledger stops in June. Clamping every pointer to
+// the CSV's newest date makes the next sweep refill the gap, and because the payment number derives from
+// that pointer (schedule.ts), the installment seq numbers come back correct for free.
 export async function importBackupAction(
   csvText: string,
 ): Promise<{ imported: number; skipped: number }> {
-  const { entries, skipped } = parseMonefyCsv(csvText);
-  if (entries.length === 0) {
+  const { entries: rows, skipped } = parseMonefyCsv(csvText);
+  if (rows.length === 0) {
     throw new Error('Backup contained no importable entries');
   }
   const db = await getBrowserDb();
-  await restoreEntries(db, entries);
+  await restoreEntries(db, rows);
+  // Max over the already-parsed rows — no second pass over the text. The empty guard above means
+  // this is always defined.
+  const maxDate = rows.reduce((max, r) => (r.date > max ? r.date : max), rows[0].date);
+  await rewindRecurrences(db, maxDate);
   bumpDataVersion();
-  return { imported: entries.length, skipped };
+  return { imported: rows.length, skipped };
 }

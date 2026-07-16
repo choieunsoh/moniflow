@@ -14,10 +14,26 @@ export type AccountCatalogRow = {
   hue: number | null;
   sortOrder: number | null;
 };
+// A recurring rule's DEFINITION for backup — not its runtime state. `lastPosted`, `startDate` and
+// `startSeq` are deliberately absent (an imported rule starts fresh from its next due date); a yearly
+// rule's renewal month, which otherwise lives only inside startDate, rides along as `month`.
+export type RuleCatalogRow = {
+  name: string;
+  category: string; // by name; resolved to category_id on import
+  account: string; // by name; resolved to account_id on import
+  amount: number; // positive magnitude
+  currency: string | null; // 'USD' etc, or null/'THB'
+  rate: number | null; // pinned THB-per-unit, or null for the live rate
+  day: number; // 1–31
+  intervalMonths: number; // 1 monthly, 12 yearly
+  month: number | null; // 1–12 for a yearly rule's renewal month; null for monthly
+  totalCount: number | null; // installment length, or null for a subscription
+};
 export type CatalogData = {
-  version: 1;
+  version: 1 | 2;
   categories: CategoryCatalogRow[];
   accounts: AccountCatalogRow[];
+  recurrences: RuleCatalogRow[];
 };
 
 export function serializeCatalogJson(data: CatalogData): string {
@@ -57,6 +73,35 @@ function isAccountRow(v: unknown): v is AccountCatalogRow {
     isNumOrNull(v.sortOrder)
   );
 }
+function isStrOrNull(v: unknown): v is string | null {
+  return v === null || typeof v === 'string';
+}
+function isRuleRow(v: unknown): v is RuleCatalogRow {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    'name' in v &&
+    typeof v.name === 'string' &&
+    'category' in v &&
+    typeof v.category === 'string' &&
+    'account' in v &&
+    typeof v.account === 'string' &&
+    'amount' in v &&
+    typeof v.amount === 'number' &&
+    'currency' in v &&
+    isStrOrNull(v.currency) &&
+    'rate' in v &&
+    isNumOrNull(v.rate) &&
+    'day' in v &&
+    typeof v.day === 'number' &&
+    'intervalMonths' in v &&
+    typeof v.intervalMonths === 'number' &&
+    'month' in v &&
+    isNumOrNull(v.month) &&
+    'totalCount' in v &&
+    isNumOrNull(v.totalCount)
+  );
+}
 
 export function parseCatalogJson(text: string): CatalogData | null {
   let parsed: unknown;
@@ -66,10 +111,21 @@ export function parseCatalogJson(text: string): CatalogData | null {
     return null;
   }
   if (typeof parsed !== 'object' || parsed === null) return null;
-  if (!('version' in parsed) || parsed.version !== 1) return null;
+  if (!('version' in parsed) || (parsed.version !== 1 && parsed.version !== 2)) return null;
   if (!('categories' in parsed) || !Array.isArray(parsed.categories)) return null;
   if (!('accounts' in parsed) || !Array.isArray(parsed.accounts)) return null;
   if (!parsed.categories.every(isCategoryRow)) return null;
   if (!parsed.accounts.every(isAccountRow)) return null;
-  return { version: 1, categories: parsed.categories, accounts: parsed.accounts };
+  // recurrences is absent in a v1 file → []; present → every row must validate. All-or-nothing,
+  // exactly like categories/accounts above.
+  const rawRec = 'recurrences' in parsed ? parsed.recurrences : [];
+  if (!Array.isArray(rawRec) || !rawRec.every(isRuleRow)) return null;
+  // A clean 1 | 2 literal without a cast (the guard above proved it is one of them).
+  const version = parsed.version === 1 ? 1 : 2;
+  return {
+    version,
+    categories: parsed.categories,
+    accounts: parsed.accounts,
+    recurrences: rawRec,
+  };
 }

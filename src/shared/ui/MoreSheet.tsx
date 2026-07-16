@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
-import { Tags, Wallet, Plane, Settings } from 'lucide-react';
+import { Tags, Wallet, Plane, Repeat, Settings } from 'lucide-react';
 
 // App-launcher grid for the overflow nav — one icon tile per destination, matching the 2×2 grid glyph
 // on the "More" tab that opens this sheet. lucide icons (a dependency since the icon-set feature).
@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/categories', label: 'Categories', Icon: Tags },
   { href: '/accounts', label: 'Accounts', Icon: Wallet },
   { href: '/trips', label: 'Trips', Icon: Plane },
+  { href: '/recurring', label: 'Recurring', Icon: Repeat },
   { href: '/settings', label: 'Settings', Icon: Settings },
 ] as const;
 
