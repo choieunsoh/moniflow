@@ -1,6 +1,8 @@
 import { eq, and, gt, isNotNull } from 'drizzle-orm';
 import type { Db } from '@db/client';
 import { entries } from '@features/entries/schema';
+import { categories } from '@features/categories/schema';
+import { accounts } from '@features/accounts/schema';
 import { recurrences, type Recurrence, type NewRecurrence } from './schema';
 
 // Typed reads/writes for recurring rules. Column selections infer row types — no `as` casts.
@@ -53,6 +55,34 @@ export async function rewindRecurrences(db: Db, maxDate: string): Promise<void> 
     .set({ lastPosted: maxDate })
     .where(and(isNotNull(recurrences.lastPosted), gt(recurrences.lastPosted, maxDate)))
     .run();
+}
+
+// Per-rule display fields for the /recurring page: the category marker (name/emoji/hue) and account
+// name. A rule stores only categoryId/accountId (see schema.ts) — this is the one place that resolves
+// them, kept OUT of listRules/useRecurring so that hook's test can mock this file down to just
+// `listRules`. leftJoin (not innerJoin) because both FKs are nullable columns.
+export type RuleMeta = {
+  id: number;
+  categoryName: string | null;
+  categoryEmoji: string | null;
+  categoryHue: number | null;
+  accountName: string | null;
+};
+
+export async function listRuleMeta(db: Db): Promise<RuleMeta[]> {
+  return await db
+    .select({
+      id: recurrences.id,
+      categoryName: categories.name,
+      categoryEmoji: categories.emoji,
+      categoryHue: categories.hue,
+      accountName: accounts.name,
+    })
+    .from(recurrences)
+    .leftJoin(categories, eq(recurrences.categoryId, categories.id))
+    .leftJoin(accounts, eq(recurrences.accountId, accounts.id))
+    .where(eq(recurrences.archived, 0))
+    .all();
 }
 
 // The sweep's insert shape. Unlike EntryInput (which carries category/account NAMES for the query
