@@ -70,7 +70,7 @@ export function useBackupData(): { ready: boolean; data: BackupData | null } {
         catalog: {
           name: `moniflow-catalog-${day}.txt`,
           type: CATALOG_MIME,
-          text: serializeCatalogJson({ version: 1, categories, accounts }),
+          text: serializeCatalogJson({ version: 1, categories, accounts, recurrences: [] }),
         },
         categoryCount: categories.length,
         accountCount: accounts.length,
