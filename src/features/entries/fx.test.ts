@@ -75,3 +75,23 @@ describe('frankfurterUrl', () => {
     expect(url).not.toContain('THB,'); // THB excluded from symbols
   });
 });
+
+describe('frankfurterUrl with a date', () => {
+  it('still targets /latest when no date is given', () => {
+    expect(frankfurterUrl(['USD', 'JPY'])).toBe(
+      'https://api.frankfurter.dev/v1/latest?base=THB&symbols=USD,JPY',
+    );
+  });
+
+  it('targets the dated fixing when a date is given', () => {
+    expect(frankfurterUrl(['USD'], '2026-07-05')).toBe(
+      'https://api.frankfurter.dev/v1/2026-07-05?base=THB&symbols=USD',
+    );
+  });
+
+  it('still drops THB from the symbols', () => {
+    expect(frankfurterUrl(['THB', 'USD'], '2026-07-05')).toBe(
+      'https://api.frankfurter.dev/v1/2026-07-05?base=THB&symbols=USD',
+    );
+  });
+});
