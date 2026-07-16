@@ -98,6 +98,17 @@ describe('rewindRecurrences', () => {
     const [row] = await d.select().from(recurrences).all();
     expect(row.lastPosted).toBe('2026-06-20');
   });
+
+  it('leaves a rule posted on exactly the backup date undisturbed', async () => {
+    // That day's entry IS in the restored CSV, so it must not repost — the pointer must still
+    // read maxDate afterwards. (This pins the outcome, not the predicate: gt and gte are
+    // equivalent here, since clamping a row already at maxDate is a no-op.)
+    const d = await db();
+    await addRule(d, { ...netflix, lastPosted: '2026-06-20' });
+    const [row] = await listRules(d);
+    await rewindRecurrences(d, '2026-06-20');
+    expect(await getRule(d, row.id)).toMatchObject({ lastPosted: '2026-06-20' });
+  });
 });
 
 describe('postRecurringEntries', () => {
