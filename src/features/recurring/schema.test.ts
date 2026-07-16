@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureRecurrencesTable, recurrences } from './schema';
+import { categories } from '@features/categories/schema';
+import { accounts } from '@features/accounts/schema';
 
 async function db() {
   const d = makeNodeProxyDb();
@@ -50,6 +52,8 @@ describe('recurrences table', () => {
     const d = await db();
     // ensureRecurrencesTable must bootstrap categories + accounts like ensureEntriesTable does
     await expect(d.select().from(recurrences).all()).resolves.toEqual([]);
+    await expect(d.select().from(categories).all()).resolves.toEqual([]);
+    await expect(d.select().from(accounts).all()).resolves.toEqual([]);
   });
 
   // The ONE documented drift failure: schema.ts and worker.ts's BOOTSTRAP_SQL must agree.
