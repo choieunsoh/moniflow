@@ -13,6 +13,12 @@ import { getCardFeePct, getFxRates } from '@features/settings/queries';
 export type RateRule = { currency: string | null; rate: number | null };
 export type Converted = { amount: number; currency: string | null; originalAmount: number | null };
 
+// One sweep's worth of ECB fixings, keyed by `${code}:${date}` — memoises fetchMid so two rules
+// sharing a currency AND due date hit the network once, not twice. Callers create one of these per
+// `runSweep` and discard it when the sweep ends; nothing here is a persistent cache (that's
+// getFxRates/setFxRates, a separate fallback for when the network is unavailable at all).
+export type MidCache = Map<string, number | null>;
+
 // A rule with no currency, or an explicit THB one, is a plain baht bill.
 function isPlainThb(rule: RateRule): boolean {
   return rule.currency === null || rule.currency === 'THB';
@@ -32,8 +38,14 @@ async function fetchMid(code: string, date: string): Promise<number | null> {
   }
 }
 
-// The effective (fee-inclusive) THB-per-unit rate for a rule's post on `date`.
-export async function resolveRate(db: Db, rule: RateRule, date: string): Promise<number> {
+// The effective (fee-inclusive) THB-per-unit rate for a rule's post on `date`. `midCache`, when
+// passed, is checked/filled before/after the network call — see MidCache above.
+export async function resolveRate(
+  db: Db,
+  rule: RateRule,
+  date: string,
+  midCache?: MidCache,
+): Promise<number> {
   // A pinned rate is what the user's statement actually charged — the fee is already baked into the
   // number they typed, so withFee must NOT be applied on top of it.
   if (rule.rate !== null) return rule.rate;
@@ -43,7 +55,12 @@ export async function resolveRate(db: Db, rule: RateRule, date: string): Promise
   if (!isCurrency(code)) throw new Error(`resolveRate: unknown currency "${code}"`);
 
   const feePct = await getCardFeePct(db);
-  const mid = await fetchMid(code, date);
+  const key = `${code}:${date}`;
+  let mid = midCache?.get(key);
+  if (mid === undefined) {
+    mid = await fetchMid(code, date);
+    midCache?.set(key, mid);
+  }
   if (mid !== null) return withFee(mid, feePct);
 
   const cached = (await getFxRates(db))[code];
@@ -60,11 +77,12 @@ export async function convertAmount(
   db: Db,
   rule: RateRule & { amount: number },
   date: string,
+  midCache?: MidCache,
 ): Promise<Converted> {
   if (isPlainThb(rule)) {
     return { amount: -rule.amount, currency: rule.currency, originalAmount: null };
   }
-  const rate = await resolveRate(db, rule, date);
+  const rate = await resolveRate(db, rule, date, midCache);
   return {
     amount: -toThb(rule.amount, rate),
     currency: rule.currency,

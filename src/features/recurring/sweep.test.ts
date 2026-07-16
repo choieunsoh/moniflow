@@ -159,6 +159,60 @@ describe('runSweep', () => {
     expect(row.amount).toBe(-350);
   });
 
+  it('caches the ECB fixing per (currency, date) within one sweep — two rules due the same day fetch once', async () => {
+    const d = await db();
+    await addRule(d, {
+      ...rent,
+      name: 'Netflix',
+      day: 5,
+      amount: 9.99,
+      currency: 'USD',
+      startDate: '2026-07-05',
+    });
+    await addRule(d, {
+      ...rent,
+      name: 'Spotify',
+      day: 5,
+      amount: 4.99,
+      currency: 'USD',
+      startDate: '2026-07-05',
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ base: 'THB', date: '2026-07-05', rates: { USD: 0.0275 } }), {
+        status: 200,
+      }),
+    );
+    await runSweep(d, '2026-07-20');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('still fetches per distinct due date — two rules, same currency, different due dates', async () => {
+    const d = await db();
+    await addRule(d, {
+      ...rent,
+      name: 'Netflix',
+      day: 5,
+      amount: 9.99,
+      currency: 'USD',
+      startDate: '2026-07-05',
+    });
+    await addRule(d, {
+      ...rent,
+      name: 'Spotify',
+      day: 10,
+      amount: 4.99,
+      currency: 'USD',
+      startDate: '2026-07-10',
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ base: 'THB', date: '2026-07-05', rates: { USD: 0.0275 } }), {
+        status: 200,
+      }),
+    );
+    await runSweep(d, '2026-07-20');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
   it('refills the gap after a rewind, with correct seq numbers', async () => {
     const d = await db();
     await addRule(d, fridge);
