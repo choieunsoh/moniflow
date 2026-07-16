@@ -3,7 +3,11 @@ import type { Db } from '@db/client';
 import { entries } from '@features/entries/schema';
 import { categories } from '@features/categories/schema';
 import { accounts } from '@features/accounts/schema';
+import { categoryIdFor } from '@features/categories/queries';
+import { accountIdFor } from '@features/accounts/queries';
 import { recurrences, type Recurrence, type NewRecurrence } from './schema';
+import { nextOccurrence } from './schedule';
+import type { RuleCatalogRow } from '@features/settings/catalog';
 
 // Typed reads/writes for recurring rules. Column selections infer row types — no `as` casts.
 
@@ -106,4 +110,69 @@ export async function postRecurringEntries(db: Db, rows: PostRow[]): Promise<voi
     .insert(entries)
     .values(rows.map((r) => ({ ...r, time: null, source: 'recurring' })))
     .run();
+}
+
+// Active rules as catalog rows: category/account by NAME (innerJoin — a rule always has both; the
+// delete guards keep them from being removed while referenced), and a yearly rule's renewal month
+// derived from its startDate. Drops the runtime pointer/startDate/startSeq — the backup carries the
+// definition, not the progress.
+export async function getRuleCatalog(db: Db): Promise<RuleCatalogRow[]> {
+  const rows = await db
+    .select({
+      name: recurrences.name,
+      category: categories.name,
+      account: accounts.name,
+      amount: recurrences.amount,
+      currency: recurrences.currency,
+      rate: recurrences.rate,
+      day: recurrences.day,
+      intervalMonths: recurrences.intervalMonths,
+      totalCount: recurrences.totalCount,
+      startDate: recurrences.startDate,
+    })
+    .from(recurrences)
+    .innerJoin(categories, eq(recurrences.categoryId, categories.id))
+    .innerJoin(accounts, eq(recurrences.accountId, accounts.id))
+    .where(eq(recurrences.archived, 0))
+    .orderBy(recurrences.id)
+    .all();
+  return rows.map(({ startDate, ...rest }) => ({
+    ...rest,
+    month: rest.intervalMonths === 12 ? Number(startDate.split('-')[1]) : null,
+  }));
+}
+
+// Restore rules from a catalog file. Insert-if-name-absent: a rule whose name already exists (archived
+// or not) is skipped, never edited or deleted — non-destructive and idempotent, like the catalog's
+// category/account upsert. An inserted rule starts FRESH: startSeq 1, lastPosted null (schema
+// default), and startDate = its next due date from today, so it never back-posts old months.
+// Category/account names resolve (creating a missing one) just as an entry write does.
+export async function restoreRecurrencesFromCatalog(
+  db: Db,
+  rows: RuleCatalogRow[],
+  todayIso: string,
+): Promise<void> {
+  if (rows.length === 0) return;
+  const existing = new Set(
+    (await db.select({ name: recurrences.name }).from(recurrences).all()).map((r) => r.name),
+  );
+  for (const row of rows) {
+    if (existing.has(row.name)) continue;
+    existing.add(row.name); // guard against a file that lists the same name twice
+    const categoryId = await categoryIdFor(db, row.category);
+    const accountId = await accountIdFor(db, row.account);
+    await addRule(db, {
+      name: row.name,
+      day: row.day,
+      intervalMonths: row.intervalMonths,
+      categoryId,
+      accountId,
+      amount: row.amount,
+      currency: row.currency,
+      rate: row.rate,
+      totalCount: row.totalCount,
+      startSeq: 1,
+      startDate: nextOccurrence(row.day, row.month, todayIso, row.intervalMonths),
+    });
+  }
 }

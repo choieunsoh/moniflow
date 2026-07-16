@@ -14,7 +14,10 @@ import {
   rewindRecurrences,
   postRecurringEntries,
   listRuleMeta,
+  getRuleCatalog,
+  restoreRecurrencesFromCatalog,
 } from './queries';
+import type { RuleCatalogRow } from '@features/settings/catalog';
 
 async function db() {
   const d = makeNodeProxyDb();
@@ -189,5 +192,125 @@ describe('listRuleMeta', () => {
     const d = await db();
     await addRule(d, { ...netflix, archived: 1 });
     expect(await listRuleMeta(d)).toEqual([]);
+  });
+});
+
+describe('getRuleCatalog', () => {
+  it('exports active rules by name, deriving month only for yearly', async () => {
+    const d = await db();
+    const categoryId = await categoryIdFor(d, 'Streaming');
+    const accountId = await accountIdFor(d, 'Visa');
+    await addRule(d, {
+      name: 'Netflix',
+      day: 5,
+      intervalMonths: 1,
+      categoryId,
+      accountId,
+      amount: 9.99,
+      currency: 'USD',
+      startDate: '2026-07-05',
+    });
+    await addRule(d, {
+      name: 'Domain',
+      day: 5,
+      intervalMonths: 12,
+      categoryId,
+      accountId,
+      amount: 1200,
+      currency: 'THB',
+      startDate: '2026-03-05',
+    });
+
+    const rows = await getRuleCatalog(d);
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        name: 'Netflix',
+        category: 'Streaming',
+        account: 'Visa',
+        month: null,
+      }),
+    );
+    expect(rows).toContainEqual(
+      expect.objectContaining({ name: 'Domain', intervalMonths: 12, month: 3 }),
+    );
+  });
+
+  it('excludes archived rules', async () => {
+    const d = await db();
+    const categoryId = await categoryIdFor(d, 'Streaming');
+    const accountId = await accountIdFor(d, 'Visa');
+    await addRule(d, {
+      name: 'Gone',
+      day: 5,
+      intervalMonths: 1,
+      categoryId,
+      accountId,
+      amount: 5,
+      currency: 'THB',
+      startDate: '2026-07-05',
+      archived: 1,
+    });
+    expect(await getRuleCatalog(d)).toEqual([]);
+  });
+});
+
+describe('restoreRecurrencesFromCatalog', () => {
+  const netflix: RuleCatalogRow = {
+    name: 'Netflix',
+    category: 'Streaming',
+    account: 'Visa',
+    amount: 9.99,
+    currency: 'USD',
+    rate: null,
+    day: 5,
+    intervalMonths: 1,
+    month: null,
+    totalCount: null,
+  };
+
+  it('inserts a fresh rule: pointer null, startSeq 1, startDate next occurrence, ids resolved', async () => {
+    const d = await db();
+    await restoreRecurrencesFromCatalog(d, [netflix], '2026-07-20');
+    const [rule] = await listRules(d);
+    expect(rule).toMatchObject({
+      name: 'Netflix',
+      amount: 9.99,
+      currency: 'USD',
+      lastPosted: null,
+      startSeq: 1,
+      startDate: '2026-08-05', // the 5th has passed on the 20th
+    });
+    // names resolved to real ids
+    expect(rule.categoryId).not.toBeNull();
+    expect(rule.accountId).not.toBeNull();
+  });
+
+  it('reconstructs a yearly rule startDate from its month', async () => {
+    const d = await db();
+    const domain: RuleCatalogRow = {
+      ...netflix,
+      name: 'Domain',
+      intervalMonths: 12,
+      month: 3,
+      currency: 'THB',
+    };
+    await restoreRecurrencesFromCatalog(d, [domain], '2026-07-20');
+    const [rule] = await listRules(d);
+    expect(rule).toMatchObject({ name: 'Domain', startDate: '2027-03-05' }); // March already passed
+  });
+
+  it('is idempotent — a rule whose name exists is skipped', async () => {
+    const d = await db();
+    await restoreRecurrencesFromCatalog(d, [netflix], '2026-07-20');
+    await restoreRecurrencesFromCatalog(d, [netflix], '2026-07-20'); // second import
+    expect((await listRules(d)).filter((r) => r.name === 'Netflix')).toHaveLength(1);
+  });
+
+  it('auto-creates a missing category and account', async () => {
+    const d = await db();
+    await restoreRecurrencesFromCatalog(d, [netflix], '2026-07-20');
+    const catId = await categoryIdFor(d, 'Streaming'); // already exists now → returns it, no dup
+    const [rule] = await listRules(d);
+    expect(rule.categoryId).toBe(catId);
   });
 });
