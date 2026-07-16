@@ -53,7 +53,13 @@ describe('resolveRate', () => {
   it('falls back to the cache on a non-ok response too', async () => {
     const d = await db();
     await setFxRates(d, { USD: { thbPerUnit: 35, asOf: '2026-06-30' } });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 500 }));
+    // 500 carries a valid, distinguishable rate (0.0275 → ~36.36 THB/USD) to ensure the guard itself
+    // (not a JSON parse failure) is what triggers the fallback
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ base: 'THB', date: '2026-07-05', rates: { USD: 0.0275 } }), {
+        status: 500,
+      }),
+    );
     expect(await resolveRate(d, { currency: 'USD', rate: null }, '2026-07-05')).toBeCloseTo(
       35 * 1.025,
       6,
