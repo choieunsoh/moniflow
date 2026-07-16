@@ -47,9 +47,15 @@ describe('useRecurringSweep', () => {
   });
 
   it('swallows a sweep failure — a broken sweep must never white-screen the shell', async () => {
+    // The real protection here is not the renderHook assertion (renderHook is synchronous and
+    // could never throw from an async rejection). The guard is Vitest failing this test on an
+    // unhandled promise rejection — deleting the hook's .catch() causes Vitest to report an
+    // "Unhandled Rejection" error and fail the test. This assertion verifies that a rejected
+    // sweep does not call bumpDataVersion.
     runSweep.mockRejectedValue(new Error('db gone'));
     const { useRecurringSweep } = await import('./use-recurring-sweep');
-    expect(() => renderHook(() => useRecurringSweep())).not.toThrow();
+    renderHook(() => useRecurringSweep());
     await waitFor(() => expect(runSweep).toHaveBeenCalledTimes(1));
+    expect(bumpDataVersion).not.toHaveBeenCalled();
   });
 });
