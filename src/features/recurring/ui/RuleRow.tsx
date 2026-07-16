@@ -12,6 +12,7 @@ import type { IconSet } from '@features/settings/queries';
 import type { RuleMeta } from '../queries';
 import type { RuleView } from '../use-recurring';
 import { ordinal } from '../ordinal';
+import { monthName } from '../month';
 
 // Width of the action panel revealed behind the row — matches SwipeRow.
 const ACTION_W = 88;
@@ -106,6 +107,14 @@ export function RuleRow({
   const isForeign = rule.currency !== null && rule.currency !== 'THB';
   const progress = rule.progress;
   const categoryName = meta?.categoryName ?? '';
+  // The day-chip label. A monthly rule shows just the day (the section header already says "Monthly",
+  // and a monthly rule has no single month). A yearly rule adds its renewal month — the section only
+  // says "Yearly", so "18th" alone wouldn't tell you 18th of WHICH month. The month is the anchor's,
+  // read from startDate (YYYY-MM-DD), the same source the edit chip uses.
+  const isYearly = rule.intervalMonths === 12;
+  const scheduleLabel = isYearly
+    ? `${monthName(Number(rule.startDate.split('-')[1]))} ${ordinal(rule.day)}`
+    : ordinal(rule.day);
 
   return (
     <li className="relative overflow-hidden">
@@ -168,9 +177,9 @@ export function RuleRow({
               iconSet={iconSet}
             />
             <span className="min-w-0 truncate text-sm font-medium">{rule.name}</span>
-            {/* The day is the rule's defining fact — when it hits you. It reads as a chip because it
-                is the same kind of metadata the ledger row chips carry. */}
-            <span className="chip tnum shrink-0">{ordinal(rule.day)}</span>
+            {/* When it hits you — the rule's defining fact, as a chip like the ledger row's metadata.
+                A yearly rule carries its month too, since the section header only says "Yearly". */}
+            <span className="chip tnum shrink-0">{scheduleLabel}</span>
           </span>
           {isForeign ? (
             <span className="flex shrink-0 flex-col items-end">

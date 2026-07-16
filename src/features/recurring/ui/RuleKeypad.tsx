@@ -12,6 +12,7 @@ import { AccountIcon } from '@features/accounts/ui/AccountIcon';
 import type { IconSet } from '@features/settings/queries';
 import type { Recurrence } from '../schema';
 import { ordinal } from '../ordinal';
+import { monthName } from '../month';
 
 // Mirrors Keypad's KEYS — the two money-entry surfaces must key identically, and duplicating the
 // literal costs less than coupling this to entries/ui/Keypad for a layout constant.
@@ -19,15 +20,6 @@ const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
-
-// Month number (1-based) → short name, via Intl (a fixed UTC day in that month, formatted). No
-// hand-maintained name table; matches the app's Intl-only date policy.
-const monthFmt = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' });
-const monthLongFmt = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' });
-function monthName(m: number, long = false): string {
-  const d = new Date(Date.UTC(2020, m - 1, 1));
-  return (long ? monthLongFmt : monthFmt).format(d);
-}
 
 // Same 4-dp rate display as the keypad — enough for every supported currency (KRW, the smallest, is
 // ~0.023 THB/unit). useGrouping off so the value stays a valid <input type=number>.
