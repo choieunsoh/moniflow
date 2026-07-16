@@ -105,7 +105,13 @@ export function RuleRow({
   // what it costs in baht beneath.
   const isForeign = rule.currency !== null && rule.currency !== 'THB';
   const progress = rule.progress;
+  // The category leads the row and the rule name (which becomes the posted entry's note) sits on the
+  // second line — the same hierarchy the ledger's SwipeRow uses, where the category is the headline
+  // and the note is secondary. Fall back to the rule name as the headline only when a rule somehow
+  // has no category, so the row is never blank; the note line is then suppressed to avoid repeating it.
   const categoryName = meta?.categoryName ?? '';
+  const headline = categoryName || rule.name;
+  const showNote = categoryName !== '';
 
   return (
     <li className="relative overflow-hidden">
@@ -167,9 +173,10 @@ export function RuleRow({
               hue={meta?.categoryHue ?? undefined}
               iconSet={iconSet}
             />
-            <span className="min-w-0 truncate text-sm font-medium">{rule.name}</span>
+            <span className="min-w-0 truncate text-sm font-medium">{headline}</span>
             {/* The day is the rule's defining fact — when it hits you. It reads as a chip because it
-                is the same kind of metadata the ledger row chips carry. */}
+                is the same kind of metadata the ledger row chips carry. Only the day, never the
+                month: the section header already says Monthly vs Yearly, so the month would be noise. */}
             <span className="chip tnum shrink-0">{ordinal(rule.day)}</span>
           </span>
           {isForeign ? (
@@ -206,15 +213,14 @@ export function RuleRow({
             </span>
           )}
         </div>
-        {/* Second line: the category this rule posts to, then an installment's progress when there is
-            one. The category is the icon's name spelled out — the marker gives the colour at a glance,
-            this makes it unambiguous (two categories can share a hue). Cadence and day are the section
-            header's and the chip's jobs, so they stay off this line, per SwipeRow's
-            drop-what-the-header-said rule. */}
-        {categoryName || progress.total !== null ? (
+        {/* Second line: the rule's name (its posted-entry note), then an installment's progress when
+            there is one. The category now leads the row above, so this line carries what the headline
+            no longer does. Cadence and day are the section header's and the chip's jobs, so they stay
+            off this line, per SwipeRow's drop-what-the-header-said rule. */}
+        {showNote || progress.total !== null ? (
           <div className="truncate text-sm" style={{ color: 'var(--color-muted)' }}>
-            {categoryName}
-            {categoryName && progress.total !== null ? ' · ' : ''}
+            {showNote ? rule.name : ''}
+            {showNote && progress.total !== null ? ' · ' : ''}
             {progress.total !== null ? (
               <span className="tnum">
                 {progress.paid} of {progress.total} paid · {progress.remaining} left
