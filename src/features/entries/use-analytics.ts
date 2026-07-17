@@ -4,11 +4,10 @@ import { useEffect, useState } from 'react';
 import { getBrowserDb } from '@db/browser';
 import { getCategoryBreakdown, type Breakdown } from './queries';
 import { lastCycles, currentCycleKey } from './cycle';
-import { TREND_CYCLES, monthLabel, toTrendBars, type TrendBar } from './trend';
+import { TREND_CYCLES, toTrendBars, type TrendBar } from './trend';
 import { toDonutSlices, type DonutSlice } from './donut';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getBudgets } from '@features/budgets/queries';
-import { toBudgetFitRows, type BudgetFitRow } from '@features/budgets/budget-status';
 import { getEmojiMap } from '@features/categories/queries';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
@@ -21,7 +20,6 @@ export type AnalyticsData = {
   total: number;
   emojiMap: Record<string, string>;
   iconSet: IconSet;
-  fitRows: BudgetFitRow[];
   budgetLine: number | null;
 };
 
@@ -112,12 +110,6 @@ export function useAnalytics(
       // The line marks the budget for whatever the chart is showing: the whole-cycle total when
       // unfiltered, that category's own limit when filtered. Null (no line) when neither is set.
       const budgetLine = category === null ? totalLimit : (limits.get(category) ?? null);
-      const fitRows = toBudgetFitRows(
-        limits,
-        matrix,
-        cycles.map((c) => ({ key: c.key, label: monthLabel(c.key) })),
-        totalLimit,
-      );
 
       setData({
         activeKey,
@@ -127,7 +119,6 @@ export function useAnalytics(
         total,
         emojiMap,
         iconSet,
-        fitRows,
         budgetLine,
       });
       setReady(true);
