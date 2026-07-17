@@ -34,6 +34,34 @@ export function toTrendBars(
   }));
 }
 
+// The average's basis: complete cycles that have spend. Two exclusions, each for a reason the
+// chart already accepts.
+//
+// The live cycle, because `partial` exists precisely to stop an unfinished cycle being compared as
+// if it were finished — and an average IS a comparison. On day 2 of the cycle you have spent ฿400
+// of a typical ฿5,000; count it and the line sags for the rest of the month.
+//
+// Zero cycles, because `toTrendBars` deliberately renders "no data" and "spent nothing" as the same
+// real zero (a gap would read as a rendering bug). That is right for bars and wrong for an average:
+// if the ledger starts in May, the window's earlier zeros mean "not tracking yet", and averaging
+// them in drags the line low enough to report every real cycle as above-normal.
+//
+// ponytail: `value > 0` cannot tell a genuine zero-spend complete cycle from a pre-tracking one, and
+// excludes both — nudging the average up. In a single-user tracker a real zero-spend month means you
+// did not open the app, so excluding it is the safer error. Upgrade path if that ever bites: a
+// `min(date)` query against entries to find where tracking actually began.
+export function completeBars(bars: TrendBar[]): TrendBar[] {
+  return bars.filter((b) => !b.partial && b.value > 0);
+}
+
+// Null below two complete cycles: one cycle has no "normal" to compare against, and a line sitting
+// exactly on your only bar is noise. The caller says why instead of drawing it.
+export function trendAverage(bars: TrendBar[]): number | null {
+  const basis = completeBars(bars);
+  if (basis.length < 2) return null;
+  return basis.reduce((sum, b) => sum + b.value, 0) / basis.length;
+}
+
 // Colours + font are injected (read from CSS tokens / computed style by the wrapper) so this stays
 // pure and theme-aware without importing echarts or touching the DOM. Mirrors DonutPalette's
 // contract; kept separate because a bar chart wants an accent and has no slice surface to border.

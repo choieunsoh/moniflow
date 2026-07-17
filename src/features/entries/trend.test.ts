@@ -3,6 +3,8 @@ import {
   monthLabel,
   toTrendBars,
   buildTrendOption,
+  completeBars,
+  trendAverage,
   type TrendBar,
   type TrendPalette,
 } from './trend';
@@ -116,5 +118,75 @@ describe('buildTrendOption budget line', () => {
 
   it('keeps the axis at the tallest bar when the limit is below it', () => {
     expect(buildTrendOption(bars, PALETTE, 50).yAxis.max).toBe(200);
+  });
+});
+
+describe('completeBars', () => {
+  it('drops the live cycle — it is still filling up, so it is not comparable', () => {
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 100, partial: false },
+      { key: '2026-06', label: 'Jun', value: 200, partial: true },
+    ];
+    expect(completeBars(bars).map((b) => b.key)).toEqual(['2026-05']);
+  });
+
+  it('drops zero cycles — a zero is almost always "not tracking yet", not "spent nothing"', () => {
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 0, partial: false },
+      { key: '2026-06', label: 'Jun', value: 200, partial: false },
+    ];
+    expect(completeBars(bars).map((b) => b.key)).toEqual(['2026-06']);
+  });
+
+  it('keeps every complete cycle with spend', () => {
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 100, partial: false },
+      { key: '2026-06', label: 'Jun', value: 200, partial: false },
+    ];
+    expect(completeBars(bars)).toHaveLength(2);
+  });
+});
+
+describe('trendAverage', () => {
+  it('averages the complete cycles that have spend', () => {
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 100, partial: false },
+      { key: '2026-06', label: 'Jun', value: 300, partial: false },
+    ];
+    expect(trendAverage(bars)).toBe(200);
+  });
+
+  it('ignores the live cycle even when it is the largest bar', () => {
+    // Day 30 of a heavy month must not drag the average up any more than day 2 drags it down.
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 100, partial: false },
+      { key: '2026-06', label: 'Jun', value: 300, partial: false },
+      { key: '2026-07', label: 'Jul', value: 9000, partial: true },
+    ];
+    expect(trendAverage(bars)).toBe(200);
+  });
+
+  it('ignores leading zeros, so a short history is not averaged against months you were not tracking', () => {
+    // The bug this prevents: four pre-tracking zeros halve the line, and then every real cycle
+    // reports as above-normal.
+    const bars: TrendBar[] = [
+      { key: '2026-02', label: 'Feb', value: 0, partial: false },
+      { key: '2026-03', label: 'Mar', value: 0, partial: false },
+      { key: '2026-04', label: 'Apr', value: 100, partial: false },
+      { key: '2026-05', label: 'May', value: 300, partial: false },
+    ];
+    expect(trendAverage(bars)).toBe(200);
+  });
+
+  it('returns null with one complete cycle — a line on your only bar is noise, not a comparison', () => {
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 100, partial: false },
+      { key: '2026-06', label: 'Jun', value: 300, partial: true },
+    ];
+    expect(trendAverage(bars)).toBeNull();
+  });
+
+  it('returns null with no data at all', () => {
+    expect(trendAverage([])).toBeNull();
   });
 });
