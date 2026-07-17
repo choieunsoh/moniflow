@@ -30,6 +30,9 @@ export default function RecurringPage() {
 
   return (
     <PageContainer size="full">
+      {/* sr-only heading root — the recurring list has no visible page title, so without this a
+          screen reader's heading list starts at the section <h2>s with no <h1> above them. */}
+      <h1 className="sr-only">Recurring</h1>
       <RecurringList
         rules={rules}
         monthlyTotal={monthlyTotal}

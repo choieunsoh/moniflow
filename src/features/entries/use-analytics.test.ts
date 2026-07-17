@@ -2,10 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
-import { ensureBudgetsTable } from '@features/budgets/schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { addEntries } from './queries';
-import { setBudget } from '@features/budgets/queries';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 
@@ -22,7 +20,6 @@ describe('useAnalytics', () => {
   beforeEach(async () => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
-    await ensureBudgetsTable(db);
     await ensureSettingsTable(db);
     await addEntries(db, [
       // cycle 2026-05 (18 May – 17 Jun) — Food 900
@@ -35,8 +32,6 @@ describe('useAnalytics', () => {
       // Income is dropped by every read surface — it must not reach the trend.
       { date: '2026-07-21', account: 'Cash', category: 'Salary', amount: 50000 },
     ]);
-    await setBudget(db, 'Food', 1000);
-    await setBudget(db, null, 20000); // the whole-cycle TOTAL budget (category_id IS NULL)
     vi.mocked(getBrowserDb).mockResolvedValue(db);
   });
 
@@ -89,21 +84,30 @@ describe('useAnalytics', () => {
     expect(result.current.data?.bars).toHaveLength(6);
   });
 
-  it('uses the total budget as the budget line when unfiltered', async () => {
+  it('has no per-cycle rows when unfiltered — the list is the category breakdown then', async () => {
     const { result } = renderHook(() => useAnalytics('2026-07', null));
     await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.data?.budgetLine).toBe(20000);
+    expect(result.current.data?.cycleRows).toEqual([]);
   });
 
-  it('uses the category budget as the budget line when filtered', async () => {
+  it('breaks the filtered category down per cycle, oldest first, skipping cycles with no spend', async () => {
     const { result } = renderHook(() => useAnalytics('2026-07', 'Food'));
     await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.data?.budgetLine).toBe(1000);
+    const rows = result.current.data?.cycleRows ?? [];
+    expect(rows.map((r) => r.key)).toEqual(['2026-05', '2026-06', '2026-07']);
+    expect(rows.map((r) => r.label)).toEqual(['May', 'Jun', 'Jul']);
+    expect(rows.map((r) => r.value)).toEqual([900, 1200, 400]);
+    expect(rows.map((r) => r.count)).toEqual([1, 1, 1]);
   });
 
-  it('has no budget line for a filtered category with no budget of its own', async () => {
-    const { result } = renderHook(() => useAnalytics('2026-07', 'Travel'));
+  it('the header total sums the list beneath it', async () => {
+    // The P0 regression guard. `total` was category-filtered while the list was not, so a filtered
+    // page showed Food's total over a list of every category. Nothing asserted that the two agree,
+    // which is the only reason it shipped.
+    const { result } = renderHook(() => useAnalytics('2026-07', 'Food'));
     await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.data?.budgetLine).toBeNull();
+    const rows = result.current.data?.cycleRows ?? [];
+    const summed = rows.reduce((sum, r) => sum + r.value, 0);
+    expect(summed).toBe(result.current.data?.total);
   });
 });

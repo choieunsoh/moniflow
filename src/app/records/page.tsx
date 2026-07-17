@@ -115,6 +115,9 @@ export default function RecordsPage() {
 
   return (
     <PageContainer size="full">
+      {/* sr-only heading root — Records has no visible page title, so without this a screen reader's
+          heading list starts at the day/section <h2>s with no <h1> above them. */}
+      <h1 className="sr-only">Records</h1>
       {!spanAll && (
         <CycleSelector
           activeKey={activeKey}

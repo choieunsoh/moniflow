@@ -34,6 +34,47 @@ export function toTrendBars(
   }));
 }
 
+// The average's basis: complete cycles that have spend. Two exclusions, each for a reason the
+// chart already accepts.
+//
+// The live cycle, because `partial` exists precisely to stop an unfinished cycle being compared as
+// if it were finished — and an average IS a comparison. On day 2 of the cycle you have spent ฿400
+// of a typical ฿5,000; count it and the line sags for the rest of the month.
+//
+// Zero cycles, because `toTrendBars` deliberately renders "no data" and "spent nothing" as the same
+// real zero (a gap would read as a rendering bug). That is right for bars and wrong for an average:
+// if the ledger starts in May, the window's earlier zeros mean "not tracking yet", and averaging
+// them in drags the line low enough to report every real cycle as above-normal.
+//
+// ponytail: `value > 0` cannot tell a genuine zero-spend complete cycle from a pre-tracking one, and
+// excludes both — nudging the average up. In a single-user tracker a real zero-spend month means you
+// did not open the app, so excluding it is the safer error. Upgrade path if that ever bites: a
+// `min(date)` query against entries to find where tracking actually began.
+export function completeBars(bars: TrendBar[]): TrendBar[] {
+  return bars.filter((b) => !b.partial && b.value > 0);
+}
+
+// Null below two complete cycles: one cycle has no "normal" to compare against, and a line sitting
+// exactly on your only bar is noise. The caller says why instead of drawing it.
+export function trendAverage(bars: TrendBar[]): number | null {
+  const basis = completeBars(bars);
+  if (basis.length < 2) return null;
+  return basis.reduce((sum, b) => sum + b.value, 0) / basis.length;
+}
+
+// The chart's accessible text. ECharts draws to canvas and its tooltip is trigger:'item' — pointer
+// only — so without this every figure the page exists to communicate is unreachable by keyboard or
+// screen reader. The old aria-label was the chart's TITLE ("Total spending over the last 6 cycles"),
+// which names the chart and states none of its data.
+export function trendSummary(bars: TrendBar[], prefix: string): string {
+  const figures = bars
+    .map((b) => `${b.label} ${formatBahtWhole(b.value)}${b.partial ? ' (cycle in progress)' : ''}`)
+    .join(', ');
+  const average = trendAverage(bars);
+  const averageSentence = average === null ? '' : ` Average ${formatBahtWhole(average)}.`;
+  return `${prefix}: ${figures}.${averageSentence}`;
+}
+
 // Colours + font are injected (read from CSS tokens / computed style by the wrapper) so this stays
 // pure and theme-aware without importing echarts or touching the DOM. Mirrors DonutPalette's
 // contract; kept separate because a bar chart wants an accent and has no slice surface to border.
@@ -41,6 +82,7 @@ export type TrendPalette = {
   text: string;
   muted: string;
   border: string;
+  surface2: string;
   accent: string;
   font: string;
 };
@@ -59,18 +101,16 @@ function barItemStyle(bar: TrendBar, anchorKey: string, p: TrendPalette) {
 
 // Returns a plain ECharts option: one bar per cycle, oldest → newest. The y axis is hidden — the
 // tooltip and the list below carry the figures, and an axis of baht labels would crowd a 412px
-// column for no gain. An optional `limit` draws a dashed budget reference line — the total budget
-// when unfiltered, the filtered category's own limit otherwise (the caller decides which) — and
-// forces the axis to reach it, since ECharts clips a markLine that falls above the tallest bar.
-export function buildTrendOption(bars: TrendBar[], p: TrendPalette, limit?: number | null) {
+// column for no gain. A dashed line marks your own average across the window (see trendAverage);
+// below two complete cycles there is nothing to average and no line is drawn.
+export function buildTrendOption(bars: TrendBar[], p: TrendPalette) {
   const anchorKey = bars.length > 0 ? bars[bars.length - 1].key : '';
-  // Narrowed to a plain `number | null` so the ternaries below narrow cleanly without a `!`.
-  const limitValue = limit ?? null;
+  const average = trendAverage(bars);
   return {
     grid: { left: 8, right: 8, top: 16, bottom: 8, containLabel: true },
     tooltip: {
       trigger: 'item',
-      backgroundColor: '#1e2128',
+      backgroundColor: p.surface2,
       borderColor: p.border,
       borderWidth: 1,
       textStyle: { color: p.text, fontFamily: 'inherit' },
@@ -83,16 +123,15 @@ export function buildTrendOption(bars: TrendBar[], p: TrendPalette, limit?: numb
       axisLine: { lineStyle: { color: p.border } },
       axisLabel: { color: p.muted, fontFamily: p.font, fontSize: 12 },
     },
-    // ECharts scales the value axis to the SERIES data, so a markLine above the tallest bar gets
-    // clipped and silently vanishes — a ฿30,000 line over a ฿4,899 bar would simply not render,
-    // i.e. the line would disappear exactly when you are comfortably under budget. Force the axis
-    // to reach it. This is also what shortens every bar when you are well under budget: the same
-    // mechanism, accepted deliberately (see the spec).
-    yAxis: {
-      type: 'value',
-      show: false,
-      max: limitValue === null ? undefined : Math.max(limitValue, ...bars.map((b) => b.value)),
-    },
+    // No `max`. The budget line forced the axis up to a limit that could sit far above every bar,
+    // which shortened every bar in proportion to how far under budget you were — the same mechanism
+    // that got the budgets view deleted. An average is always inside the data's range, so it cannot
+    // be clipped and the axis never needs forcing. Do not reintroduce a reference that lives outside
+    // the data without solving this again.
+    // `max: undefined` (not omitted) keeps the field statically visible so the regression test
+    // above can assert on it — TS infers object-literal shape from what's written, and a field
+    // that's never present can't be asserted `undefined` without a cast.
+    yAxis: { type: 'value', show: false, max: undefined },
     series: [
       {
         type: 'bar',
@@ -103,15 +142,17 @@ export function buildTrendOption(bars: TrendBar[], p: TrendPalette, limit?: numb
           itemStyle: barItemStyle(b, anchorKey, p),
         })),
         markLine:
-          limitValue === null
+          average === null
             ? undefined
             : {
                 silent: true,
                 symbol: 'none',
-                data: [{ yAxis: limitValue }],
-                lineStyle: { color: p.muted, type: 'dashed', width: 1 },
+                data: [{ yAxis: average }],
+                // border, not muted: muted is every non-anchor bar's colour, so the line and the
+                // data would share one ink and the reference would read as another bar.
+                lineStyle: { color: p.border, type: 'dashed', width: 1 },
                 label: {
-                  formatter: formatBahtWhole(limitValue),
+                  formatter: `Average ${formatBahtWhole(average)}`,
                   position: 'insideEndTop',
                   color: p.muted,
                   fontFamily: p.font,

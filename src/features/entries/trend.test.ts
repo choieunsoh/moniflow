@@ -3,6 +3,9 @@ import {
   monthLabel,
   toTrendBars,
   buildTrendOption,
+  completeBars,
+  trendAverage,
+  trendSummary,
   type TrendBar,
   type TrendPalette,
 } from './trend';
@@ -12,6 +15,7 @@ const PALETTE: TrendPalette = {
   text: '#fff',
   muted: '#888',
   border: '#333',
+  surface2: '#1e2128',
   accent: '#7c5cff',
   font: 'Inter',
 };
@@ -85,36 +89,131 @@ describe('buildTrendOption', () => {
   });
 });
 
-describe('buildTrendOption budget line', () => {
+describe('buildTrendOption average line', () => {
   const bars: TrendBar[] = [
     { key: '2026-05', label: 'May', value: 100, partial: false },
-    { key: '2026-06', label: 'Jun', value: 200, partial: false },
+    { key: '2026-06', label: 'Jun', value: 300, partial: false },
     { key: '2026-07', label: 'Jul', value: 50, partial: true },
   ];
 
-  it('draws no line when no limit is given', () => {
-    expect(buildTrendOption(bars, PALETTE).series[0].markLine).toBeUndefined();
+  it('draws the line at the average of the complete cycles', () => {
+    expect(buildTrendOption(bars, PALETTE).series[0].markLine?.data).toEqual([{ yAxis: 200 }]);
   });
 
-  it('draws no line when the limit is null', () => {
-    expect(buildTrendOption(bars, PALETTE, null).series[0].markLine).toBeUndefined();
+  it('names the line, so a bare figure cannot be read as a budget or a target', () => {
+    expect(buildTrendOption(bars, PALETTE).series[0].markLine?.label.formatter).toBe(
+      'Average ฿200',
+    );
   });
 
-  it('leaves the axis auto-scaled when there is no limit', () => {
+  it('draws no line when there is too little history to average', () => {
+    const thin: TrendBar[] = [{ key: '2026-07', label: 'Jul', value: 50, partial: true }];
+    expect(buildTrendOption(thin, PALETTE).series[0].markLine).toBeUndefined();
+  });
+
+  it('never sets a y-axis max, so the bars are always scaled to the data', () => {
+    // Regression guard. The budget line forced yAxis.max to reach a limit that could sit far above
+    // every bar — a ฿4,899 bar under a ฿30,000 line rendered at 16% height. An average is always
+    // inside the data's range, so the axis must simply never be forced again.
     expect(buildTrendOption(bars, PALETTE).yAxis.max).toBeUndefined();
   });
 
-  it('draws the line at the limit', () => {
-    expect(buildTrendOption(bars, PALETTE, 300).series[0].markLine?.data).toEqual([{ yAxis: 300 }]);
+  it('keeps the line off the bars ink, so the reference reads as a reference', () => {
+    expect(buildTrendOption(bars, PALETTE).series[0].markLine?.lineStyle.color).toBe(
+      PALETTE.border,
+    );
+  });
+});
+
+describe('completeBars', () => {
+  it('drops the live cycle — it is still filling up, so it is not comparable', () => {
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 100, partial: false },
+      { key: '2026-06', label: 'Jun', value: 200, partial: true },
+    ];
+    expect(completeBars(bars).map((b) => b.key)).toEqual(['2026-05']);
   });
 
-  it('forces the axis to reach a limit above every bar, so the line cannot be clipped', () => {
-    // The bars peak at 200. Without this the axis would stop at 200 and a 30,000 line would be
-    // clipped out of the plot — invisible exactly when you are well under budget.
-    expect(buildTrendOption(bars, PALETTE, 30_000).yAxis.max).toBe(30_000);
+  it('drops zero cycles — a zero is almost always "not tracking yet", not "spent nothing"', () => {
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 0, partial: false },
+      { key: '2026-06', label: 'Jun', value: 200, partial: false },
+    ];
+    expect(completeBars(bars).map((b) => b.key)).toEqual(['2026-06']);
   });
 
-  it('keeps the axis at the tallest bar when the limit is below it', () => {
-    expect(buildTrendOption(bars, PALETTE, 50).yAxis.max).toBe(200);
+  it('keeps every complete cycle with spend', () => {
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 100, partial: false },
+      { key: '2026-06', label: 'Jun', value: 200, partial: false },
+    ];
+    expect(completeBars(bars)).toHaveLength(2);
+  });
+});
+
+describe('trendAverage', () => {
+  it('averages the complete cycles that have spend', () => {
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 100, partial: false },
+      { key: '2026-06', label: 'Jun', value: 300, partial: false },
+    ];
+    expect(trendAverage(bars)).toBe(200);
+  });
+
+  it('ignores the live cycle even when it is the largest bar', () => {
+    // Day 30 of a heavy month must not drag the average up any more than day 2 drags it down.
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 100, partial: false },
+      { key: '2026-06', label: 'Jun', value: 300, partial: false },
+      { key: '2026-07', label: 'Jul', value: 9000, partial: true },
+    ];
+    expect(trendAverage(bars)).toBe(200);
+  });
+
+  it('ignores leading zeros, so a short history is not averaged against months you were not tracking', () => {
+    // The bug this prevents: four pre-tracking zeros halve the line, and then every real cycle
+    // reports as above-normal.
+    const bars: TrendBar[] = [
+      { key: '2026-02', label: 'Feb', value: 0, partial: false },
+      { key: '2026-03', label: 'Mar', value: 0, partial: false },
+      { key: '2026-04', label: 'Apr', value: 100, partial: false },
+      { key: '2026-05', label: 'May', value: 300, partial: false },
+    ];
+    expect(trendAverage(bars)).toBe(200);
+  });
+
+  it('returns null with one complete cycle — a line on your only bar is noise, not a comparison', () => {
+    const bars: TrendBar[] = [
+      { key: '2026-05', label: 'May', value: 100, partial: false },
+      { key: '2026-06', label: 'Jun', value: 300, partial: true },
+    ];
+    expect(trendAverage(bars)).toBeNull();
+  });
+
+  it('returns null with no data at all', () => {
+    expect(trendAverage([])).toBeNull();
+  });
+});
+
+describe('trendSummary', () => {
+  const bars: TrendBar[] = [
+    { key: '2026-05', label: 'May', value: 100, partial: false },
+    { key: '2026-06', label: 'Jun', value: 300, partial: false },
+    { key: '2026-07', label: 'Jul', value: 50, partial: true },
+  ];
+
+  it('names every figure, so the canvas is not a dead end without sight', () => {
+    expect(trendSummary(bars, 'Total spending over the last 3 cycles')).toBe(
+      'Total spending over the last 3 cycles: May ฿100, Jun ฿300, Jul ฿50 (cycle in progress). Average ฿200.',
+    );
+  });
+
+  it('marks the live cycle in words — its 45% opacity says so to nobody else', () => {
+    expect(trendSummary(bars, 'x')).toContain('Jul ฿50 (cycle in progress)');
+  });
+
+  it('omits the average when there is too little history to have one', () => {
+    const thin: TrendBar[] = [{ key: '2026-07', label: 'Jul', value: 50, partial: true }];
+    expect(trendSummary(thin, 'x')).toBe('x: Jul ฿50 (cycle in progress).');
   });
 });

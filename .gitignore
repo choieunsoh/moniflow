@@ -34,4 +34,8 @@ next-env.d.ts
 # Claude Code — personal/local overrides stay out of git; settings.json (shared) is committed
 .claude/settings.local.json
 
+# Impeccable design-critique snapshots — local backlog for /impeccable polish. Durable findings
+# belong in a spec under docs/superpowers/specs/, not here.
+.impeccable/
+
 .vercel

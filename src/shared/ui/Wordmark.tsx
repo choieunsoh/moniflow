@@ -1,6 +1,11 @@
 // The mark: a rounded accent tile carrying an 'm' monogram whose last stroke flows off into a
 // money-line + arrow — the same mark as the app icon (src/app/icon.svg), kept in sync by hand.
 // Uses the accent tokens so a reskin (swap --color-accent) recolors it for free.
+//
+// This is NOT the page <h1>. It renders in AppHeader on every route, and most routes already own a
+// meaningful page-title <h1> (Settings, Budgets, Categories, …); making the wordmark an <h1> too gave
+// those pages two roots with identical brand text first. The three routes that lacked a heading root
+// (Home, Records, Analytics) carry their own sr-only <h1> instead, matching entries/new & co.
 export function Wordmark({ className = '' }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>

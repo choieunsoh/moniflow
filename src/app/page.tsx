@@ -63,6 +63,10 @@ export default function HomePage() {
 
   return (
     <PageContainer size="full">
+      {/* The page's heading root. Visually redundant with the wordmark + cycle selector, so sr-only —
+          but Home, Records and Analytics are the three routes with no visible page title, and without
+          this a screen reader's heading list starts at the section <h2>s with no <h1> above them. */}
+      <h1 className="sr-only">Home</h1>
       <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} view={view} />
       {isCurrentCycle ? <CycleProgress progress={progress} /> : null}
 

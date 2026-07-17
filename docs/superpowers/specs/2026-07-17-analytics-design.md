@@ -2,6 +2,7 @@
 
 Date: 2026-07-17
 Status: approved, pending implementation plan
+Superseded in part by: 2026-07-17-analytics-trend-repair-design.md
 
 ## Problem
 
@@ -50,9 +51,9 @@ Three questions the ledger holds the answers to and the UI cannot ask:
 | Structure             | ONE view. No `?view=` param, no toggle (see "The budgets view, and why it went") |
 | Category drill-down   | A filter (`?category=`) on the trend view, not a second view             |
 | Data primitive        | `getCategoryBreakdown` called once per cycle — no new SQL                |
-| Budget comparison     | The trend's dashed line, against **current** limits                      |
+| Budget comparison     | **Superseded** — see 2026-07-17-analytics-trend-repair-design.md; the trend's dashed line now marks the user's own six-cycle average, not a budget |
 | Partial cycle         | Current cycle's bar rendered muted — never compared as if complete       |
-| Budget line           | Dashed line on the trend chart only; follows the filter; forces `yAxis.max` |
+| Budget line           | **Superseded** — see 2026-07-17-analytics-trend-repair-design.md; replaced by an average line that never forces `yAxis.max` |
 | Axis labels           | Month names stay the cycle's START month (see "Why the labels stay")     |
 
 ## Navigation
@@ -146,6 +147,12 @@ has room for one short token, and the unambiguous full range already lives on Ho
 Do not "fix" this without revisiting the cycle-key convention itself.
 
 ### The budget reference line
+
+**Reversed by 2026-07-17-analytics-trend-repair-design.md.** This section's own accepted cost below —
+bars scaled to a limit shrink in proportion to how far under it you are — is the identical mechanism
+"The budgets view, and why it went" deletes a whole screen over. The repair spec applies that
+reasoning here too and replaces the budget line with the user's own six-cycle average, which is
+always inside the data's range and so can never force `yAxis.max`. Left below as history.
 
 A dashed horizontal line marks the budget for whatever the chart is currently showing: the **total**
 budget when unfiltered, that **category's** limit when filtered to one. No budget set for the current

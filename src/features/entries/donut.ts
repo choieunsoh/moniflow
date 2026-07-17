@@ -57,6 +57,7 @@ export type DonutPalette = {
   muted: string;
   border: string;
   surface: string;
+  surface2: string;
   font: string;
 };
 
@@ -71,7 +72,7 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
   return {
     tooltip: {
       trigger: 'item',
-      backgroundColor: '#1e2128',
+      backgroundColor: p.surface2,
       borderColor: p.border,
       borderWidth: 1,
       textStyle: { color: p.text, fontFamily: 'inherit' },
