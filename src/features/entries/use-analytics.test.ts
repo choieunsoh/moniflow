@@ -36,6 +36,7 @@ describe('useAnalytics', () => {
       { date: '2026-07-21', account: 'Cash', category: 'Salary', amount: 50000 },
     ]);
     await setBudget(db, 'Food', 1000);
+    await setBudget(db, null, 20000); // the whole-cycle TOTAL budget (category_id IS NULL)
     vi.mocked(getBrowserDb).mockResolvedValue(db);
   });
 
@@ -82,14 +83,21 @@ describe('useAnalytics', () => {
     expect(result.current.data?.total).toBe(2800);
   });
 
-  it('projects budget fit against the current limit', async () => {
+  it('projects budget fit against the current limits, total first', async () => {
     const { result } = renderHook(() => useAnalytics('2026-07', null));
     await waitFor(() => expect(result.current.ready).toBe(true));
-    const [row] = result.current.data?.fitRows ?? [];
-    expect(row.category).toBe('Food');
-    expect(row.limit).toBe(1000);
+    const fitRows = result.current.data?.fitRows ?? [];
+    expect(fitRows.map((r) => r.category)).toEqual(['Total', 'Food']);
+
+    const total = fitRows[0];
+    expect(total.limit).toBe(20000);
+    // Window spend is 900 / 1500 / 400 across 2026-05/06/07 — all under the 20,000 total.
+    expect(total.heldCount).toBe(6);
+
+    const food = fitRows[1];
+    expect(food.limit).toBe(1000);
     // Only 2026-06 (1200) exceeds 1000; the other five cycles held.
-    expect(row.heldCount).toBe(5);
+    expect(food.heldCount).toBe(5);
   });
 
   it('falls back to the current cycle when no key is given', async () => {

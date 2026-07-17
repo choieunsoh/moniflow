@@ -105,14 +105,18 @@ export function useAnalytics(
       const slices = toDonutSlices(aggregate(breakdowns));
       const total = [...spendByCycle.values()].reduce((sum, v) => sum + v, 0);
 
+      const budgetRows = await getBudgets(db);
+      // The category=null row is the whole-cycle TOTAL budget; the rest are per-category caps.
+      const totalLimit = budgetRows.find((b) => b.category === null)?.amount ?? null;
       const limits = new Map<string, number>();
-      for (const b of await getBudgets(db)) {
+      for (const b of budgetRows) {
         if (b.category !== null) limits.set(b.category, b.amount);
       }
       const fitRows = toBudgetFitRows(
         limits,
         matrix,
         cycles.map((c) => ({ key: c.key, label: monthLabel(c.key) })),
+        totalLimit,
       );
 
       setData({

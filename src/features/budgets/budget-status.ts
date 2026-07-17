@@ -106,6 +106,20 @@ export type BudgetFitRow = {
   heldCount: number; // cycles where spend stayed within the limit
 };
 
+// Build one row's per-cycle verdicts. `spentOf` resolves a cycle key to that row's spend magnitude —
+// a category column for a category row, the whole cycle's sum for the Total row.
+function fitCycles(
+  window: { key: string; label: string }[],
+  limit: number,
+  spentOf: (key: string) => number,
+): FitCycle[] {
+  return window.map(({ key, label }) => {
+    const spent = spentOf(key);
+    // `>` not `>=`: spend exactly at the limit is within it, matching classify()'s over rule.
+    return { key, label, spent, over: spent > limit };
+  });
+}
+
 // Budgets are STANDING — one row per category, no cycle column, and setBudget delete+inserts. There
 // is no record of what any past cycle's limit was, so this CANNOT be a compliance record. It answers
 // the question the data can actually answer: "with the limits I have now, how often would I have
@@ -114,26 +128,37 @@ export type BudgetFitRow = {
 // `window` is a structural { key, label }[] rather than entries' Cycle so this file stays free of a
 // feature import (the arrow runs entries → budgets, never back).
 //
-// Only budgeted categories appear: spend with no limit has nothing to fit against. Ranked worst-fit
-// first — the budgets most worth revisiting lead. Ties break by name for a stable order.
+// `totalLimit` is the whole-cycle budget (the category_id IS NULL row). It LEADS the list and is not
+// sorted among the categories — it is a different scope, and it mirrors how the Budgets page keeps
+// Total in its own section above "By category". Most users budget the total and nothing else, so
+// omitting it left the view empty for them.
+//
+// Category rows: only budgeted ones appear (spend with no limit has nothing to fit against), ranked
+// worst-fit first — the budgets most worth revisiting lead. Ties break by name for a stable order.
 export function toBudgetFitRows(
   limits: Map<string, number>,
   matrix: Map<string, Map<string, number>>,
   window: { key: string; label: string }[],
+  totalLimit?: number | null,
 ): BudgetFitRow[] {
   const rows: BudgetFitRow[] = [];
   for (const [category, limit] of limits) {
-    const cycles = window.map(({ key, label }) => {
-      const spent = matrix.get(key)?.get(category) ?? 0;
-      // `>` not `>=`: spend exactly at the limit is within it, matching classify()'s over rule.
-      return { key, label, spent, over: spent > limit };
-    });
-    rows.push({
-      category,
-      limit,
-      cycles,
-      heldCount: cycles.filter((c) => !c.over).length,
-    });
+    const cycles = fitCycles(window, limit, (key) => matrix.get(key)?.get(category) ?? 0);
+    rows.push({ category, limit, cycles, heldCount: cycles.filter((c) => !c.over).length });
   }
-  return rows.sort((a, b) => a.heldCount - b.heldCount || a.category.localeCompare(b.category));
+  rows.sort((a, b) => a.heldCount - b.heldCount || a.category.localeCompare(b.category));
+
+  if (totalLimit === undefined || totalLimit === null) return rows;
+  const totalCycles = fitCycles(window, totalLimit, (key) =>
+    [...(matrix.get(key)?.values() ?? [])].reduce((sum, v) => sum + v, 0),
+  );
+  return [
+    {
+      category: 'Total',
+      limit: totalLimit,
+      cycles: totalCycles,
+      heldCount: totalCycles.filter((c) => !c.over).length,
+    },
+    ...rows,
+  ];
 }

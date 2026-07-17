@@ -162,6 +162,12 @@ Per budgeted category: a row of six mini bars against the current limit, over-li
 danger colour, with a headline of the form _"4 of 6 cycles would have held."_ The view header states
 plainly: **"Against your current limits."**
 
+A leading **Total** row uses the same shape but against the whole-cycle budget (the `category_id IS
+NULL` row), with spend summed across every category per cycle rather than one column. It sorts above,
+not among, the category rows — browser verification against the real ledger found its only budget is
+this total one, with zero per-category budgets, so a category-only view rendered empty for its actual
+user.
+
 Pure CSS bars — `BudgetMeter` already does exactly this. No ECharts.
 
 ## Testing

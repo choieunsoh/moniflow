@@ -260,4 +260,59 @@ describe('toBudgetFitRows', () => {
       ['Zebra', 1],
     ]);
   });
+
+  it('leads with a Total row when a total limit is given', () => {
+    const rows = toBudgetFitRows(new Map([['Food', 1000]]), MATRIX, WINDOW, 5000);
+    expect(rows.map((r) => r.category)).toEqual(['Total', 'Food']);
+    expect(rows[0].limit).toBe(5000);
+  });
+
+  it('sums every category for the Total row rather than reading one column', () => {
+    const matrix = new Map([
+      [
+        '2026-05',
+        new Map([
+          ['Food', 900],
+          ['Travel', 300],
+        ]),
+      ],
+      ['2026-06', new Map([['Food', 1200]])],
+      ['2026-07', new Map<string, number>()],
+    ]);
+    const [total] = toBudgetFitRows(new Map(), matrix, WINDOW, 1000);
+    expect(total.cycles.map((c) => c.spent)).toEqual([1200, 1200, 0]);
+    // 1200 > 1000 in both May and Jun; Jul spent nothing.
+    expect(total.heldCount).toBe(1);
+  });
+
+  it('omits the Total row when no total limit is set', () => {
+    const rows = toBudgetFitRows(new Map([['Food', 1000]]), MATRIX, WINDOW);
+    expect(rows.map((r) => r.category)).toEqual(['Food']);
+  });
+
+  it('shows a Total row even with no category budgets at all', () => {
+    const rows = toBudgetFitRows(new Map(), MATRIX, WINDOW, 5000);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].category).toBe('Total');
+  });
+
+  it('keeps category rows worst-first below the Total row', () => {
+    const matrix = new Map([
+      [
+        '2026-05',
+        new Map([
+          ['Food', 9000],
+          ['Gifts', 1],
+        ]),
+      ],
+      ['2026-06', new Map([['Food', 9000]])],
+      ['2026-07', new Map([['Food', 9000]])],
+    ]);
+    const limits = new Map([
+      ['Gifts', 100],
+      ['Food', 100],
+    ]);
+    const rows = toBudgetFitRows(limits, matrix, WINDOW, 50_000);
+    expect(rows.map((r) => r.category)).toEqual(['Total', 'Food', 'Gifts']);
+  });
 });
