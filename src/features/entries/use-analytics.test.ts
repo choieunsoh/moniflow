@@ -66,7 +66,6 @@ describe('useAnalytics', () => {
     const { result } = renderHook(() => useAnalytics('2026-07', 'Food'));
     await waitFor(() => expect(result.current.ready).toBe(true));
     expect(result.current.data?.bars.map((b) => b.value)).toEqual([0, 0, 0, 900, 1200, 400]);
-    expect(result.current.data?.category).toBe('Food');
   });
 
   it('aggregates the window into a category list, biggest first', async () => {

@@ -3,26 +3,23 @@
 import { useEffect, useState } from 'react';
 import { getBrowserDb } from '@db/browser';
 import { getCategoryBreakdown, type Breakdown } from './queries';
-import { lastCycles, currentCycleKey, type Cycle } from './cycle';
+import { lastCycles, currentCycleKey } from './cycle';
 import { TREND_CYCLES, monthLabel, toTrendBars, type TrendBar } from './trend';
 import { toDonutSlices, type DonutSlice } from './donut';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getBudgets } from '@features/budgets/queries';
 import { toBudgetFitRows, type BudgetFitRow } from '@features/budgets/budget-status';
-import { getEmojiMap, getHueMap } from '@features/categories/queries';
+import { getEmojiMap } from '@features/categories/queries';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 
 export type AnalyticsData = {
   activeKey: string;
   currentKey: string;
-  cycles: Cycle[];
   bars: TrendBar[];
-  category: string | null;
   slices: DonutSlice[];
   total: number;
   emojiMap: Record<string, string>;
-  hueMap: Record<string, number>;
   iconSet: IconSet;
   fitRows: BudgetFitRow[];
 };
@@ -67,10 +64,9 @@ export function useAnalytics(
     void (async () => {
       setReady(false);
       const db = await getBrowserDb();
-      const [cutoff, emojiMap, hueMap, iconSet] = await Promise.all([
+      const [cutoff, emojiMap, iconSet] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
-        getHueMap(db),
         getIconSet(db),
       ]);
 
@@ -122,13 +118,10 @@ export function useAnalytics(
       setData({
         activeKey,
         currentKey,
-        cycles,
         bars,
-        category,
         slices,
         total,
         emojiMap,
-        hueMap,
         iconSet,
         fitRows,
       });
