@@ -66,9 +66,36 @@ describe('useAnalytics', () => {
   it('aggregates the window into a category list, biggest first', async () => {
     const { result } = renderHook(() => useAnalytics('2026-07', null));
     await waitFor(() => expect(result.current.ready).toBe(true));
-    const slices = result.current.data?.slices ?? [];
-    expect(slices.map((s) => s.name)).toEqual(['Food', 'Travel']);
-    expect(slices.map((s) => s.value)).toEqual([2500, 300]);
+    const categories = result.current.data?.categories ?? [];
+    expect(categories.map((c) => c.name)).toEqual(['Food', 'Travel']);
+    expect(categories.map((c) => c.value)).toEqual([2500, 300]);
+  });
+
+  it('shows every category with no "Other" rollup, even past the palette size', async () => {
+    // toDonutSlices caps at 7 (one per palette colour) and folds the tail into "Other" so the donut
+    // ring stays readable. The analytics list has no ring to key to, so it must show them all — eight
+    // categories here proves the cap is gone and no synthetic "Other" bucket is created.
+    const db = makeNodeProxyDb();
+    await ensureEntriesTable(db);
+    await ensureSettingsTable(db);
+    await addEntries(
+      db,
+      Array.from({ length: 8 }, (_, i) => ({
+        date: '2026-07-20',
+        account: 'Cash',
+        category: `Cat${i}`,
+        amount: -(100 + i * 10),
+      })),
+    );
+    vi.mocked(getBrowserDb).mockResolvedValue(db);
+
+    const { result } = renderHook(() => useAnalytics('2026-07', null));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const categories = result.current.data?.categories ?? [];
+    expect(categories).toHaveLength(8);
+    expect(categories.some((c) => c.name === 'Other')).toBe(false);
+    // biggest first: Cat7 (170) down to Cat0 (100).
+    expect(categories[0].name).toBe('Cat7');
   });
 
   it('reports the window total', async () => {

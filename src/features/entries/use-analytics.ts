@@ -5,31 +5,36 @@ import { getBrowserDb } from '@db/browser';
 import { getCategoryBreakdown, type Breakdown } from './queries';
 import { lastCycles, currentCycleKey } from './cycle';
 import { TREND_CYCLES, toTrendBars, monthLabel, type TrendBar } from './trend';
-import { toDonutSlices, type DonutSlice } from './donut';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
-import { getEmojiMap } from '@features/categories/queries';
+import { getEmojiMap, getHueMap } from '@features/categories/queries';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 
-// One cycle's spend for the filtered category. The filtered list's row shape — the unfiltered list
-// uses DonutSlice instead, because unfiltered the list decomposes by CATEGORY and filtered it
-// decomposes by CYCLE. Two shapes because they answer two questions.
+// One cycle's spend for the filtered category. The filtered list's row shape — unfiltered the list
+// decomposes by CATEGORY (CategoryRow), filtered it decomposes by CYCLE. Two shapes because they
+// answer two questions.
 export type CycleRow = { key: string; label: string; value: number; count: number };
+
+// One category's window total. Unlike the home donut (capped at the palette size + an "Other"
+// bucket so the RING stays readable), the analytics list has no ring to key to and shows every
+// category — so this is the full ranked breakdown, no "Other". The marker takes its own hue.
+export type CategoryRow = { name: string; value: number; count: number };
 
 export type AnalyticsData = {
   activeKey: string;
   currentKey: string;
   bars: TrendBar[];
-  slices: DonutSlice[];
+  categories: CategoryRow[];
   total: number;
   emojiMap: Record<string, string>;
+  hueMap: Record<string, number>;
   iconSet: IconSet;
   cycleRows: CycleRow[];
 };
 
 // Sum a window's breakdowns into one ranked Breakdown[] — the category list under the chart shows
-// the WINDOW's composition, not one cycle's. Totals stay negative (the ledger's sign) so the result
-// is a plain Breakdown[] that toDonutSlices can take unchanged.
+// the WINDOW's composition, not one cycle's. Totals stay negative (the ledger's sign); the caller
+// takes the magnitude when it projects out CategoryRows.
 function aggregate(breakdowns: Breakdown[][]): Breakdown[] {
   const byKey = new Map<string, Breakdown>();
   for (const rows of breakdowns) {
@@ -67,9 +72,10 @@ export function useAnalytics(
     void (async () => {
       setReady(false);
       const db = await getBrowserDb();
-      const [cutoff, emojiMap, iconSet] = await Promise.all([
+      const [cutoff, emojiMap, hueMap, iconSet] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
+        getHueMap(db),
         getIconSet(db),
       ]);
 
@@ -118,16 +124,21 @@ export function useAnalytics(
               .filter((r) => r.value > 0);
 
       const bars = toTrendBars(cycles, spendByCycle, currentKey);
-      const slices = toDonutSlices(aggregate(breakdowns));
+      // Every category in the window, biggest first — no palette cap, no "Other" (the analytics list
+      // has no donut ring whose colours it must match). Magnitudes; drop the zero-spend tail.
+      const categories: CategoryRow[] = aggregate(breakdowns)
+        .map((r) => ({ name: r.key, value: Math.abs(r.total), count: r.count }))
+        .filter((c) => c.value > 0);
       const total = [...spendByCycle.values()].reduce((sum, v) => sum + v, 0);
 
       setData({
         activeKey,
         currentKey,
         bars,
-        slices,
+        categories,
         total,
         emojiMap,
+        hueMap,
         iconSet,
         cycleRows,
       });
