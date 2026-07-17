@@ -52,7 +52,7 @@ export default function AnalyticsPage() {
         </header>
 
         {category !== null ? (
-          <div className="flex">
+          <div className="flex min-w-0">
             <HeaderFilterChip href={base} active label={category} />
           </div>
         ) : null}
