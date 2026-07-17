@@ -88,22 +88,4 @@ describe('useAnalytics', () => {
     expect(result.current.data?.activeKey).toBe(result.current.data?.currentKey);
     expect(result.current.data?.bars).toHaveLength(6);
   });
-
-  it('uses the total budget as the budget line when unfiltered', async () => {
-    const { result } = renderHook(() => useAnalytics('2026-07', null));
-    await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.data?.budgetLine).toBe(20000);
-  });
-
-  it('uses the category budget as the budget line when filtered', async () => {
-    const { result } = renderHook(() => useAnalytics('2026-07', 'Food'));
-    await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.data?.budgetLine).toBe(1000);
-  });
-
-  it('has no budget line for a filtered category with no budget of its own', async () => {
-    const { result } = renderHook(() => useAnalytics('2026-07', 'Travel'));
-    await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.data?.budgetLine).toBeNull();
-  });
 });

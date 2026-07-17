@@ -11,10 +11,10 @@ import { emojiFor } from '@features/categories/queries';
 import { formatBahtWhole } from '@shared/money';
 
 // Analytics = the zoom-out surface. Home answers "what did I spend this cycle"; this answers "is that
-// normal for me". One screen: the six-cycle spending trend, with a dashed line marking the budget
-// (whole-cycle total when unfiltered, that category's own limit when filtered) and the category
-// breakdown for the window below it. The window is anchored to ?cycle= so it stays consistent with
-// the cycle the rest of the app is showing; ?category= narrows the trend and breakdown to one category.
+// normal for me". One screen: the six-cycle spending trend, with a dashed line marking your own
+// average across the window (see trendAverage), and the category breakdown for the window below
+// it. The window is anchored to ?cycle= so it stays consistent with the cycle the rest of the app
+// is showing; ?category= narrows the trend and breakdown to one category.
 export default function AnalyticsPage() {
   const params = useSearchParams();
   const cycleParam = params.get('cycle');
@@ -34,7 +34,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { activeKey, bars, slices, total, emojiMap, iconSet, budgetLine } = data;
+  const { activeKey, bars, slices, total, emojiMap, iconSet } = data;
   const base = `/analytics?cycle=${activeKey}`;
 
   return (
@@ -58,7 +58,6 @@ export default function AnalyticsPage() {
 
         <TrendChart
           bars={bars}
-          limit={budgetLine}
           label={`${category ?? 'Total'} spending over the last ${bars.length} cycles`}
         />
 

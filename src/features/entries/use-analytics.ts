@@ -7,7 +7,6 @@ import { lastCycles, currentCycleKey } from './cycle';
 import { TREND_CYCLES, toTrendBars, type TrendBar } from './trend';
 import { toDonutSlices, type DonutSlice } from './donut';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
-import { getBudgets } from '@features/budgets/queries';
 import { getEmojiMap } from '@features/categories/queries';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
@@ -20,7 +19,6 @@ export type AnalyticsData = {
   total: number;
   emojiMap: Record<string, string>;
   iconSet: IconSet;
-  budgetLine: number | null;
 };
 
 // Sum a window's breakdowns into one ranked Breakdown[] — the category list under the chart shows
@@ -100,17 +98,6 @@ export function useAnalytics(
       const slices = toDonutSlices(aggregate(breakdowns));
       const total = [...spendByCycle.values()].reduce((sum, v) => sum + v, 0);
 
-      const budgetRows = await getBudgets(db);
-      // The category=null row is the whole-cycle TOTAL budget; the rest are per-category caps.
-      const totalLimit = budgetRows.find((b) => b.category === null)?.amount ?? null;
-      const limits = new Map<string, number>();
-      for (const b of budgetRows) {
-        if (b.category !== null) limits.set(b.category, b.amount);
-      }
-      // The line marks the budget for whatever the chart is showing: the whole-cycle total when
-      // unfiltered, that category's own limit when filtered. Null (no line) when neither is set.
-      const budgetLine = category === null ? totalLimit : (limits.get(category) ?? null);
-
       setData({
         activeKey,
         currentKey,
@@ -119,7 +106,6 @@ export function useAnalytics(
         total,
         emojiMap,
         iconSet,
-        budgetLine,
       });
       setReady(true);
     })();

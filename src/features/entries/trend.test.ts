@@ -14,6 +14,7 @@ const PALETTE: TrendPalette = {
   text: '#fff',
   muted: '#888',
   border: '#333',
+  surface2: '#1e2128',
   accent: '#7c5cff',
   font: 'Inter',
 };
@@ -87,37 +88,39 @@ describe('buildTrendOption', () => {
   });
 });
 
-describe('buildTrendOption budget line', () => {
+describe('buildTrendOption average line', () => {
   const bars: TrendBar[] = [
     { key: '2026-05', label: 'May', value: 100, partial: false },
-    { key: '2026-06', label: 'Jun', value: 200, partial: false },
+    { key: '2026-06', label: 'Jun', value: 300, partial: false },
     { key: '2026-07', label: 'Jul', value: 50, partial: true },
   ];
 
-  it('draws no line when no limit is given', () => {
-    expect(buildTrendOption(bars, PALETTE).series[0].markLine).toBeUndefined();
+  it('draws the line at the average of the complete cycles', () => {
+    expect(buildTrendOption(bars, PALETTE).series[0].markLine?.data).toEqual([{ yAxis: 200 }]);
   });
 
-  it('draws no line when the limit is null', () => {
-    expect(buildTrendOption(bars, PALETTE, null).series[0].markLine).toBeUndefined();
+  it('names the line, so a bare figure cannot be read as a budget or a target', () => {
+    expect(buildTrendOption(bars, PALETTE).series[0].markLine?.label.formatter).toBe(
+      'Average ฿200',
+    );
   });
 
-  it('leaves the axis auto-scaled when there is no limit', () => {
+  it('draws no line when there is too little history to average', () => {
+    const thin: TrendBar[] = [{ key: '2026-07', label: 'Jul', value: 50, partial: true }];
+    expect(buildTrendOption(thin, PALETTE).series[0].markLine).toBeUndefined();
+  });
+
+  it('never sets a y-axis max, so the bars are always scaled to the data', () => {
+    // Regression guard. The budget line forced yAxis.max to reach a limit that could sit far above
+    // every bar — a ฿4,899 bar under a ฿30,000 line rendered at 16% height. An average is always
+    // inside the data's range, so the axis must simply never be forced again.
     expect(buildTrendOption(bars, PALETTE).yAxis.max).toBeUndefined();
   });
 
-  it('draws the line at the limit', () => {
-    expect(buildTrendOption(bars, PALETTE, 300).series[0].markLine?.data).toEqual([{ yAxis: 300 }]);
-  });
-
-  it('forces the axis to reach a limit above every bar, so the line cannot be clipped', () => {
-    // The bars peak at 200. Without this the axis would stop at 200 and a 30,000 line would be
-    // clipped out of the plot — invisible exactly when you are well under budget.
-    expect(buildTrendOption(bars, PALETTE, 30_000).yAxis.max).toBe(30_000);
-  });
-
-  it('keeps the axis at the tallest bar when the limit is below it', () => {
-    expect(buildTrendOption(bars, PALETTE, 50).yAxis.max).toBe(200);
+  it('keeps the line off the bars ink, so the reference reads as a reference', () => {
+    expect(buildTrendOption(bars, PALETTE).series[0].markLine?.lineStyle.color).toBe(
+      PALETTE.border,
+    );
   });
 });
 
