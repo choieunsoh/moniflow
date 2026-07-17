@@ -14,9 +14,10 @@ import { trendAverage } from '@features/entries/trend';
 
 // Analytics = the zoom-out surface. Home answers "what did I spend this cycle"; this answers "is that
 // normal for me". One screen: the six-cycle spending trend, with a dashed line marking your own
-// average across the window (see trendAverage), and the category breakdown for the window below
-// it. The window is anchored to ?cycle= so it stays consistent with the cycle the rest of the app
-// is showing; ?category= narrows the trend and breakdown to one category.
+// average across the window (see trendAverage). Below it sits one of two lists: unfiltered, the
+// category breakdown for the window; filtered by ?category=, that category's own per-cycle
+// breakdown, so the header total always sums the list beneath it. The window is anchored to ?cycle=
+// so it stays consistent with the cycle the rest of the app is showing.
 export default function AnalyticsPage() {
   const params = useSearchParams();
   const cycleParam = params.get('cycle');

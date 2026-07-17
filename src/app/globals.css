@@ -6,8 +6,10 @@
    a future drop-in under :root[data-theme="light"]; all values already indirect
    through vars, so nothing hard-codes a color. */
 @theme {
-  /* Type — two IBM Plex families on a contrast axis (sans = UI, mono = numbers).
-     next/font (layout.tsx) defines the --font-plex-* vars these consume. */
+  /* Type — ONE family app-wide: IBM Plex Sans carries UI, prose and figures alike. There is
+     deliberately no mono: a mono face draws a slashed or dotted zero, which this project bans for
+     figures. Numbers align through .tnum (font-variant-numeric: tabular-nums), not a second family.
+     Do not add one. next/font (layout.tsx) defines the --font-plex-sans var this consumes. */
   --font-sans: var(--font-plex-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* Surfaces (canvas → raised) */

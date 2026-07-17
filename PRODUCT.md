@@ -16,17 +16,22 @@ point — so the design must read as a confident, finished default, not a placeh
 ## Product Purpose
 
 A local-first, **mobile-first spending tracker**. Signed (always-negative) expense entries live in a
-local SQLite file; Next.js Server Components read them back **directly — no API layer** — and mutations
-go through Server Actions. The app is scoped to a monthly **billing cycle** (a configurable cutoff
-day) and organised as a phone-sized column with a bottom tab bar:
+SQLite database inside the browser (OPFS, via SQLite WASM) — the browser is the system of record,
+not a server. Every page is `'use client'` and loads its own data after mount; writes go through
+each feature's `actions.ts`, plain async functions rather than Server Actions. The app is scoped to
+a monthly **billing cycle** (a configurable cutoff day) and organised as a phone-sized column with a
+bottom tab bar — **Home · Records · ＋ · Analytics · More**:
 
 - **Home** — the cycle's spending as a by-category donut with the total spent in the hole, plus a
   ranked category breakdown (chart / list toggle).
 - **Records** — the cycle's expenses grouped by day, each a swipe-to-edit/delete row, with live
   cross-cycle search.
-- **Budgets** — standing per-category monthly limits. **Categories** — add/rename/merge/delete, pick
-  each category's icon + colour, and tap a category's count to jump to all its records. **Trips** —
-  foreign-currency spending grouped into trips.
+- **Analytics** — the six-cycle spending trend, with a dashed line marking your own average across
+  the window, and a category breakdown below it that narrows to that category's own per-cycle
+  breakdown when filtered.
+- **More** — **Budgets** (standing per-category monthly limits), **Categories** (add/rename/merge/
+  delete, pick each category's icon + colour, and tap a category's count to jump to all its
+  records), and **Trips** (foreign-currency spending grouped into trips).
 - Entries are added on a Monefy-style calculator keypad or bulk-imported from a **Monefy CSV**
   (THB home currency; non-THB rows surface in Trips).
 
@@ -57,9 +62,10 @@ The voice is a competent tool that disappears into the task.
 
 - **The tool disappears into the task.** Earned familiarity over novelty; standard affordances,
   consistent component vocabulary screen to screen. Delight is a moment, never a page.
-- **Data honesty.** Money is rendered precisely in mono; gains and losses are stated plainly and
-  never encoded in color alone (always paired with sign/icon) so the meaning survives color
-  blindness and grayscale.
+- **Data honesty.** Money is rendered precisely in Plex Sans, aligned via `.tnum`
+  (`font-variant-numeric: tabular-nums`) — never a mono face, which draws a slashed or dotted zero;
+  gains and losses are stated plainly and never encoded in color alone (always paired with sign/icon)
+  so the meaning survives color blindness and grayscale.
 - **Local-first calm.** The interface reflects quiet ownership of your own data — no cloud
   anxiety, no urgency theatre, no dark patterns.
 - **A strong default that gets out of the way.** As a template, the identity is opinionated but
