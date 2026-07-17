@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import { formatBaht, formatBahtKeyed, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
@@ -84,6 +84,7 @@ export function Keypad({
   categories,
   accounts,
   currencies,
+  notes,
   rates,
   ratesAsOf,
   defaultAccount,
@@ -95,6 +96,7 @@ export function Keypad({
   categories: KeypadCategory[];
   accounts: KeypadAccount[];
   currencies: KeypadCurrency[];
+  notes: string[];
   rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
   ratesAsOf: Record<string, string>;
   defaultAccount: string;
@@ -103,6 +105,7 @@ export function Keypad({
   action?: (formData: FormData) => Promise<void>;
   entry?: EntryRow;
 }) {
+  const noteListId = useId();
   const initialCurrency: Currency =
     entry && entry.currency !== null && isCurrency(entry.currency) ? entry.currency : 'THB';
   const initialForeign = entry
@@ -354,8 +357,11 @@ export function Keypad({
             in: key the amount, annotate it, then pick the category that saves it. Enter never submits
             implicitly (HTML spec) — it advances to the category grid, the same as the button below,
             and blurs first so the on-screen keyboard uncovers the grid it's advancing to. */}
+        {/* The suggestions are past notes from the ledger, not browser autofill: the keypad submits
+            through a React action, so the browser never records a value to autofill from. */}
         <input
           name="note"
+          list={noteListId}
           placeholder="Note (optional)"
           defaultValue={entry?.note ?? ''}
           enterKeyHint="next"
@@ -369,6 +375,11 @@ export function Keypad({
           className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
           style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
         />
+        <datalist id={noteListId}>
+          {notes.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
 
         <button
           type="button"

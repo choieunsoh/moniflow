@@ -8,6 +8,7 @@ type EntryFormProps = {
   action: (formData: FormData) => Promise<void>;
   accounts: string[];
   categories: string[];
+  notes: string[];
   entry?: EntryRow;
 };
 
@@ -18,9 +19,10 @@ const fieldStyle = { borderColor: 'var(--color-border)', background: 'var(--colo
 // demands it (currency <-> manual THB field); everything else is an uncontrolled
 // <form action={action}> submit straight to a Server Action — no useActionState, matching the
 // dashboard's no-client-JS-unless-needed stance as closely as a mutable form allows.
-export function EntryForm({ action, accounts, categories, entry }: EntryFormProps) {
+export function EntryForm({ action, accounts, categories, notes, entry }: EntryFormProps) {
   const [currency, setCurrency] = useState(entry?.currency ?? 'THB');
   const categoryListId = useId();
+  const noteListId = useId();
   const needsManualThb = currency !== 'THB';
 
   return (
@@ -163,6 +165,7 @@ export function EntryForm({ action, accounts, categories, entry }: EntryFormProp
             field single-line and stops the accidental save (use the button to save). */}
         <input
           name="note"
+          list={noteListId}
           defaultValue={entry?.note ?? ''}
           onKeyDown={(e) => {
             if (e.key === 'Enter') e.preventDefault();
@@ -170,6 +173,13 @@ export function EntryForm({ action, accounts, categories, entry }: EntryFormProp
           className={fieldClass}
           style={fieldStyle}
         />
+        {/* Past notes, not browser autofill: these forms submit through a React action, so the
+            browser never records a value to autofill from. The ledger is the only history there is. */}
+        <datalist id={noteListId}>
+          {notes.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
       </label>
 
       <button type="submit" className="btn btn-primary self-start">

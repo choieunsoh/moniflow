@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { getBrowserDb } from '@db/browser';
-import { getDistinctAccounts, getDistinctCategories, getEntryById } from './queries';
+import {
+  getDistinctAccounts,
+  getDistinctCategories,
+  getDistinctNotes,
+  getEntryById,
+} from './queries';
 import { getKeypadCategories, getKeypadAccounts, getKeypadCurrencies } from './keypad-lists';
 import type { KeypadCategory, KeypadAccount, KeypadCurrency } from './ui/Keypad';
 import type { EntryRow } from './schema';
@@ -19,6 +24,7 @@ export type EditEntryData =
       categories: KeypadCategory[];
       accounts: KeypadAccount[];
       currencies: KeypadCurrency[];
+      notes: string[]; // the note field's autocomplete pool
       rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
       ratesAsOf: Record<string, string>;
       iconSet: IconSet;
@@ -28,6 +34,7 @@ export type EditEntryData =
       entry: EntryRow;
       accounts: string[];
       categories: string[];
+      notes: string[];
     };
 
 // Edit-entry page's data, read once via the browser OPFS db after mount — mirrors the server
@@ -52,14 +59,16 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
 
       const keypadEditable = entry.amount < 0;
       if (keypadEditable) {
-        const [iconSet, categories, accounts, currencies, cardFeePct, fxRates] = await Promise.all([
-          getIconSet(db),
-          getKeypadCategories(db),
-          getKeypadAccounts(db),
-          getKeypadCurrencies(db),
-          getCardFeePct(db),
-          getFxRates(db),
-        ]);
+        const [iconSet, categories, accounts, currencies, notes, cardFeePct, fxRates] =
+          await Promise.all([
+            getIconSet(db),
+            getKeypadCategories(db),
+            getKeypadAccounts(db),
+            getKeypadCurrencies(db),
+            getDistinctNotes(db),
+            getCardFeePct(db),
+            getFxRates(db),
+          ]);
         const rates: Record<string, number> = {};
         const ratesAsOf: Record<string, string> = {};
         for (const [code, e] of Object.entries(fxRates)) {
@@ -72,16 +81,18 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           categories,
           accounts,
           currencies,
+          notes,
           rates,
           ratesAsOf,
           iconSet,
         });
       } else {
-        const [accounts, categories] = await Promise.all([
+        const [accounts, categories, notes] = await Promise.all([
           getDistinctAccounts(db),
           getDistinctCategories(db),
+          getDistinctNotes(db),
         ]);
-        setData({ keypadEditable: false, entry, accounts, categories });
+        setData({ keypadEditable: false, entry, accounts, categories, notes });
       }
       setReady(true);
     })();

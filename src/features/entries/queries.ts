@@ -181,6 +181,23 @@ export async function getDistinctCategories(db: Db): Promise<string[]> {
   ).map((r) => r.name);
 }
 
+// Distinct non-blank notes seen in the ledger — the autocomplete pool behind the note field's
+// datalist. Unlike categories/accounts there is no notes table: the ledger's own note column is the
+// only record of what you've typed before, so this reads straight off entries.
+// ponytail: uncapped — every note becomes a DOM <option> in the form. Fine at hundreds; add a
+// .limit() if a multi-year ledger ever makes the note field feel heavy on a phone.
+export async function getDistinctNotes(db: Db): Promise<string[]> {
+  return (
+    await db
+      .select({ note: entries.note, count: sql<number>`count(*)` })
+      .from(entries)
+      .where(and(isNotNull(entries.note), ne(entries.note, '')))
+      .groupBy(entries.note)
+      .orderBy(desc(sql`count(*)`))
+      .all()
+  ).flatMap((r) => (r.note === null ? [] : [r.note]));
+}
+
 export async function getDistinctAccounts(db: Db): Promise<string[]> {
   return (await db.select({ name: accounts.name }).from(accounts).orderBy(accounts.name).all()).map(
     (r) => r.name,

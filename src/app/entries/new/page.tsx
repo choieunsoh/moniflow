@@ -28,7 +28,8 @@ export default function NewEntryPage() {
     );
   }
 
-  const { categories, accounts, currencies, rates, ratesAsOf, defaultAccount, iconSet } = data;
+  const { categories, accounts, currencies, notes, rates, ratesAsOf, defaultAccount, iconSet } =
+    data;
 
   async function handleSubmit(formData: FormData): Promise<void> {
     await addEntryAction(formData);
@@ -48,6 +49,7 @@ export default function NewEntryPage() {
         categories={categories}
         accounts={accounts}
         currencies={currencies}
+        notes={notes}
         rates={rates}
         ratesAsOf={ratesAsOf}
         defaultAccount={defaultAccount}
