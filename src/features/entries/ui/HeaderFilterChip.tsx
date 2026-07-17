@@ -14,6 +14,11 @@ import Link from 'next/link';
 // `.tap` because this is the only visible way out of an active filter, and the chip's own padding
 // leaves it 22px tall — half the 44px every touch target in this app clears. Do not "fix" that on
 // `.chip` itself: four of its six usages are decorative spans that must stay small.
+//
+// `min-w-0` is needed HERE as well as on the caller's wrapper: this is itself a flex item, and a
+// flex item's default min-width:auto floors at its content's min-content width — which the nowrap
+// `truncate` span below inflates to the full untruncated label. Without it the chip refuses to
+// shrink and a long category name pushes it past the panel edge instead of truncating.
 export function HeaderFilterChip({
   href,
   active,
@@ -28,7 +33,7 @@ export function HeaderFilterChip({
       href={href}
       onClick={(e) => e.stopPropagation()}
       aria-label={active ? `Clear ${label} filter` : `Filter by ${label}`}
-      className="chip tap gap-1 transition-opacity active:opacity-70"
+      className="chip tap min-w-0 gap-1 transition-opacity active:opacity-70"
       style={
         active
           ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent-text)' }
