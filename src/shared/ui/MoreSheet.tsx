@@ -2,16 +2,23 @@
 
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
-import { Tags, Wallet, Plane, Repeat, Settings } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Tags, Wallet, Plane, Repeat, Settings, Target } from 'lucide-react';
+import { cycleHref } from './cycle-href';
 
 // App-launcher grid for the overflow nav — one icon tile per destination, matching the 2×2 grid glyph
 // on the "More" tab that opens this sheet. lucide icons (a dependency since the icon-set feature).
+//
+// `cycle: true` marks a destination that READS the selected cycle, so its href carries ?cycle= the
+// same way BottomBar's primary tabs do. Budgets landed here when Analytics took its tab slot, and
+// without this it would silently drop the cycle on every tap.
 const LINKS = [
-  { href: '/categories', label: 'Categories', Icon: Tags },
-  { href: '/accounts', label: 'Accounts', Icon: Wallet },
-  { href: '/trips', label: 'Trips', Icon: Plane },
-  { href: '/recurring', label: 'Recurring', Icon: Repeat },
-  { href: '/settings', label: 'Settings', Icon: Settings },
+  { href: '/budgets', label: 'Budgets', Icon: Target, cycle: true },
+  { href: '/categories', label: 'Categories', Icon: Tags, cycle: false },
+  { href: '/accounts', label: 'Accounts', Icon: Wallet, cycle: false },
+  { href: '/trips', label: 'Trips', Icon: Plane, cycle: false },
+  { href: '/recurring', label: 'Recurring', Icon: Repeat, cycle: false },
+  { href: '/settings', label: 'Settings', Icon: Settings, cycle: false },
 ] as const;
 
 // Bottom sheet for the overflow nav. Controlled by BottomBar via `open`; drives the native <dialog>
@@ -19,6 +26,7 @@ const LINKS = [
 // the backdrop (event target === the dialog element) or a tile closes it.
 export function MoreSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const cycle = useSearchParams().get('cycle');
 
   useEffect(() => {
     const dialog = ref.current;
@@ -44,10 +52,10 @@ export function MoreSheet({ open, onClose }: { open: boolean; onClose: () => voi
         />
         <h2 className="px-2 pb-2 text-base font-semibold">More</h2>
         <ul className="grid grid-cols-2 gap-1">
-          {LINKS.map(({ href, label, Icon }) => (
+          {LINKS.map(({ href, label, Icon, cycle: carriesCycle }) => (
             <li key={href}>
               <Link
-                href={href}
+                href={carriesCycle === true ? cycleHref(href, cycle) : href}
                 onClick={onClose}
                 className="flex flex-col items-center gap-2 rounded-[var(--radius-md)] p-3 transition-colors active:opacity-70"
               >
