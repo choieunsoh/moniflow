@@ -36,7 +36,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { activeKey, bars, slices, total, emojiMap, iconSet, fitRows } = data;
+  const { activeKey, bars, slices, total, emojiMap, iconSet, fitRows, budgetLine } = data;
   const showBudgets = view === 'budgets';
   const base = `/analytics?cycle=${activeKey}`;
 
@@ -91,6 +91,7 @@ export default function AnalyticsPage() {
 
           <TrendChart
             bars={bars}
+            limit={budgetLine}
             label={`${category ?? 'Total'} spending over the last ${bars.length} cycles`}
           />
 

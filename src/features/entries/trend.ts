@@ -59,9 +59,13 @@ function barItemStyle(bar: TrendBar, anchorKey: string, p: TrendPalette) {
 
 // Returns a plain ECharts option: one bar per cycle, oldest → newest. The y axis is hidden — the
 // tooltip and the list below carry the figures, and an axis of baht labels would crowd a 412px
-// column for no gain.
-export function buildTrendOption(bars: TrendBar[], p: TrendPalette) {
+// column for no gain. An optional `limit` draws a dashed budget reference line — the total budget
+// when unfiltered, the filtered category's own limit otherwise (the caller decides which) — and
+// forces the axis to reach it, since ECharts clips a markLine that falls above the tallest bar.
+export function buildTrendOption(bars: TrendBar[], p: TrendPalette, limit?: number | null) {
   const anchorKey = bars.length > 0 ? bars[bars.length - 1].key : '';
+  // Narrowed to a plain `number | null` so the ternaries below narrow cleanly without a `!`.
+  const limitValue = limit ?? null;
   return {
     grid: { left: 8, right: 8, top: 16, bottom: 8, containLabel: true },
     tooltip: {
@@ -79,7 +83,16 @@ export function buildTrendOption(bars: TrendBar[], p: TrendPalette) {
       axisLine: { lineStyle: { color: p.border } },
       axisLabel: { color: p.muted, fontFamily: p.font, fontSize: 12 },
     },
-    yAxis: { type: 'value', show: false },
+    // ECharts scales the value axis to the SERIES data, so a markLine above the tallest bar gets
+    // clipped and silently vanishes — a ฿30,000 line over a ฿4,899 bar would simply not render,
+    // i.e. the line would disappear exactly when you are comfortably under budget. Force the axis
+    // to reach it. This is also what shortens every bar when you are well under budget: the same
+    // mechanism, accepted deliberately (see the spec).
+    yAxis: {
+      type: 'value',
+      show: false,
+      max: limitValue === null ? undefined : Math.max(limitValue, ...bars.map((b) => b.value)),
+    },
     series: [
       {
         type: 'bar',
@@ -89,6 +102,22 @@ export function buildTrendOption(bars: TrendBar[], p: TrendPalette) {
           value: b.value,
           itemStyle: barItemStyle(b, anchorKey, p),
         })),
+        markLine:
+          limitValue === null
+            ? undefined
+            : {
+                silent: true,
+                symbol: 'none',
+                data: [{ yAxis: limitValue }],
+                lineStyle: { color: p.muted, type: 'dashed', width: 1 },
+                label: {
+                  formatter: formatBahtWhole(limitValue),
+                  position: 'insideEndTop',
+                  color: p.muted,
+                  fontFamily: p.font,
+                  fontSize: 11,
+                },
+              },
       },
     ],
   };

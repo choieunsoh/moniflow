@@ -22,6 +22,7 @@ export type AnalyticsData = {
   emojiMap: Record<string, string>;
   iconSet: IconSet;
   fitRows: BudgetFitRow[];
+  budgetLine: number | null;
 };
 
 // Sum a window's breakdowns into one ranked Breakdown[] — the category list under the chart shows
@@ -108,6 +109,9 @@ export function useAnalytics(
       for (const b of budgetRows) {
         if (b.category !== null) limits.set(b.category, b.amount);
       }
+      // The line marks the budget for whatever the chart is showing: the whole-cycle total when
+      // unfiltered, that category's own limit when filtered. Null (no line) when neither is set.
+      const budgetLine = category === null ? totalLimit : (limits.get(category) ?? null);
       const fitRows = toBudgetFitRows(
         limits,
         matrix,
@@ -124,6 +128,7 @@ export function useAnalytics(
         emojiMap,
         iconSet,
         fitRows,
+        budgetLine,
       });
       setReady(true);
     })();

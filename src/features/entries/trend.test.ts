@@ -84,3 +84,37 @@ describe('buildTrendOption', () => {
     expect(option.series[0].data[2].itemStyle.opacity).toBe(1);
   });
 });
+
+describe('buildTrendOption budget line', () => {
+  const bars: TrendBar[] = [
+    { key: '2026-05', label: 'May', value: 100, partial: false },
+    { key: '2026-06', label: 'Jun', value: 200, partial: false },
+    { key: '2026-07', label: 'Jul', value: 50, partial: true },
+  ];
+
+  it('draws no line when no limit is given', () => {
+    expect(buildTrendOption(bars, PALETTE).series[0].markLine).toBeUndefined();
+  });
+
+  it('draws no line when the limit is null', () => {
+    expect(buildTrendOption(bars, PALETTE, null).series[0].markLine).toBeUndefined();
+  });
+
+  it('leaves the axis auto-scaled when there is no limit', () => {
+    expect(buildTrendOption(bars, PALETTE).yAxis.max).toBeUndefined();
+  });
+
+  it('draws the line at the limit', () => {
+    expect(buildTrendOption(bars, PALETTE, 300).series[0].markLine?.data).toEqual([{ yAxis: 300 }]);
+  });
+
+  it('forces the axis to reach a limit above every bar, so the line cannot be clipped', () => {
+    // The bars peak at 200. Without this the axis would stop at 200 and a 30,000 line would be
+    // clipped out of the plot — invisible exactly when you are well under budget.
+    expect(buildTrendOption(bars, PALETTE, 30_000).yAxis.max).toBe(30_000);
+  });
+
+  it('keeps the axis at the tallest bar when the limit is below it', () => {
+    expect(buildTrendOption(bars, PALETTE, 50).yAxis.max).toBe(200);
+  });
+});
