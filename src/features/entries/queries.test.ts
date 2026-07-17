@@ -18,6 +18,7 @@ import {
   deleteEntry,
   getEntryById,
   getDistinctCategories,
+  getDistinctNotes,
   getDistinctAccounts,
   getAccountsByUsage,
   getLatestAccount,
@@ -296,6 +297,28 @@ describe('getDistinctCategories lists all categories (including empty)', () => {
     await categoryIdFor(d, 'rent');
     await categoryIdFor(d, 'groceries');
     expect(await getDistinctCategories(d)).toEqual(['groceries', 'rent']);
+  });
+});
+
+describe('getDistinctNotes feeds the note field datalist', () => {
+  it('de-dupes repeated notes and puts the most-used first', async () => {
+    const d = await db();
+    await addEntries(d, [
+      { date: '2026-07-01', account: 'cash', category: 'transport', amount: -60, note: 'Grab' },
+      { date: '2026-07-02', account: 'cash', category: 'transport', amount: -70, note: 'Grab' },
+      { date: '2026-07-03', account: 'cash', category: 'food', amount: -50, note: '7-Eleven' },
+    ]);
+    expect(await getDistinctNotes(d)).toEqual(['Grab', '7-Eleven']);
+  });
+
+  it('skips rows with no note and rows whose note is blank', async () => {
+    const d = await db();
+    await addEntries(d, [
+      { date: '2026-07-01', account: 'cash', category: 'food', amount: -50 },
+      { date: '2026-07-02', account: 'cash', category: 'food', amount: -50, note: '' },
+      { date: '2026-07-03', account: 'cash', category: 'food', amount: -50, note: 'Lunch' },
+    ]);
+    expect(await getDistinctNotes(d)).toEqual(['Lunch']);
   });
 });
 

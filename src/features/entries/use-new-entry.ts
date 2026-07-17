@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getBrowserDb } from '@db/browser';
-import { getLatestAccount } from './queries';
+import { getLatestAccount, getDistinctNotes } from './queries';
 import { getKeypadCategories, getKeypadAccounts, getKeypadCurrencies } from './keypad-lists';
 import type { KeypadCategory, KeypadAccount, KeypadCurrency } from './ui/Keypad';
 import { getIconSet, getCardFeePct, getFxRates, type IconSet } from '@features/settings/queries';
@@ -13,6 +13,7 @@ export type NewEntryData = {
   categories: KeypadCategory[];
   accounts: KeypadAccount[];
   currencies: KeypadCurrency[];
+  notes: string[]; // the note field's autocomplete pool
   rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
   ratesAsOf: Record<string, string>;
   defaultAccount: string;
@@ -30,12 +31,13 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
     void (async () => {
       setReady(false);
       const db = await getBrowserDb();
-      const [iconSet, categories, accounts, currencies, cardFeePct, fxRates, latestAccount] =
+      const [iconSet, categories, accounts, currencies, notes, cardFeePct, fxRates, latestAccount] =
         await Promise.all([
           getIconSet(db),
           getKeypadCategories(db),
           getKeypadAccounts(db),
           getKeypadCurrencies(db),
+          getDistinctNotes(db),
           getCardFeePct(db),
           getFxRates(db),
           getLatestAccount(db),
@@ -50,7 +52,16 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
       // Default to the account last used so the common case (same account again) is zero taps.
       const defaultAccount = latestAccount ?? accounts[0]?.name ?? '';
 
-      setData({ categories, accounts, currencies, rates, ratesAsOf, defaultAccount, iconSet });
+      setData({
+        categories,
+        accounts,
+        currencies,
+        notes,
+        rates,
+        ratesAsOf,
+        defaultAccount,
+        iconSet,
+      });
       setReady(true);
     })();
   }, [version]);

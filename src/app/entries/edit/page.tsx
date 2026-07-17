@@ -64,7 +64,7 @@ function EditEntryInner() {
   }
 
   if (data.keypadEditable) {
-    const { entry, categories, accounts, currencies, rates, ratesAsOf, iconSet } = data;
+    const { entry, categories, accounts, currencies, notes, rates, ratesAsOf, iconSet } = data;
     return (
       <PageContainer size="full">
         {/* Title + caption dropped and the close moved into the keypad's chip row — see the new-entry
@@ -75,6 +75,7 @@ function EditEntryInner() {
           categories={categories}
           accounts={accounts}
           currencies={currencies}
+          notes={notes}
           rates={rates}
           ratesAsOf={ratesAsOf}
           defaultAccount={entry.account}
@@ -87,7 +88,7 @@ function EditEntryInner() {
     );
   }
 
-  const { entry, accounts, categories } = data;
+  const { entry, accounts, categories, notes } = data;
   return (
     <PageContainer size="form">
       <header className="flex items-start justify-between gap-3">
@@ -99,7 +100,13 @@ function EditEntryInner() {
         </div>
         <CloseButton />
       </header>
-      <EntryForm action={handleSubmit} accounts={accounts} categories={categories} entry={entry} />
+      <EntryForm
+        action={handleSubmit}
+        accounts={accounts}
+        categories={categories}
+        notes={notes}
+        entry={entry}
+      />
     </PageContainer>
   );
 }
