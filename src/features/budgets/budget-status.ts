@@ -94,3 +94,46 @@ export function toBudgetRows(
   }
   return rows.sort((a, b) => b.spent - a.spent || a.category.localeCompare(b.category));
 }
+
+// One cycle's verdict for one budgeted category. `spent` is a magnitude ≥ 0; a cycle where the
+// category saw no spend is a real 0, not a gap.
+export type FitCycle = { key: string; label: string; spent: number; over: boolean };
+
+export type BudgetFitRow = {
+  category: string;
+  limit: number;
+  cycles: FitCycle[];
+  heldCount: number; // cycles where spend stayed within the limit
+};
+
+// Budgets are STANDING — one row per category, no cycle column, and setBudget delete+inserts. There
+// is no record of what any past cycle's limit was, so this CANNOT be a compliance record. It answers
+// the question the data can actually answer: "with the limits I have now, how often would I have
+// blown them?" — a budget-tuning tool. The UI must label it "Against your current limits."
+//
+// `window` is a structural { key, label }[] rather than entries' Cycle so this file stays free of a
+// feature import (the arrow runs entries → budgets, never back).
+//
+// Only budgeted categories appear: spend with no limit has nothing to fit against. Ranked worst-fit
+// first — the budgets most worth revisiting lead. Ties break by name for a stable order.
+export function toBudgetFitRows(
+  limits: Map<string, number>,
+  matrix: Map<string, Map<string, number>>,
+  window: { key: string; label: string }[],
+): BudgetFitRow[] {
+  const rows: BudgetFitRow[] = [];
+  for (const [category, limit] of limits) {
+    const cycles = window.map(({ key, label }) => {
+      const spent = matrix.get(key)?.get(category) ?? 0;
+      // `>` not `>=`: spend exactly at the limit is within it, matching classify()'s over rule.
+      return { key, label, spent, over: spent > limit };
+    });
+    rows.push({
+      category,
+      limit,
+      cycles,
+      heldCount: cycles.filter((c) => !c.over).length,
+    });
+  }
+  return rows.sort((a, b) => a.heldCount - b.heldCount || a.category.localeCompare(b.category));
+}

@@ -5,6 +5,7 @@ import {
   suggestBudget,
   meterColorVar,
   pacePhrase,
+  toBudgetFitRows,
 } from './budget-status';
 
 describe('suggestBudget', () => {
@@ -105,5 +106,120 @@ describe('pacePhrase', () => {
   it('reads "on pace" when spend and time round to the same point', () => {
     expect(pacePhrase(77, 77)).toBe('on pace');
     expect(pacePhrase(77.3, 77)).toBe('on pace');
+  });
+});
+
+describe('toBudgetFitRows', () => {
+  const WINDOW = [
+    { key: '2026-05', label: 'May' },
+    { key: '2026-06', label: 'Jun' },
+    { key: '2026-07', label: 'Jul' },
+  ];
+  // cycle key → category → spend magnitude
+  const MATRIX = new Map([
+    ['2026-05', new Map([['Food', 900]])],
+    ['2026-06', new Map([['Food', 1200]])],
+    ['2026-07', new Map([['Food', 400]])],
+  ]);
+
+  it('marks a cycle over when spend exceeds the current limit', () => {
+    const [row] = toBudgetFitRows(new Map([['Food', 1000]]), MATRIX, WINDOW);
+    expect(row.cycles.map((c) => c.over)).toEqual([false, true, false]);
+  });
+
+  it('counts the cycles that would have held', () => {
+    const [row] = toBudgetFitRows(new Map([['Food', 1000]]), MATRIX, WINDOW);
+    expect(row.heldCount).toBe(2);
+  });
+
+  it('carries the window label and spend onto each cycle', () => {
+    const [row] = toBudgetFitRows(new Map([['Food', 1000]]), MATRIX, WINDOW);
+    expect(row.cycles).toEqual([
+      { key: '2026-05', label: 'May', spent: 900, over: false },
+      { key: '2026-06', label: 'Jun', spent: 1200, over: true },
+      { key: '2026-07', label: 'Jul', spent: 400, over: false },
+    ]);
+  });
+
+  it('treats spend exactly at the limit as held, matching the over/near model', () => {
+    const [row] = toBudgetFitRows(new Map([['Food', 1200]]), MATRIX, WINDOW);
+    expect(row.cycles.map((c) => c.over)).toEqual([false, false, false]);
+    expect(row.heldCount).toBe(3);
+  });
+
+  it('reports a cycle with no spend in that category as zero, not a gap', () => {
+    const sparse = new Map([['2026-06', new Map([['Food', 1200]])]]);
+    const [row] = toBudgetFitRows(new Map([['Food', 1000]]), sparse, WINDOW);
+    expect(row.cycles.map((c) => c.spent)).toEqual([0, 1200, 0]);
+    expect(row.heldCount).toBe(2);
+  });
+
+  it('only includes budgeted categories — spend without a limit has nothing to fit', () => {
+    const matrix = new Map([
+      [
+        '2026-05',
+        new Map([
+          ['Food', 900],
+          ['Travel', 5000],
+        ]),
+      ],
+    ]);
+    const rows = toBudgetFitRows(new Map([['Food', 1000]]), matrix, WINDOW);
+    expect(rows.map((r) => r.category)).toEqual(['Food']);
+  });
+
+  it('includes a budgeted category with no spend at all — it held every cycle', () => {
+    const rows = toBudgetFitRows(new Map([['Gifts', 500]]), new Map(), WINDOW);
+    expect(rows).toEqual([
+      {
+        category: 'Gifts',
+        limit: 500,
+        heldCount: 3,
+        cycles: [
+          { key: '2026-05', label: 'May', spent: 0, over: false },
+          { key: '2026-06', label: 'Jun', spent: 0, over: false },
+          { key: '2026-07', label: 'Jul', spent: 0, over: false },
+        ],
+      },
+    ]);
+  });
+
+  it('ranks the worst-fitting budgets first, breaking ties by name', () => {
+    const matrix = new Map([
+      [
+        '2026-05',
+        new Map([
+          ['Food', 9000],
+          ['Travel', 9000],
+          ['Gifts', 1],
+        ]),
+      ],
+      [
+        '2026-06',
+        new Map([
+          ['Food', 9000],
+          ['Travel', 1],
+        ]),
+      ],
+      [
+        '2026-07',
+        new Map([
+          ['Food', 9000],
+          ['Travel', 1],
+        ]),
+      ],
+    ]);
+    const limits = new Map([
+      ['Food', 100],
+      ['Travel', 100],
+      ['Gifts', 100],
+    ]);
+    const rows = toBudgetFitRows(limits, matrix, WINDOW);
+    // Food held 0, Travel held 2, Gifts held 3.
+    expect(rows.map((r) => [r.category, r.heldCount])).toEqual([
+      ['Food', 0],
+      ['Travel', 2],
+      ['Gifts', 3],
+    ]);
   });
 });
