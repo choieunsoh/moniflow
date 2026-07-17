@@ -222,4 +222,42 @@ describe('toBudgetFitRows', () => {
       ['Gifts', 3],
     ]);
   });
+
+  it('breaks a genuine tie by category name', () => {
+    // Both categories hold exactly 1 of 3 cycles, so heldCount cannot order them — only the name
+    // can. `limits` inserts Zebra FIRST, so a passing result also proves the sort does not leak
+    // Map insertion order.
+    const matrix = new Map([
+      [
+        '2026-05',
+        new Map([
+          ['Zebra', 5000],
+          ['Apple', 5000],
+        ]),
+      ],
+      [
+        '2026-06',
+        new Map([
+          ['Zebra', 5000],
+          ['Apple', 5000],
+        ]),
+      ],
+      [
+        '2026-07',
+        new Map([
+          ['Zebra', 10],
+          ['Apple', 10],
+        ]),
+      ],
+    ]);
+    const limits = new Map([
+      ['Zebra', 100],
+      ['Apple', 100],
+    ]);
+    const rows = toBudgetFitRows(limits, matrix, WINDOW);
+    expect(rows.map((r) => [r.category, r.heldCount])).toEqual([
+      ['Apple', 1],
+      ['Zebra', 1],
+    ]);
+  });
 });
