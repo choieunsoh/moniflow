@@ -2,11 +2,13 @@
 // money-line + arrow — the same mark as the app icon (src/app/icon.svg), kept in sync by hand.
 // Uses the accent tokens so a reskin (swap --color-accent) recolors it for free.
 //
-// It is the app's <h1>: it is the one element on every page, and without it heading navigation
-// started at <h2> with no root. inline-flex keeps it laid out exactly as the <span> was.
+// This is NOT the page <h1>. It renders in AppHeader on every route, and most routes already own a
+// meaningful page-title <h1> (Settings, Budgets, Categories, …); making the wordmark an <h1> too gave
+// those pages two roots with identical brand text first. The three routes that lacked a heading root
+// (Home, Records, Analytics) carry their own sr-only <h1> instead, matching entries/new & co.
 export function Wordmark({ className = '' }: { className?: string }) {
   return (
-    <h1 className={`inline-flex items-center gap-2.5 ${className}`}>
+    <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <span
         aria-hidden
         className="grid size-7 place-items-center rounded-[var(--radius-sm)]"
@@ -26,6 +28,6 @@ export function Wordmark({ className = '' }: { className?: string }) {
         </svg>
       </span>
       <span className="text-[1.0625rem] font-semibold tracking-[-0.02em]">moniflow</span>
-    </h1>
+    </span>
   );
 }

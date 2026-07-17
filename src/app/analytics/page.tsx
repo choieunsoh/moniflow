@@ -47,6 +47,7 @@ export default function AnalyticsPage() {
   if (slices.length === 0) {
     return (
       <PageContainer size="full">
+        <h1 className="sr-only">Analytics</h1>
         <EmptyLedger />
       </PageContainer>
     );
@@ -64,6 +65,9 @@ export default function AnalyticsPage() {
 
   return (
     <PageContainer size="full">
+      {/* sr-only heading root — Analytics' visible top heading is the <h2> panel title ("All
+          spending" / the category), so without this the heading list has no <h1>. */}
+      <h1 className="sr-only">Analytics</h1>
       <section className="panel flex flex-col gap-5 p-5">
         <header className="flex items-baseline justify-between gap-2">
           <div className="flex min-w-0 flex-col gap-1">
