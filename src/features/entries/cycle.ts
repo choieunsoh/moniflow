@@ -76,3 +76,10 @@ export function cycleProgress(cycle: Cycle, todayIso: string): Progress {
   const raw = daysBetween(cycle.start, todayIso) + 1;
   return { day: Math.min(total, Math.max(1, raw)), total };
 }
+
+// The last `n` cycles ending at `key`, oldest first — the analytics trend window. The anchor is the
+// LAST element, so a chart renders left-to-right in time order with the selected cycle at the right
+// edge. Built from stepKey + cycleFromKey, so it inherits the cutoff-aware boundary math.
+export function lastCycles(key: string, n: number, cutoff = CUTOFF): Cycle[] {
+  return Array.from({ length: n }, (_, i) => cycleFromKey(stepKey(key, i - n + 1), cutoff));
+}
