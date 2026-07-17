@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { cycleOf, cycleFromKey, currentCycleKey, stepKey, cycleProgress } from './cycle';
+import {
+  cycleOf,
+  cycleFromKey,
+  currentCycleKey,
+  stepKey,
+  cycleProgress,
+  lastCycles,
+} from './cycle';
 
 describe('cycleOf (cutoff 18)', () => {
   it('a date on/after the 18th belongs to that month cycle', () => {
@@ -53,5 +60,41 @@ describe('cycleProgress', () => {
   it('clamps a date outside the cycle into range', () => {
     expect(cycleProgress(cycleFromKey('2026-07'), '2026-09-01').day).toBe(31);
     expect(cycleProgress(cycleFromKey('2026-07'), '2026-01-01').day).toBe(1);
+  });
+});
+
+describe('lastCycles', () => {
+  it('returns n cycles oldest first with the anchor last', () => {
+    const got = lastCycles('2026-07', 6);
+    expect(got.map((c) => c.key)).toEqual([
+      '2026-02',
+      '2026-03',
+      '2026-04',
+      '2026-05',
+      '2026-06',
+      '2026-07',
+    ]);
+  });
+
+  it('rolls back across a year boundary', () => {
+    expect(lastCycles('2026-01', 3).map((c) => c.key)).toEqual(['2025-11', '2025-12', '2026-01']);
+  });
+
+  it('returns just the anchor when n is 1', () => {
+    expect(lastCycles('2026-07', 1).map((c) => c.key)).toEqual(['2026-07']);
+  });
+
+  it('returns an empty window when n is 0', () => {
+    expect(lastCycles('2026-07', 0)).toEqual([]);
+  });
+
+  it('builds full cycles honouring the cutoff', () => {
+    const [first] = lastCycles('2026-07', 2, 18);
+    expect(first).toMatchObject({ key: '2026-06', start: '2026-06-18', end: '2026-07-17' });
+  });
+
+  it('honours a non-default cutoff', () => {
+    const [first] = lastCycles('2026-07', 2, 1);
+    expect(first).toMatchObject({ key: '2026-06', start: '2026-06-01', end: '2026-06-30' });
   });
 });

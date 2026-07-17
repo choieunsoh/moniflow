@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
+import { ViewToggle } from '@shared/ui/ViewToggle';
 import { useHome } from '@features/entries/use-home';
 import { pacePhrase } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
@@ -67,10 +68,12 @@ export default function HomePage() {
 
       {summary.count > 0 ? (
         <>
-          <div className="panel flex gap-1 p-1">
-            <ViewLink label="Chart" active={!showList} href={`/?cycle=${activeKey}&view=chart`} />
-            <ViewLink label="List" active={showList} href={`/?cycle=${activeKey}&view=category`} />
-          </div>
+          <ViewToggle
+            options={[
+              { label: 'Chart', active: !showList, href: `/?cycle=${activeKey}&view=chart` },
+              { label: 'List', active: showList, href: `/?cycle=${activeKey}&view=category` },
+            ]}
+          />
 
           <CycleSwipe activeKey={activeKey} canGoNext={canGoNext}>
             {showList ? (
@@ -188,22 +191,5 @@ export default function HomePage() {
         </CycleSwipe>
       )}
     </PageContainer>
-  );
-}
-
-function ViewLink({ label, active, href }: { label: string; active: boolean; href: string }) {
-  return (
-    <Link
-      href={href}
-      prefetch={false}
-      aria-current={active ? 'page' : undefined}
-      className="flex-1 rounded-[var(--radius-md)] py-2 text-center text-sm font-medium transition-colors duration-150"
-      style={{
-        background: active ? 'var(--color-accent-soft)' : 'transparent',
-        color: active ? 'var(--color-accent-text)' : 'var(--color-muted)',
-      }}
-    >
-      {label}
-    </Link>
   );
 }

@@ -9,15 +9,15 @@ import { cycleHref } from './cycle-href';
 import { MoreSheet } from './MoreSheet';
 
 // App-style tab bar, always visible, centered to the app column. Five slots:
-// Home · Records · [＋ expense FAB → /entries/new] · Budgets · More.
+// Home · Records · [＋ expense FAB → /entries/new] · Analytics · More.
 // The active tab carries THREE signals — an accent pill behind the icon, accent color, and a heavier
 // label — so the current section is unmistakable, not color alone (per the bottom-nav a11y guidance).
 // Icons are a consistent 24px outline set; the pill animates and presses for tactile feedback.
 export function BottomBar() {
   const pathname = usePathname();
   // Carry the selected cycle onto the primary tabs so it stays put when you switch sections (Home
-  // ↔ Records ↔ Budgets). The FAB and the More sheet's links go to pages that don't read a cycle,
-  // so they stay bare.
+  // ↔ Records ↔ Analytics). The FAB doesn't read a cycle, so it stays bare; Budgets moved into the
+  // More sheet but still reads a cycle — see MoreSheet's `cycle: true` flag.
   const cycle = useSearchParams().get('cycle');
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -50,10 +50,10 @@ export function BottomBar() {
           {/* Spacer: the FAB floats over this column (absolutely positioned below). */}
           <li aria-hidden className="h-0" />
           <BarTab
-            href={cycleHref('/budgets', cycle)}
-            label="Budgets"
-            active={isActivePath(pathname, '/budgets')}
-            icon={<BudgetsIcon />}
+            href={cycleHref('/analytics', cycle)}
+            label="Analytics"
+            active={isActivePath(pathname, '/analytics')}
+            icon={<AnalyticsIcon />}
           />
           <li>
             <BarButton
@@ -200,17 +200,17 @@ function RecordsIcon() {
   );
 }
 
-// Budgets = money set aside per category — a wallet reads as money more clearly than the old bank box.
-function BudgetsIcon() {
+// Analytics = the 6-cycle spending trend — three ascending bars read as "trend" more directly than
+// a line chart at this size.
+function AnalyticsIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
       <path
-        d="M2.8 5.2a1.2 1.2 0 0 1 1.2-1.2h7a1.2 1.2 0 0 1 1.2 1.2V6 M2.8 5.2v5.6a1.2 1.2 0 0 0 1.2 1.2h8a1.2 1.2 0 0 0 1.2-1.2V7.5a1 1 0 0 0-1-1h-2.4a1.35 1.35 0 0 0 0 2.7H13"
+        d="M3.3 12.5V9 M8 12.5V5.5 M12.7 12.5V3"
         stroke="currentColor"
         strokeWidth="1.5"
-        strokeLinejoin="round"
+        strokeLinecap="round"
       />
-      <circle cx="10.9" cy="7.85" r="0.55" fill="currentColor" />
     </svg>
   );
 }
