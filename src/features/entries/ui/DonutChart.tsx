@@ -29,6 +29,7 @@ export function DonutChart({
       muted: token('--color-muted'),
       border: token('--color-border'),
       surface: token('--color-surface'),
+      surface2: token('--color-surface-2'),
       font: getComputedStyle(document.body).fontFamily || 'sans-serif',
     });
     chart.setOption({ ...option, animation: !reduce });

@@ -30,7 +30,14 @@ describe('toDonutSlices', () => {
 });
 
 describe('buildDonutOption', () => {
-  const palette = { text: '#fff', muted: '#999', border: '#333', surface: '#111', font: 'sans' };
+  const palette = {
+    text: '#fff',
+    muted: '#999',
+    border: '#333',
+    surface: '#111',
+    surface2: '#1e2128',
+    font: 'sans',
+  };
 
   it('labels the hole with the summed transaction count next to Spent', () => {
     const opt = buildDonutOption([row('a', -30, 5), row('b', -20, 2)], palette);
