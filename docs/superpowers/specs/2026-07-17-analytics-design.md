@@ -25,7 +25,8 @@ Three questions the ledger holds the answers to and the UI cannot ask:
 
 - One place to zoom out from the current cycle and see six of them at once.
 - Drill from the total trend into a single category's history without leaving the chart.
-- Answer whether the budgets you have set now actually fit how you spend.
+- Answer whether the budgets you have set now actually fit how you spend — on the trend itself,
+  as a line, not on a screen of its own.
 - Add no schema change, no new dependency, and no new SQL.
 
 ## Non-goals
@@ -46,10 +47,10 @@ Three questions the ledger holds the answers to and the UI cannot ask:
 | Surface               | New `/analytics` route, promoted into the tab bar                        |
 | Tab bar cost          | Budgets demoted into the More sheet                                      |
 | Window                | Last 6 cycles, fixed, oldest → newest, anchored to `?cycle=`             |
-| Structure             | Two views (`?view=trend` default, `?view=budgets`)                       |
-| Category drill-down   | A filter (`?category=`) on the trend view, not a third view              |
+| Structure             | ONE view. No `?view=` param, no toggle (see "The budgets view, and why it went") |
+| Category drill-down   | A filter (`?category=`) on the trend view, not a second view             |
 | Data primitive        | `getCategoryBreakdown` called once per cycle — no new SQL                |
-| Budget comparison     | Against **current** limits, labelled as such                             |
+| Budget comparison     | The trend's dashed line, against **current** limits                      |
 | Partial cycle         | Current cycle's bar rendered muted — never compared as if complete       |
 | Budget line           | Dashed line on the trend chart only; follows the filter; forces `yAxis.max` |
 | Axis labels           | Month names stay the cycle's START month (see "Why the labels stay")     |
@@ -178,7 +179,7 @@ This treatment applies **only to the live cycle**, keyed off the `isCurrentCycle
 already derives — not to "the last bar". Anchored to March, all six bars are complete and all six
 render at full strength. Anchored to today, only the last one is muted.
 
-## Budgets view (`?view=budgets`)
+## Budgets
 
 ### Budgets have no history
 
@@ -191,24 +192,38 @@ history would start accruing from today, so the six cycles we want to show would
 blank for six months. The cost is a schema change in two places (`schema.ts` **and** `BOOTSTRAP_SQL`
 — the repo's lockstep rule) plus the CSV backup format, in exchange for an empty chart.
 
-### What it shows instead
+### What analytics shows instead
 
-Each cycle's spend compared against your limits **as they stand today**, framed honestly as a
-budget-tuning tool rather than a compliance record: _"with the limits I have now, how often would I
-have blown them?"_ That is the question the data can actually answer, and the more useful one for
-setting a budget.
+Each cycle's spend against your limits **as they stand today** — a budget-tuning tool, not a
+compliance record: _"with the limits I have now, how often would I have blown them?"_ That is the
+question the data can actually answer, and the more useful one for setting a budget.
 
-Per budgeted category: a row of six mini bars against the current limit, over-limit bars in the
-danger colour, with a headline of the form _"4 of 6 cycles would have held."_ The view header states
-plainly: **"Against your current limits."**
+The **trend chart's dashed budget line** delivers this, and it is the only place analytics shows
+budgets. Unfiltered it marks the total budget; filtered it marks that category's limit. Six bars
+against a line answers "which cycles blew it?" directly.
 
-A leading **Total** row uses the same shape but against the whole-cycle budget (the `category_id IS
-NULL` row), with spend summed across every category per cycle rather than one column. It sorts above,
-not among, the category rows — browser verification against the real ledger found its only budget is
-this total one, with zero per-category budgets, so a category-only view rendered empty for its actual
-user.
+### The budgets view, and why it went
 
-Pure CSS bars — `BudgetMeter` already does exactly this. No ECharts.
+A separate `?view=budgets` screen was built and then **deleted**. It listed each budgeted category
+(plus a leading Total row) as six mini bars against its limit, headed _"N of 6 cycles would have
+held"_ and labelled "Against your current limits." Three things killed it:
+
+1. **The budget line made it redundant.** Once the trend marked the budget, "did I blow it?" was
+   answered there — full size, with a real chart. The view repeated that worse.
+2. **The bars were unreadable.** They scaled to the limit, so ฿4,899 against a ฿30,000 limit rendered
+   ~5px in a 32px strip and the unspent cycles sat at the 2px floor. Six dashes. Being *under* budget
+   made the data vanish — backwards.
+3. **Its headline was quietly dishonest.** "6 of 6 cycles would have held" counted the *live* cycle,
+   which is only partway through and has spent 16% of its budget. Of course it held; it is not
+   finished. That is the same lie the faded partial bar exists to prevent, restated as a sentence.
+
+What was lost: seeing **every** budgeted category at once against its own limit. `/budgets` already
+does that for the current cycle, and the trend's category filter covers any single one across the
+window. Not worth a screen.
+
+**Do not rebuild this** without a reason that survives all three points above — a real need to compare
+many category budgets across cycles at once, and a bar scale that stays legible when you are well
+under budget.
 
 ## Testing
 
@@ -219,7 +234,6 @@ Pure CSS bars — `BudgetMeter` already does exactly this. No ECharts.
 - `use-analytics` — a `renderHook` test, per the repo's custom-hook rule. Includes `budgetLine`
   following the filter: the total budget unfiltered, the category's limit when filtered, null when
   the filtered category has no budget.
-- Budget-fit projection (spend vs current limit per cycle) — unit tests on the pure function.
 
 Tests run against the Node shim and prove the queries only. Per CLAUDE.md, the feature is not done
 until it has been driven in a real browser at 412px — the tests prove nothing about the worker, OPFS,
@@ -229,14 +243,17 @@ or layout.
 
 | File                                        | Change                                            |
 | ------------------------------------------- | ------------------------------------------------- |
-| `src/app/analytics/page.tsx`                 | new — `'use client'` route, reads `?view=`/`?category=` |
+| `src/app/analytics/page.tsx`                 | new — `'use client'` route, reads `?category=`     |
 | `src/features/entries/cycle.ts`              | add `lastCycles`                                  |
 | `src/features/entries/trend.ts`              | new — pure option-builder (+ the budget line)     |
 | `src/features/entries/ui/TrendChart.tsx`     | new — thin ECharts wrapper (+ a `limit` prop)     |
 | `src/features/entries/use-analytics.ts`      | new — read hook (+ derives `budgetLine`)          |
-| `src/features/budgets/budget-status.ts`      | add the per-cycle fit projection                  |
 | `src/shared/ui/ViewToggle.tsx`               | new — Home's local `ViewLink`, graduated to shared |
 | `src/app/page.tsx`                           | use the shared `ViewToggle`                       |
+
+`budget-status.ts` is untouched in the end state: the fit projection it briefly held was deleted with
+the budgets view. `ViewToggle` is left in `shared/ui/` with a single consumer (Home) — it is a shell
+component like `PageContainer`, it works, and moving it back would be churn for purity.
 | `src/shared/ui/BottomBar.tsx`                | Budgets slot → Analytics                          |
 | `src/shared/ui/MoreSheet.tsx`                | add Budgets; carry `cycle` on flagged links       |
 
