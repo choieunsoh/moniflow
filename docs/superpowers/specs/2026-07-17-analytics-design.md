@@ -51,6 +51,8 @@ Three questions the ledger holds the answers to and the UI cannot ask:
 | Data primitive        | `getCategoryBreakdown` called once per cycle — no new SQL                |
 | Budget comparison     | Against **current** limits, labelled as such                             |
 | Partial cycle         | Current cycle's bar rendered muted — never compared as if complete       |
+| Budget line           | Dashed line on the trend chart only; follows the filter; forces `yAxis.max` |
+| Axis labels           | Month names stay the cycle's START month (see "Why the labels stay")     |
 
 ## Navigation
 
@@ -128,6 +130,44 @@ mirrors `/records`, which already filters this way.
 The synthetic "Other" bucket is not a real category and is not tappable — the same rule the home
 donut's legend already follows.
 
+### Why the labels stay the start month
+
+`monthLabel` renders a cycle key as its **start** month, so cycle `2026-06` — which runs 18 Jun to
+17 Jul — reads "Jun" even though 18 of its 31 days fall in July. On 17 July the newest bar therefore
+says "Jun" and no "Jul" appears anywhere, which reliably reads as a missing month.
+
+This was raised and **deliberately kept as-is**. The label matches the cycle key, which is anchored to
+its start month everywhere else in the app; relabelling by end month or as a "Jun–Jul" range would
+make the axis disagree with `?cycle=2026-06` in the URL and with `CycleSelector`. A phone-width axis
+has room for one short token, and the unambiguous full range already lives on Home
+("18 Jun – 17 Jul 2026").
+
+Do not "fix" this without revisiting the cycle-key convention itself.
+
+### The budget reference line
+
+A dashed horizontal line marks the budget for whatever the chart is currently showing: the **total**
+budget when unfiltered, that **category's** limit when filtered to one. No budget set for the current
+view → no line. Each bar is one cycle's spend and the budget is one cycle's limit, so the two are
+directly comparable, and "which cycles blew it?" becomes a glance instead of arithmetic.
+
+`useAnalytics` derives one new field, `budgetLine: number | null`, from the budget rows it already
+reads for `toBudgetFitRows` — no new query. `buildTrendOption` takes it as an optional third param
+and stays pure.
+
+**The line must force the y-axis.** ECharts scales the value axis to the series data, so a markLine
+above the tallest bar can be clipped and silently vanish — a ฿30,000 line over a ฿4,899 bar would
+simply not render. The failure mode is perverse: the feature would look broken exactly when you are
+comfortably under budget. So the builder sets `yAxis.max = Math.max(limit, ...barValues)` whenever a
+limit exists.
+
+The accepted cost of that: the further under budget you are, the shorter every bar gets (฿4,899
+against a ฿30,000 line fills 16% of the height). That is the same mechanism, not a separate problem —
+and short bars under a distant line are a fair rendering of "well under budget".
+
+Bars that exceed the line are **not** recoloured. The line already carries that signal; colouring is
+a second feature.
+
 ### The partial-cycle bar
 
 The current cycle is incomplete. Drawing it at full strength next to five finished cycles is the
@@ -173,8 +213,12 @@ Pure CSS bars — `BudgetMeter` already does exactly this. No ECharts.
 ## Testing
 
 - `lastCycles` — unit tests (pure): window size, ordering, month/year rollover, cutoff respected.
-- `trend.ts` option-builder — unit tests (pure), as `donut.test.ts` does.
-- `use-analytics` — a `renderHook` test, per the repo's custom-hook rule.
+- `trend.ts` option-builder — unit tests (pure), as `donut.test.ts` does. Includes the budget line:
+  present when a limit is given, absent when null, and `yAxis.max` reaching a limit that exceeds
+  every bar (the clipping hazard).
+- `use-analytics` — a `renderHook` test, per the repo's custom-hook rule. Includes `budgetLine`
+  following the filter: the total budget unfiltered, the category's limit when filtered, null when
+  the filtered category has no budget.
 - Budget-fit projection (spend vs current limit per cycle) — unit tests on the pure function.
 
 Tests run against the Node shim and prove the queries only. Per CLAUDE.md, the feature is not done
@@ -187,9 +231,9 @@ or layout.
 | ------------------------------------------- | ------------------------------------------------- |
 | `src/app/analytics/page.tsx`                 | new — `'use client'` route, reads `?view=`/`?category=` |
 | `src/features/entries/cycle.ts`              | add `lastCycles`                                  |
-| `src/features/entries/trend.ts`              | new — pure option-builder                         |
-| `src/features/entries/ui/TrendChart.tsx`     | new — thin ECharts wrapper                        |
-| `src/features/entries/use-analytics.ts`      | new — read hook                                   |
+| `src/features/entries/trend.ts`              | new — pure option-builder (+ the budget line)     |
+| `src/features/entries/ui/TrendChart.tsx`     | new — thin ECharts wrapper (+ a `limit` prop)     |
+| `src/features/entries/use-analytics.ts`      | new — read hook (+ derives `budgetLine`)          |
 | `src/features/budgets/budget-status.ts`      | add the per-cycle fit projection                  |
 | `src/shared/ui/ViewToggle.tsx`               | new — Home's local `ViewLink`, graduated to shared |
 | `src/app/page.tsx`                           | use the shared `ViewToggle`                       |
