@@ -185,5 +185,11 @@ or layout.
 | `src/features/entries/ui/TrendChart.tsx`     | new — thin ECharts wrapper                        |
 | `src/features/entries/use-analytics.ts`      | new — read hook                                   |
 | `src/features/budgets/budget-status.ts`      | add the per-cycle fit projection                  |
+| `src/shared/ui/ViewToggle.tsx`               | new — Home's local `ViewLink`, graduated to shared |
+| `src/app/page.tsx`                           | use the shared `ViewToggle`                       |
 | `src/shared/ui/BottomBar.tsx`                | Budgets slot → Analytics                          |
 | `src/shared/ui/MoreSheet.tsx`                | add Budgets; carry `cycle` on flagged links       |
+
+Home and Analytics both want the same `?view=` segmented control, differing only in their hrefs.
+Home's `ViewLink` is a page-local function today; CLAUDE.md's rule is that cross-feature reuse
+graduates a module to `shared/`, so it moves rather than being copied.
