@@ -62,6 +62,19 @@ export function trendAverage(bars: TrendBar[]): number | null {
   return basis.reduce((sum, b) => sum + b.value, 0) / basis.length;
 }
 
+// The chart's accessible text. ECharts draws to canvas and its tooltip is trigger:'item' — pointer
+// only — so without this every figure the page exists to communicate is unreachable by keyboard or
+// screen reader. The old aria-label was the chart's TITLE ("Total spending over the last 6 cycles"),
+// which names the chart and states none of its data.
+export function trendSummary(bars: TrendBar[], prefix: string): string {
+  const figures = bars
+    .map((b) => `${b.label} ${formatBahtWhole(b.value)}${b.partial ? ' (cycle in progress)' : ''}`)
+    .join(', ');
+  const average = trendAverage(bars);
+  const averageSentence = average === null ? '' : ` Average ${formatBahtWhole(average)}.`;
+  return `${prefix}: ${figures}.${averageSentence}`;
+}
+
 // Colours + font are injected (read from CSS tokens / computed style by the wrapper) so this stays
 // pure and theme-aware without importing echarts or touching the DOM. Mirrors DonutPalette's
 // contract; kept separate because a bar chart wants an accent and has no slice surface to border.

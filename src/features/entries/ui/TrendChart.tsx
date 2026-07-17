@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import type { TrendBar } from '../trend';
-import { buildTrendOption } from '../trend';
+import { buildTrendOption, trendSummary } from '../trend';
 
 // Thin wrapper: reads live theme tokens + the resolved font (canvas can't use CSS vars), hands them
 // to the pure option-builder, and manages the echarts instance lifecycle. Logic lives in ../trend.ts.
@@ -36,5 +36,7 @@ export function TrendChart({ bars, label }: { bars: TrendBar[]; label: string })
     };
   }, [bars]);
 
-  return <div ref={ref} className="h-56 w-full" role="img" aria-label={label} />;
+  return (
+    <div ref={ref} className="h-56 w-full" role="img" aria-label={trendSummary(bars, label)} />
+  );
 }

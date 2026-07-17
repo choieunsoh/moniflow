@@ -5,6 +5,7 @@ import {
   buildTrendOption,
   completeBars,
   trendAverage,
+  trendSummary,
   type TrendBar,
   type TrendPalette,
 } from './trend';
@@ -191,5 +192,28 @@ describe('trendAverage', () => {
 
   it('returns null with no data at all', () => {
     expect(trendAverage([])).toBeNull();
+  });
+});
+
+describe('trendSummary', () => {
+  const bars: TrendBar[] = [
+    { key: '2026-05', label: 'May', value: 100, partial: false },
+    { key: '2026-06', label: 'Jun', value: 300, partial: false },
+    { key: '2026-07', label: 'Jul', value: 50, partial: true },
+  ];
+
+  it('names every figure, so the canvas is not a dead end without sight', () => {
+    expect(trendSummary(bars, 'Total spending over the last 3 cycles')).toBe(
+      'Total spending over the last 3 cycles: May ฿100, Jun ฿300, Jul ฿50 (cycle in progress). Average ฿200.',
+    );
+  });
+
+  it('marks the live cycle in words — its 45% opacity says so to nobody else', () => {
+    expect(trendSummary(bars, 'x')).toContain('Jul ฿50 (cycle in progress)');
+  });
+
+  it('omits the average when there is too little history to have one', () => {
+    const thin: TrendBar[] = [{ key: '2026-07', label: 'Jul', value: 50, partial: true }];
+    expect(trendSummary(thin, 'x')).toBe('x: Jul ฿50 (cycle in progress).');
   });
 });

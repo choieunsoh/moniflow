@@ -25,6 +25,7 @@ export default function AnalyticsPage() {
     return (
       <PageContainer size="full">
         <div
+          role="status"
           className="grid h-32 place-items-center text-sm"
           style={{ color: 'var(--color-muted)' }}
         >
