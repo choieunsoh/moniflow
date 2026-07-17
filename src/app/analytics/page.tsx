@@ -9,6 +9,8 @@ import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
 import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
 import { emojiFor } from '@features/categories/queries';
 import { formatBahtWhole } from '@shared/money';
+import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
+import { trendAverage } from '@features/entries/trend';
 
 // Analytics = the zoom-out surface. Home answers "what did I spend this cycle"; this answers "is that
 // normal for me". One screen: the six-cycle spending trend, with a dashed line marking your own
@@ -38,6 +40,28 @@ export default function AnalyticsPage() {
   const { activeKey, bars, slices, total, emojiMap, iconSet, cycleRows } = data;
   const base = `/analytics?cycle=${activeKey}`;
 
+  // No spend anywhere in the window — reuse Home's empty state rather than inventing a second one.
+  // It teaches the interface (points at the keypad, offers the CSV restore) instead of saying "no
+  // data", which matters double here: moniflow is the create-sqlite-next-app reference, so a
+  // developer's first sight of Analytics is with an empty ledger.
+  if (slices.length === 0) {
+    return (
+      <PageContainer size="full">
+        <EmptyLedger />
+      </PageContainer>
+    );
+  }
+
+  // "Last 6 cycles" asserted history the user may not have: lastCycles always returns six, so a
+  // day-one ledger claimed six cycles over five empty slots. Name the window instead, and when there
+  // is too little to average, say so — "is this normal for me" genuinely has no answer yet, and
+  // pretending otherwise is the opposite of what this app is for.
+  const last = bars[bars.length - 1];
+  const subtitle =
+    trendAverage(bars) === null
+      ? 'Come back next cycle to see whether this is typical'
+      : `${bars[0].label} – ${last.label} ${last.key.split('-')[0]}`;
+
   return (
     <PageContainer size="full">
       <section className="panel flex flex-col gap-5 p-5">
@@ -45,7 +69,7 @@ export default function AnalyticsPage() {
           <div className="flex min-w-0 flex-col gap-1">
             <h2 className="truncate text-base font-semibold">{category ?? 'All spending'}</h2>
             <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-              Last {bars.length} cycles
+              {subtitle}
             </span>
           </div>
           <span className="tnum shrink-0 text-lg font-semibold">{formatBahtWhole(total)}</span>
