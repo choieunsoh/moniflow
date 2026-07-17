@@ -34,7 +34,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { activeKey, bars, slices, total, emojiMap, iconSet } = data;
+  const { activeKey, bars, slices, total, emojiMap, iconSet, cycleRows } = data;
   const base = `/analytics?cycle=${activeKey}`;
 
   return (
@@ -61,48 +61,81 @@ export default function AnalyticsPage() {
           label={`${category ?? 'Total'} spending over the last ${bars.length} cycles`}
         />
 
-        <ul className="flex flex-col gap-2.5">
-          {slices.map((s) => {
-            const inner = (
-              <>
-                <span
-                  aria-hidden
-                  className="grid size-11 shrink-0 place-items-center rounded-full text-2xl"
-                  style={{ background: s.color, color: 'var(--color-on-accent)' }}
+        {category !== null ? (
+          // Filtered: the list decomposes the total above it per cycle. No category disc — every
+          // row is the same category, so six identical discs would mark nothing. monthLabel is the
+          // x-axis's own label fn, so the list and the chart always agree (incl. the start-month
+          // convention).
+          <ul className="flex flex-col gap-2.5">
+            {cycleRows.map((r) => (
+              <li key={r.key} className="flex items-center text-sm">
+                <Link
+                  prefetch={false}
+                  href={`/records?cycle=${r.key}&category=${encodeURIComponent(category)}`}
+                  aria-label={`${category} records for ${r.label}`}
+                  // min-h-11 (44px), NOT `.tap`: .tap is inline-flex and would fight the `flex`
+                  // utility. The category rows get their 44px for free from the size-11 disc —
+                  // these rows have no disc (every row is the same category), so without this they
+                  // collapse to text height.
+                  className="flex min-h-11 min-w-0 flex-1 items-center gap-3"
                 >
-                  <CategoryGlyph emoji={emojiFor(emojiMap, s.name)} iconSet={iconSet} size={26} />
-                </span>
-                <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                  <span className="truncate">{s.name}</span>
-                  <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                    ({s.count})
+                  <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                    <span className="truncate">{r.label}</span>
+                    <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                      ({r.count})
+                    </span>
                   </span>
-                </span>
-                <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                  {formatBahtWhole(s.value)}
-                </span>
-              </>
-            );
-            // "Other" is a synthetic tail bucket, not a real category — nothing to filter to, so
-            // it stays static. Same rule the home donut's legend follows.
-            return (
-              <li key={s.name} className="flex items-center gap-3 text-sm">
-                {s.other ? (
-                  <span className="flex min-w-0 flex-1 items-center gap-3">{inner}</span>
-                ) : (
-                  <Link
-                    prefetch={false}
-                    href={`${base}&category=${encodeURIComponent(s.name)}`}
-                    aria-label={`${s.name} trend`}
-                    className="flex min-w-0 flex-1 items-center gap-3"
-                  >
-                    {inner}
-                  </Link>
-                )}
+                  <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                    {formatBahtWhole(r.value)}
+                  </span>
+                </Link>
               </li>
-            );
-          })}
-        </ul>
+            ))}
+          </ul>
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {slices.map((s) => {
+              const inner = (
+                <>
+                  <span
+                    aria-hidden
+                    className="grid size-11 shrink-0 place-items-center rounded-full text-2xl"
+                    style={{ background: s.color, color: 'var(--color-on-accent)' }}
+                  >
+                    <CategoryGlyph emoji={emojiFor(emojiMap, s.name)} iconSet={iconSet} size={26} />
+                  </span>
+                  <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                    <span className="truncate">{s.name}</span>
+                    <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                      ({s.count})
+                    </span>
+                  </span>
+                  <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                    {formatBahtWhole(s.value)}
+                  </span>
+                </>
+              );
+              // "Other" is a synthetic tail bucket, not a real category — nothing to filter to, so
+              // it stays static. Same rule the home donut's legend follows.
+              return (
+                <li key={s.name} className="flex items-center gap-3 text-sm">
+                  {s.other ? (
+                    <span className="flex min-w-0 flex-1 items-center gap-3">{inner}</span>
+                  ) : (
+                    <Link
+                      prefetch={false}
+                      href={`${base}&category=${encodeURIComponent(s.name)}`}
+                      aria-label={`${s.name} trend`}
+                      className="flex min-w-0 flex-1 items-center gap-3"
+                    >
+                      {inner}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
     </PageContainer>
   );
