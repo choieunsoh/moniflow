@@ -4,12 +4,17 @@ import { useEffect, useState } from 'react';
 import { getBrowserDb } from '@db/browser';
 import { getCategoryBreakdown, type Breakdown } from './queries';
 import { lastCycles, currentCycleKey } from './cycle';
-import { TREND_CYCLES, toTrendBars, type TrendBar } from './trend';
+import { TREND_CYCLES, toTrendBars, monthLabel, type TrendBar } from './trend';
 import { toDonutSlices, type DonutSlice } from './donut';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getEmojiMap } from '@features/categories/queries';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
+
+// One cycle's spend for the filtered category. The filtered list's row shape — the unfiltered list
+// uses DonutSlice instead, because unfiltered the list decomposes by CATEGORY and filtered it
+// decomposes by CYCLE. Two shapes because they answer two questions.
+export type CycleRow = { key: string; label: string; value: number; count: number };
 
 export type AnalyticsData = {
   activeKey: string;
@@ -19,6 +24,7 @@ export type AnalyticsData = {
   total: number;
   emojiMap: Record<string, string>;
   iconSet: IconSet;
+  cycleRows: CycleRow[];
 };
 
 // Sum a window's breakdowns into one ranked Breakdown[] — the category list under the chart shows
@@ -75,12 +81,13 @@ export function useAnalytics(
         cycles.map((c) => getCategoryBreakdown(db, c.start, c.end)),
       );
 
-      // The one primitive: cycle key → category → spend magnitude. Every view below is a projection
-      // of this. Totals arrive negative (outflows); the matrix stores magnitudes.
-      const matrix = new Map<string, Map<string, number>>();
+      // The one primitive: cycle key → category → { spend magnitude, entry count }. Every view below
+      // is a projection of this. Totals arrive negative (outflows); the matrix stores magnitudes.
+      const matrix = new Map<string, Map<string, { total: number; count: number }>>();
       for (const [i, rows] of breakdowns.entries()) {
-        const byCategory = new Map<string, number>();
-        for (const row of rows) byCategory.set(row.key, Math.abs(row.total));
+        const byCategory = new Map<string, { total: number; count: number }>();
+        for (const row of rows)
+          byCategory.set(row.key, { total: Math.abs(row.total), count: row.count });
         matrix.set(cycles[i].key, byCategory);
       }
 
@@ -89,10 +96,26 @@ export function useAnalytics(
       for (const [key, byCategory] of matrix) {
         const value =
           category === null
-            ? [...byCategory.values()].reduce((sum, v) => sum + v, 0)
-            : (byCategory.get(category) ?? 0);
+            ? [...byCategory.values()].reduce((sum, v) => sum + v.total, 0)
+            : (byCategory.get(category)?.total ?? 0);
         spendByCycle.set(key, value);
       }
+
+      // Filtered, the list decomposes the header total per cycle — so it sums to the figure above
+      // it. Unfiltered there is nothing to decompose this way (the category list does that job), so
+      // it is empty. Cycles with no spend are skipped: a zero row is noise in a list, though it stays
+      // a real zero in the BARS, where a gap would read as a rendering bug.
+      const cycleRows: CycleRow[] =
+        category === null
+          ? []
+          : cycles
+              .map((c) => ({
+                key: c.key,
+                label: monthLabel(c.key),
+                value: matrix.get(c.key)?.get(category)?.total ?? 0,
+                count: matrix.get(c.key)?.get(category)?.count ?? 0,
+              }))
+              .filter((r) => r.value > 0);
 
       const bars = toTrendBars(cycles, spendByCycle, currentKey);
       const slices = toDonutSlices(aggregate(breakdowns));
@@ -106,6 +129,7 @@ export function useAnalytics(
         total,
         emojiMap,
         iconSet,
+        cycleRows,
       });
       setReady(true);
     })();
