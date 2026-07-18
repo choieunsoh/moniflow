@@ -1,27 +1,31 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { ViewToggle } from '@shared/ui/ViewToggle';
 import { useHome } from '@features/entries/use-home';
 import { pacePhrase } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 import { formatBahtWhole } from '@shared/money';
-import { emojiFor, hueFor } from '@features/categories/queries';
-import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
-import { CategoryEditTrigger } from '@features/categories/ui/CategoryPicker';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { CycleProgress } from '@features/entries/ui/CycleProgress';
 import { CycleSwipe } from '@features/entries/ui/CycleSwipe';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
+import { HomeSkeleton } from '@features/entries/ui/HomeSkeleton';
+import { LegendRow } from '@features/entries/ui/LegendRow';
 
-// Home = the expense overview for the current cycle. Chart view: a spending donut with the total
-// spent in the hole plus a colour-keyed legend; List view: the ranked category bars. A ?view= toggle
-// switches them. Expense-only — no net/inflow figures. Cycle data loads client-side via useHome
-// against the browser OPFS db (params come from useSearchParams, not a server searchParams prop).
+// Home = the expense overview for the current cycle. Chart view: a spending donut with a colour-keyed
+// legend; List view: the same categories as ranked bars. A ?view= toggle switches them.
+//
+// The headline figures — total spent and the budget meter — sit ABOVE the toggle deliberately. They
+// used to live inside the chart branch, which made the toggle a feature switch rather than a view
+// switch: anyone who preferred the ranked list lost the cycle total entirely and had to carry it in
+// their head. The toggle now swaps only the visualisation; the answer stays put.
+//
+// Expense-only — no net/inflow figures. Cycle data loads client-side via useHome against the browser
+// OPFS db (params come from useSearchParams, not a server searchParams prop).
 export default function HomePage() {
   const params = useSearchParams();
   const cycleParam = params.get('cycle');
@@ -31,12 +35,7 @@ export default function HomePage() {
   if (!ready || data === null) {
     return (
       <PageContainer size="full">
-        <div
-          className="grid h-32 place-items-center text-sm"
-          style={{ color: 'var(--color-muted)' }}
-        >
-          …
-        </div>
+        <HomeSkeleton />
       </PageContainer>
     );
   }
@@ -49,6 +48,7 @@ export default function HomePage() {
     summary,
     categoryBreakdown,
     slices,
+    sliceColors,
     total,
     emojiMap,
     hueMap,
@@ -57,9 +57,11 @@ export default function HomePage() {
     totalStatus,
     progress,
     pacePct,
+    showPace,
   } = data;
 
   const showList = view === 'category';
+  const hasSpending = summary.count > 0;
 
   return (
     <PageContainer size="full">
@@ -70,8 +72,33 @@ export default function HomePage() {
       <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} view={view} />
       {isCurrentCycle ? <CycleProgress progress={progress} /> : null}
 
-      {summary.count > 0 ? (
+      {hasSpending ? (
         <>
+          {/* The cycle's answer, constant across both views. */}
+          <section className="panel flex flex-col gap-1.5 p-5">
+            {/* flex-wrap, not a fixed row: at 200% zoom / Extra Large text the label and the figure
+                otherwise collide. Wrapping lets the figure drop to its own line instead. */}
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <h2 className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
+                {totalStatus ? 'Total budget' : 'Spent this cycle'}
+              </h2>
+              <span className="tnum text-xl font-semibold">
+                {totalStatus
+                  ? `${formatBahtWhole(total)} / ${formatBahtWhole(totalStatus.limit ?? 0)}`
+                  : formatBahtWhole(total)}
+              </span>
+            </div>
+            {totalStatus ? <BudgetMeter status={totalStatus} pacePct={pacePct} /> : null}
+            {/* The pace tick on the meter shows from day 1 — it's geometry. This phrase is a verdict,
+                and on day 1 any spend at all reads as "over pace", so useHome holds it back until
+                enough of the cycle has elapsed to mean something. */}
+            {totalStatus && showPace && pacePct !== undefined && totalStatus.state !== 'over' ? (
+              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                {pacePhrase(totalStatus.pct, pacePct)}
+              </span>
+            ) : null}
+          </section>
+
           <ViewToggle
             options={[
               { label: 'Chart', active: !showList, href: `/?cycle=${activeKey}&view=chart` },
@@ -90,99 +117,23 @@ export default function HomePage() {
                 limits={limits}
                 pacePct={pacePct}
                 cycleKey={activeKey}
+                // The donut's slice colours, so a category reads the same in both views.
+                colors={sliceColors}
               />
             ) : (
               <section className="panel flex flex-col gap-5 p-5">
                 <DonutChart rows={categoryBreakdown} />
-                {totalStatus ? (
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-baseline justify-between text-sm">
-                      <span style={{ color: 'var(--color-muted)' }}>Total budget</span>
-                      <span className="tnum" style={{ color: 'var(--color-text)' }}>
-                        {formatBahtWhole(total)} / {formatBahtWhole(totalStatus.limit ?? 0)}
-                      </span>
-                    </div>
-                    <BudgetMeter status={totalStatus} pacePct={pacePct} />
-                    {pacePct !== undefined && totalStatus.state !== 'over' ? (
-                      <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                        {pacePhrase(totalStatus.pct, pacePct)}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
                 <ul className="flex flex-col gap-2.5">
                   {slices.map((s) => (
-                    <li key={s.name} className="flex items-center gap-3 text-sm">
-                      {/* Slice colour + category icon combined into one mark: a disc in the ring's
-                        colour with the icon inside (white line icons / emoji on the colour). Tap a
-                        real category to edit it — the disc keeps its slice colour, the dialog edits
-                        the category's own hue. The synthetic "Other" bucket isn't editable. */}
-                      {(() => {
-                        const disc = (
-                          <span
-                            aria-hidden
-                            className="grid size-11 shrink-0 place-items-center rounded-full text-2xl"
-                            style={{ background: s.color, color: 'var(--color-on-accent)' }}
-                          >
-                            <CategoryGlyph
-                              emoji={emojiFor(emojiMap, s.name)}
-                              iconSet={iconSet}
-                              size={26}
-                            />
-                          </span>
-                        );
-                        return s.other ? (
-                          disc
-                        ) : (
-                          <CategoryEditTrigger
-                            category={s.name}
-                            emoji={emojiFor(emojiMap, s.name)}
-                            hue={hueFor(hueMap, s.name)}
-                          >
-                            {disc}
-                          </CategoryEditTrigger>
-                        );
-                      })()}
-                      {/* Icon-excepted tap-through to the category's filtered records for this
-                        cycle. The synthetic "Other" bucket isn't a real category — no records match
-                        it — so it stays static. */}
-                      {(() => {
-                        const inner = (
-                          <>
-                            <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                              <span className="truncate">{s.name}</span>
-                              <span
-                                className="tnum shrink-0"
-                                style={{ color: 'var(--color-muted)' }}
-                              >
-                                ({s.count})
-                              </span>
-                            </span>
-                            <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                              {formatBahtWhole(s.value)}
-                            </span>
-                            <span
-                              className="tnum w-9 shrink-0 text-right"
-                              style={{ color: 'var(--color-faint)' }}
-                            >
-                              {Math.round((s.value / total) * 100)}%
-                            </span>
-                          </>
-                        );
-                        return s.other ? (
-                          <span className="flex min-w-0 flex-1 items-center gap-3">{inner}</span>
-                        ) : (
-                          <Link
-                            prefetch={false}
-                            href={`/records?cycle=${activeKey}&category=${encodeURIComponent(s.name)}`}
-                            aria-label={`${s.name} records this cycle`}
-                            className="flex min-w-0 flex-1 items-center gap-3"
-                          >
-                            {inner}
-                          </Link>
-                        );
-                      })()}
-                    </li>
+                    <LegendRow
+                      key={s.name}
+                      slice={s}
+                      total={total}
+                      cycleKey={activeKey}
+                      emojis={emojiMap}
+                      hues={hueMap}
+                      iconSet={iconSet}
+                    />
                   ))}
                 </ul>
               </section>
