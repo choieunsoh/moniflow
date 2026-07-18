@@ -66,13 +66,18 @@ export function trendAverage(bars: TrendBar[]): number | null {
 // only — so without this every figure the page exists to communicate is unreachable by keyboard or
 // screen reader. The old aria-label was the chart's TITLE ("Total spending over the last 6 cycles"),
 // which names the chart and states none of its data.
-export function trendSummary(bars: TrendBar[], prefix: string): string {
+export function trendSummary(
+  bars: TrendBar[],
+  prefix: string,
+  budget: number | null = null,
+): string {
   const figures = bars
     .map((b) => `${b.label} ${formatBahtWhole(b.value)}${b.partial ? ' (cycle in progress)' : ''}`)
     .join(', ');
   const average = trendAverage(bars);
   const averageSentence = average === null ? '' : ` Average ${formatBahtWhole(average)}.`;
-  return `${prefix}: ${figures}.${averageSentence}`;
+  const budgetSentence = budget === null ? '' : ` Budget ${formatBahtWhole(budget)}.`;
+  return `${prefix}: ${figures}.${averageSentence}${budgetSentence}`;
 }
 
 // Colours + font are injected (read from CSS tokens / computed style by the wrapper) so this stays
@@ -84,6 +89,7 @@ export type TrendPalette = {
   border: string;
   surface2: string;
   accent: string;
+  warn: string;
   font: string;
 };
 
@@ -101,11 +107,55 @@ function barItemStyle(bar: TrendBar, anchorKey: string, p: TrendPalette) {
 
 // Returns a plain ECharts option: one bar per cycle, oldest → newest. The y axis is hidden — the
 // tooltip and the list below carry the figures, and an axis of baht labels would crowd a 412px
-// column for no gain. A dashed line marks your own average across the window (see trendAverage);
-// below two complete cycles there is nothing to average and no line is drawn.
-export function buildTrendOption(bars: TrendBar[], p: TrendPalette) {
+// column for no gain.
+//
+// Two dashed reference lines, each labelled and inked so neither reads as a stray bar:
+//   • AVERAGE (border ink) — your own mean across the window (see trendAverage); answers "is this
+//     normal for me". Omitted below two complete cycles, where there is nothing to average.
+//   • BUDGET (warn ink) — your limit for what the chart shows (the caller passes the total budget
+//     unfiltered, that category's limit when filtered). Answers "which cycles blew it".
+// The budget is a PASSIVE overlay: it is drawn at min(budget, tallest bar) and NEVER touches the
+// axis. That is the whole point — the old budget line forced yAxis.max up to the limit, squashing
+// every bar in proportion to how far under budget you were (a ฿4,899 bar at 16% height under a
+// ฿30,000 line). When the budget sits above the tallest bar you are comfortably under it, so the
+// marker pins to the bar peak and the label carries an ↑ plus the true figure — "your budget is up
+// here, unreached" — rather than vanishing off the top or dragging the axis.
+export function buildTrendOption(bars: TrendBar[], p: TrendPalette, budget: number | null = null) {
   const anchorKey = bars.length > 0 ? bars[bars.length - 1].key : '';
   const average = trendAverage(bars);
+  const barMax = Math.max(0, ...bars.map((b) => b.value));
+
+  const refLines = [];
+  if (average !== null) {
+    refLines.push({
+      yAxis: average,
+      // border, not muted: muted is every non-anchor bar's colour, so the line and the data would
+      // share one ink and the reference would read as another bar.
+      lineStyle: { color: p.border, type: 'dashed', width: 1 },
+      label: {
+        formatter: `Average ${formatBahtWhole(average)}`,
+        position: 'insideStartTop',
+        color: p.muted,
+        fontFamily: p.font,
+        fontSize: 11,
+      },
+    });
+  }
+  if (budget !== null && budget > 0) {
+    const overTop = budget > barMax;
+    refLines.push({
+      yAxis: overTop ? barMax : budget,
+      lineStyle: { color: p.warn, type: 'dashed', width: 1 },
+      label: {
+        formatter: `Budget ${formatBahtWhole(budget)}${overTop ? ' ↑' : ''}`,
+        position: 'insideEndTop',
+        color: p.warn,
+        fontFamily: p.font,
+        fontSize: 11,
+      },
+    });
+  }
+
   return {
     grid: { left: 8, right: 8, top: 16, bottom: 8, containLabel: true },
     tooltip: {
@@ -123,14 +173,13 @@ export function buildTrendOption(bars: TrendBar[], p: TrendPalette) {
       axisLine: { lineStyle: { color: p.border } },
       axisLabel: { color: p.muted, fontFamily: p.font, fontSize: 12 },
     },
-    // No `max`. The budget line forced the axis up to a limit that could sit far above every bar,
-    // which shortened every bar in proportion to how far under budget you were — the same mechanism
-    // that got the budgets view deleted. An average is always inside the data's range, so it cannot
-    // be clipped and the axis never needs forcing. Do not reintroduce a reference that lives outside
-    // the data without solving this again.
-    // `max: undefined` (not omitted) keeps the field statically visible so the regression test
-    // above can assert on it — TS infers object-literal shape from what's written, and a field
-    // that's never present can't be asserted `undefined` without a cast.
+    // No `max`, EVER — the axis is scaled to the bars alone. Both reference lines respect this: the
+    // average is always inside the data's range, and the budget is clamped to the bar peak (see the
+    // header comment) rather than allowed to force the axis. Forcing the axis to reach a distant
+    // budget is exactly what squashed the bars and got the old budget line removed; do not bring it
+    // back. `max: undefined` (not omitted) keeps the field statically visible so the regression test
+    // can assert on it — TS infers object-literal shape from what's written, and a field that is
+    // never present can't be asserted `undefined` without a cast.
     yAxis: { type: 'value', show: false, max: undefined },
     series: [
       {
@@ -142,23 +191,7 @@ export function buildTrendOption(bars: TrendBar[], p: TrendPalette) {
           itemStyle: barItemStyle(b, anchorKey, p),
         })),
         markLine:
-          average === null
-            ? undefined
-            : {
-                silent: true,
-                symbol: 'none',
-                data: [{ yAxis: average }],
-                // border, not muted: muted is every non-anchor bar's colour, so the line and the
-                // data would share one ink and the reference would read as another bar.
-                lineStyle: { color: p.border, type: 'dashed', width: 1 },
-                label: {
-                  formatter: `Average ${formatBahtWhole(average)}`,
-                  position: 'insideEndTop',
-                  color: p.muted,
-                  fontFamily: p.font,
-                  fontSize: 11,
-                },
-              },
+          refLines.length === 0 ? undefined : { silent: true, symbol: 'none', data: refLines },
       },
     ],
   };

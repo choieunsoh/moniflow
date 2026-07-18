@@ -17,6 +17,7 @@ const PALETTE: TrendPalette = {
   border: '#333',
   surface2: '#1e2128',
   accent: '#7c5cff',
+  warn: '#f5a524',
   font: 'Inter',
 };
 
@@ -89,39 +90,64 @@ describe('buildTrendOption', () => {
   });
 });
 
-describe('buildTrendOption average line', () => {
+describe('buildTrendOption reference lines', () => {
   const bars: TrendBar[] = [
     { key: '2026-05', label: 'May', value: 100, partial: false },
     { key: '2026-06', label: 'Jun', value: 300, partial: false },
     { key: '2026-07', label: 'Jul', value: 50, partial: true },
   ];
+  // Complete cycles May(100) + Jun(300) → average 200; tallest bar is 300.
+  const lines = (option: ReturnType<typeof buildTrendOption>) =>
+    option.series[0].markLine?.data ?? [];
+  const named = (option: ReturnType<typeof buildTrendOption>, word: string) =>
+    lines(option).find((d) => d.label.formatter.startsWith(word));
 
-  it('draws the line at the average of the complete cycles', () => {
-    expect(buildTrendOption(bars, PALETTE).series[0].markLine?.data).toEqual([{ yAxis: 200 }]);
+  it('draws the average at the mean of the complete cycles, named and in border ink', () => {
+    const avg = named(buildTrendOption(bars, PALETTE), 'Average');
+    expect(avg?.yAxis).toBe(200);
+    expect(avg?.label.formatter).toBe('Average ฿200');
+    expect(avg?.lineStyle.color).toBe(PALETTE.border);
   });
 
-  it('names the line, so a bare figure cannot be read as a budget or a target', () => {
-    expect(buildTrendOption(bars, PALETTE).series[0].markLine?.label.formatter).toBe(
-      'Average ฿200',
-    );
-  });
-
-  it('draws no line when there is too little history to average', () => {
+  it('draws no line at all when there is no average and no budget', () => {
     const thin: TrendBar[] = [{ key: '2026-07', label: 'Jul', value: 50, partial: true }];
     expect(buildTrendOption(thin, PALETTE).series[0].markLine).toBeUndefined();
   });
 
-  it('never sets a y-axis max, so the bars are always scaled to the data', () => {
-    // Regression guard. The budget line forced yAxis.max to reach a limit that could sit far above
-    // every bar — a ฿4,899 bar under a ฿30,000 line rendered at 16% height. An average is always
-    // inside the data's range, so the axis must simply never be forced again.
-    expect(buildTrendOption(bars, PALETTE).yAxis.max).toBeUndefined();
+  it('draws the budget in warn ink at its value when it sits within the bars', () => {
+    const b = named(buildTrendOption(bars, PALETTE, 250), 'Budget');
+    expect(b?.yAxis).toBe(250);
+    expect(b?.label.formatter).toBe('Budget ฿250');
+    expect(b?.lineStyle.color).toBe(PALETTE.warn);
   });
 
-  it('keeps the line off the bars ink, so the reference reads as a reference', () => {
-    expect(buildTrendOption(bars, PALETTE).series[0].markLine?.lineStyle.color).toBe(
-      PALETTE.border,
-    );
+  it('clamps a budget above the tallest bar to the bar peak, marked with an arrow', () => {
+    // You are well under budget — the line must not vanish off the top nor drag the axis up. It
+    // pins to the tallest bar (300) and the label still states the true figure.
+    const b = named(buildTrendOption(bars, PALETTE, 30_000), 'Budget');
+    expect(b?.yAxis).toBe(300);
+    expect(b?.label.formatter).toBe('Budget ฿30,000 ↑');
+  });
+
+  it('draws a budget line even with too little history to average', () => {
+    const thin: TrendBar[] = [
+      { key: '2026-06', label: 'Jun', value: 400, partial: false },
+      { key: '2026-07', label: 'Jul', value: 50, partial: true },
+    ];
+    const option = buildTrendOption(thin, PALETTE, 500);
+    expect(named(option, 'Average')).toBeUndefined();
+    expect(named(option, 'Budget')?.label.formatter).toBe('Budget ฿500 ↑');
+  });
+
+  it('draws no budget line when no budget is given', () => {
+    expect(named(buildTrendOption(bars, PALETTE, null), 'Budget')).toBeUndefined();
+  });
+
+  it('never sets a y-axis max — not even for a budget far above every bar', () => {
+    // THE regression guard, now doubly important: the old budget line forced yAxis.max up to the
+    // limit, so a ฿4,899 bar under a ฿30,000 line rendered at 16% height. The budget is a passive
+    // overlay now — it is clamped, never allowed to drive the axis. The bars stay scaled to the data.
+    expect(buildTrendOption(bars, PALETTE, 30_000).yAxis.max).toBeUndefined();
   });
 });
 
@@ -215,5 +241,15 @@ describe('trendSummary', () => {
   it('omits the average when there is too little history to have one', () => {
     const thin: TrendBar[] = [{ key: '2026-07', label: 'Jul', value: 50, partial: true }];
     expect(trendSummary(thin, 'x')).toBe('x: Jul ฿50 (cycle in progress).');
+  });
+
+  it('states the budget when one is set, so it is not sight-only', () => {
+    expect(trendSummary(bars, 'x', 30_000)).toBe(
+      'x: May ฿100, Jun ฿300, Jul ฿50 (cycle in progress). Average ฿200. Budget ฿30,000.',
+    );
+  });
+
+  it('omits the budget sentence when no budget is set', () => {
+    expect(trendSummary(bars, 'x', null)).not.toContain('Budget');
   });
 });

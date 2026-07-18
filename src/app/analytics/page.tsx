@@ -38,7 +38,8 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { activeKey, bars, categories, total, emojiMap, hueMap, iconSet, cycleRows } = data;
+  const { activeKey, bars, categories, total, emojiMap, hueMap, iconSet, cycleRows, budgetLine } =
+    data;
   const base = `/analytics?cycle=${activeKey}`;
 
   // No spend anywhere in the window — reuse Home's empty state rather than inventing a second one.
@@ -88,6 +89,7 @@ export default function AnalyticsPage() {
 
         <TrendChart
           bars={bars}
+          budget={budgetLine}
           label={`${category ?? 'Total'} spending over the last ${bars.length} cycles`}
         />
 

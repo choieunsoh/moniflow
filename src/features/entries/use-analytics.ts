@@ -7,6 +7,7 @@ import { lastCycles, currentCycleKey } from './cycle';
 import { TREND_CYCLES, toTrendBars, monthLabel, type TrendBar } from './trend';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getEmojiMap, getHueMap } from '@features/categories/queries';
+import { getBudgets } from '@features/budgets/queries';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 
@@ -30,6 +31,10 @@ export type AnalyticsData = {
   hueMap: Record<string, number>;
   iconSet: IconSet;
   cycleRows: CycleRow[];
+  // The budget for whatever the chart is showing: the whole-cycle total when unfiltered, that
+  // category's own limit when filtered, null when neither is set. The chart draws it as a passive
+  // reference line (see buildTrendOption) — never an axis constraint.
+  budgetLine: number | null;
 };
 
 // Sum a window's breakdowns into one ranked Breakdown[] — the category list under the chart shows
@@ -131,6 +136,17 @@ export function useAnalytics(
         .filter((c) => c.value > 0);
       const total = [...spendByCycle.values()].reduce((sum, v) => sum + v, 0);
 
+      // The category=null row is the whole-cycle TOTAL budget; the rest are per-category caps. The
+      // line marks the budget for whatever the chart shows — total unfiltered, this category's limit
+      // when filtered — or null when that has no budget set.
+      const budgetRows = await getBudgets(db);
+      const totalLimit = budgetRows.find((b) => b.category === null)?.amount ?? null;
+      const limits = new Map<string, number>();
+      for (const b of budgetRows) {
+        if (b.category !== null) limits.set(b.category, b.amount);
+      }
+      const budgetLine = category === null ? totalLimit : (limits.get(category) ?? null);
+
       setData({
         activeKey,
         currentKey,
@@ -141,6 +157,7 @@ export function useAnalytics(
         hueMap,
         iconSet,
         cycleRows,
+        budgetLine,
       });
       setReady(true);
     })();
