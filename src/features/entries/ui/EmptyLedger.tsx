@@ -12,13 +12,21 @@ export function EmptyLedger() {
         className="grid size-12 place-items-center rounded-[var(--radius-md)]"
         style={{ background: 'var(--color-accent-soft)' }}
       >
+        {/* A receipt, not the rising-trend arrow this used to draw: moniflow is expense-only, so
+            an up-and-to-the-right growth glyph promised the opposite of what the ledger holds. */}
         <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
           <path
-            d="M1.5 11.5 5 7l3 2.5L14.5 3.5M11 3.5h3.5V7"
+            d="M3.5 1.5h9v13l-1.75-1.25L9 14.5l-1.75-1.25L5.5 14.5 3.5 13.25z"
             stroke="var(--color-accent-text)"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
+          />
+          <path
+            d="M6 5.5h4M6 8.5h4"
+            stroke="var(--color-accent-text)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
           />
         </svg>
       </span>

@@ -103,8 +103,12 @@ function TabInner({ active, icon, label }: { active: boolean; icon: ReactNode; l
       >
         {icon}
       </span>
+      {/* The bar is a fixed 5-column grid, so a scaled-up label has nowhere to grow — at 200% zoom
+          the longer labels used to overrun their column and collide with their neighbours. Clamped
+          to the column and truncated: the icon and the active pill still identify the tab, and the
+          accessible name comes from the link, not this text. */}
       <span
-        className="text-[0.625rem] transition-[font-weight] duration-200"
+        className="max-w-full truncate px-0.5 text-[0.625rem] transition-[font-weight] duration-200"
         style={{ fontWeight: active ? 600 : 500 }}
       >
         {label}

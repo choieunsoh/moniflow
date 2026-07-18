@@ -23,7 +23,7 @@
   /* Ink */
   --color-text: #ecedf1; /* 14.9:1 on bg */
   --color-muted: #9da1b3; /* 5.9:1 on bg — clears AA */
-  --color-faint: #7a7e8f; /* tertiary — large / non-essential only */
+  --color-faint: #868a9c; /* tertiary — 5.2:1 on surface, 4.7:1 on surface-2: clears AA anywhere */
 
   /* Accent — swap this one line to reskin */
   --color-accent: #7132f5;
@@ -44,7 +44,10 @@
 /* Non-Tailwind design vars: soft accent tint, elevation, motion, z-scale. */
 :root {
   --color-accent-soft: rgba(113, 50, 245, 0.16);
-  --color-accent-ring: rgba(113, 50, 245, 0.55);
+  /* The ring is the lighter accent-text, not --color-accent at any alpha: WCAG 2.2 SC 1.4.11 wants
+     3:1 for a focus indicator, and #7132f5 tops out at 2.94:1 on --color-surface even fully opaque.
+     #9b7bff clears it at 5.6:1 on surface, 5.1:1 on surface-2. */
+  --color-accent-ring: #9b7bff;
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 8px 28px -12px rgba(0, 0, 0, 0.7);

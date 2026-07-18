@@ -11,6 +11,7 @@ import {
   getEntries,
   restoreEntries,
   getCycleSummary,
+  hasAnyExpense,
   getCategoryBreakdown,
   getEntriesInRange,
   insertEntry,
@@ -120,6 +121,16 @@ describe('cycle-scoped queries', () => {
     ]);
     return d;
   }
+
+  it('reports an empty ledger as having no expense at all', async () => {
+    expect(await hasAnyExpense(await db())).toBe(false);
+  });
+
+  it('reports a ledger with history as non-empty regardless of which cycle is in view', async () => {
+    // The whole point of this query: home asks it to tell "you have nothing yet" apart from
+    // "nothing happened in THIS cycle", so it must ignore cycle bounds entirely.
+    expect(await hasAnyExpense(await seed())).toBe(true);
+  });
 
   it('summarizes only rows within [start, end]', async () => {
     const s = await getCycleSummary(await seed(), '2026-07-18', '2026-08-17');

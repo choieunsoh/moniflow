@@ -127,6 +127,20 @@ export async function getCycleSummary(db: Db, start: string, end: string): Promi
   return summarize(await getEntriesInRange(db, start, end));
 }
 
+// Does the ledger hold ANY expense, in any cycle? Home needs this to tell its two empty states
+// apart: a genuinely empty ledger earns the first-run onboarding, while an empty CYCLE in a ledger
+// with history must not — telling someone with ten years of records "No entries yet" reads as data
+// loss. LIMIT 1, so it stays O(1)-ish however big the ledger gets.
+export async function hasAnyExpense(db: Db): Promise<boolean> {
+  const rows = await db
+    .select({ id: entries.id })
+    .from(entries)
+    .where(lt(entries.amount, 0))
+    .limit(1)
+    .all();
+  return rows.length > 0;
+}
+
 // GROUP BY in SQL so a cycle view never loads the full 10-year ledger. Sorted by magnitude in JS
 // (the result set is at most one row per category — tiny).
 export async function getCategoryBreakdown(

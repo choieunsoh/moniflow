@@ -1,3 +1,5 @@
+import { formatBahtWhole } from '@shared/money';
+
 // Pure budget-vs-spend model. Merges standing budgets with the current cycle's spend into ranked,
 // stateful rows so the page can render a live tracker (meter + over/under state) instead of a bare
 // form. No DB, no React — tested in isolation. Spend is always a magnitude (the ledger stores
@@ -53,6 +55,16 @@ export function meterColorVar(state: BudgetState): string {
   if (state === 'over') return 'var(--color-loss)';
   if (state === 'near') return 'var(--color-warn)';
   return 'var(--color-accent)';
+}
+
+// The meter's right-hand caption. `near` and `under` used to both render a bare `${pct}%`, which left
+// the difference between them carried ENTIRELY by the amber-vs-accent fill — meaning-by-colour-alone
+// (WCAG 1.4.1), and against the house rule that state never rides on hue by itself. `near` now names
+// itself in words, so the warning survives grayscale and colour blindness.
+export function meterCaption(status: BudgetTotal): string {
+  if (status.state === 'over') return `over ${formatBahtWhole(Math.abs(status.remaining))}`;
+  const pct = `${Math.round(status.pct)}%`;
+  return status.state === 'near' ? `${pct} · close to limit` : pct;
 }
 
 // Spend pace vs the clock: the signed gap between how much of the budget is spent and how far through

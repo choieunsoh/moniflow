@@ -24,18 +24,23 @@ structure makes it a drop-in override (`:root[data-theme="light"]`) later.
 | `--color-border-strong` | `#3a3e4c`               | Emphasized dividers, input borders                       |
 | `--color-text`          | `#ecedf1`               | Primary ink (14.9:1 on bg)                               |
 | `--color-muted`         | `#9da1b3`               | Secondary text (5.9:1 on bg — clears AA)                 |
-| `--color-faint`         | `#7a7e8f`               | Tertiary/labels — large or non-essential only            |
+| `--color-faint`         | `#868a9c`               | Tertiary/labels (5.2:1 on surface — clears AA anywhere)  |
 | `--color-accent`        | `#7132f5`               | **Swappable anchor.** Primary action, active, focus fill |
 | `--color-accent-hover`  | `#5741d8`               | Action hover                                             |
 | `--color-accent-text`   | `#9b7bff`               | Accent used AS text (6.0:1 on bg — AA)                   |
-| `--color-accent-soft`   | `rgba(113,50,245,0.16)` | Selected row, active chip, focus glow                    |
+| `--color-accent-soft`   | `rgba(113,50,245,0.16)` | Selected row, active chip                                |
+| `--color-accent-ring`   | `#9b7bff`               | `:focus-visible` outline (5.6:1 on surface — SC 1.4.11)  |
 | `--color-on-accent`     | `#ffffff`               | Text on accent fills (6.04:1)                            |
 | `--color-gain`          | `#19c37d`               | Inflow / positive                                        |
 | `--color-loss`          | `#f0616d`               | Outflow / negative                                       |
 | `--color-warn`          | `#f5a524`               | Caution                                                  |
 
-**Contrast is verified, not assumed.** Body ≥4.5:1, large ≥3:1. Gain/loss is never color-only —
-always paired with a `+`/`−` sign so it survives grayscale and color blindness.
+**Contrast is verified, not assumed.** Body ≥4.5:1, large ≥3:1, focus indicators ≥3:1 (WCAG 2.2
+SC 1.4.11). Ratios are measured against `--color-surface`, not `--color-bg` — a panel is the lightest
+thing most text sits on, so clearing it clears everywhere. Note the focus ring uses `accent-text`
+rather than `accent`: `#7132f5` only reaches 2.94:1 on surface **at full opacity**, so no alpha on the
+base accent could have satisfied 1.4.11. Gain/loss is never color-only — always paired with a `+`/`−`
+sign so it survives grayscale and color blindness.
 
 ## Typography
 

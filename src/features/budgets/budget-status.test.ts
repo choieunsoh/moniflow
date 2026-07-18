@@ -4,6 +4,7 @@ import {
   toBudgetTotal,
   suggestBudget,
   meterColorVar,
+  meterCaption,
   pacePhrase,
 } from './budget-status';
 
@@ -105,5 +106,21 @@ describe('pacePhrase', () => {
   it('reads "on pace" when spend and time round to the same point', () => {
     expect(pacePhrase(77, 77)).toBe('on pace');
     expect(pacePhrase(77.3, 77)).toBe('on pace');
+  });
+});
+
+describe('meterCaption', () => {
+  it('states how far over the limit when over', () => {
+    expect(meterCaption(toBudgetTotal(1000, 1600))).toBe('over ฿600');
+  });
+
+  it('names the near state in words, not colour alone', () => {
+    // 87% of the limit — amber fill in the meter. The caption has to carry the state too, or a
+    // colour-blind/grayscale reader can't tell 87% from 45%.
+    expect(meterCaption(toBudgetTotal(1000, 870))).toBe('87% · close to limit');
+  });
+
+  it('leaves a comfortable under-budget row as a bare percent', () => {
+    expect(meterCaption(toBudgetTotal(1000, 450))).toBe('45%');
   });
 });
