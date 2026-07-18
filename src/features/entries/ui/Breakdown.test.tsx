@@ -45,8 +45,10 @@ describe('Breakdown category links', () => {
 });
 
 describe('Breakdown bar colour', () => {
-  // Home passes the donut's slice colours so a category reads the same in both views; callers with
-  // no colour scheme (the account breakdown) keep the flat accent.
+  // Home passes the donut's slice colours so a category reads the same in both views. Anything
+  // without a mapped colour goes NEUTRAL, never the accent: filling unmapped rows with #7132f5 put
+  // them a hair from Rent's identity #7c5cff, so two near-identical purples meant "this category"
+  // and "no colour assigned".
   it('fills each bar with the category colour when one is given', () => {
     const { container } = withProvider(
       <Breakdown
@@ -58,14 +60,14 @@ describe('Breakdown bar colour', () => {
     );
     const bars = container.querySelectorAll('div[style*="width"]');
     expect(bars[0].getAttribute('style')).toContain('rgb(124, 92, 255)'); // #7c5cff, normalised
-    // Transport & taxi has no mapped colour — falls back rather than rendering an empty background.
-    expect(bars[1].getAttribute('style')).toContain('var(--color-accent)');
+    // Transport & taxi has no mapped colour — neutral, so it can't be mistaken for an identity.
+    expect(bars[1].getAttribute('style')).toContain('var(--color-border-strong)');
   });
 
-  it('keeps the accent when no colours are given', () => {
+  it('stays neutral when no colours are given', () => {
     const { container } = render(<Breakdown title="By account" rows={rows} />);
     for (const bar of container.querySelectorAll('div[style*="width"]')) {
-      expect(bar.getAttribute('style')).toContain('var(--color-accent)');
+      expect(bar.getAttribute('style')).toContain('var(--color-border-strong)');
     }
   });
 });

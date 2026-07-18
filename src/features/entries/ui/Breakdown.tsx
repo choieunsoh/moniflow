@@ -17,10 +17,11 @@ import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 // pace tick on each budgeted meter — forwarded straight to BudgetMeter, current cycle only.
 // Pass `cycleKey` to make each row (icon excepted) a tap-through to that category's records for the
 // cycle — home opts in; account breakdowns omit it and stay static.
-// Pass `colors` (category → hex) to fill each unbudgeted bar with that category's own colour instead
-// of the flat accent. Home passes the donut's slice colours so a category keeps ONE identity across
-// the chart/list toggle; callers with no colour scheme omit it and keep the accent. Budgeted rows
-// ignore it — their meter colour is a state signal (over/near), which outranks identity.
+// Pass `colors` (category → hex) to fill each unbudgeted bar with that category's own colour. Home
+// passes the donut's slice colours so a category keeps ONE identity across the chart/list toggle.
+// Rows with no mapped colour — and callers that pass none at all — get a neutral track rather than
+// the accent, so "no colour assigned" never impersonates an identity colour. Budgeted rows ignore
+// `colors` entirely: their meter colour is a state signal (over/near), which outranks identity.
 export function Breakdown({
   title,
   rows,
@@ -91,11 +92,16 @@ export function Breakdown({
             className="h-2 overflow-hidden rounded"
             style={{ background: 'var(--color-border)' }}
           >
+            {/* Unmapped rows fall back to a NEUTRAL track colour, not the accent. Categories past
+                the palette have no slice to match, and filling them with #7132f5 put them a hair
+                from Rent's identity #7c5cff — so two near-identical purples meant "this category"
+                and "no colour assigned". A partial identity promise is worse than none; grey reads
+                honestly as "no colour here". */}
             <div
               className="h-full rounded"
               style={{
                 width: `${b.pct}%`,
-                background: colors?.get(b.key) ?? 'var(--color-accent)',
+                background: colors?.get(b.key) ?? 'var(--color-border-strong)',
               }}
             />
           </div>
