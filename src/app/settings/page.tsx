@@ -2,12 +2,13 @@
 
 import { useSettings } from '@features/settings/use-settings';
 import { useBackupData, type BackupFile } from '@features/settings/use-backup-data';
-import { ICON_SETS, FONT_SCALES } from '@features/settings/queries';
+import { ICON_SETS, FONT_SCALES, KEYPAD_LAYOUTS } from '@features/settings/queries';
 import {
   setCutoffAction,
   setIconSetAction,
   setCardFeePctAction,
   setFontScaleAction,
+  setKeypadLayoutAction,
 } from '@features/settings/actions';
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
@@ -28,6 +29,11 @@ const FONT_SCALE_LABELS = {
   md: 'Default',
   lg: 'Large',
   xl: 'Extra Large',
+} as const;
+
+const KEYPAD_LAYOUT_LABELS = {
+  calc: 'Calculator (7-8-9 top)',
+  phone: 'Phone (1-2-3 top)',
 } as const;
 
 // A static-export app has no GET route handler, so both backup exports happen in the client: the
@@ -68,7 +74,7 @@ export default function SettingsPage() {
     );
   }
 
-  const { cutoff, iconSet, cardFeePct, fontScale } = data;
+  const { cutoff, iconSet, cardFeePct, fontScale, keypadLayout } = data;
 
   return (
     <PageContainer size="form">
@@ -157,6 +163,34 @@ export default function SettingsPage() {
           <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
             Scales text across the whole app. The phone frame and tap targets stay the same size —
             only the type grows or shrinks. Applies as soon as you save.
+          </p>
+          <button type="submit" className="btn btn-primary w-fit">
+            Save
+          </button>
+        </form>
+      </section>
+
+      <section className="panel flex flex-col gap-4 p-5">
+        <form action={withSaveToast(setKeypadLayoutAction)} className="flex flex-col gap-3">
+          <label htmlFor="keypadLayout" className="text-sm font-medium">
+            Keypad layout
+          </label>
+          <select
+            id="keypadLayout"
+            name="keypadLayout"
+            defaultValue={keypadLayout}
+            className="min-h-11 w-full max-w-xs rounded-[var(--radius-sm)] border px-3 py-2 text-base"
+            style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface-2)' }}
+          >
+            {KEYPAD_LAYOUTS.map((layout) => (
+              <option key={layout} value={layout}>
+                {KEYPAD_LAYOUT_LABELS[layout]}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
+            Digit order on the add-expense keypad. Calculator puts 7-8-9 on top; Phone puts 1-2-3 on
+            top. Only the digits move — the operator column stays put.
           </p>
           <button type="submit" className="btn btn-primary w-fit">
             Save

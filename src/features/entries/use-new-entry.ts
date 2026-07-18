@@ -5,7 +5,14 @@ import { getBrowserDb } from '@db/browser';
 import { getLatestAccount, getDistinctNotes } from './queries';
 import { getKeypadCategories, getKeypadAccounts, getKeypadCurrencies } from './keypad-lists';
 import type { KeypadCategory, KeypadAccount, KeypadCurrency } from './ui/Keypad';
-import { getIconSet, getCardFeePct, getFxRates, type IconSet } from '@features/settings/queries';
+import {
+  getIconSet,
+  getCardFeePct,
+  getFxRates,
+  getKeypadLayout,
+  type IconSet,
+  type KeypadLayout,
+} from '@features/settings/queries';
 import { withFee } from './fx';
 import { useDataVersion } from '@shared/data-version';
 
@@ -18,6 +25,7 @@ export type NewEntryData = {
   ratesAsOf: Record<string, string>;
   defaultAccount: string;
   iconSet: IconSet;
+  keypadLayout: KeypadLayout;
 };
 
 // New-entry page's keypad-feeding lists, read once via the browser OPFS db after mount — mirrors the
@@ -31,17 +39,27 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
     void (async () => {
       setReady(false);
       const db = await getBrowserDb();
-      const [iconSet, categories, accounts, currencies, notes, cardFeePct, fxRates, latestAccount] =
-        await Promise.all([
-          getIconSet(db),
-          getKeypadCategories(db),
-          getKeypadAccounts(db),
-          getKeypadCurrencies(db),
-          getDistinctNotes(db),
-          getCardFeePct(db),
-          getFxRates(db),
-          getLatestAccount(db),
-        ]);
+      const [
+        iconSet,
+        keypadLayout,
+        categories,
+        accounts,
+        currencies,
+        notes,
+        cardFeePct,
+        fxRates,
+        latestAccount,
+      ] = await Promise.all([
+        getIconSet(db),
+        getKeypadLayout(db),
+        getKeypadCategories(db),
+        getKeypadAccounts(db),
+        getKeypadCurrencies(db),
+        getDistinctNotes(db),
+        getCardFeePct(db),
+        getFxRates(db),
+        getLatestAccount(db),
+      ]);
 
       const rates: Record<string, number> = {};
       const ratesAsOf: Record<string, string> = {};
@@ -61,6 +79,7 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
         ratesAsOf,
         defaultAccount,
         iconSet,
+        keypadLayout,
       });
       setReady(true);
     })();

@@ -7,8 +7,10 @@ import {
   getIconSet,
   getCardFeePct,
   getFontScale,
+  getKeypadLayout,
   type IconSet,
   type FontScale,
+  type KeypadLayout,
 } from './queries';
 import { useDataVersion } from '@shared/data-version';
 
@@ -17,6 +19,7 @@ export type SettingsData = {
   iconSet: IconSet;
   cardFeePct: number;
   fontScale: FontScale;
+  keypadLayout: KeypadLayout;
 };
 
 // Settings page's values, read once via the browser OPFS db after mount — mirrors the server
@@ -32,13 +35,14 @@ export function useSettings(): { ready: boolean; data: SettingsData | null } {
     void (async () => {
       setReady(false);
       const db = await getBrowserDb();
-      const [cutoff, iconSet, cardFeePct, fontScale] = await Promise.all([
+      const [cutoff, iconSet, cardFeePct, fontScale, keypadLayout] = await Promise.all([
         getCutoff(db),
         getIconSet(db),
         getCardFeePct(db),
         getFontScale(db),
+        getKeypadLayout(db),
       ]);
-      setData({ cutoff, iconSet, cardFeePct, fontScale });
+      setData({ cutoff, iconSet, cardFeePct, fontScale, keypadLayout });
       setReady(true);
     })();
   }, [version]);

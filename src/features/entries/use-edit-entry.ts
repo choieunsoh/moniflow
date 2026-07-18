@@ -11,7 +11,14 @@ import {
 import { getKeypadCategories, getKeypadAccounts, getKeypadCurrencies } from './keypad-lists';
 import type { KeypadCategory, KeypadAccount, KeypadCurrency } from './ui/Keypad';
 import type { EntryRow } from './schema';
-import { getIconSet, getCardFeePct, getFxRates, type IconSet } from '@features/settings/queries';
+import {
+  getIconSet,
+  getCardFeePct,
+  getFxRates,
+  getKeypadLayout,
+  type IconSet,
+  type KeypadLayout,
+} from '@features/settings/queries';
 import { withFee } from './fx';
 import { useDataVersion } from '@shared/data-version';
 
@@ -28,6 +35,7 @@ export type EditEntryData =
       rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
       ratesAsOf: Record<string, string>;
       iconSet: IconSet;
+      keypadLayout: KeypadLayout;
     }
   | {
       keypadEditable: false;
@@ -59,16 +67,25 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
 
       const keypadEditable = entry.amount < 0;
       if (keypadEditable) {
-        const [iconSet, categories, accounts, currencies, notes, cardFeePct, fxRates] =
-          await Promise.all([
-            getIconSet(db),
-            getKeypadCategories(db),
-            getKeypadAccounts(db),
-            getKeypadCurrencies(db),
-            getDistinctNotes(db),
-            getCardFeePct(db),
-            getFxRates(db),
-          ]);
+        const [
+          iconSet,
+          keypadLayout,
+          categories,
+          accounts,
+          currencies,
+          notes,
+          cardFeePct,
+          fxRates,
+        ] = await Promise.all([
+          getIconSet(db),
+          getKeypadLayout(db),
+          getKeypadCategories(db),
+          getKeypadAccounts(db),
+          getKeypadCurrencies(db),
+          getDistinctNotes(db),
+          getCardFeePct(db),
+          getFxRates(db),
+        ]);
         const rates: Record<string, number> = {};
         const ratesAsOf: Record<string, string> = {};
         for (const [code, e] of Object.entries(fxRates)) {
@@ -85,6 +102,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           rates,
           ratesAsOf,
           iconSet,
+          keypadLayout,
         });
       } else {
         const [accounts, categories, notes] = await Promise.all([

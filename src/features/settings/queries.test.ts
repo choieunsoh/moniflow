@@ -18,6 +18,9 @@ import {
   setFontScale,
   isFontScale,
   FONT_SCALE_PCT,
+  getKeypadLayout,
+  setKeypadLayout,
+  isKeypadLayout,
 } from './queries';
 
 describe('getCutoff / setCutoff', () => {
@@ -184,6 +187,40 @@ describe('isFontScale', () => {
     expect(isFontScale('huge')).toBe(false);
     expect(isFontScale(undefined)).toBe(false);
     expect(isFontScale(2)).toBe(false);
+  });
+});
+
+describe('getKeypadLayout / setKeypadLayout', () => {
+  it('defaults to calc when nothing is stored', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    expect(await getKeypadLayout(db)).toBe('calc');
+  });
+
+  it('round-trips a stored layout and overwrites on re-write', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await setKeypadLayout(db, 'phone');
+    expect(await getKeypadLayout(db)).toBe('phone');
+    await setKeypadLayout(db, 'calc');
+    expect(await getKeypadLayout(db)).toBe('calc');
+  });
+
+  it('falls back to calc if the stored value is somehow unknown', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await db.run(sql`INSERT INTO settings (key, value) VALUES ('keypad_layout', 'bogus')`);
+    expect(await getKeypadLayout(db)).toBe('calc');
+  });
+});
+
+describe('isKeypadLayout', () => {
+  it('accepts the two known layouts and rejects everything else', () => {
+    expect(isKeypadLayout('calc')).toBe(true);
+    expect(isKeypadLayout('phone')).toBe(true);
+    expect(isKeypadLayout('bogus')).toBe(false);
+    expect(isKeypadLayout(undefined)).toBe(false);
+    expect(isKeypadLayout(9)).toBe(false);
   });
 });
 
