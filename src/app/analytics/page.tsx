@@ -6,8 +6,8 @@ import { PageContainer } from '@shared/ui/PageContainer';
 import { useAnalytics } from '@features/entries/use-analytics';
 import { TrendChart } from '@features/entries/ui/TrendChart';
 import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
-import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
-import { emojiFor } from '@features/categories/queries';
+import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
+import { emojiFor, hueFor } from '@features/categories/queries';
 import { formatBahtWhole } from '@shared/money';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { trendAverage } from '@features/entries/trend';
@@ -38,14 +38,15 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { activeKey, bars, slices, total, emojiMap, iconSet, cycleRows } = data;
+  const { activeKey, bars, categories, total, emojiMap, hueMap, iconSet, cycleRows, budgetLine } =
+    data;
   const base = `/analytics?cycle=${activeKey}`;
 
   // No spend anywhere in the window — reuse Home's empty state rather than inventing a second one.
   // It teaches the interface (points at the keypad, offers the CSV restore) instead of saying "no
   // data", which matters double here: moniflow is the create-sqlite-next-app reference, so a
   // developer's first sight of Analytics is with an empty ledger.
-  if (slices.length === 0) {
+  if (categories.length === 0) {
     return (
       <PageContainer size="full">
         <h1 className="sr-only">Analytics</h1>
@@ -88,6 +89,7 @@ export default function AnalyticsPage() {
 
         <TrendChart
           bars={bars}
+          budget={budgetLine}
           label={`${category ?? 'Total'} spending over the last ${bars.length} cycles`}
         />
 
@@ -123,47 +125,36 @@ export default function AnalyticsPage() {
             ))}
           </ul>
         ) : (
+          // The window's full category breakdown — every category, biggest first, no "Other"
+          // rollup (that cap only exists to keep the home donut RING readable; there is no ring
+          // here). Each marker takes the category's own hue. Tap a row to filter the trend to it.
           <ul className="flex flex-col gap-2.5">
-            {slices.map((s) => {
-              const inner = (
-                <>
-                  <span
-                    aria-hidden
-                    className="grid size-11 shrink-0 place-items-center rounded-full text-2xl"
-                    style={{ background: s.color, color: 'var(--color-on-accent)' }}
-                  >
-                    <CategoryGlyph emoji={emojiFor(emojiMap, s.name)} iconSet={iconSet} size={26} />
-                  </span>
+            {categories.map((c) => (
+              <li key={c.name} className="flex items-center text-sm">
+                <Link
+                  prefetch={false}
+                  href={`${base}&category=${encodeURIComponent(c.name)}`}
+                  aria-label={`${c.name} trend`}
+                  className="flex min-w-0 flex-1 items-center gap-3"
+                >
+                  <CategoryIcon
+                    emoji={emojiFor(emojiMap, c.name)}
+                    name={c.name}
+                    hue={hueFor(hueMap, c.name)}
+                    iconSet={iconSet}
+                  />
                   <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                    <span className="truncate">{s.name}</span>
+                    <span className="truncate">{c.name}</span>
                     <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                      ({s.count})
+                      ({c.count})
                     </span>
                   </span>
                   <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                    {formatBahtWhole(s.value)}
+                    {formatBahtWhole(c.value)}
                   </span>
-                </>
-              );
-              // "Other" is a synthetic tail bucket, not a real category — nothing to filter to, so
-              // it stays static. Same rule the home donut's legend follows.
-              return (
-                <li key={s.name} className="flex items-center gap-3 text-sm">
-                  {s.other ? (
-                    <span className="flex min-w-0 flex-1 items-center gap-3">{inner}</span>
-                  ) : (
-                    <Link
-                      prefetch={false}
-                      href={`${base}&category=${encodeURIComponent(s.name)}`}
-                      aria-label={`${s.name} trend`}
-                      className="flex min-w-0 flex-1 items-center gap-3"
-                    >
-                      {inner}
-                    </Link>
-                  )}
-                </li>
-              );
-            })}
+                </Link>
+              </li>
+            ))}
           </ul>
         )}
       </section>

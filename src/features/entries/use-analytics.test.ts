@@ -3,7 +3,9 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
+import { ensureBudgetsTable } from '@features/budgets/schema';
 import { addEntries } from './queries';
+import { setBudget } from '@features/budgets/queries';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 
@@ -21,6 +23,7 @@ describe('useAnalytics', () => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     await ensureSettingsTable(db);
+    await ensureBudgetsTable(db);
     await addEntries(db, [
       // cycle 2026-05 (18 May – 17 Jun) — Food 900
       { date: '2026-05-20', account: 'Cash', category: 'Food', amount: -900 },
@@ -32,6 +35,8 @@ describe('useAnalytics', () => {
       // Income is dropped by every read surface — it must not reach the trend.
       { date: '2026-07-21', account: 'Cash', category: 'Salary', amount: 50000 },
     ]);
+    await setBudget(db, null, 20000); // the whole-cycle TOTAL budget (category_id IS NULL)
+    await setBudget(db, 'Food', 1000); // a per-category limit; Travel has none
     vi.mocked(getBrowserDb).mockResolvedValue(db);
   });
 
@@ -66,9 +71,37 @@ describe('useAnalytics', () => {
   it('aggregates the window into a category list, biggest first', async () => {
     const { result } = renderHook(() => useAnalytics('2026-07', null));
     await waitFor(() => expect(result.current.ready).toBe(true));
-    const slices = result.current.data?.slices ?? [];
-    expect(slices.map((s) => s.name)).toEqual(['Food', 'Travel']);
-    expect(slices.map((s) => s.value)).toEqual([2500, 300]);
+    const categories = result.current.data?.categories ?? [];
+    expect(categories.map((c) => c.name)).toEqual(['Food', 'Travel']);
+    expect(categories.map((c) => c.value)).toEqual([2500, 300]);
+  });
+
+  it('shows every category with no "Other" rollup, even past the palette size', async () => {
+    // toDonutSlices caps at 7 (one per palette colour) and folds the tail into "Other" so the donut
+    // ring stays readable. The analytics list has no ring to key to, so it must show them all — eight
+    // categories here proves the cap is gone and no synthetic "Other" bucket is created.
+    const db = makeNodeProxyDb();
+    await ensureEntriesTable(db);
+    await ensureSettingsTable(db);
+    await ensureBudgetsTable(db);
+    await addEntries(
+      db,
+      Array.from({ length: 8 }, (_, i) => ({
+        date: '2026-07-20',
+        account: 'Cash',
+        category: `Cat${i}`,
+        amount: -(100 + i * 10),
+      })),
+    );
+    vi.mocked(getBrowserDb).mockResolvedValue(db);
+
+    const { result } = renderHook(() => useAnalytics('2026-07', null));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const categories = result.current.data?.categories ?? [];
+    expect(categories).toHaveLength(8);
+    expect(categories.some((c) => c.name === 'Other')).toBe(false);
+    // biggest first: Cat7 (170) down to Cat0 (100).
+    expect(categories[0].name).toBe('Cat7');
   });
 
   it('reports the window total', async () => {
@@ -98,6 +131,24 @@ describe('useAnalytics', () => {
     expect(rows.map((r) => r.label)).toEqual(['May', 'Jun', 'Jul']);
     expect(rows.map((r) => r.value)).toEqual([900, 1200, 400]);
     expect(rows.map((r) => r.count)).toEqual([1, 1, 1]);
+  });
+
+  it('uses the total budget as the budget line when unfiltered', async () => {
+    const { result } = renderHook(() => useAnalytics('2026-07', null));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.data?.budgetLine).toBe(20000);
+  });
+
+  it('uses the category budget as the budget line when filtered to that category', async () => {
+    const { result } = renderHook(() => useAnalytics('2026-07', 'Food'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.data?.budgetLine).toBe(1000);
+  });
+
+  it('has no budget line for a filtered category with no budget of its own', async () => {
+    const { result } = renderHook(() => useAnalytics('2026-07', 'Travel'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.data?.budgetLine).toBeNull();
   });
 
   it('the header total sums the list beneath it', async () => {

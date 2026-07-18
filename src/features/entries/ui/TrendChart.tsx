@@ -14,7 +14,15 @@ import { buildTrendOption, trendSummary } from '../trend';
 // write, so the chart is a fresh instance every time regardless. Splitting the effect bought nothing
 // the ready-gate doesn't already force, and left a setOption(notMerge) guarding a merge that can't
 // happen. If the ready-gate is ever changed to keep the chart mounted across refetches, revisit this.
-export function TrendChart({ bars, label }: { bars: TrendBar[]; label: string }) {
+export function TrendChart({
+  bars,
+  budget,
+  label,
+}: {
+  bars: TrendBar[];
+  budget: number | null;
+  label: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,14 +33,19 @@ export function TrendChart({ bars, label }: { bars: TrendBar[]; label: string })
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const chart = echarts.init(el, null, { renderer: 'canvas' });
-    const option = buildTrendOption(bars, {
-      text: token('--color-text'),
-      muted: token('--color-muted'),
-      border: token('--color-border'),
-      surface2: token('--color-surface-2'),
-      accent: token('--color-accent'),
-      font: getComputedStyle(document.body).fontFamily || 'sans-serif',
-    });
+    const option = buildTrendOption(
+      bars,
+      {
+        text: token('--color-text'),
+        muted: token('--color-muted'),
+        border: token('--color-border'),
+        surface2: token('--color-surface-2'),
+        accent: token('--color-accent'),
+        warn: token('--color-warn'),
+        font: getComputedStyle(document.body).fontFamily || 'sans-serif',
+      },
+      budget,
+    );
     chart.setOption({ ...option, animation: !reduce });
 
     const onResize = () => chart.resize();
@@ -41,9 +54,14 @@ export function TrendChart({ bars, label }: { bars: TrendBar[]; label: string })
       window.removeEventListener('resize', onResize);
       chart.dispose();
     };
-  }, [bars]);
+  }, [bars, budget]);
 
   return (
-    <div ref={ref} className="h-56 w-full" role="img" aria-label={trendSummary(bars, label)} />
+    <div
+      ref={ref}
+      className="h-56 w-full"
+      role="img"
+      aria-label={trendSummary(bars, label, budget)}
+    />
   );
 }
