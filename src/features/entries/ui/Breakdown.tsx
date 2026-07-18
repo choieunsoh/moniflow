@@ -16,6 +16,10 @@ import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 // pace tick on each budgeted meter — forwarded straight to BudgetMeter, current cycle only.
 // Pass `cycleKey` to make each row (icon excepted) a tap-through to that category's records for the
 // cycle — home opts in; account breakdowns omit it and stay static.
+// Pass `colors` (category → hex) to fill each unbudgeted bar with that category's own colour instead
+// of the flat accent. Home passes the donut's slice colours so a category keeps ONE identity across
+// the chart/list toggle; callers with no colour scheme omit it and keep the accent. Budgeted rows
+// ignore it — their meter colour is a state signal (over/near), which outranks identity.
 export function Breakdown({
   title,
   rows,
@@ -25,6 +29,7 @@ export function Breakdown({
   limits,
   pacePct,
   cycleKey,
+  colors,
 }: {
   title: string;
   rows: BreakdownRow[];
@@ -34,6 +39,7 @@ export function Breakdown({
   limits?: Map<string, number>;
   pacePct?: number;
   cycleKey?: string;
+  colors?: Map<string, string>;
 }) {
   const bars = toBars(rows);
   return (
@@ -80,7 +86,10 @@ export function Breakdown({
                   >
                     <div
                       className="h-full rounded"
-                      style={{ width: `${b.pct}%`, background: 'var(--color-accent)' }}
+                      style={{
+                        width: `${b.pct}%`,
+                        background: colors?.get(b.key) ?? 'var(--color-accent)',
+                      }}
                     />
                   </div>
                 )}
@@ -100,16 +109,21 @@ export function Breakdown({
                     size="sm"
                   />
                 ) : null}
+                {/* min-h-11: the tap-through is the primary drill-down and sits beside a 44px icon
+                    button that opens a different thing, so anything under the 44px floor mis-fires
+                    under a thumb. The static variant matches it to keep the row rhythm identical. */}
                 {href ? (
                   <Link
                     href={href}
                     aria-label={`${b.key} records this cycle`}
-                    className="flex min-w-0 flex-1 flex-col gap-1"
+                    className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-1"
                   >
                     {body}
                   </Link>
                 ) : (
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">{body}</div>
+                  <div className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-1">
+                    {body}
+                  </div>
                 )}
               </li>
             );

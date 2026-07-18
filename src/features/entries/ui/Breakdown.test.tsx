@@ -33,4 +33,39 @@ describe('Breakdown category links', () => {
     render(<Breakdown title="By account" rows={rows} />);
     expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
+
+  // Sits beside a 44px icon button that opens the category picker, so a short row means a thumb
+  // aiming at the category name opens the wrong thing.
+  it('gives each tap-through the 44px minimum height', () => {
+    withProvider(<Breakdown title="Spending" rows={rows} emojis={{}} cycleKey="2026-07" />);
+    for (const link of screen.getAllByRole('link')) {
+      expect(link.className).toContain('min-h-11');
+    }
+  });
+});
+
+describe('Breakdown bar colour', () => {
+  // Home passes the donut's slice colours so a category reads the same in both views; callers with
+  // no colour scheme (the account breakdown) keep the flat accent.
+  it('fills each bar with the category colour when one is given', () => {
+    const { container } = withProvider(
+      <Breakdown
+        title="Spending"
+        rows={rows}
+        emojis={{}}
+        colors={new Map([['Food', '#7c5cff']])}
+      />,
+    );
+    const bars = container.querySelectorAll('div[style*="width"]');
+    expect(bars[0].getAttribute('style')).toContain('rgb(124, 92, 255)'); // #7c5cff, normalised
+    // Transport & taxi has no mapped colour — falls back rather than rendering an empty background.
+    expect(bars[1].getAttribute('style')).toContain('var(--color-accent)');
+  });
+
+  it('keeps the accent when no colours are given', () => {
+    const { container } = render(<Breakdown title="By account" rows={rows} />);
+    for (const bar of container.querySelectorAll('div[style*="width"]')) {
+      expect(bar.getAttribute('style')).toContain('var(--color-accent)');
+    }
+  });
 });
