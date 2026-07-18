@@ -51,7 +51,9 @@ export function toDonutSlices(rows: Breakdown[]): DonutSlice[] {
 }
 
 // Colours + font are injected (read from CSS tokens / computed style by the wrapper) so this stays
-// pure and theme-aware without importing echarts or touching the DOM.
+// pure and theme-aware without importing echarts or touching the DOM. `rootPx` is the resolved root
+// font-size: canvas text can't inherit rem, so the hole's sizes are derived from it rather than
+// hard-coded, which is what makes Settings → Text size and browser zoom reach the centre figure.
 export type DonutPalette = {
   text: string;
   muted: string;
@@ -59,7 +61,24 @@ export type DonutPalette = {
   surface: string;
   surface2: string;
   font: string;
+  rootPx: number;
 };
+
+// The hole's two lines, as multiples of the root font-size (1.5rem / 0.8125rem at the 16px default).
+const TOTAL_REM = 1.5;
+const LABEL_REM = 0.8125;
+
+// The donut renders into a canvas inside a <div role="img">, so a screen reader gets the label and
+// nothing else — the total has to live in the label itself or it doesn't exist for that user. Mirrors
+// what the hole shows: the rounded total and the transaction count behind it.
+export function donutSummaryLabel(rows: Breakdown[], label = 'Spending by category'): string {
+  const slices = toDonutSlices(rows);
+  if (slices.length === 0) return `${label}: nothing spent this cycle`;
+  const total = slices.reduce((sum, s) => sum + s.value, 0);
+  const count = slices.reduce((sum, s) => sum + s.count, 0);
+  const noun = count === 1 ? 'transaction' : 'transactions';
+  return `${label}: ${formatBahtWhole(total)} across ${count} ${noun}`;
+}
 
 // Returns a plain ECharts option: a doughnut of spending-by-category with the total spent rendered in
 // the hole (two graphic texts, since a canvas center label can't be a CSS-styled element). The label
@@ -86,7 +105,7 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
         style: {
           text: formatBahtWhole(total),
           fill: p.text,
-          font: `600 24px ${p.font}`,
+          font: `600 ${p.rootPx * TOTAL_REM}px ${p.font}`,
           textAlign: 'center',
         },
       },
@@ -94,7 +113,12 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
         type: 'text',
         left: 'center',
         top: '56%',
-        style: { text: spentLabel, fill: p.muted, font: `400 13px ${p.font}`, textAlign: 'center' },
+        style: {
+          text: spentLabel,
+          fill: p.muted,
+          font: `400 ${p.rootPx * LABEL_REM}px ${p.font}`,
+          textAlign: 'center',
+        },
       },
     ],
     series: [
