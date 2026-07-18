@@ -15,7 +15,9 @@ export function ViewToggle({ options }: { options: ViewOption[] }) {
           href={o.href}
           prefetch={false}
           aria-current={o.active ? 'page' : undefined}
-          className="flex-1 rounded-[var(--radius-md)] py-2 text-center text-sm font-medium transition-colors duration-150"
+          // grid place-items-center + min-h-11 rather than padding: the segment has to clear the
+          // 44px touch floor whatever the label's font scale, and py-2 left it at 36px.
+          className="grid min-h-11 flex-1 place-items-center rounded-[var(--radius-md)] text-center text-sm font-medium transition-colors duration-150"
           style={{
             background: o.active ? 'var(--color-accent-soft)' : 'transparent',
             color: o.active ? 'var(--color-accent-text)' : 'var(--color-muted)',
