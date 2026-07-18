@@ -16,12 +16,13 @@ type Pending = { kind: 'monefy-csv'; text: string } | { kind: 'combined'; data: 
 
 async function applyBackup(data: CatalogData): Promise<void> {
   try {
-    const { entries, categories, accounts } = await restoreBackupAction(data);
-    // entries === null → a catalog-only file that never touched the ledger; don't imply it did.
+    const { entries, categories, accounts, budgets } = await restoreBackupAction(data);
+    // entries === null → a catalog-only (v1/v2) file that carries neither a ledger nor budgets; keep
+    // its toast to what it actually touched. A v3 combined file lists the ledger + budgets too.
     toast(
       entries === null
         ? `Restored ${categories} categories & ${accounts} accounts`
-        : `Restored ${entries} entries, ${categories} categories & ${accounts} accounts`,
+        : `Restored ${entries} entries, ${categories} categories, ${accounts} accounts & ${budgets} budgets`,
     );
   } catch {
     toast.error("Couldn't restore that backup — try again");

@@ -3,6 +3,7 @@ import type { Db } from '@db/client';
 import { budgets, type BudgetReadRow } from './schema';
 import { categories } from '@features/categories/schema';
 import { categoryIdFor } from '@features/categories/queries';
+import type { BudgetCatalogRow } from '@features/settings/catalog';
 
 // Read budgets with their category name joined (null for the total row) so the page + budget-status
 // model keep working with names. leftJoin because the total row has a null category_id.
@@ -30,6 +31,21 @@ export async function setBudget(db: Db, category: string | null, amount: number)
       ? db.delete(budgets).where(isNull(budgets.categoryId))
       : db.delete(budgets).where(eq(budgets.categoryId, categoryId));
   await db.batch([del, db.insert(budgets).values({ categoryId, amount })]);
+}
+
+// Budgets for a backup: category NAME (null for the total row) + amount, id-free so they restore onto
+// any ledger. Reuses getBudgets' join rather than a second query.
+export async function getBudgetCatalog(db: Db): Promise<BudgetCatalogRow[]> {
+  const rows = await getBudgets(db);
+  return rows.map((r) => ({ category: r.category, amount: r.amount }));
+}
+
+// Restore budgets from a backup: upsert-by-category (setBudget deletes the matching row then inserts,
+// resolving/creating the category by name). MERGE, not replace — a budget the file omits is left as-is,
+// matching how categories/accounts/rules restore. Runs after the category catalog so names resolve to
+// the right ids.
+export async function restoreBudgetCatalog(db: Db, rows: BudgetCatalogRow[]): Promise<void> {
+  for (const row of rows) await setBudget(db, row.category, row.amount);
 }
 
 // A per-category delete must look the category up by name to get its id — there's no longer a category

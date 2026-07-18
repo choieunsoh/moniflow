@@ -7,6 +7,8 @@ import { serializeMonefyCsv } from '@features/entries/import';
 import { getCategoryCatalog } from '@features/categories/queries';
 import { getAccountCatalog } from '@features/accounts/queries';
 import { getRuleCatalog } from '@features/recurring/queries';
+import { getBudgetCatalog } from '@features/budgets/queries';
+import { getAllSettings } from './queries';
 import { serializeCatalogJson } from './catalog';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
@@ -19,6 +21,7 @@ export type BackupData = {
   entryCount: number;
   categoryCount: number;
   accountCount: number;
+  budgetCount: number;
 };
 
 // One combined backup, JSON, but shipped as .txt/text/plain — NOT .json — because Chromium's shared-file
@@ -52,11 +55,13 @@ export function useBackupData(): { ready: boolean; data: BackupData | null } {
     void (async () => {
       setReady(false);
       const db = await getBrowserDb();
-      const [rows, categories, accounts, recurrences] = await Promise.all([
+      const [rows, categories, accounts, recurrences, budgets, settings] = await Promise.all([
         getEntries(db),
         getCategoryCatalog(db),
         getAccountCatalog(db),
         getRuleCatalog(db),
+        getBudgetCatalog(db),
+        getAllSettings(db),
       ]);
       if (!live) return; // a bumpDataVersion mid-read would otherwise publish the older ledger
       const day = todayIso();
@@ -66,12 +71,15 @@ export function useBackupData(): { ready: boolean; data: BackupData | null } {
         accounts,
         recurrences,
         entriesCsv: serializeMonefyCsv(rows),
+        budgets,
+        settings,
       });
       setData({
         file: { name: `moniflow-backup-${day}.txt`, type: BACKUP_MIME, text },
         entryCount: rows.length,
         categoryCount: categories.length,
         accountCount: accounts.length,
+        budgetCount: budgets.length,
       });
       setReady(true);
     })();

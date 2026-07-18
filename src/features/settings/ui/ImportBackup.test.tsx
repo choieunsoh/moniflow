@@ -5,7 +5,9 @@ vi.mock('@features/entries/actions', () => ({
   importBackupAction: vi.fn(() => Promise.resolve({ imported: 3, skipped: 1 })),
 }));
 vi.mock('@features/settings/restore', () => ({
-  restoreBackupAction: vi.fn(() => Promise.resolve({ entries: 5, categories: 2, accounts: 1 })),
+  restoreBackupAction: vi.fn(() =>
+    Promise.resolve({ entries: 5, categories: 2, accounts: 1, budgets: 3 }),
+  ),
 }));
 vi.mock('@shared/ui/toast', () => {
   const toast = Object.assign(vi.fn(), { error: vi.fn(), action: vi.fn() });
@@ -86,7 +88,9 @@ describe('ImportBackup', () => {
       ),
     );
     await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith('Restored 5 entries, 2 categories & 1 accounts'),
+      expect(toast).toHaveBeenCalledWith(
+        'Restored 5 entries, 2 categories, 1 accounts & 3 budgets',
+      ),
     );
     expect(importBackupAction).not.toHaveBeenCalled();
   });
@@ -96,6 +100,7 @@ describe('ImportBackup', () => {
       entries: null,
       categories: 1,
       accounts: 0,
+      budgets: 0,
     });
     render(<ImportBackup />);
     fireEvent.change(screen.getByTestId('backup-file'), {

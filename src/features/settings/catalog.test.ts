@@ -97,13 +97,21 @@ const MONEFY_CSV =
   '15/01/2016,cash,food,-637,THB,-637,THB,lunch';
 
 describe('catalog v3 combined backup', () => {
-  it('round-trips a v3 file carrying an embedded ledger CSV', () => {
+  it('round-trips a v3 file carrying an embedded ledger CSV, budgets, and settings', () => {
     const data: CatalogData = {
       version: 3,
       categories: [],
       accounts: [],
       recurrences: [],
       entriesCsv: MONEFY_CSV,
+      budgets: [
+        { category: 'Food', amount: 5000 },
+        { category: null, amount: 20000 }, // the whole-cycle total row
+      ],
+      settings: [
+        { key: 'cutoff_day', value: '18' },
+        { key: 'font_scale', value: 'lg' },
+      ],
     };
     expect(parseCatalogJson(serializeCatalogJson(data))).toEqual(data);
   });
@@ -117,6 +125,25 @@ describe('catalog v3 combined backup', () => {
       entriesCsv: 42,
     });
     expect(parseCatalogJson(bad)).toBeNull();
+  });
+
+  it('rejects a v3 file with a malformed budget or setting row', () => {
+    const badBudget = JSON.stringify({
+      version: 3,
+      categories: [],
+      accounts: [],
+      recurrences: [],
+      budgets: [{ category: 'Food', amount: 'lots' }],
+    });
+    expect(parseCatalogJson(badBudget)).toBeNull();
+    const badSetting = JSON.stringify({
+      version: 3,
+      categories: [],
+      accounts: [],
+      recurrences: [],
+      settings: [{ key: 'font_scale', value: 5 }],
+    });
+    expect(parseCatalogJson(badSetting)).toBeNull();
   });
 });
 

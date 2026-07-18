@@ -229,11 +229,11 @@ export default function SettingsPage() {
       <section className="panel flex flex-col gap-3 p-5">
         <h2 className="text-sm font-semibold">Backup</h2>
         <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
-          Export everything — the whole ledger plus your categories, accounts, and recurring rules —
-          to a single file, or restore from one. On a phone it opens the share sheet, so a backup
-          can go straight to Drive; elsewhere it downloads. Restoring replaces every current entry;
-          categories and accounts are merged in, never deleted. Restore also accepts a plain Monefy
-          CSV (ledger only), so imports from Monefy still work.
+          Export everything — the whole ledger plus your categories, accounts, recurring rules,
+          budgets, and settings — to a single file, or restore from one. On a phone it opens the
+          share sheet, so a backup can go straight to Drive; elsewhere it downloads. Restoring
+          replaces every current entry; everything else is merged in, never deleted. Restore also
+          accepts a plain Monefy CSV (ledger only), so imports from Monefy still work.
         </p>
         <button
           type="button"
@@ -243,7 +243,7 @@ export default function SettingsPage() {
             if (backup === null) return;
             void exportFile(
               backup.file,
-              `Exported ${backup.entryCount} entries, ${backup.categoryCount} categories & ${backup.accountCount} accounts`,
+              `Exported ${backup.entryCount} entries, ${backup.categoryCount} categories, ${backup.accountCount} accounts & ${backup.budgetCount} budgets`,
             );
           }}
         >
