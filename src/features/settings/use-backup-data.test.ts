@@ -5,7 +5,12 @@ import { ensureEntriesTable } from '@features/entries/schema';
 import { ensureCategoriesTable } from '@features/categories/schema';
 import { ensureAccountsTable } from '@features/accounts/schema';
 import { ensureRecurrencesTable } from '@features/recurring/schema';
+import { ensureBudgetsTable } from '@features/budgets/schema';
+import { ensureSettingsTable } from './schema';
 import { restoreEntries } from '@features/entries/queries';
+import { setBudget } from '@features/budgets/queries';
+import { setCutoff } from './queries';
+import { parseCatalogJson } from './catalog';
 import { bumpDataVersion } from '@shared/data-version';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
@@ -29,14 +34,18 @@ describe('useBackupData', () => {
     await ensureCategoriesTable(db);
     await ensureAccountsTable(db);
     await ensureRecurrencesTable(db);
+    await ensureBudgetsTable(db);
+    await ensureSettingsTable(db);
     vi.mocked(getBrowserDb).mockResolvedValue(db);
   });
 
-  // The whole point of the hook: the files exist before any tap, so the click handler can reach
+  // The whole point of the hook: the file exists before any tap, so the click handler can reach
   // navigator.share() synchronously and keep the gesture's transient activation.
-  it('serializes both files up front so no read is needed on the tap', async () => {
+  it('serializes one combined v3 file up front so no read is needed on the tap', async () => {
     const db = await getBrowserDb();
     await restoreEntries(db, [ENTRY]);
+    await setBudget(db, 'Coffee', 5000); // a per-category budget rides along
+    await setCutoff(db, 18); // a settings KV row rides along
 
     const { result } = renderHook(() => useBackupData());
     expect(result.current.ready).toBe(false);
@@ -46,25 +55,31 @@ describe('useBackupData', () => {
     if (data === null) throw new Error('unreachable — ready implies data');
 
     expect(data.entryCount).toBe(1);
-    expect(data.csv.text).toContain('Coffee');
-    expect(data.csv.text.split('\n')[0]).toContain('date'); // the Monefy header row
-    expect(data.csv.name).toMatch(/^moniflow-\d{4}-\d{2}-\d{2}\.csv$/); // .csv earns the allowlist
-    expect(JSON.parse(data.catalog.text)).toMatchObject({ version: 2 });
+    expect(data.budgetCount).toBe(1);
+    const parsed = parseCatalogJson(data.file.text);
+    if (parsed === null) throw new Error('expected a valid v3 backup');
+    expect(parsed.version).toBe(3);
+    // The whole ledger rides along as an embedded Monefy CSV (header + the one entry).
+    expect(parsed.entriesCsv).toContain('Coffee');
+    expect(parsed.entriesCsv?.split('\n')[0]).toContain('date'); // the Monefy header row
+    // Budgets and settings ride along as their own rows.
+    expect(parsed.budgets).toEqual([{ category: 'Coffee', amount: 5000 }]);
+    expect(parsed.settings).toEqual([{ key: 'cutoff_day', value: '18' }]);
+    expect(data.file.name).toMatch(/^moniflow-backup-\d{4}-\d{2}-\d{2}\.txt$/);
   });
 
-  // Both files must clear Chromium's shared-file allowlist, which string-compares the content type
-  // and the extension. A charset parameter, or .json/application/json, fails the match and the share
-  // sheet is refused with NotAllowedError — while canShare() still answers true, so nothing surfaces
-  // but a silent download. Only a real phone ever notices, hence these two assertions.
-  it('names and types both files so Chromium will put them in the share sheet', async () => {
+  // The file must clear Chromium's shared-file allowlist, which string-compares the content type and
+  // the extension. A charset parameter, or .json/application/json, fails the match and the share sheet
+  // is refused with NotAllowedError — while canShare() still answers true, so nothing surfaces but a
+  // silent download. Only a real phone ever notices, hence these assertions.
+  it('names and types the file so Chromium will put it in the share sheet', async () => {
     const { result } = renderHook(() => useBackupData());
     await waitFor(() => expect(result.current.ready).toBe(true));
     const { data } = result.current;
     if (data === null) throw new Error('unreachable — ready implies data');
 
-    expect(data.csv.type).toBe('text/csv'); // NOT 'text/csv;charset=utf-8'
-    expect(data.catalog.type).toBe('text/plain'); // NOT 'application/json'
-    expect(data.catalog.name).toMatch(/\.txt$/); // NOT .json — it is JSON, under a shareable name
+    expect(data.file.type).toBe('text/plain'); // NOT 'application/json', NOT a charset parameter
+    expect(data.file.name).toMatch(/\.txt$/); // NOT .json — it is JSON, under a shareable name
   });
 
   it('re-serializes when the data-version bumps, so a restore cannot leave a stale file', async () => {
@@ -77,6 +92,6 @@ describe('useBackupData', () => {
     act(() => bumpDataVersion());
 
     await waitFor(() => expect(result.current.data?.entryCount).toBe(2));
-    expect(result.current.data?.csv.text).toContain('Food');
+    expect(result.current.data?.file.text).toContain('Food');
   });
 });

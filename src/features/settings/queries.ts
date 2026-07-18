@@ -1,6 +1,25 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '@db/client';
 import { settings } from './schema';
+import type { SettingRow } from './catalog';
+
+// The whole settings KV table, for a backup — dumped as-is (cutoff, icon set, font scale, card fee,
+// keypad layout, fx-rate cache) so a new setting is captured without touching this function.
+export async function getAllSettings(db: Db): Promise<SettingRow[]> {
+  return await db.select({ key: settings.key, value: settings.value }).from(settings).all();
+}
+
+// Restore settings from a backup: upsert each key (delete-then-insert, the same one-key pattern the
+// setters below use). MERGE — a key the file omits keeps its current value, so restoring a partial
+// backup never silently resets an unrelated preference.
+export async function restoreSettings(db: Db, rows: SettingRow[]): Promise<void> {
+  for (const { key, value } of rows) {
+    await db.batch([
+      db.delete(settings).where(eq(settings.key, key)),
+      db.insert(settings).values({ key, value }),
+    ]);
+  }
+}
 
 const CUTOFF_KEY = 'cutoff_day';
 // Intentionally a plain literal, not imported from entries/cycle.ts's CUTOFF constant — settings

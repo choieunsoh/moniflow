@@ -29,11 +29,25 @@ export type RuleCatalogRow = {
   month: number | null; // 1–12 for a yearly rule's renewal month; null for monthly
   totalCount: number | null; // installment length, or null for a subscription
 };
+// A budget for backup: keyed by category NAME (resolved to category_id on import), or null for the
+// whole-cycle total row. Amount is the positive monthly limit.
+export type BudgetCatalogRow = { category: string | null; amount: number };
+// One row of the generic settings KV table (cutoff, icon set, font scale, card fee, keypad layout,
+// and the fx-rate cache). Dumped whole rather than key-by-key so a future setting rides along for free.
+export type SettingRow = { key: string; value: string };
+
 export type CatalogData = {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   categories: CategoryCatalogRow[];
   accounts: AccountCatalogRow[];
   recurrences: RuleCatalogRow[];
+  // The three fields below appear only in a v3 "combined" backup; v1/v2 catalog files carry display
+  // metadata only. entriesCsv embeds the whole ledger as a Monefy CSV (so the tested serializer/parser
+  // stay the single source of truth for entry fidelity); budgets and settings ride along as their own
+  // rows. All optional so an older/leaner file still parses.
+  entriesCsv?: string;
+  budgets?: BudgetCatalogRow[];
+  settings?: SettingRow[];
 };
 
 export function serializeCatalogJson(data: CatalogData): string {
@@ -103,6 +117,27 @@ function isRuleRow(v: unknown): v is RuleCatalogRow {
   );
 }
 
+function isBudgetRow(v: unknown): v is BudgetCatalogRow {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    'category' in v &&
+    isStrOrNull(v.category) &&
+    'amount' in v &&
+    typeof v.amount === 'number'
+  );
+}
+function isSettingRow(v: unknown): v is SettingRow {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    'key' in v &&
+    typeof v.key === 'string' &&
+    'value' in v &&
+    typeof v.value === 'string'
+  );
+}
+
 export function parseCatalogJson(text: string): CatalogData | null {
   let parsed: unknown;
   try {
@@ -111,7 +146,11 @@ export function parseCatalogJson(text: string): CatalogData | null {
     return null;
   }
   if (typeof parsed !== 'object' || parsed === null) return null;
-  if (!('version' in parsed) || (parsed.version !== 1 && parsed.version !== 2)) return null;
+  if (
+    !('version' in parsed) ||
+    (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3)
+  )
+    return null;
   if (!('categories' in parsed) || !Array.isArray(parsed.categories)) return null;
   if (!('accounts' in parsed) || !Array.isArray(parsed.accounts)) return null;
   if (!parsed.categories.every(isCategoryRow)) return null;
@@ -120,12 +159,56 @@ export function parseCatalogJson(text: string): CatalogData | null {
   // exactly like categories/accounts above.
   const rawRec = 'recurrences' in parsed ? parsed.recurrences : [];
   if (!Array.isArray(rawRec) || !rawRec.every(isRuleRow)) return null;
-  // A clean 1 | 2 literal without a cast (the guard above proved it is one of them).
-  const version = parsed.version === 1 ? 1 : 2;
+  // entriesCsv marks a v3 combined backup; when present it must be a string. Absent in v1/v2.
+  let entriesCsv: string | undefined;
+  if ('entriesCsv' in parsed) {
+    if (typeof parsed.entriesCsv !== 'string') return null;
+    entriesCsv = parsed.entriesCsv;
+  }
+  // budgets/settings are v3-only extras; when present each row must validate (all-or-nothing).
+  let budgets: BudgetCatalogRow[] | undefined;
+  if ('budgets' in parsed) {
+    if (!Array.isArray(parsed.budgets) || !parsed.budgets.every(isBudgetRow)) return null;
+    budgets = parsed.budgets;
+  }
+  let settingsRows: SettingRow[] | undefined;
+  if ('settings' in parsed) {
+    if (!Array.isArray(parsed.settings) || !parsed.settings.every(isSettingRow)) return null;
+    settingsRows = parsed.settings;
+  }
+  // A clean 1 | 2 | 3 literal without a cast (the guard above proved it is one of them).
+  const version = parsed.version === 1 ? 1 : parsed.version === 2 ? 2 : 3;
   return {
     version,
     categories: parsed.categories,
     accounts: parsed.accounts,
     recurrences: rawRec,
+    // Only include each optional key when set, so a leaner file round-trips to an object without it.
+    ...(entriesCsv === undefined ? {} : { entriesCsv }),
+    ...(budgets === undefined ? {} : { budgets }),
+    ...(settingsRows === undefined ? {} : { settings: settingsRows }),
   };
+}
+
+// What kind of backup a picked file is, so the import UI can dispatch and decide whether to confirm.
+// Pure and content-based — the file's extension never decides anything.
+export type BackupKind =
+  | { kind: 'invalid' }
+  | { kind: 'monefy-csv' } // raw Monefy CSV → replaces the ledger (destructive)
+  | { kind: 'catalog'; data: CatalogData } // v1/v2 JSON → merges metadata only (non-destructive)
+  | { kind: 'combined'; data: CatalogData }; // v3 JSON → replaces the ledger AND merges metadata
+
+// A Monefy CSV's header line names these three columns (in any order). Cheap sniff; the real parse
+// runs on apply, so a false positive just yields a "couldn't read that backup" toast, not corruption.
+function looksLikeMonefyCsv(text: string): boolean {
+  const cols = (text.split(/\r?\n/, 1)[0] ?? '').split(',').map((c) => c.trim());
+  return cols.includes('date') && cols.includes('amount') && cols.includes('category');
+}
+
+export function classifyBackup(text: string): BackupKind {
+  const data = parseCatalogJson(text);
+  if (data !== null) {
+    return data.entriesCsv === undefined ? { kind: 'catalog', data } : { kind: 'combined', data };
+  }
+  return looksLikeMonefyCsv(text) ? { kind: 'monefy-csv' } : { kind: 'invalid' };
 }

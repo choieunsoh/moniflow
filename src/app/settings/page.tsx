@@ -12,7 +12,6 @@ import {
 } from '@features/settings/actions';
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
-import { ImportCatalog } from '@features/settings/ui/ImportCatalog';
 import { saveFile } from '@shared/save-file';
 import { toast } from '@shared/ui/toast';
 import { withSaveToast } from '@shared/ui/with-save-toast';
@@ -36,9 +35,9 @@ const KEYPAD_LAYOUT_LABELS = {
   phone: 'Phone (1-2-3 top)',
 } as const;
 
-// A static-export app has no GET route handler, so both backup exports happen in the client: the
-// files are serialized on mount by useBackupData, and the tap only hands one to saveFile — the OS
-// share sheet where there is one (Drive, Gmail…), a download otherwise.
+// A static-export app has no GET route handler, so the backup export happens in the client: the file
+// is serialized on mount by useBackupData, and the tap only hands it to saveFile — the OS share sheet
+// where there is one (Drive, Gmail…), a download otherwise.
 //
 // Nothing is awaited before saveFile ON PURPOSE. navigator.share() must be reached while the tap's
 // transient user activation is still live; awaiting the OPFS read here (which is what this used to
@@ -230,11 +229,11 @@ export default function SettingsPage() {
       <section className="panel flex flex-col gap-3 p-5">
         <h2 className="text-sm font-semibold">Backup</h2>
         <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
-          Export the whole ledger to a Monefy-compatible CSV, or restore it from one. On a phone the
-          CSV opens the share sheet, so a backup can go straight to Drive; elsewhere it downloads.
-          Restoring replaces every current entry. The CSV can&apos;t carry category/account emoji,
-          icon, hue, or order — export those separately below (a .txt, because Chrome only shares
-          certain file types; it&apos;s still JSON inside) and restore is a non-destructive merge.
+          Export everything — the whole ledger plus your categories, accounts, recurring rules,
+          budgets, and settings — to a single file, or restore from one. On a phone it opens the
+          share sheet, so a backup can go straight to Drive; elsewhere it downloads. Restoring
+          replaces every current entry; everything else is merged in, never deleted. Restore also
+          accepts a plain Monefy CSV (ledger only), so imports from Monefy still work.
         </p>
         <button
           type="button"
@@ -242,27 +241,15 @@ export default function SettingsPage() {
           disabled={!backupReady || backup === null}
           onClick={() => {
             if (backup === null) return;
-            void exportFile(backup.csv, `Exported ${backup.entryCount} entries`);
-          }}
-        >
-          Export CSV
-        </button>
-        <ImportBackup />
-        <button
-          type="button"
-          className="btn btn-ghost w-fit"
-          disabled={!backupReady || backup === null}
-          onClick={() => {
-            if (backup === null) return;
             void exportFile(
-              backup.catalog,
-              `Exported ${backup.categoryCount} categories & ${backup.accountCount} accounts`,
+              backup.file,
+              `Exported ${backup.entryCount} entries, ${backup.categoryCount} categories, ${backup.accountCount} accounts & ${backup.budgetCount} budgets`,
             );
           }}
         >
-          Export categories &amp; accounts
+          Export backup
         </button>
-        <ImportCatalog />
+        <ImportBackup />
       </section>
 
       <section
