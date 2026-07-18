@@ -14,7 +14,10 @@ export const SLICE_COLORS = [
   '#86b34a',
 ] as const;
 const OTHER_COLOR = '#4b5061';
-const MAX_SLICES = SLICE_COLORS.length;
+// How many categories the ring names before the rest fold into Other. Exported because the ranked
+// list folds at the SAME point: the two views are one dataset rendered twice, and a toggle that
+// changed the visible category count (8 vs 19) was changing the answer, not the visualisation.
+export const MAX_SLICES = SLICE_COLORS.length;
 
 // `other: true` marks the synthetic tail bucket — not a real category, so the legend must not offer
 // to edit it. Real slices omit the field.
