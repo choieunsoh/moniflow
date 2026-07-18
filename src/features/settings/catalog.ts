@@ -30,10 +30,14 @@ export type RuleCatalogRow = {
   totalCount: number | null; // installment length, or null for a subscription
 };
 export type CatalogData = {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   categories: CategoryCatalogRow[];
   accounts: AccountCatalogRow[];
   recurrences: RuleCatalogRow[];
+  // v3 "combined" backup only: the whole ledger as an embedded Monefy CSV. Absent in v1/v2 (which
+  // carry display metadata only). Embedded rather than re-encoded as JSON so the tested Monefy
+  // serializer/parser stay the single source of truth for entry fidelity.
+  entriesCsv?: string;
 };
 
 export function serializeCatalogJson(data: CatalogData): string {
@@ -111,7 +115,11 @@ export function parseCatalogJson(text: string): CatalogData | null {
     return null;
   }
   if (typeof parsed !== 'object' || parsed === null) return null;
-  if (!('version' in parsed) || (parsed.version !== 1 && parsed.version !== 2)) return null;
+  if (
+    !('version' in parsed) ||
+    (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3)
+  )
+    return null;
   if (!('categories' in parsed) || !Array.isArray(parsed.categories)) return null;
   if (!('accounts' in parsed) || !Array.isArray(parsed.accounts)) return null;
   if (!parsed.categories.every(isCategoryRow)) return null;
@@ -120,12 +128,43 @@ export function parseCatalogJson(text: string): CatalogData | null {
   // exactly like categories/accounts above.
   const rawRec = 'recurrences' in parsed ? parsed.recurrences : [];
   if (!Array.isArray(rawRec) || !rawRec.every(isRuleRow)) return null;
-  // A clean 1 | 2 literal without a cast (the guard above proved it is one of them).
-  const version = parsed.version === 1 ? 1 : 2;
+  // entriesCsv marks a v3 combined backup; when present it must be a string. Absent in v1/v2.
+  let entriesCsv: string | undefined;
+  if ('entriesCsv' in parsed) {
+    if (typeof parsed.entriesCsv !== 'string') return null;
+    entriesCsv = parsed.entriesCsv;
+  }
+  // A clean 1 | 2 | 3 literal without a cast (the guard above proved it is one of them).
+  const version = parsed.version === 1 ? 1 : parsed.version === 2 ? 2 : 3;
   return {
     version,
     categories: parsed.categories,
     accounts: parsed.accounts,
     recurrences: rawRec,
+    // Only include the key when set, so a v1/v2 file round-trips to an object without it.
+    ...(entriesCsv === undefined ? {} : { entriesCsv }),
   };
+}
+
+// What kind of backup a picked file is, so the import UI can dispatch and decide whether to confirm.
+// Pure and content-based — the file's extension never decides anything.
+export type BackupKind =
+  | { kind: 'invalid' }
+  | { kind: 'monefy-csv' } // raw Monefy CSV → replaces the ledger (destructive)
+  | { kind: 'catalog'; data: CatalogData } // v1/v2 JSON → merges metadata only (non-destructive)
+  | { kind: 'combined'; data: CatalogData }; // v3 JSON → replaces the ledger AND merges metadata
+
+// A Monefy CSV's header line names these three columns (in any order). Cheap sniff; the real parse
+// runs on apply, so a false positive just yields a "couldn't read that backup" toast, not corruption.
+function looksLikeMonefyCsv(text: string): boolean {
+  const cols = (text.split(/\r?\n/, 1)[0] ?? '').split(',').map((c) => c.trim());
+  return cols.includes('date') && cols.includes('amount') && cols.includes('category');
+}
+
+export function classifyBackup(text: string): BackupKind {
+  const data = parseCatalogJson(text);
+  if (data !== null) {
+    return data.entriesCsv === undefined ? { kind: 'catalog', data } : { kind: 'combined', data };
+  }
+  return looksLikeMonefyCsv(text) ? { kind: 'monefy-csv' } : { kind: 'invalid' };
 }

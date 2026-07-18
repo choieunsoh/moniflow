@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { serializeCatalogJson, parseCatalogJson, type CatalogData } from './catalog';
+import {
+  serializeCatalogJson,
+  parseCatalogJson,
+  classifyBackup,
+  type CatalogData,
+} from './catalog';
 
 const sample: CatalogData = {
   version: 1,
@@ -19,7 +24,7 @@ describe('catalog serialize/parse', () => {
 
   it('returns null on wrong/absent version', () => {
     expect(
-      parseCatalogJson(JSON.stringify({ version: 3, categories: [], accounts: [] })),
+      parseCatalogJson(JSON.stringify({ version: 4, categories: [], accounts: [] })),
     ).toBeNull();
     expect(parseCatalogJson(JSON.stringify({ categories: [], accounts: [] }))).toBeNull();
   });
@@ -80,9 +85,67 @@ describe('catalog v2 with recurrences', () => {
     expect(parseCatalogJson(bad)).toBeNull();
   });
 
-  it('rejects a version other than 1 or 2', () => {
+  it('rejects a version outside 1–3', () => {
     expect(
-      parseCatalogJson(JSON.stringify({ version: 3, categories: [], accounts: [] })),
+      parseCatalogJson(JSON.stringify({ version: 4, categories: [], accounts: [] })),
     ).toBeNull();
+  });
+});
+
+const MONEFY_CSV =
+  'date,account,category,amount,currency,converted amount,currency,description\n' +
+  '15/01/2016,cash,food,-637,THB,-637,THB,lunch';
+
+describe('catalog v3 combined backup', () => {
+  it('round-trips a v3 file carrying an embedded ledger CSV', () => {
+    const data: CatalogData = {
+      version: 3,
+      categories: [],
+      accounts: [],
+      recurrences: [],
+      entriesCsv: MONEFY_CSV,
+    };
+    expect(parseCatalogJson(serializeCatalogJson(data))).toEqual(data);
+  });
+
+  it('rejects a v3 file whose entriesCsv is not a string', () => {
+    const bad = JSON.stringify({
+      version: 3,
+      categories: [],
+      accounts: [],
+      recurrences: [],
+      entriesCsv: 42,
+    });
+    expect(parseCatalogJson(bad)).toBeNull();
+  });
+});
+
+describe('classifyBackup', () => {
+  it('flags a v3 file as combined (replaces the ledger)', () => {
+    const text = serializeCatalogJson({
+      version: 3,
+      categories: [],
+      accounts: [],
+      recurrences: [],
+      entriesCsv: MONEFY_CSV,
+    });
+    const result = classifyBackup(text);
+    expect(result.kind).toBe('combined');
+    if (result.kind === 'combined') {
+      expect(result.data).toMatchObject({ version: 3, entriesCsv: MONEFY_CSV });
+    }
+  });
+
+  it('flags a v1/v2 file as catalog (merge-only)', () => {
+    const text = serializeCatalogJson(sample);
+    expect(classifyBackup(text)).toMatchObject({ kind: 'catalog' });
+  });
+
+  it('flags a bare Monefy CSV by its header', () => {
+    expect(classifyBackup(MONEFY_CSV)).toEqual({ kind: 'monefy-csv' });
+  });
+
+  it('flags unrecognized junk as invalid', () => {
+    expect(classifyBackup('just some junk')).toEqual({ kind: 'invalid' });
   });
 });
