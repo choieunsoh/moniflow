@@ -176,7 +176,9 @@ function RecentCard({
             <Link
               prefetch={false}
               href="/records"
-              aria-label={`${e.category} ${formatBaht(Math.abs(e.amount))} on ${formatDayHeading(e.date)}`}
+              // Lead with the note (the visible primary line) when present, keeping the category for
+              // context — the category icon is aria-hidden, so without this a screen reader loses it.
+              aria-label={`${e.note ? `${e.note} (${e.category})` : e.category} ${formatBaht(Math.abs(e.amount))} on ${formatDayHeading(e.date)}`}
               className="flex min-h-11 items-center gap-3 text-sm"
             >
               <CategoryIcon
