@@ -71,7 +71,7 @@ export function BottomBar() {
           href="/entries/new"
           prefetch={false}
           aria-label="Add expense"
-          className="absolute top-0 left-1/2 grid size-16 -translate-x-1/2 -translate-y-1/3 place-items-center rounded-full transition-transform duration-200 active:scale-95"
+          className="absolute top-0 left-1/2 grid size-16 -translate-x-1/2 -translate-y-1/5 place-items-center rounded-full transition-transform duration-200 active:scale-95"
           style={{
             background: 'var(--color-accent)',
             color: 'var(--color-on-accent)',
