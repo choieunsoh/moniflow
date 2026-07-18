@@ -71,9 +71,11 @@ All must pass before committing.
   fetches them at runtime, so they must exist before either command.
 - **Schema lives in TWO places and they must stay in lockstep.** Each feature's `schema.ts` is its
   drizzle table + `ensure<Table>Table(db)` (used by the Node shim in tests), but the shipping
-  bootstrap is `BOOTSTRAP_SQL` in `src/db/worker.ts` — the six-table DDL is duplicated there so `db/`
-  imports no feature (see the dependency rule). **A new column or table means editing both.** The
-  query tests + the OPFS smoke check are what catch a drift.
+  bootstrap is `BOOTSTRAP_SQL` in `src/db/worker.ts` — the seven-table DDL is duplicated there so `db/`
+  imports no feature (see the dependency rule). **A new column or table means editing both.**
+  `src/db/schema-lockstep.test.ts` is what catches a drift: it bootstraps one db each way and diffs
+  sqlite's own `PRAGMA` output, so a new table is covered automatically — but add it to that test's
+  `TABLES` list, or the two definitions are only compared for the tables already named there.
 - **`drizzle-kit` is effectively vestigial.** `drizzle.config.ts` has no `dbCredentials` and there is
   no `drizzle/migrations` output — there is no reachable database for it to touch, since the only
   live one is in a browser. Schema changes go through `schema.ts` + `worker.ts` (above), not a
@@ -96,7 +98,7 @@ src/
 ├── db/                     # the sqlite-proxy seam: features never touch a concrete engine
 │   ├── client.ts           # (@db) the public `Db` type + makeNodeProxyDb re-export
 │   ├── browser.ts          # getBrowserDb() — THE shipping backend (worker + OPFS), memoized
-│   ├── worker.ts           # the WASM/OPFS worker + BOOTSTRAP_SQL (the six-table DDL)
+│   ├── worker.ts           # the WASM/OPFS worker + BOOTSTRAP_SQL (the seven-table DDL)
 │   ├── rpc.ts              # DbWorkerRpc — request/response plumbing to the worker
 │   └── node-proxy.ts       # in-memory better-sqlite3 backend — TESTS ONLY, never ships
 ├── features/               # organised by domain; each owns schema + queries + actions + ui
