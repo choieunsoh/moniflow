@@ -50,10 +50,10 @@ export function BottomBar() {
           {/* Spacer: the FAB floats over this column (absolutely positioned below). */}
           <li aria-hidden className="h-0" />
           <BarTab
-            href={cycleHref('/analytics', cycle)}
-            label="Analytics"
-            active={isActivePath(pathname, '/analytics')}
-            icon={<AnalyticsIcon />}
+            href="/dashboard"
+            label="Dashboard"
+            active={isActivePath(pathname, '/dashboard')}
+            icon={<DashboardIcon />}
           />
           <li>
             <BarButton
@@ -200,17 +200,18 @@ function RecordsIcon() {
   );
 }
 
-// Analytics = the 6-cycle spending trend — three ascending bars read as "trend" more directly than
-// a line chart at this size.
-function AnalyticsIcon() {
+// Dashboard = the current-cycle "where am I heading" overview — a gauge/dial reads as an at-a-glance
+// status check, distinct from Analytics' trend bars (now in the More sheet) and the More grid.
+function DashboardIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
       <path
-        d="M3.3 12.5V9 M8 12.5V5.5 M12.7 12.5V3"
+        d="M2.5 11a5.5 5.5 0 1 1 11 0"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
       />
+      <path d="M8 8.5 10.5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
