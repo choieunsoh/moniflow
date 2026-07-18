@@ -59,6 +59,35 @@ describe('useHome', () => {
     );
   });
 
+  describe('ledgerEmpty', () => {
+    it('is false for an empty cycle when the ledger has history elsewhere', async () => {
+      // '2026-04' holds nothing, but the seeded entries make the LEDGER non-empty — home must not
+      // greet a user with history as a first-run visitor.
+      const { result } = renderHook(() => useHome('2026-04'));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      expect(result.current.data?.summary.count).toBe(0);
+      expect(result.current.data?.ledgerEmpty).toBe(false);
+    });
+
+    it('is false when the cycle on screen has spending', async () => {
+      const { result } = renderHook(() => useHome('2026-06'));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      expect(result.current.data?.ledgerEmpty).toBe(false);
+    });
+
+    it('is true only when the ledger holds no expense at all', async () => {
+      const db = makeNodeProxyDb();
+      await ensureEntriesTable(db);
+      await ensureSettingsTable(db);
+      await ensureBudgetsTable(db);
+      vi.mocked(getBrowserDb).mockResolvedValue(db);
+
+      const { result } = renderHook(() => useHome('2026-06'));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      expect(result.current.data?.ledgerEmpty).toBe(true);
+    });
+  });
+
   it('refetches when the data-version bumps after a write', async () => {
     const { result } = renderHook(() => useHome('2026-06'));
     await waitFor(() => expect(result.current.ready).toBe(true));

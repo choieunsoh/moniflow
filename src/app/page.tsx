@@ -58,6 +58,7 @@ export default function HomePage() {
     progress,
     pacePct,
     showPace,
+    ledgerEmpty,
   } = data;
 
   const showList = view === 'category';
@@ -142,7 +143,21 @@ export default function HomePage() {
         </>
       ) : (
         <CycleSwipe activeKey={activeKey} canGoNext={canGoNext}>
-          <EmptyLedger />
+          {/* Two different emptinesses, and conflating them was a real bug: this branch used to
+              fire on `summary.count === 0` alone, so paging back to a quiet month told someone with
+              a full ledger "No entries yet" and offered a replace-everything CSV restore as the
+              remedy. First-run onboarding is for an empty LEDGER; an empty CYCLE just says so and
+              leaves the cycle nav to carry them somewhere with data. */}
+          {ledgerEmpty ? (
+            <EmptyLedger />
+          ) : (
+            <section className="panel px-6 py-16 text-center">
+              <h2 className="text-base font-semibold">Nothing spent in this cycle</h2>
+              <p className="mt-2 text-sm" style={{ color: 'var(--color-muted)' }}>
+                Use the arrows above to look at another cycle.
+              </p>
+            </section>
+          )}
         </CycleSwipe>
       )}
     </PageContainer>

@@ -1,8 +1,8 @@
-import { formatBahtWhole } from '@shared/money';
-import { meterColorVar, type BudgetTotal } from '../budget-status';
+import { meterCaption, meterColorVar, type BudgetTotal } from '../budget-status';
 
 // Shared budget progress meter: a bar filled to `pct` in the state color, with a caption on the
-// right — "over ฿600" when past the limit, else the percent used. Renders ONLY the bar + caption;
+// right from `meterCaption` — the fill colour is a state signal, so the caption has to name the same
+// state in words or it'd be colour-alone. Renders ONLY the bar + caption;
 // the caller renders its own header/label line (category row vs. total) above it. Pure and
 // server-renderable — no client state.
 //
@@ -15,10 +15,7 @@ import { meterColorVar, type BudgetTotal } from '../budget-status';
 // past cycle, where a pace mark is meaningless). White with a surface-colored halo so the mark reads
 // on any fill colour — accent, warn, loss, or the empty track.
 export function BudgetMeter({ status, pacePct }: { status: BudgetTotal; pacePct?: number }) {
-  const caption =
-    status.state === 'over'
-      ? `over ${formatBahtWhole(Math.abs(status.remaining))}`
-      : `${Math.round(status.pct)}%`;
+  const caption = meterCaption(status);
   const fill = meterColorVar(status.state);
   return (
     <div className="flex items-center gap-2">

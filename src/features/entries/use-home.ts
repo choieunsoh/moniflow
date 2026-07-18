@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { getBrowserDb } from '@db/browser';
-import { getCycleSummary, getCategoryBreakdown, type Summary, type Breakdown } from './queries';
+import {
+  getCycleSummary,
+  getCategoryBreakdown,
+  hasAnyExpense,
+  type Summary,
+  type Breakdown,
+} from './queries';
 import { cycleFromKey, currentCycleKey, cycleProgress, type Cycle, type Progress } from './cycle';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getBudgets } from '@features/budgets/queries';
@@ -33,6 +39,9 @@ export type HomeData = {
   progress: Progress;
   pacePct: number | undefined;
   showPace: boolean;
+  // True only when the ledger is empty EVERYWHERE, not just in the cycle on screen. Home shows
+  // first-run onboarding on the former and a quiet "nothing this cycle" on the latter.
+  ledgerEmpty: boolean;
 };
 
 // Home page's cycle data, read once via the browser OPFS db after mount — mirrors the server
@@ -94,6 +103,10 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       // "over pace". Hold the wording back until the same floor the dashboard projects from.
       const showPace = pacePct !== undefined && progress.day >= MIN_PROJECT_DAYS;
 
+      // Only asked when this cycle came back empty — a populated cycle is already proof the ledger
+      // has something in it, so the common path never pays for the extra round trip.
+      const ledgerEmpty = summary.count === 0 ? !(await hasAnyExpense(db)) : false;
+
       setData({
         cutoff,
         activeKey,
@@ -114,6 +127,7 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
         progress,
         pacePct,
         showPace,
+        ledgerEmpty,
       });
       setReady(true);
     })();
