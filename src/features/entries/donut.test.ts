@@ -33,9 +33,7 @@ describe('buildDonutOption', () => {
   const palette = {
     text: '#fff',
     muted: '#999',
-    border: '#333',
     surface: '#111',
-    surface2: '#1e2128',
     font: 'sans',
     rootPx: 16,
   };

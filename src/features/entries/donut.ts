@@ -60,9 +60,7 @@ export function toDonutSlices(rows: Breakdown[]): DonutSlice[] {
 export type DonutPalette = {
   text: string;
   muted: string;
-  border: string;
   surface: string;
-  surface2: string;
   font: string;
   rootPx: number;
 };
@@ -91,15 +89,11 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
   const total = slices.reduce((sum, s) => sum + s.value, 0);
   const count = slices.reduce((sum, s) => sum + s.count, 0);
   const spentLabel = `${new Intl.NumberFormat('en-US').format(count)} · Spent`;
+  // No tooltip: the canvas is pointer-events-none so a swipe over the ring reaches the cycle-swipe
+  // wrapper (see DonutChart), which means a tooltip could never be triggered by mouse or touch. It
+  // was configured for years and never once fired. The legend below the ring carries the same
+  // figures, which is what makes the ring affordable to make inert in the first place.
   return {
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: p.surface2,
-      borderColor: p.border,
-      borderWidth: 1,
-      textStyle: { color: p.text, fontFamily: 'inherit' },
-      valueFormatter: (v: number) => formatBahtWhole(v),
-    },
     graphic: [
       {
         type: 'text',

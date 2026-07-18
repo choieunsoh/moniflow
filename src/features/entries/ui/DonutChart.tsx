@@ -31,9 +31,7 @@ export function DonutChart({
       const option = buildDonutOption(rows, {
         text: token('--color-text'),
         muted: token('--color-muted'),
-        border: token('--color-border'),
         surface: token('--color-surface'),
-        surface2: token('--color-surface-2'),
         font: getComputedStyle(document.body).fontFamily || 'sans-serif',
         // Clamped, not raw: the wrapper's height is in rem (so it grows with text scale) but its
         // width is a percentage of the fixed phone frame (so it doesn't). echarts sizes the ring off
