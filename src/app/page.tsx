@@ -79,14 +79,22 @@ export default function HomePage() {
           <section className="panel flex flex-col gap-1.5 p-5">
             {/* flex-wrap, not a fixed row: at 200% zoom / Extra Large text the label and the figure
                 otherwise collide. Wrapping lets the figure drop to its own line instead. */}
+            {/* The label stays "Spent this cycle" whether or not a budget exists. It used to flip to
+                "Total budget" the moment one was set, which named the DENOMINATOR while the figure
+                led with the numerator — "Total budget ฿63,295 / ฿30,000" reads as a ฿63k budget at a
+                glance. The limit is context for the spend, so it trails it in muted text. */}
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <h2 className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
-                {totalStatus ? 'Total budget' : 'Spent this cycle'}
+                Spent this cycle
               </h2>
               <span className="tnum text-xl font-semibold">
-                {totalStatus
-                  ? `${formatBahtWhole(total)} / ${formatBahtWhole(totalStatus.limit ?? 0)}`
-                  : formatBahtWhole(total)}
+                {formatBahtWhole(total)}
+                {totalStatus ? (
+                  <span className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
+                    {' '}
+                    of {formatBahtWhole(totalStatus.limit ?? 0)}
+                  </span>
+                ) : null}
               </span>
             </div>
             {totalStatus ? <BudgetMeter status={totalStatus} pacePct={pacePct} /> : null}
