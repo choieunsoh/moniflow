@@ -8,6 +8,7 @@ import { ensureBudgetsTable } from '@features/budgets/schema';
 import { ensureSettingsTable } from './schema';
 import { getEntries, restoreEntries } from '@features/entries/queries';
 import { getBudgets, setBudget } from '@features/budgets/queries';
+import { recurrences } from '@features/recurring/schema';
 import { getCutoff, getFontScale } from './queries';
 import type { CatalogData } from './catalog';
 
@@ -16,9 +17,9 @@ vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 import { getBrowserDb } from '@db/browser';
 import { restoreBackupAction } from './restore';
 
-const CSV =
-  'date,account,category,amount,currency,converted amount,currency,description\n' +
-  '15/01/2016,Cash,Food,-500,THB,-500,THB,lunch';
+const HEADER = 'date,account,category,amount,currency,converted amount,currency,description\n';
+
+const CSV = HEADER + '15/01/2016,Cash,Food,-500,THB,-500,THB,lunch';
 
 function combined(over: Partial<CatalogData> = {}): CatalogData {
   return {
@@ -80,6 +81,41 @@ describe('restoreBackupAction', () => {
     const budgets = await getBudgets(db);
     expect(budgets.find((b) => b.category === 'Rent')?.amount).toBe(12000); // survived
     expect(budgets.find((b) => b.category === 'Food')?.amount).toBe(5000); // added
+  });
+
+  // A v3 export ALWAYS carries an entriesCsv (use-backup-data serializes one even for an empty
+  // ledger), so a header-only CSV is a normal artifact, not a corrupt file. Restoring it clears the
+  // ledger — and must rewind the rules with it, or a rule keeps claiming it posted through a date
+  // whose entries no longer exist and the sweep never refills the gap.
+  //
+  // The rewind target is null, NOT '': paidCount() branches on `lastPosted === null` and then does
+  // month arithmetic on the string, so '' would slip past the guard and yield NaN.
+  it('rewinds recurring rules to null when the backup clears the ledger', async () => {
+    const db = await getBrowserDb();
+    await db
+      .insert(recurrences)
+      .values({
+        name: 'Netflix',
+        day: 5,
+        intervalMonths: 1,
+        accountId: null,
+        categoryId: null,
+        amount: 9.99,
+        currency: null,
+        rate: null,
+        totalCount: null,
+        startSeq: 1,
+        startDate: '2026-01-05',
+        lastPosted: '2026-07-05',
+      })
+      .run();
+
+    const summary = await restoreBackupAction(combined({ entriesCsv: HEADER }));
+
+    expect(summary.entries).toBe(0);
+    expect(await getEntries(db)).toHaveLength(0); // ledger cleared to match the backup
+    const rules = await db.select().from(recurrences).all();
+    expect(rules[0].lastPosted).toBeNull(); // rewound, so the next sweep refills from startDate
   });
 
   it('a catalog-only file (no entriesCsv/budgets/settings) leaves the ledger untouched', async () => {

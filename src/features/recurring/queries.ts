@@ -53,11 +53,20 @@ export async function markPosted(db: Db, id: number, date: string): Promise<void
 // ledger and must not repost; the CSV holds nothing after maxDate, so everything after it must.
 // Archived rules are rewound too — an archived rule can be un-archived later, and a stale pointer
 // would silently skip its gap.
-export async function rewindRecurrences(db: Db, maxDate: string): Promise<void> {
+//
+// maxDate null = the restored ledger is EMPTY, so every pointer rewinds to null ("never posted")
+// and the sweep refills from startDate. It must be null rather than a low sentinel like '':
+// paidCount() short-circuits on `lastPosted === null` and otherwise runs month arithmetic over the
+// string, so '' would clear that guard and produce NaN.
+export async function rewindRecurrences(db: Db, maxDate: string | null): Promise<void> {
   await db
     .update(recurrences)
     .set({ lastPosted: maxDate })
-    .where(and(isNotNull(recurrences.lastPosted), gt(recurrences.lastPosted, maxDate)))
+    .where(
+      maxDate === null
+        ? isNotNull(recurrences.lastPosted)
+        : and(isNotNull(recurrences.lastPosted), gt(recurrences.lastPosted, maxDate)),
+    )
     .run();
 }
 

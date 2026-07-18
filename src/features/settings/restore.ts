@@ -44,10 +44,14 @@ export async function restoreBackupAction(data: CatalogData): Promise<RestoreSum
   if (data.entriesCsv !== undefined) {
     const rows = parseMonefyCsv(data.entriesCsv).entries;
     await restoreEntries(db, rows); // replace-all; an empty array clears the ledger to match the backup
-    if (rows.length > 0) {
-      const maxDate = rows.reduce((max, r) => (r.date > max ? r.date : max), rows[0].date);
-      await rewindRecurrences(db, maxDate);
-    }
+    // Rewind unconditionally — an empty ledger needs it MOST. Guarding this on rows.length > 0 left
+    // every rule pointing at entries the wipe had just deleted, and the sweep, believing it had
+    // already posted them, never refilled the gap. null is the empty-ledger target (see rewindRecurrences).
+    const maxDate = rows.reduce<string | null>(
+      (max, r) => (max === null || r.date > max ? r.date : max),
+      null,
+    );
+    await rewindRecurrences(db, maxDate);
     entries = rows.length;
   }
   bumpDataVersion();
