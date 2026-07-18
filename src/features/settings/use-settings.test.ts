@@ -31,6 +31,7 @@ describe('useSettings', () => {
     expect(data.iconSet).toBe('emoji');
     expect(data.cardFeePct).toBe(2.5);
     expect(data.fontScale).toBe('md');
+    expect(data.keypadLayout).toBe('calc');
   });
 
   it('refetches when the data-version bumps after a write', async () => {

@@ -64,7 +64,17 @@ function EditEntryInner() {
   }
 
   if (data.keypadEditable) {
-    const { entry, categories, accounts, currencies, notes, rates, ratesAsOf, iconSet } = data;
+    const {
+      entry,
+      categories,
+      accounts,
+      currencies,
+      notes,
+      rates,
+      ratesAsOf,
+      iconSet,
+      keypadLayout,
+    } = data;
     return (
       <PageContainer size="full">
         {/* Title + caption dropped and the close moved into the keypad's chip row — see the new-entry
@@ -81,6 +91,7 @@ function EditEntryInner() {
           defaultAccount={entry.account}
           today={todayIso()}
           iconSet={iconSet}
+          keypadLayout={keypadLayout}
           action={handleSubmit}
           entry={entry}
         />

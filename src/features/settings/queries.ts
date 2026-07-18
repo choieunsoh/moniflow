@@ -156,3 +156,29 @@ export async function setFontScale(db: Db, value: FontScale): Promise<void> {
     db.insert(settings).values({ key: FONT_SCALE_KEY, value }),
   ]);
 }
+
+// Numpad digit arrangement on the add-expense keypad. 'calc' is the calculator/Monefy order (7-8-9
+// top); 'phone' is the telephone/ATM order (1-2-3 top). Only the digit ordering changes — the
+// operator column and bottom row are fixed (see KEYPAD_KEYS in ui/Keypad.tsx). Reuses the KV table
+// like icon-set/font-scale — no new migration.
+const KEYPAD_LAYOUT_KEY = 'keypad_layout';
+export const KEYPAD_LAYOUTS = ['calc', 'phone'] as const;
+export type KeypadLayout = (typeof KEYPAD_LAYOUTS)[number];
+const DEFAULT_KEYPAD_LAYOUT: KeypadLayout = 'calc';
+
+export function isKeypadLayout(value: unknown): value is KeypadLayout {
+  return typeof value === 'string' && KEYPAD_LAYOUTS.some((l) => l === value);
+}
+
+// Falls back to calc (the original layout) for a fresh DB or one that predates this setting.
+export async function getKeypadLayout(db: Db): Promise<KeypadLayout> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, KEYPAD_LAYOUT_KEY)).all();
+  return row !== undefined && isKeypadLayout(row.value) ? row.value : DEFAULT_KEYPAD_LAYOUT;
+}
+
+export async function setKeypadLayout(db: Db, value: KeypadLayout): Promise<void> {
+  await db.batch([
+    db.delete(settings).where(eq(settings.key, KEYPAD_LAYOUT_KEY)),
+    db.insert(settings).values({ key: KEYPAD_LAYOUT_KEY, value }),
+  ]);
+}

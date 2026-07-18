@@ -6,6 +6,8 @@ import {
   isIconSet,
   setFontScale,
   isFontScale,
+  setKeypadLayout,
+  isKeypadLayout,
 } from './queries';
 import { setCardFeePct, isValidCardFeePct, getFxRates, setFxRates } from './queries';
 import type { FxRates } from './queries';
@@ -53,6 +55,18 @@ export async function setFontScaleAction(formData: FormData): Promise<void> {
   }
   const db = await getBrowserDb();
   await setFontScale(db, value);
+  bumpDataVersion();
+}
+
+// Backing the numpad-layout picker. Validates the value is a known layout, then bumps the data
+// version so the keypad re-renders with the chosen digit order.
+export async function setKeypadLayoutAction(formData: FormData): Promise<void> {
+  const value = formData.get('keypadLayout');
+  if (!isKeypadLayout(value)) {
+    throw new Error(`Unknown keypad layout: ${typeof value === 'string' ? value : 'a file'}`);
+  }
+  const db = await getBrowserDb();
+  await setKeypadLayout(db, value);
   bumpDataVersion();
 }
 

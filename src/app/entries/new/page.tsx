@@ -28,8 +28,17 @@ export default function NewEntryPage() {
     );
   }
 
-  const { categories, accounts, currencies, notes, rates, ratesAsOf, defaultAccount, iconSet } =
-    data;
+  const {
+    categories,
+    accounts,
+    currencies,
+    notes,
+    rates,
+    ratesAsOf,
+    defaultAccount,
+    iconSet,
+    keypadLayout,
+  } = data;
 
   async function handleSubmit(formData: FormData): Promise<void> {
     await addEntryAction(formData);
@@ -55,6 +64,7 @@ export default function NewEntryPage() {
         defaultAccount={defaultAccount}
         today={todayIso()}
         iconSet={iconSet}
+        keypadLayout={keypadLayout}
         action={handleSubmit}
       />
     </PageContainer>
