@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureRecurrencesTable, recurrences } from './schema';
 import { categories } from '@features/categories/schema';
@@ -56,33 +55,7 @@ describe('recurrences table', () => {
     await expect(d.select().from(accounts).all()).resolves.toEqual([]);
   });
 
-  // The ONE documented drift failure: schema.ts and worker.ts's BOOTSTRAP_SQL must agree.
-  // Tests run against the Node shim (schema.ts), so only this guard or a browser catches it.
-  // Checks every column's type + modifiers (not just its name), so a drifted DEFAULT, a flipped
-  // NOT NULL, a type change, or a dropped column all fail this test.
-  it('is present in the shipping BOOTSTRAP_SQL with every column, type, and modifier intact', () => {
-    const worker = readFileSync('src/db/worker.ts', 'utf8');
-    const match = /CREATE TABLE IF NOT EXISTS recurrences \(([^;]*?)\)\s*`/.exec(worker);
-    expect(match).not.toBeNull();
-    const body = match === null ? '' : match[1];
-    const normalized = body.replace(/\s+/g, ' ').trim();
-    for (const columnDef of [
-      'id INTEGER PRIMARY KEY AUTOINCREMENT',
-      'name TEXT NOT NULL',
-      'day INTEGER NOT NULL',
-      'interval_months INTEGER NOT NULL DEFAULT 1',
-      'account_id INTEGER',
-      'category_id INTEGER',
-      'amount REAL NOT NULL',
-      'currency TEXT',
-      'rate REAL',
-      'total_count INTEGER',
-      'start_seq INTEGER NOT NULL DEFAULT 1',
-      'start_date TEXT NOT NULL',
-      'last_posted TEXT',
-      'archived INTEGER NOT NULL DEFAULT 0',
-    ]) {
-      expect(normalized).toContain(columnDef);
-    }
-  });
+  // The BOOTSTRAP_SQL lockstep check that used to live here (a hand-written copy of all 14 column
+  // definitions — a third place for the schema to drift) is now src/db/schema-lockstep.test.ts,
+  // which diffs sqlite's own PRAGMA output for all seven tables instead.
 });
