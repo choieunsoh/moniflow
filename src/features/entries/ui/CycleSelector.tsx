@@ -50,13 +50,20 @@ export function CycleSelector({
           <ChevronRight />
         </Link>
       ) : (
-        <span
-          aria-hidden
+        // A real disabled button, not an aria-hidden span. Hidden, the control vanished from the AT
+        // tree entirely, so a screen-reader user at the newest cycle was never told forward
+        // navigation exists at all — the row simply had one arrow, and there was no way to learn
+        // that was the boundary rather than the design. `disabled` announces the state and keeps it
+        // out of the tab order, which is what the dimming already said visually.
+        <button
+          type="button"
+          disabled
+          aria-label="Next cycle — none yet, this is the current cycle"
           className="grid size-11 place-items-center"
           style={{ color: 'var(--color-faint)', opacity: 0.4 }}
         >
           <ChevronRight />
-        </span>
+        </button>
       )}
     </nav>
   );
