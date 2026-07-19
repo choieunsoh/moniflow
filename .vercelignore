@@ -9,4 +9,9 @@
 /docs/
 /.impeccable/
 /.playwright-mcp/
-*.png
+
+# Scratch screenshots live in the repo ROOT only. This was briefly a bare `*.png`, which also
+# swallowed public/icon-192.png and public/icon-512.png — the deploy came up with a manifest
+# pointing at two 404s and a PWA that would not install. Anchored to the root so it can only ever
+# match the throwaways it was written for.
+/*.png
