@@ -6,9 +6,17 @@ import Link from 'next/link';
 // want it and differ only in their hrefs, so it takes the items rather than knowing either page.
 export type ViewOption = { label: string; href: string; active: boolean };
 
-export function ViewToggle({ options }: { options: ViewOption[] }) {
+// `className` exists only so a page can adjust the toggle's spacing within its own column rhythm
+// (Home groups it with the cycle chrome); the control's internals stay the caller's business.
+export function ViewToggle({
+  options,
+  className = '',
+}: {
+  options: ViewOption[];
+  className?: string;
+}) {
   return (
-    <div className="panel flex gap-1 p-1">
+    <div className={`panel flex gap-1 p-1 ${className}`}>
       {options.map((o) => (
         <Link
           key={o.label}

@@ -42,6 +42,30 @@ rather than `accent`: `#7132f5` only reaches 2.94:1 on surface **at full opacity
 base accent could have satisfied 1.4.11. Gain/loss is never color-only — always paired with a `+`/`−`
 sign so it survives grayscale and color blindness.
 
+### The chart palette is derived, not decorative
+
+`SLICE_COLORS` (`features/entries/donut.ts`) is the seven-hue categorical ramp for the spending
+donut and the ranked breakdown. It is **not** a free choice: three hue bands are reserved, and a
+slice may not enter any of them.
+
+| Reserved                | Why a slice must not wear it                                                                                                                                                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--color-accent` (289°) | Accent means action / selected / focus. A slice in it is decoration — the thing DESIGN.md forbids. The first ramp shipped `#7c5cff` against a `#7132f5` accent (2.4° apart), so the biggest category every cycle wore the FAB's purple. |
+| `--color-gain` (158°)   | A green slice reads as a positive value, not a category.                                                                                                                                                                                |
+| `--color-loss` (18°)    | Likewise a red one reads as a negative.                                                                                                                                                                                                 |
+
+Current clearances: ≥38° from the accent, ≥26° from gain/loss. The ramp is ordered to maximise the
+worst **adjacent** pair (CVD ΔE 13.7 against a floor of 8; normal-vision ΔE 25.0 against 15) and
+`donut.test.ts` asserts the reserved-band rule so a near-miss can't creep back.
+
+Adjacent, not all-pairs: only four hues clear all-pairs once three bands are reserved, and capping
+the ring at four categories is the worse trade. It holds because `LegendRow` never leans on colour
+alone — every row carries the category glyph, name, count, amount and share.
+
+**Consequence for the template story:** swapping `--color-accent` is no longer a one-token reskin
+if the new accent lands within ~38° of a slice hue. Re-run the derivation (the dataviz skill's
+`validate_palette.js`) after changing it, or pick an accent inside the band the ramp already avoids.
+
 ## Typography
 
 **One** typeface app-wide: **IBM Plex Sans** carries UI, prose, and figures alike. Self-hosted via

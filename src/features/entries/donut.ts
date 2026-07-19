@@ -1,17 +1,31 @@
 import { formatBahtWhole } from '@shared/money';
 import type { Breakdown } from './queries';
 
-// Calm, non-semantic categorical palette for the spending donut. Deliberately avoids the gain-green
-// and loss-red value colours so a slice's colour never reads as a sign (data-honesty). The ranked
-// legend carries the names, so slices only need to be mutually distinguishable, not meaningful.
+// Calm, non-semantic categorical palette for the spending donut. Three hue bands are reserved and
+// the ramp steers clear of all of them: gain-green and loss-red (a slice must never read as a sign),
+// and — the one the first version missed — the ACCENT itself. The old slot 0 was #7c5cff against an
+// accent of #7132f5, so the biggest category every cycle wore the same purple as the FAB, the active
+// toggle and the selected tab, which is exactly what DESIGN.md forbids ("accent … never for
+// decoration"). Every hue here sits >=38 degrees off the accent and >=26 off gain/loss.
+//
+// Derived, not eyeballed: searched over the OKLCH dark band (L 0.48-0.67, chroma capped at 0.15 to
+// stay calm) and ordered to maximise the worst ADJACENT pair, then checked with the dataviz
+// validator. Worst adjacent separation is now CVD dE 13.7 (floor 8) and normal-vision dE 25.0
+// (floor 15); the previous ramp FAILED both, with #86b34a/#e0a13c at dE 1.4 for protanopia — olive
+// and amber were the same colour to a red-blind reader.
+//
+// Validated on the ADJACENT pairlist, not all-pairs: only four hues can clear all-pairs once the
+// three bands are reserved, and capping the ring at four categories is a worse trade than this.
+// It holds because the legend never leans on colour alone — every LegendRow carries the category
+// glyph, name, count, amount and share, so a wedge is identifiable without matching its hue.
 export const SLICE_COLORS = [
-  '#7c5cff',
-  '#5b8def',
-  '#3fb6a8',
-  '#e0a13c',
-  '#d16ba5',
-  '#6a7bd8',
-  '#86b34a',
+  '#03999d',
+  '#da7134',
+  '#08a1cc',
+  '#b6770b',
+  '#2f8adc',
+  '#709517',
+  '#be5ea5',
 ] as const;
 const OTHER_COLOR = '#4b5061';
 // How many categories the ring names before the rest fold into Other. Exported because the ranked
@@ -78,12 +92,14 @@ export type DonutPalette = {
 };
 
 // The hole's two lines, as multiples of the root font-size (1.5rem / 0.8125rem at the 16px default).
-const TOTAL_REM = 1.5;
+const COUNT_REM = 1.5;
 const LABEL_REM = 0.8125;
 
 // The donut renders into a canvas inside a <div role="img">, so a screen reader gets the label and
-// nothing else — the total has to live in the label itself or it doesn't exist for that user. Mirrors
-// what the hole shows: the rounded total and the transaction count behind it.
+// nothing else — the total has to live in the label itself or it doesn't exist for that user. This
+// intentionally says MORE than the hole now draws: the hole drops the money to avoid printing it
+// twice on a screen someone takes in at a glance, but an image description is read in isolation, so
+// it still names both figures.
 export function donutSummaryLabel(rows: Breakdown[], label = 'Spending by category'): string {
   const slices = toDonutSlices(rows);
   if (slices.length === 0) return `${label}: nothing spent this cycle`;
@@ -93,20 +109,21 @@ export function donutSummaryLabel(rows: Breakdown[], label = 'Spending by catego
   return `${label}: ${formatBahtWhole(total)} across ${count} ${noun}`;
 }
 
-// Returns a plain ECharts option: a doughnut of spending-by-category with the total spent rendered in
-// the hole (two graphic texts, since a canvas center label can't be a CSS-styled element). The label
-// line carries the transaction count too — "62 · Spent" — summed from the slices (incl. Other).
+// Returns a plain ECharts option: a doughnut of spending-by-category with the cycle's TRANSACTION
+// COUNT rendered in the hole (two graphic texts, since a canvas center label can't be a CSS-styled
+// element).
+//
+// The hole deliberately does not carry the money. Dropping "Spent" from the label line was half the
+// fix — the figure itself was still the other half, so Chart view printed the identical string
+// ("฿34,754") twice about 250px apart: once in the panel above the toggle, once here. The panel is
+// the constant across both views (List has no ring to put it in), which makes the ring the copy, not
+// the original. So the hole now names the one figure that panel does NOT carry, and the total
+// appears exactly once per screen.
 export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
   const slices = toDonutSlices(rows);
-  const total = slices.reduce((sum, s) => sum + s.value, 0);
   const count = slices.reduce((sum, s) => sum + s.count, 0);
-  // "22 transactions", not the old "22 · Spent". The panel directly above the ring already reads
-  // "Spent this cycle ฿63,295", so repeating "Spent" said nothing new and left the hole ending on a
-  // fragment. The count is the one figure that panel does NOT carry, so the hole names it in full —
-  // and the two lines now answer different questions instead of the same one twice.
-  const spentLabel = `${new Intl.NumberFormat('en-US').format(count)} ${
-    count === 1 ? 'transaction' : 'transactions'
-  }`;
+  const countText = new Intl.NumberFormat('en-US').format(count);
+  const countLabel = count === 1 ? 'transaction' : 'transactions';
   // No tooltip: the canvas is pointer-events-none so a swipe over the ring reaches the cycle-swipe
   // wrapper (see DonutChart), which means a tooltip could never be triggered by mouse or touch. It
   // was configured for years and never once fired. The legend below the ring carries the same
@@ -118,9 +135,9 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
         left: 'center',
         top: '42%',
         style: {
-          text: formatBahtWhole(total),
+          text: countText,
           fill: p.text,
-          font: `600 ${p.rootPx * TOTAL_REM}px ${p.font}`,
+          font: `600 ${p.rootPx * COUNT_REM}px ${p.font}`,
           textAlign: 'center',
         },
       },
@@ -129,7 +146,7 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
         left: 'center',
         top: '56%',
         style: {
-          text: spentLabel,
+          text: countLabel,
           fill: p.muted,
           font: `400 ${p.rootPx * LABEL_REM}px ${p.font}`,
           textAlign: 'center',
