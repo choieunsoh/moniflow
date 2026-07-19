@@ -133,7 +133,10 @@ overhanging the bar) · Budgets · More. **More** opens a `.more-sheet` `<dialog
 (Categories / Trips / Settings). Pages compose through `PageContainer` (a `gap-6` column with
 mobile-first gutters).
 
-Screens: **Home** — a `CycleSelector`, a chart/list toggle, and either the spending donut
-(`DonutChart`, total in the hole) with a colour-keyed legend or a ranked `Breakdown`. **Records** —
+Screens: **Home** — a `CycleSelector`, the total-spend panel, a chart/list toggle, and either the
+spending donut (`DonutChart`) with a colour-keyed legend or a ranked `Breakdown`. The hole carries
+the transaction count, set **below** the panel's total in both size and contrast: centre-of-ring is
+the loudest slot on the page, and the count is the quietest figure on it — the ring annotates the
+answer, it doesn't state it. **Records** —
 a `SearchBox` over day-grouped `SwipeRow`s (swipe to edit/delete, tap the marker to recolour it).
 Charts follow the "tested pure option-builder + thin React wrapper" split.

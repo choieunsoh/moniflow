@@ -91,8 +91,12 @@ export type DonutPalette = {
   rootPx: number;
 };
 
-// The hole's two lines, as multiples of the root font-size (1.5rem / 0.8125rem at the 16px default).
-const COUNT_REM = 1.5;
+// The hole's two lines, as multiples of the root font-size (1.125rem / 0.8125rem at the 16px
+// default). The count is deliberately SMALLER than the .text-xl (1.25rem) total in the panel above
+// the ring: dead centre of a big ring with whitespace all round is the loudest slot on the page, and
+// a transaction count is the quietest thing on it. Home answers "where did my money go this cycle?"
+// — the answer is the baht figure, and the hole must not out-shout it. See the hierarchy test.
+const COUNT_REM = 1.125;
 const LABEL_REM = 0.8125;
 
 // The donut renders into a canvas inside a <div role="img">, so a screen reader gets the label and
@@ -136,7 +140,9 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
         top: '42%',
         style: {
           text: countText,
-          fill: p.text,
+          // Muted, not full ink, for the same reason it's small: this is an annotation on the ring,
+          // not the page's answer. Both hole lines sit at muted so the pair reads as one caption.
+          fill: p.muted,
           font: `600 ${p.rootPx * COUNT_REM}px ${p.font}`,
           textAlign: 'center',
         },

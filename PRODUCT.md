@@ -22,8 +22,10 @@ each feature's `actions.ts`, plain async functions rather than Server Actions. T
 a monthly **billing cycle** (a configurable cutoff day) and organised as a phone-sized column with a
 bottom tab bar — **Home · Records · ＋ · Analytics · More**:
 
-- **Home** — the cycle's spending as a by-category donut with the total spent in the hole, plus a
-  ranked category breakdown (chart / list toggle).
+- **Home** — the cycle's total spend and (where set) its budget meter, over a by-category donut with
+  the cycle's transaction count annotating the hole, plus a ranked category breakdown (chart / list
+  toggle). The total sits in the panel above the ring rather than in the hole so it stays put when
+  the toggle flips, and so the page's biggest figure is its most useful one.
 - **Records** — the cycle's expenses grouped by day, each a swipe-to-edit/delete row, with live
   cross-cycle search.
 - **Analytics** — the six-cycle spending trend, with a dashed line marking your own average across

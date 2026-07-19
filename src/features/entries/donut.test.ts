@@ -139,15 +139,37 @@ describe('buildDonutOption', () => {
 
   // The hole is canvas text, so it ignores the root font-size the rest of the app scales with.
   // Sizes are derived from rootPx instead of hard-coded, so Settings → Text size and browser zoom
-  // reach the page's single most important figure.
+  // reach the hole along with everything else.
   it('scales the hole text with the root font size', () => {
     const at16 = buildDonutOption([row('a', -30, 5)], palette);
-    expect(at16.graphic[0].style.font).toBe('600 24px sans');
+    expect(at16.graphic[0].style.font).toBe('600 18px sans');
     expect(at16.graphic[1].style.font).toBe('400 13px sans');
 
     const at24 = buildDonutOption([row('a', -30, 5)], { ...palette, rootPx: 24 });
-    expect(at24.graphic[0].style.font).toBe('600 36px sans');
+    expect(at24.graphic[0].style.font).toBe('600 27px sans');
     expect(at24.graphic[1].style.font).toBe('400 19.5px sans');
+  });
+
+  // The hierarchy guard. The hole sits dead centre of a big ring with whitespace all round it, which
+  // amplifies whatever it holds — so what it holds has to earn that. It holds the TRANSACTION COUNT,
+  // and the count is the least valuable figure on the page: Home exists to answer "where did my money
+  // go this cycle?", and the answer is ฿34,754, not "57".
+  //
+  // 1908419 moved the total out of the hole (it was being said twice) but left the count wearing the
+  // 1.5rem/600/full-ink type the total had vacated, so the page's loudest, highest-contrast, most
+  // central number became its least useful one. Both lines are muted now and the count is under the
+  // 1.25rem headline it sits below, so the hole reads as the annotation it is and ฿34,754 is
+  // unambiguously the page's biggest figure. Keep the count strictly smaller than that headline.
+  it('keeps the hole subordinate to the headline total', () => {
+    const opt = buildDonutOption([row('a', -30, 5)], palette);
+    const px = /(\d+(?:\.\d+)?)px/.exec(opt.graphic[0].style.font);
+    expect(px).not.toBeNull();
+    const countPx = Number(px?.[1]);
+    // .text-xl — the "Spent this cycle" figure in the panel above the ring.
+    expect(countPx).toBeLessThan(1.25 * palette.rootPx);
+    // Neither line wears full ink; the ring itself carries the panel's visual weight.
+    expect(opt.graphic[0].style.fill).toBe(palette.muted);
+    expect(opt.graphic[1].style.fill).toBe(palette.muted);
   });
 });
 
