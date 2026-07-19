@@ -4,7 +4,8 @@ import { toBars, type Bar } from '../breakdown';
 import { MAX_SLICES } from '../donut';
 import type { Breakdown as BreakdownRow } from '../queries';
 import { emojiFor, hueFor } from '@features/categories/queries';
-import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
+import { CategoryEditTrigger, CategoryIconButton } from '@features/categories/ui/CategoryPicker';
+import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
 import type { IconSet } from '@features/settings/queries';
 import { toBudgetTotal } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
@@ -54,6 +55,8 @@ export function Breakdown({
     const spent = Math.abs(b.total);
     const limit = limits?.get(b.key);
     const status = limit === undefined ? null : toBudgetTotal(limit, spent);
+    // One lookup for both the mark and the bar, so they cannot disagree about a category's colour.
+    const color = colors?.get(b.key);
     // Icon-excepted tap-through to the category's filtered records — home passes cycleKey.
     const href = cycleKey
       ? `/records?cycle=${encodeURIComponent(cycleKey)}&category=${encodeURIComponent(b.key)}`
@@ -101,7 +104,7 @@ export function Breakdown({
               className="h-full rounded"
               style={{
                 width: `${b.pct}%`,
-                background: colors?.get(b.key) ?? 'var(--color-border-strong)',
+                background: color ?? 'var(--color-border-strong)',
               }}
             />
           </div>
@@ -114,13 +117,41 @@ export function Breakdown({
             a CategoryPickerProvider ancestor (the app layout mounts one). An account breakdown
             passes no emojis, so the marker is simply absent. */}
         {emojis ? (
-          <CategoryIconButton
-            emoji={emojiFor(emojis, b.key)}
-            category={b.key}
-            iconSet={iconSet}
-            hue={hues ? hueFor(hues, b.key) : undefined}
-            size="sm"
-          />
+          color ? (
+            // Same construction as the donut legend's LegendRow: the slice colour on the disc, the
+            // glyph inside it. The row's bar already took this colour so a category reads the same
+            // across the chart/list toggle, but the MARK was still drawn in the category's own
+            // picked hue — so Rent arrived with a teal bar under an olive disc, and changed colour
+            // when you flipped the toggle. Identity is one colour or it is not an identity; the
+            // picked hue still shows wherever it is the thing being edited (the picker, Records,
+            // Categories). Budgeted rows keep this disc too: the meter below is a STATE signal and
+            // the disc is identity, which is the same split the chart view already makes.
+            <CategoryEditTrigger
+              category={b.key}
+              emoji={emojiFor(emojis, b.key)}
+              hue={hues ? hueFor(hues, b.key) : undefined}
+            >
+              <span
+                aria-hidden
+                className="grid size-11 shrink-0 place-items-center rounded-full text-2xl"
+                style={{ background: color, color: 'var(--color-on-accent)' }}
+              >
+                <CategoryGlyph emoji={emojiFor(emojis, b.key)} iconSet={iconSet} size={26} />
+              </span>
+            </CategoryEditTrigger>
+          ) : (
+            // No slice colour for this row — the palette ran out past the fold, or the caller passed
+            // no colours at all. Falls back to the picked-hue disc rather than inventing a colour,
+            // for the same reason the bar falls back to a neutral track: a partial identity promise
+            // is worse than none.
+            <CategoryIconButton
+              emoji={emojiFor(emojis, b.key)}
+              category={b.key}
+              iconSet={iconSet}
+              hue={hues ? hueFor(hues, b.key) : undefined}
+              size="sm"
+            />
+          )
         ) : null}
         {/* min-h-11: the tap-through is the primary drill-down and sits beside a 44px icon button
             that opens a different thing, so anything under the 44px floor mis-fires under a thumb.

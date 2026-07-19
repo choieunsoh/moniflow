@@ -142,6 +142,13 @@ export default function HomePage() {
               />
             ) : (
               <section className="panel flex flex-col gap-5 p-5">
+                {/* The same heading Breakdown carries in List, for the same section of data. Without
+                    it the DEFAULT view's main content was the only unheaded thing on the page, and
+                    the heading outline changed depending on a ?view= param — a screen-reader user
+                    got "Spent this cycle" and then an unlabelled region in Chart, but a named
+                    "Spending by category" in List. The toggle swaps the visualisation; it should not
+                    swap the document structure. */}
+                <h2 className="text-base font-semibold">Spending by category</h2>
                 <DonutChart rows={categoryBreakdown} />
                 <ul className="flex flex-col gap-2.5">
                   {slices.map((s) => (
