@@ -38,9 +38,17 @@ describe('buildDonutOption', () => {
     rootPx: 16,
   };
 
-  it('labels the hole with the summed transaction count next to Spent', () => {
+  // The hole sits directly under a panel that already reads "Spent this cycle ฿63,295", so a hole
+  // label of "22 · Spent" both repeated that word and read as a fragment. The count is the one thing
+  // the panel does NOT say, so the hole names it in full.
+  it('labels the hole with the summed transaction count, spelled out', () => {
     const opt = buildDonutOption([row('a', -30, 5), row('b', -20, 2)], palette);
-    expect(opt.graphic[1].style.text).toBe('7 · Spent'); // 5 + 2 transactions
+    expect(opt.graphic[1].style.text).toBe('7 transactions'); // 5 + 2
+  });
+
+  it('says transaction, singular, when there is only one', () => {
+    const opt = buildDonutOption([row('a', -30, 1)], palette);
+    expect(opt.graphic[1].style.text).toBe('1 transaction');
   });
 
   it('rounds the hole to whole baht — it is a glance figure, not a ledger row', () => {

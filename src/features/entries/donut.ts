@@ -88,7 +88,13 @@ export function buildDonutOption(rows: Breakdown[], p: DonutPalette) {
   const slices = toDonutSlices(rows);
   const total = slices.reduce((sum, s) => sum + s.value, 0);
   const count = slices.reduce((sum, s) => sum + s.count, 0);
-  const spentLabel = `${new Intl.NumberFormat('en-US').format(count)} · Spent`;
+  // "22 transactions", not the old "22 · Spent". The panel directly above the ring already reads
+  // "Spent this cycle ฿63,295", so repeating "Spent" said nothing new and left the hole ending on a
+  // fragment. The count is the one figure that panel does NOT carry, so the hole names it in full —
+  // and the two lines now answer different questions instead of the same one twice.
+  const spentLabel = `${new Intl.NumberFormat('en-US').format(count)} ${
+    count === 1 ? 'transaction' : 'transactions'
+  }`;
   // No tooltip: the canvas is pointer-events-none so a swipe over the ring reaches the cycle-swipe
   // wrapper (see DonutChart), which means a tooltip could never be triggered by mouse or touch. It
   // was configured for years and never once fired. The legend below the ring carries the same
