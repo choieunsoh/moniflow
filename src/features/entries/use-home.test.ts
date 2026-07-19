@@ -136,4 +136,61 @@ describe('useHome', () => {
       expect(result.current.data?.showPace).toBe(false);
     });
   });
+
+  // `ready` answers "is there data to render?", NOT "is a fetch in flight?". Home's own affordances
+  // write (recolouring a category from the legend disc, deleting an entry), and each write bumps the
+  // data version. Dropping ready on those unmounted the whole settled page — donut, legend, budget
+  // meter — behind the loading skeleton for the OPFS round trip, so a colour tap blanked the screen.
+  describe('refetch after a write', () => {
+    it('keeps the settled page mounted while the refetch is in flight', async () => {
+      const { result } = renderHook(() => useHome('2026-06'));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const before = result.current.data;
+      expect(before).not.toBeNull();
+
+      // Hold the db open so the refetch CANNOT complete — the transient state is the whole point,
+      // and a refetch that resolves within the same act() flush hides it entirely.
+      const db = await getBrowserDb();
+      let release = (): void => {};
+      const gate = new Promise<void>((res) => {
+        release = res;
+      });
+      vi.mocked(getBrowserDb).mockImplementationOnce(async () => {
+        await gate;
+        return db;
+      });
+
+      await act(async () => {
+        bumpDataVersion();
+        // Let the effect run up to its first await — it parks on the gate above, which is exactly
+        // the in-flight moment this test is about.
+        await Promise.resolve();
+      });
+
+      // Mid-refetch: the settled page is still on screen rather than replaced by the skeleton.
+      expect(result.current.ready).toBe(true);
+      expect(result.current.data?.total).toBe(before?.total);
+
+      await act(async () => {
+        release();
+        await gate;
+      });
+      await waitFor(() => expect(result.current.data?.total).toBe(before?.total));
+    });
+
+    it('still shows the skeleton when the cycle itself changes', async () => {
+      // A different cycle is different content, not a refresh of what is on screen — holding the old
+      // numbers under a new cycle label would state the wrong month's spend.
+      const { result, rerender } = renderHook(({ key }) => useHome(key), {
+        initialProps: { key: '2026-06' },
+      });
+      await waitFor(() => expect(result.current.ready).toBe(true));
+
+      rerender({ key: '2026-05' });
+      expect(result.current.ready).toBe(false);
+
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      expect(result.current.data?.activeKey).toBe('2026-05');
+    });
+  });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getBrowserDb } from '@db/browser';
 import {
   getCycleSummary,
@@ -51,10 +51,23 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
   const [data, setData] = useState<HomeData | null>(null);
   const [ready, setReady] = useState(false);
   const version = useDataVersion();
+  // The cycle whose data is currently on screen. Lets the effect tell a CYCLE CHANGE (new content)
+  // apart from a DATA-VERSION bump (a refetch of the cycle already rendered) — see below.
+  const shownKey = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     void (async () => {
-      setReady(false);
+      // `ready` means "there is data to render", not "a fetch is in flight". Home's own affordances
+      // write — recolouring a category from its legend disc, editing an entry — and each bumps the
+      // data version. Dropping ready on those replaced the entire settled page (donut, legend, budget
+      // meter, ~330px of it) with the loading skeleton for the OPFS round trip, so a colour tap
+      // blanked the screen and bounced the scroll position. A cycle change still shows the skeleton:
+      // that IS new content, and holding the old figures under a new cycle label would state the
+      // wrong month's spend.
+      if (shownKey.current !== cycleKey) {
+        shownKey.current = cycleKey;
+        setReady(false);
+      }
       const db = await getBrowserDb();
       const [cutoff, emojiMap, hueMap, iconSet] = await Promise.all([
         getCutoff(db),
