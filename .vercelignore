@@ -1,0 +1,12 @@
+# Private financial data — never upload the source Monefy export or the pre-OPFS DB snapshot.
+# /data/ is already in .gitignore, and the Vercel CLI falls back to .gitignore when this file is
+# absent — but "falls back to" is not a guarantee worth betting a real ledger on, and this repo is
+# deployed by direct CLI upload (there is no git remote), so the files on disk ARE the upload.
+# Stated explicitly here so the exclusion does not depend on CLI default behaviour.
+/data/
+
+# Nothing below is needed to build or serve; keeping the upload small also keeps it boring.
+/docs/
+/.impeccable/
+/.playwright-mcp/
+*.png
