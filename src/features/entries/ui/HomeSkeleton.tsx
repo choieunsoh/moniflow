@@ -47,9 +47,15 @@ export function HomeSkeleton() {
       <div className="panel -mt-3 flex flex-col gap-1.5 p-5">
         <div className="flex items-baseline justify-between">
           <Bar className="h-4 w-28" />
-          <Bar className="h-6 w-32" />
+          {/* h-7: the figure is text-xl semibold, a 28px line — h-6 traced it 4px short. */}
+          <Bar className="h-7 w-32" />
         </div>
-        <Bar className="h-2 w-full" />
+        {/* BudgetMeter is a ROW — an h-2 track beside a text-xs caption — so it stands 16px, not the
+            8px a lone bar reserved. */}
+        <div className="flex items-center gap-2">
+          <Bar className="h-2 flex-1" />
+          <Bar className="h-4 w-16" />
+        </div>
         {/* The pace verdict under the meter, drawn unconditionally for the same reason the meter
             above it is: the skeleton cannot know whether a budget exists or whether enough of the
             cycle has elapsed for the phrase to show, and guessing short reopens the jump. */}
@@ -61,6 +67,8 @@ export function HomeSkeleton() {
       </div>
       {/* gap-5, matching the live donut section — it had drifted to gap-6. */}
       <div className="panel flex flex-col items-center gap-5 p-5">
+        {/* The "Spending by category" heading both views carry — text-base semibold, a 24px line. */}
+        <Bar className="h-6 w-44 self-start" />
         {/* The donut: a ring, so the shape that arrives is the shape that was promised. The h-64 box
             is not decorative — it mirrors DonutChart's own fixed `h-64` wrapper exactly, so the
             chart lands at the height reserved for it. Drawn as a 160px ring centred in that box
@@ -77,10 +85,13 @@ export function HomeSkeleton() {
         </span>
         {/* gap-2.5 and 44px rows match LegendRow. Eight is the donut's CAP (seven slices + Other),
             not a middle estimate — the previous six claimed to err tall on a busy cycle and measured
-            the opposite: a 13-category month settled 174px LOWER than its placeholder, shoving the
+            the opposite: a 13-category month settled 138px LOWER than its placeholder, shoving the
             donut down under a reader whose eye had already arrived. The skeleton cannot know the
             count before the read returns, so it reserves the most the ring can ever draw: a quiet
-            cycle then settles UP, which is the direction this file already argued for. */}
+            cycle then settles UP, which is the direction this file already argued for.
+            Measure like for like when checking this: the placeholder is a CHILD of PageContainer,
+            so compare `main > :first-child` in both states — comparing this div against the
+            container's own box silently adds its 12px/24px padding to the result. */}
         <ul className="flex w-full flex-col gap-2.5">
           {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
             <li key={i} className="flex items-center gap-3">
