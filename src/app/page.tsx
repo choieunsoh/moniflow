@@ -73,13 +73,20 @@ export default function HomePage() {
           but Home, Records and Analytics are the three routes with no visible page title, and without
           this a screen reader's heading list starts at the section <h2>s with no <h1> above them. */}
       <h1 className="sr-only">Home</h1>
+      {/* The chrome above the data — cycle nav, its progress, the headline figure, the view toggle —
+          is pulled to a 12px rhythm against PageContainer's 24px, so it reads as ONE band of controls
+          and the 24px gaps that survive fall where the band ends and the visualisation begins.
+          Uniform 24px throughout spent ~256px before the ring started and gave the eye no grouping.
+          Done with -mt-3 rather than a wrapper div on purpose: CycleSelector is `sticky`, and a
+          wrapper would become its containing block, so it would stop sticking the moment the wrapper
+          scrolled past instead of holding under the header. */}
       <CycleSelector activeKey={activeKey} cutoff={cutoff} canGoNext={canGoNext} view={view} />
-      {isCurrentCycle ? <CycleProgress progress={progress} /> : null}
+      {isCurrentCycle ? <CycleProgress progress={progress} className="-mt-3" /> : null}
 
       {hasSpending ? (
         <>
           {/* The cycle's answer, constant across both views. */}
-          <section className="panel flex flex-col gap-1.5 p-5">
+          <section className="panel -mt-3 flex flex-col gap-1.5 p-5">
             {/* flex-wrap, not a fixed row: at 200% zoom / Extra Large text the label and the figure
                 otherwise collide. Wrapping lets the figure drop to its own line instead. */}
             {/* The label stays "Spent this cycle" whether or not a budget exists. It used to flip to
@@ -112,6 +119,7 @@ export default function HomePage() {
           </section>
 
           <ViewToggle
+            className="-mt-3"
             options={[
               { label: 'Chart', active: !showList, href: `/?cycle=${activeKey}&view=chart` },
               { label: 'List', active: showList, href: `/?cycle=${activeKey}&view=category` },
