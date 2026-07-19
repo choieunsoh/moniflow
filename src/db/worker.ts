@@ -93,7 +93,20 @@ function ready(): Promise<void> {
 
 self.addEventListener('message', (event: MessageEvent<InMsg>) => {
   const msg = event.data;
-  void ready().then(() => {
+  const boot = ready();
+  // A boot failure used to be swallowed: there was no .catch here, so when the OPFS SAHPool could not
+  // take its exclusive access handle — a second tab on the same origin already holds it — the worker
+  // posted NOTHING back. The RPC's promise stayed in `pending` unsettled forever, getBrowserDb()
+  // memoised that never-settling promise, and every page sat on its loading skeleton indefinitely.
+  // It never read as an error, just as an app that would not finish loading. Reporting the failure is
+  // what turns it into something a caller can see, explain and retry.
+  boot.catch((err: unknown) => {
+    // Clear the cached boot so the NEXT message tries again from scratch: the lock is held by another
+    // tab, and that tab may well have closed by the time the user retries.
+    bootPromise = null;
+    self.postMessage({ id: msg.id, ok: false, error: String(err) });
+  });
+  void boot.then(() => {
     try {
       if (msg.type === 'ready') {
         self.postMessage({ id: msg.id, ok: true });

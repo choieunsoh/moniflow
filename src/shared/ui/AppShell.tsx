@@ -10,6 +10,8 @@ import { SearchBox } from '@features/entries/ui/SearchBox';
 import { BottomBar } from './BottomBar';
 import { ToastRegion } from './ToastRegion';
 import { ServiceWorkerRegistrar } from './ServiceWorkerRegistrar';
+import { DbUnavailable } from './DbUnavailable';
+import { useDbHealth } from '../use-db-health';
 
 // Client shell for the whole app's chrome — the header search-suggestion pool and icon set are
 // DB-derived and now come from the browser OPFS db (useSearchSuggestions), so this can't stay in
@@ -24,6 +26,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Defaults ([] / 'emoji') from the hook already cover the !ready frame, so `ready` itself isn't
   // read here — the frame renders immediately either way and the pool fills in a tick later.
   const { suggestions, iconSet } = useSearchSuggestions();
+  // App-wide, because the db is app-wide: without this every page independently waits forever on a
+  // db that will never open, each showing its own loading placeholder as though data were coming.
+  const { failed: dbFailed, retry: retryDb } = useDbHealth();
 
   return (
     <CategoryPickerProvider iconSet={iconSet}>
@@ -38,8 +43,19 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div className="app-frame mx-auto flex min-h-dvh w-full max-w-[var(--app-max-width)] flex-col">
           <AppHeader search={<SearchBox suggestions={suggestions} />} />
-          {/* pb clears the fixed bottom bar (bar height + FAB overhang + safe area). */}
-          <main className="flex-1 pb-24">{children}</main>
+          {/* pb clears the fixed bottom bar (bar height + FAB overhang + safe area). The db-failure
+              panel REPLACES the page rather than sitting above it: with no database every figure the
+              page would draw is missing or stale, so rendering it under a warning would just be a
+              second, quieter lie. The chrome stays so the app still reads as itself. */}
+          <main className="flex-1 pb-24">
+            {dbFailed ? (
+              <div className="px-4 pt-6">
+                <DbUnavailable onRetry={retryDb} />
+              </div>
+            ) : (
+              children
+            )}
+          </main>
         </div>
         <BottomBar />
       </Suspense>

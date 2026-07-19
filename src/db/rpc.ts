@@ -41,4 +41,13 @@ export class DbWorkerRpc {
       this.worker.postMessage({ id, ...payload });
     });
   }
+
+  // Tear down a worker whose boot failed. Without this the retry path leaks one dead worker per
+  // attempt, each still holding whatever partial OPFS state it managed to take — which is the last
+  // thing a retry that is trying to acquire an exclusive handle needs.
+  close(): void {
+    this.worker.terminate();
+    for (const [, p] of this.pending) p.reject(new Error('db worker closed'));
+    this.pending.clear();
+  }
 }

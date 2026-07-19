@@ -9,8 +9,19 @@ let cached: Promise<Db> | null = null;
 // resolved db) so concurrent first-callers — e.g. the app-shell + a page hook mounting together, or a
 // StrictMode double-mount — share ONE worker. Two workers would each try to grab the OPFS SAHPool's
 // exclusive access handle and one would throw NoModificationAllowedError.
+// A FAILED init must not be memoised. The cache exists to keep concurrent first-callers on one
+// worker, but caching a rejection made the first failure permanent: a tab that lost the OPFS lock
+// race could never recover, not even after the tab holding it closed, because every later call got
+// the same dead promise back. Evicting on failure is what makes a retry mean anything.
 export function getBrowserDb(): Promise<Db> {
-  cached ??= createBrowserDb();
+  if (cached === null) {
+    const attempt = createBrowserDb();
+    cached = attempt;
+    // Guarded by identity so a slow failure can't evict a newer, successful attempt.
+    attempt.catch(() => {
+      if (cached === attempt) cached = null;
+    });
+  }
   return cached;
 }
 
@@ -19,7 +30,12 @@ async function createBrowserDb(): Promise<Db> {
     await navigator.storage.persist();
   }
   const rpc = new DbWorkerRpc();
-  await rpc.send({ type: 'ready' }); // force worker boot + table bootstrap before first query
+  try {
+    await rpc.send({ type: 'ready' }); // force worker boot + table bootstrap before first query
+  } catch (err) {
+    rpc.close(); // don't leave a dead worker holding OPFS state the retry needs
+    throw err;
+  }
 
   return drizzle(
     async (sql, params, method) => {
