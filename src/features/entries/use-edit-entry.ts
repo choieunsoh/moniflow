@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import {
   getDistinctAccounts,
   getDistinctCategories,
@@ -55,9 +55,8 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const entry = await getEntryById(db, id);
       if (entry === undefined) {
         setData(null);
@@ -113,7 +112,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
         setData({ keypadEditable: false, entry, accounts, categories, notes });
       }
       setReady(true);
-    })();
+    });
   }, [id, version]);
 
   return { ready, data };

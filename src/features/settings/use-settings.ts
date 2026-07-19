@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import {
   getCutoff,
   getIconSet,
@@ -32,9 +32,8 @@ export function useSettings(): { ready: boolean; data: SettingsData | null } {
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const [cutoff, iconSet, cardFeePct, fontScale, keypadLayout] = await Promise.all([
         getCutoff(db),
         getIconSet(db),
@@ -44,7 +43,7 @@ export function useSettings(): { ready: boolean; data: SettingsData | null } {
       ]);
       setData({ cutoff, iconSet, cardFeePct, fontScale, keypadLayout });
       setReady(true);
-    })();
+    });
   }, [version]);
 
   return { ready, data };

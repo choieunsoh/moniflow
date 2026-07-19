@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { getForeignEntries, getTripTitles } from './queries';
 import { groupIntoTrips, type Trip } from './trips';
 import { useDataVersion } from '@shared/data-version';
@@ -17,9 +17,8 @@ export function useTrips(): { ready: boolean; data: TripsData | null } {
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const [foreignEntries, titles] = await Promise.all([
         getForeignEntries(db),
         getTripTitles(db),
@@ -27,7 +26,7 @@ export function useTrips(): { ready: boolean; data: TripsData | null } {
       const trips = groupIntoTrips(foreignEntries);
       setData({ trips, titles });
       setReady(true);
-    })();
+    });
   }, [version]);
 
   return { ready, data };

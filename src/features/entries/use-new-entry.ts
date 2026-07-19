@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { getLatestAccount, getDistinctNotes } from './queries';
 import { getKeypadCategories, getKeypadAccounts, getKeypadCurrencies } from './keypad-lists';
 import type { KeypadCategory, KeypadAccount, KeypadCurrency } from './ui/Keypad';
@@ -36,9 +36,8 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const [
         iconSet,
         keypadLayout,
@@ -82,7 +81,7 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
         keypadLayout,
       });
       setReady(true);
-    })();
+    });
   }, [version]);
 
   return { ready, data };

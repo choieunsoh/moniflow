@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { getCategoryCounts, type CategoryCount } from '@features/entries/queries';
 import { getKeypadCategories } from '@features/entries/keypad-lists';
 import type { KeypadCategory } from '@features/entries/ui/Keypad';
@@ -26,13 +26,12 @@ export function useCategoriesPage(): { ready: boolean; data: CategoriesPageData 
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
+    void withDb(async (db) => {
       // Deliberately no setReady(false) here: a version bump refetches, it does not un-load the page.
       // Dropping back to `ready: false` sent the page through its !ready branch on every mutation,
       // unmounting the whole tree — which silently closed the reorder sheet (an open <dialog> can't
       // survive its node being replaced) on the very drop that persisted the order. Keeping the last
       // data on screen while the refetch runs is also one less flash per rename/delete/add.
-      const db = await getBrowserDb();
       const [counts, emojiMap, hueMap, iconSet, keypadCategories] = await Promise.all([
         getCategoryCounts(db),
         getEmojiMap(db),
@@ -43,7 +42,7 @@ export function useCategoriesPage(): { ready: boolean; data: CategoriesPageData 
 
       setData({ counts, emojiMap, hueMap, iconSet, keypadCategories });
       setReady(true);
-    })();
+    });
   }, [version]);
 
   return { ready, data };

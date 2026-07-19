@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { getEntries } from '@features/entries/queries';
 import { serializeMonefyCsv } from '@features/entries/import';
 import { getCategoryCatalog } from '@features/categories/queries';
@@ -52,9 +52,8 @@ export function useBackupData(): { ready: boolean; data: BackupData | null } {
 
   useEffect(() => {
     let live = true;
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const [rows, categories, accounts, recurrences, budgets, settings] = await Promise.all([
         getEntries(db),
         getCategoryCatalog(db),
@@ -82,7 +81,7 @@ export function useBackupData(): { ready: boolean; data: BackupData | null } {
         budgetCount: budgets.length,
       });
       setReady(true);
-    })();
+    });
     return () => {
       live = false;
     };

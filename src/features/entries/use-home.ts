@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { useEffect, useState } from 'react';
+import { withDb } from '@shared/db-effect';
 import {
   getCycleSummary,
   getCategoryBreakdown,
@@ -51,24 +51,32 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
   const [data, setData] = useState<HomeData | null>(null);
   const [ready, setReady] = useState(false);
   const version = useDataVersion();
-  // The cycle whose data is currently on screen. Lets the effect tell a CYCLE CHANGE (new content)
-  // apart from a DATA-VERSION bump (a refetch of the cycle already rendered) — see below.
-  const shownKey = useRef<string | null | undefined>(undefined);
+  // The cycle whose data is currently on screen — state, not a ref, because it is read during
+  // render below and a ref read there is both a lint error and genuinely unsafe. Lets us tell a
+  // CYCLE CHANGE (new content) apart from a DATA-VERSION bump (a refetch of what is already
+  // rendered).
+  const [shownKey, setShownKey] = useState<string | null | undefined>(undefined);
+
+  // Reset DURING RENDER, not in the effect and not inside the async callback — React's documented
+  // "adjusting state when a prop changes" pattern. The other two placements each cost something: in
+  // the effect body it is a setState the react-hooks rule rejects as a cascading-render risk, and
+  // inside the withDb callback it lands a microtask late, leaving a window where the hook reports
+  // ready with the PREVIOUS cycle's figures under the new cycle's key. Here it is immediate, and
+  // re-setting false when it is already false is a no-op bail-out rather than a loop.
+  //
+  // `ready` means "there is data to render", not "a fetch is in flight". Home's own affordances
+  // write — recolouring a category from its legend disc, editing an entry — and each bumps the data
+  // version. Dropping ready on those replaced the entire settled page (donut, legend, budget meter,
+  // ~330px of it) with the loading skeleton for the OPFS round trip, so a colour tap blanked the
+  // screen and bounced the scroll position. A cycle change still shows the skeleton: that IS new
+  // content, and holding the old figures under a new cycle label would state the wrong month's spend.
+  if (shownKey !== cycleKey) {
+    setShownKey(cycleKey);
+    setReady(false);
+  }
 
   useEffect(() => {
-    void (async () => {
-      // `ready` means "there is data to render", not "a fetch is in flight". Home's own affordances
-      // write — recolouring a category from its legend disc, editing an entry — and each bumps the
-      // data version. Dropping ready on those replaced the entire settled page (donut, legend, budget
-      // meter, ~330px of it) with the loading skeleton for the OPFS round trip, so a colour tap
-      // blanked the screen and bounced the scroll position. A cycle change still shows the skeleton:
-      // that IS new content, and holding the old figures under a new cycle label would state the
-      // wrong month's spend.
-      if (shownKey.current !== cycleKey) {
-        shownKey.current = cycleKey;
-        setReady(false);
-      }
-      const db = await getBrowserDb();
+    void withDb(async (db) => {
       const [cutoff, emojiMap, hueMap, iconSet] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
@@ -143,7 +151,7 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
         ledgerEmpty,
       });
       setReady(true);
-    })();
+    });
   }, [cycleKey, version]);
 
   return { ready, data };

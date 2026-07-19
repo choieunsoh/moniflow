@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { getCycleSummary, getEntriesInRange } from './queries';
 import type { EntryRow } from './schema';
 import { currentCycleKey, cycleFromKey, stepKey, cycleProgress, type Cycle } from './cycle';
@@ -50,9 +50,8 @@ export function useDashboard(): { ready: boolean; data: DashboardData | null } {
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const [cutoff, emojiMap, hueMap, iconSet] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
@@ -109,7 +108,7 @@ export function useDashboard(): { ready: boolean; data: DashboardData | null } {
         iconSet,
       });
       setReady(true);
-    })();
+    });
   }, [version]);
 
   return { ready, data };

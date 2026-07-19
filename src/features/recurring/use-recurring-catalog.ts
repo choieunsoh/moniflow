@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { useDataVersion } from '@shared/data-version';
 import { getIconSet, type IconSet } from '@features/settings/queries';
 import { listRuleMeta, type RuleMeta } from './queries';
@@ -25,9 +25,8 @@ export function useRecurringCatalog(): { ready: boolean; catalog: RecurringCatal
 
   useEffect(() => {
     let alive = true;
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const [meta, iconSet] = await Promise.all([listRuleMeta(db), getIconSet(db)]);
       if (!alive) return;
 
@@ -36,7 +35,7 @@ export function useRecurringCatalog(): { ready: boolean; catalog: RecurringCatal
 
       setCatalog({ metaById, iconSet });
       setReady(true);
-    })();
+    });
     return () => {
       alive = false;
     };

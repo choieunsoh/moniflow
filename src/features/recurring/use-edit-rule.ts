@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import {
   getKeypadCategories,
   getKeypadAccounts,
@@ -39,9 +39,8 @@ export function useEditRule(id: number): { ready: boolean; data: EditRuleData | 
 
   useEffect(() => {
     let alive = true;
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const rule = await getRule(db, id);
       if (rule === undefined) {
         if (!alive) return;
@@ -82,7 +81,7 @@ export function useEditRule(id: number): { ready: boolean; data: EditRuleData | 
         iconSet,
       });
       setReady(true);
-    })();
+    });
     return () => {
       alive = false;
     };

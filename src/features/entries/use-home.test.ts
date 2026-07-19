@@ -178,6 +178,22 @@ describe('useHome', () => {
       await waitFor(() => expect(result.current.data?.total).toBe(before?.total));
     });
 
+    // Home reaches the db through withDb, so a db that will not open is a condition, not an error:
+    // the hook simply never becomes ready and AppShell's useDbHealth puts the one explanation on
+    // screen. Before that split, this path threw out of a void-ed async IIFE — an unhandled
+    // rejection per mounted hook, seventeen of them, all restating the same thing.
+    it('stays not-ready without throwing when the db cannot be opened', async () => {
+      vi.mocked(getBrowserDb).mockRejectedValue(new Error('NoModificationAllowedError'));
+      const { result } = renderHook(() => useHome('2026-06'));
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.ready).toBe(false);
+      expect(result.current.data).toBeNull();
+    });
+
     it('still shows the skeleton when the cycle itself changes', async () => {
       // A different cycle is different content, not a refresh of what is on screen — holding the old
       // numbers under a new cycle label would state the wrong month's spend.
@@ -186,6 +202,9 @@ describe('useHome', () => {
       });
       await waitFor(() => expect(result.current.ready).toBe(true));
 
+      // Synchronous on purpose: the reset happens during render, so there is no tick in which the
+      // hook reports ready against the previous cycle's figures. If this ever needs an await to
+      // pass, the reset has drifted back behind an await and that window has reopened.
       rerender({ key: '2026-05' });
       expect(result.current.ready).toBe(false);
 

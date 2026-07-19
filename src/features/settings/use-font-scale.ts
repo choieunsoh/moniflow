@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { getFontScale, FONT_SCALE_PCT, FONT_SCALE_STORAGE_KEY } from './queries';
 import { useDataVersion } from '@shared/data-version';
 
@@ -14,11 +14,10 @@ export function useFontScale(): void {
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
-      const db = await getBrowserDb();
+    void withDb(async (db) => {
       const scale = await getFontScale(db);
       document.documentElement.style.fontSize = FONT_SCALE_PCT[scale];
       localStorage.setItem(FONT_SCALE_STORAGE_KEY, scale);
-    })();
+    });
   }, [version]);
 }

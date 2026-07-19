@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { getDistinctCategories, getDistinctAccounts } from './queries';
 import { getIconSet, type IconSet } from '@features/settings/queries';
 import { useDataVersion } from '@shared/data-version';
@@ -20,8 +20,7 @@ export function useSearchSuggestions(): {
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
-      const db = await getBrowserDb();
+    void withDb(async (db) => {
       const [cats, accts, icons] = await Promise.all([
         getDistinctCategories(db),
         getDistinctAccounts(db),
@@ -30,7 +29,7 @@ export function useSearchSuggestions(): {
       setSuggestions([...new Set([...cats, ...accts])].sort());
       setIconSet(icons);
       setReady(true);
-    })();
+    });
   }, [version]);
 
   return { suggestions, iconSet, ready };

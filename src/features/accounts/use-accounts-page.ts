@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import {
   getAccountCounts,
   getAccountBreakdown,
@@ -36,10 +36,9 @@ export function useAccountsPage(): { ready: boolean; data: AccountsPageData | nu
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
+    void withDb(async (db) => {
       // No setReady(false) on refetch — see use-categories-page: it unmounted the page (and with it
       // the open reorder sheet) on every version bump. `ready` means "loaded once", not "not stale".
-      const db = await getBrowserDb();
       const [counts, iconMap, hueMap, cutoff, keypadAccounts] = await Promise.all([
         getAccountCounts(db),
         getAccountIconMap(db),
@@ -54,7 +53,7 @@ export function useAccountsPage(): { ready: boolean; data: AccountsPageData | nu
 
       setData({ counts, iconMap, hueMap, breakdown, bars, keypadAccounts });
       setReady(true);
-    })();
+    });
   }, [version]);
 
   return { ready, data };

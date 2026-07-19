@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { getDistinctCategories, getCategoryBreakdown } from '@features/entries/queries';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { getBudgets } from './queries';
@@ -32,9 +32,8 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const cutoff = await getCutoff(db);
       const cycle = cycleFromKey(currentCycleKey(todayIso(), cutoff), cutoff);
 
@@ -66,7 +65,7 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
 
       setData({ cycleLabel: cycle.label, emojis, hues, iconSet, rows, total, active, dormant });
       setReady(true);
-    })();
+    });
   }, [version]);
 
   return { ready, data };

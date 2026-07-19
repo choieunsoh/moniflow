@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { getCategoryBreakdown, type Breakdown } from './queries';
 import { lastCycles, currentCycleKey } from './cycle';
 import { TREND_CYCLES, toTrendBars, monthLabel, type TrendBar } from './trend';
@@ -74,9 +74,8 @@ export function useAnalytics(
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const [cutoff, emojiMap, hueMap, iconSet] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
@@ -160,7 +159,7 @@ export function useAnalytics(
         budgetLine,
       });
       setReady(true);
-    })();
+    });
   }, [cycleKey, category, version]);
 
   return { ready, data };

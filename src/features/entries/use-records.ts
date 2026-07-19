@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { getEntriesInRange, searchEntries, getEntriesByCategory, getTripEntries } from './queries';
 import type { EntryRow } from './schema';
 import { groupByDate } from './by-date';
@@ -69,9 +69,8 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
   const version = useDataVersion();
 
   useEffect(() => {
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const [cutoff, emojiMap, hueMap, accountIconMap, accountHueMap, iconSet] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
@@ -155,7 +154,7 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
         currencySums,
       });
       setReady(true);
-    })();
+    });
   }, [cycleParam, category, account, q, view, all, currency, from, to, version]);
 
   return { ready, data };

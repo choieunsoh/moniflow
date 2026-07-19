@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrowserDb } from '@db/browser';
+import { withDb } from '@shared/db-effect';
 import { useDataVersion } from '@shared/data-version';
 import { withFee } from '@features/entries/fx';
 import { getCardFeePct, getFxRates } from '@features/settings/queries';
@@ -36,9 +36,8 @@ export function useRecurring(): { ready: boolean; rules: RuleView[]; monthlyTota
 
   useEffect(() => {
     let alive = true;
-    void (async () => {
+    void withDb(async (db) => {
       setReady(false);
-      const db = await getBrowserDb();
       const [rows, fxRates, cardFeePct] = await Promise.all([
         listRules(db),
         getFxRates(db),
@@ -61,7 +60,7 @@ export function useRecurring(): { ready: boolean; rules: RuleView[]; monthlyTota
         })),
       );
       setReady(true);
-    })();
+    });
     return () => {
       alive = false;
     };
