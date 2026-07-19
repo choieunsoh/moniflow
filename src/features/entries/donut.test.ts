@@ -3,6 +3,36 @@ import { toDonutSlices, buildDonutOption, donutSummaryLabel, SLICE_COLORS } from
 
 const row = (key: string, total: number, count = 1) => ({ key, total, count });
 
+// The palette's job is to be non-semantic, and the failure mode is a NEAR miss, not an exact one:
+// the first version shipped #7c5cff against an accent of #7132f5 — different hex, same purple to the
+// eye — so the biggest category every cycle wore the colour reserved for actions and selection.
+// Comparing hex strings would not have caught that, so this measures hue distance in OKLCH.
+function hueOf(hex: string): number {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  return ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
+}
+describe('SLICE_COLORS', () => {
+  // Kept in step with globals.css @theme by hand — these are the tokens a slice must never imitate.
+  const RESERVED = { accent: '#7132f5', gain: '#19c37d', loss: '#f0616d' };
+
+  it.each(Object.entries(RESERVED))('never impersonates --color-%s', (_name, token) => {
+    const reserved = hueOf(token);
+    for (const slice of SLICE_COLORS) {
+      const d = Math.abs(hueOf(slice) - reserved) % 360;
+      expect(Math.min(d, 360 - d)).toBeGreaterThan(25);
+    }
+  });
+});
+
 describe('toDonutSlices', () => {
   it('maps magnitudes and assigns palette colours in order, carrying the count', () => {
     expect(toDonutSlices([row('a', -30, 5), row('b', -20, 2)])).toEqual([
@@ -80,28 +110,31 @@ describe('buildDonutOption', () => {
     rootPx: 16,
   };
 
-  // The hole sits directly under a panel that already reads "Spent this cycle ฿63,295", so a hole
-  // label of "22 · Spent" both repeated that word and read as a fragment. The count is the one thing
-  // the panel does NOT say, so the hole names it in full.
-  it('labels the hole with the summed transaction count, spelled out', () => {
+  // The hole sits directly under a panel that already reads "Spent this cycle ฿63,295". The count is
+  // the one thing that panel does NOT say, so the hole names it — and only it.
+  it('fills the hole with the summed transaction count', () => {
     const opt = buildDonutOption([row('a', -30, 5), row('b', -20, 2)], palette);
-    expect(opt.graphic[1].style.text).toBe('7 transactions'); // 5 + 2
+    expect(opt.graphic[0].style.text).toBe('7'); // 5 + 2
+    expect(opt.graphic[1].style.text).toBe('transactions');
   });
 
   it('says transaction, singular, when there is only one', () => {
     const opt = buildDonutOption([row('a', -30, 1)], palette);
-    expect(opt.graphic[1].style.text).toBe('1 transaction');
+    expect(opt.graphic[0].style.text).toBe('1');
+    expect(opt.graphic[1].style.text).toBe('transaction');
   });
 
-  it('rounds the hole to whole baht — it is a glance figure, not a ledger row', () => {
-    // Deliberate: the exact ฿1,354.56 is on the breakdown beside it. The hole stays short.
+  it('groups a four-figure count', () => {
+    const opt = buildDonutOption([row('a', -30, 1200), row('b', -20, 34)], palette);
+    expect(opt.graphic[0].style.text).toBe('1,234');
+  });
+
+  // The regression this guards: Chart view used to print the cycle total twice — once in the panel
+  // above the toggle, once in the ring's hole — so the same string appeared twice on one screen.
+  // The panel is the constant across both views, so the ring is the one that gives it up.
+  it('keeps money out of the hole entirely', () => {
     const opt = buildDonutOption([row('a', -1234.56, 1), row('b', -120, 1)], palette);
-    expect(opt.graphic[0].style.text).toBe('฿1,355');
-  });
-
-  it('never renders the hole with a trailing .00 after rounding', () => {
-    const opt = buildDonutOption([row('a', -30, 5), row('b', -20, 2)], palette);
-    expect(opt.graphic[0].style.text).toBe('฿50');
+    for (const g of opt.graphic) expect(g.style.text).not.toContain('฿');
   });
 
   // The hole is canvas text, so it ignores the root font-size the rest of the app scales with.
