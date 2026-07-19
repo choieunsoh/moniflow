@@ -27,6 +27,48 @@ describe('toDonutSlices', () => {
   it('drops zero-value rows', () => {
     expect(toDonutSlices([row('z', 0), row('a', -5)]).map((s) => s.name)).toEqual(['a']);
   });
+
+  // Other is the one slice with no way in: a ring can't fragment into 15 slivers, so the tail folds.
+  // But the fold used to be a dead end — on a real ledger that bucket was 16% of the cycle and 15
+  // transactions the reader could not reach from this view, while the ranked list beside it already
+  // opened its tail behind a <details>. Carrying the folded rows on the bucket lets the legend offer
+  // the same disclosure, so both views reach every category.
+  describe('folded', () => {
+    it('carries the categories it merged, in rank order', () => {
+      const rows = Array.from({ length: SLICE_COLORS.length + 3 }, (_, i) =>
+        row(`c${i}`, -(20 - i), 2),
+      );
+      const other = toDonutSlices(rows).at(-1);
+      expect(other?.folded?.map((f) => f.name)).toEqual(['c7', 'c8', 'c9']);
+      expect(other?.folded?.map((f) => f.value)).toEqual([13, 12, 11]);
+    });
+
+    it('folds rows sum to the bucket, so disclosing them adds no new money', () => {
+      const rows = Array.from({ length: SLICE_COLORS.length + 4 }, (_, i) =>
+        row(`c${i}`, -(20 - i), 3),
+      );
+      const other = toDonutSlices(rows).at(-1);
+      const folded = other?.folded ?? [];
+      expect(folded.reduce((sum, f) => sum + f.value, 0)).toBe(other?.value);
+      expect(folded.reduce((sum, f) => sum + f.count, 0)).toBe(other?.count);
+    });
+
+    it('gives folded rows the bucket colour — they ARE the grey wedge, not slices of their own', () => {
+      const rows = Array.from({ length: SLICE_COLORS.length + 2 }, (_, i) =>
+        row(`c${i}`, -(20 - i)),
+      );
+      const other = toDonutSlices(rows).at(-1);
+      for (const f of other?.folded ?? []) expect(f.color).toBe(other?.color);
+      // ...and they stay real categories: editable and tappable, unlike the synthetic bucket.
+      for (const f of other?.folded ?? []) expect(f.other).toBeUndefined();
+    });
+
+    it('is absent when nothing folded — no empty disclosure to open', () => {
+      const slices = toDonutSlices([row('a', -30), row('b', -20)]);
+      expect(slices.some((s) => s.other)).toBe(false);
+      for (const s of slices) expect(s.folded).toBeUndefined();
+    });
+  });
 });
 
 describe('buildDonutOption', () => {

@@ -63,6 +63,9 @@ export default function HomePage() {
 
   const showList = view === 'category';
   const hasSpending = summary.count > 0;
+  // The categories the ring folded into Other, carried on the bucket itself (only the fold knows
+  // which they were). Empty whenever the cycle fits inside the palette and there is no Other at all.
+  const folded = slices.find((s) => s.other)?.folded ?? [];
 
   return (
     <PageContainer size="full">
@@ -145,6 +148,36 @@ export default function HomePage() {
                     />
                   ))}
                 </ul>
+                {/* Other's way in. The ring has to fold its tail — fifteen slivers is not a chart —
+                    but the fold was a dead end: on a long-tailed cycle that bucket runs to a sixth
+                    of the spend and a dozen-plus transactions, inert by design, while List opened
+                    the SAME tail behind a disclosure. So the toggle still changed the answer, one
+                    level below the count fix in 12347ec: both views folded at MAX_SLICES, only one
+                    let you past it. Same native <details> as Breakdown — same element, same copy
+                    shape, keyboard and AT semantics for free. */}
+                {folded.length > 0 ? (
+                  <details>
+                    <summary
+                      className="tap flex cursor-pointer items-center text-sm"
+                      style={{ color: 'var(--color-accent-text)' }}
+                    >
+                      {folded.length} {folded.length === 1 ? 'category' : 'categories'} in Other
+                    </summary>
+                    <ul className="mt-3 flex flex-col gap-2.5">
+                      {folded.map((s) => (
+                        <LegendRow
+                          key={s.name}
+                          slice={s}
+                          total={total}
+                          cycleKey={activeKey}
+                          emojis={emojiMap}
+                          hues={hueMap}
+                          iconSet={iconSet}
+                        />
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
               </section>
             )}
           </CycleSwipe>

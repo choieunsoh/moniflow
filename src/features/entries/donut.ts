@@ -21,12 +21,18 @@ export const MAX_SLICES = SLICE_COLORS.length;
 
 // `other: true` marks the synthetic tail bucket — not a real category, so the legend must not offer
 // to edit it. Real slices omit the field.
+//
+// `folded` rides on that bucket alone: the real categories it merged, in rank order. Only this split
+// knows which they were, and without them Other is a dead end — on a long-tailed cycle it can be a
+// sixth of the spend and a dozen transactions with no way in, while the ranked list beside it opens
+// its identical tail behind a <details>. Handing them back lets the legend offer the same disclosure.
 export type DonutSlice = {
   name: string;
   value: number;
   color: string;
   count: number;
   other?: boolean;
+  folded?: DonutSlice[];
 };
 
 // Category breakdown (magnitudes, already sorted desc) → donut slices, with a neutral "Other" bucket
@@ -48,6 +54,12 @@ export function toDonutSlices(rows: Breakdown[]): DonutSlice[] {
       color: OTHER_COLOR,
       count: rest.reduce((sum, s) => sum + s.count, 0),
       other: true,
+      // The bucket's own colour, not a palette slot: these categories have no wedge of their own —
+      // they ARE the grey one — and giving them a slice colour would key the legend to a ring that
+      // never drew them. Same reasoning that keeps unmapped Breakdown bars neutral. They stay real
+      // categories otherwise (no `other` flag), so each is still editable and still taps through to
+      // its records.
+      folded: rest.map((s) => ({ ...s, color: OTHER_COLOR })),
     });
   }
   return slices;
