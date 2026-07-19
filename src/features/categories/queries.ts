@@ -2,9 +2,11 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '@db/client';
 import type { CategoryCatalogRow } from '@features/settings/catalog';
 import { categories } from './schema';
+import { defaultEmojiFor, FALLBACK_EMOJI } from './default-emoji';
 
-// Shown for any category without an assigned emoji.
-export const FALLBACK_EMOJI = '🏷️';
+// Re-exported so existing importers keep one import site for the neutral tag; it and the name-based
+// seeding live together in default-emoji.ts, which stays DB-free and testable on its own.
+export { FALLBACK_EMOJI } from './default-emoji';
 
 // Curated picker set — common expense categories, calm and non-exhaustive. Food/drink, shopping,
 // bills/home, transport, health, leisure, money, misc.
@@ -185,13 +187,13 @@ export function emojiFor(map: Record<string, string>, category: string): string 
   return map[category] ?? FALLBACK_EMOJI;
 }
 
-// Create an empty category (no entries yet) with the fallback emoji — it shows on the list immediately
-// (getCategoryCounts left-joins, so count 0). No-op if the name already exists, so it never clobbers an
-// existing category's emoji/hue. Restyle the icon/colour afterwards with the picker.
+// Create an empty category (no entries yet), seeding its icon from the name — it shows on the list
+// immediately (getCategoryCounts left-joins, so count 0). No-op if the name already exists, so it
+// never clobbers an existing category's emoji/hue. Restyle the icon/colour afterwards with the picker.
 export async function addCategory(db: Db, name: string): Promise<void> {
   await db
     .insert(categories)
-    .values({ name, emoji: FALLBACK_EMOJI })
+    .values({ name, emoji: defaultEmojiFor(name) })
     .onConflictDoNothing({ target: categories.name })
     .run();
 }
@@ -207,12 +209,12 @@ export async function getHueMap(db: Db): Promise<Record<string, number>> {
   return map;
 }
 
-// Upsert the hue. `null` resets to auto. A new name gets the fallback emoji to satisfy NOT NULL; an
-// existing row keeps its emoji (only hue changes).
+// Upsert the hue. `null` resets to auto. A new name gets its name-seeded emoji to satisfy NOT NULL;
+// an existing row keeps its emoji (only hue changes).
 export async function setCategoryHue(db: Db, category: string, hue: number | null): Promise<void> {
   await db
     .insert(categories)
-    .values({ name: category, emoji: FALLBACK_EMOJI, hue })
+    .values({ name: category, emoji: defaultEmojiFor(category), hue })
     .onConflictDoUpdate({ target: categories.name, set: { hue } })
     .run();
 }
@@ -221,12 +223,14 @@ export function hueFor(map: Record<string, number>, category: string): number | 
   return map[category];
 }
 
-// Resolve a category name to its id, creating the row (fallback emoji) if the name is new. This is the
-// single write-boundary that turns the name-based UI/import into id-based storage. Idempotent.
+// Resolve a category name to its id, creating the row if the name is new. This is the single
+// write-boundary that turns the name-based UI/import into id-based storage, so seeding the icon HERE
+// is what makes a Monefy CSV restore arrive with meaningful icons rather than 22 identical tags —
+// every import and keypad entry routes through it. Idempotent.
 export async function categoryIdFor(db: Db, name: string): Promise<number> {
   await db
     .insert(categories)
-    .values({ name, emoji: FALLBACK_EMOJI })
+    .values({ name, emoji: defaultEmojiFor(name) })
     .onConflictDoNothing({ target: categories.name })
     .run();
   const row = await db

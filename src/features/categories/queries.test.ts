@@ -24,11 +24,19 @@ async function db() {
 }
 
 describe('categoryIdFor', () => {
-  it('inserts a new category with the fallback emoji and returns its id', async () => {
+  // This is the write-boundary every import and keypad entry routes through, so the seeding has to
+  // happen here or a Monefy restore lands 22 categories all wearing the same neutral tag.
+  it('inserts a new category with an icon seeded from the name, and returns its id', async () => {
     const d = await db();
     const id = await categoryIdFor(d, 'groceries');
     expect(id).toBeGreaterThan(0);
-    expect(await getEmojiMap(d)).toEqual({ groceries: FALLBACK_EMOJI });
+    expect(await getEmojiMap(d)).toEqual({ groceries: '🛒' });
+  });
+
+  it('still falls back to the neutral tag for a name it cannot read', async () => {
+    const d = await db();
+    await categoryIdFor(d, 'Qwertyuiop');
+    expect(await getEmojiMap(d)).toEqual({ Qwertyuiop: FALLBACK_EMOJI });
   });
 
   it('returns the existing id for a known name and does not duplicate or overwrite meta', async () => {
@@ -42,10 +50,10 @@ describe('categoryIdFor', () => {
 });
 
 describe('addCategory', () => {
-  it('creates a new empty category with the fallback emoji', async () => {
+  it('creates a new empty category with an icon seeded from the name', async () => {
     const d = await db();
     await addCategory(d, 'Snacks');
-    expect(await getEmojiMap(d)).toEqual({ Snacks: FALLBACK_EMOJI });
+    expect(await getEmojiMap(d)).toEqual({ Snacks: '🍰' });
   });
 
   it('is a no-op on an existing name — keeps its emoji, no duplicate', async () => {
