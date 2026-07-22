@@ -53,9 +53,12 @@ export function disconnectDrive(): void {
   bumpDataVersion();
 }
 
-export async function backupNow(opts: { interactive: boolean }): Promise<void> {
+// Returns true when a backup was actually uploaded, false when it no-op'd because the ledger is empty
+// (nothing to lose). The manual "Back up now" tap uses this to avoid claiming success on an empty
+// ledger; the auto-sync path ignores it. A token failure still throws (and flags needsReconnect).
+export async function backupNow(opts: { interactive: boolean }): Promise<boolean> {
   const db = await getBrowserDb();
-  if (!(await hasAnyExpense(db))) return; // nothing to lose
+  if (!(await hasAnyExpense(db))) return false; // nothing to lose
   let token: string;
   try {
     token = await requestToken({ interactive: opts.interactive });
@@ -66,6 +69,7 @@ export async function backupNow(opts: { interactive: boolean }): Promise<void> {
     throw err;
   }
   await pushWith(token);
+  return true;
 }
 
 export async function listDriveBackups(): Promise<DriveFile[]> {

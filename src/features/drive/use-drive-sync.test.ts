@@ -24,7 +24,7 @@ const ENTRY = {
 describe('useDriveSync', () => {
   beforeEach(async () => {
     localStorage.clear();
-    vi.mocked(backupNow).mockReset().mockResolvedValue(undefined);
+    vi.mocked(backupNow).mockReset().mockResolvedValue(true);
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     await restoreEntries(db, [ENTRY]);

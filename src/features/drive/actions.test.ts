@@ -63,7 +63,7 @@ describe('backupNow', () => {
 
   it('uploads, stamps lastSyncedAt AND the local backup timestamp, and clears needsReconnect', async () => {
     writeConnection({ connected: true, folderId: null, lastSyncedAt: null, needsReconnect: true });
-    await backupNow({ interactive: false });
+    expect(await backupNow({ interactive: false })).toBe(true); // uploaded → true
     expect(uploadBackup).toHaveBeenCalledTimes(1);
     const conn = readConnection();
     expect(conn.connected).toBe(true);
@@ -89,7 +89,7 @@ describe('backupNow', () => {
     await ensureBudgetsTable(empty);
     await ensureSettingsTable(empty);
     vi.mocked(getBrowserDb).mockResolvedValue(empty);
-    await backupNow({ interactive: false });
+    expect(await backupNow({ interactive: false })).toBe(false); // empty ledger → no-op, returns false
     expect(uploadBackup).not.toHaveBeenCalled();
     expect(requestToken).not.toHaveBeenCalled(); // empty ledger never prompts for auth
   });

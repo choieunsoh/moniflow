@@ -44,6 +44,20 @@ export function DriveBackup() {
     }
   }
 
+  // Distinct from `run` because an empty ledger is a real no-op, not a success: backupNow returns
+  // false and we say so, instead of falsely toasting "Backed up to Drive" with nothing uploaded.
+  async function backup(): Promise<void> {
+    setBusy(true);
+    try {
+      const uploaded = await backupNow({ interactive: true });
+      toast(uploaded ? 'Backed up to Drive' : 'Nothing to back up yet — add an expense first');
+    } catch {
+      toast.error('Drive request failed — reconnect and try again');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function openPicker(): Promise<void> {
     setBusy(true);
     try {
@@ -109,7 +123,7 @@ export function DriveBackup() {
               type="button"
               className="btn btn-ghost w-fit"
               disabled={busy}
-              onClick={() => void run(() => backupNow({ interactive: true }), 'Backed up to Drive')}
+              onClick={() => void backup()}
             >
               Back up now
             </button>
