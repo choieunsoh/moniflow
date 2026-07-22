@@ -13,6 +13,7 @@ import {
 } from '@features/settings/actions';
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
+import { DriveBackup } from '@features/drive/ui/DriveBackup';
 import { saveFile } from '@shared/save-file';
 import { bumpDataVersion } from '@shared/data-version';
 import { useBackupStatus } from '@shared/use-backup-status';
@@ -287,6 +288,7 @@ export default function SettingsPage() {
           Export backup
         </button>
         <ImportBackup />
+        <DriveBackup />
       </section>
 
       <section
