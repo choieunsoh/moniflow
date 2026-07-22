@@ -13,14 +13,14 @@ export function bumpDataVersion(): void {
   for (const listener of listeners) listener();
 }
 
-function subscribe(onChange: () => void): () => void {
+export function subscribeDataVersion(onChange: () => void): () => void {
   listeners.add(onChange);
   return () => listeners.delete(onChange);
 }
 
 export function useDataVersion(): number {
   return useSyncExternalStore(
-    subscribe,
+    subscribeDataVersion,
     () => version,
     () => version, // server snapshot: stable 0 (no writes during SSR)
   );
