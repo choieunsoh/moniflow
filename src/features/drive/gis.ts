@@ -15,7 +15,7 @@ let loading: Promise<void> | null = null;
 
 function loadGis(): Promise<void> {
   if (loading !== null) return loading;
-  loading = new Promise((resolve, reject) => {
+  const attempt = new Promise<void>((resolve, reject) => {
     if (typeof document === 'undefined') {
       reject(new Error('no document'));
       return;
@@ -31,6 +31,10 @@ function loadGis(): Promise<void> {
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('failed to load Google Identity Services'));
     document.head.appendChild(script);
+  });
+  loading = attempt.catch((err: unknown) => {
+    loading = null; // let the next call retry a failed load
+    throw err;
   });
   return loading;
 }
