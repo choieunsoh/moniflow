@@ -6,9 +6,10 @@ import { ensureAccountsTable } from '@features/accounts/schema';
 import { ensureRecurrencesTable } from '@features/recurring/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { ensureSettingsTable } from '@features/settings/schema';
-import { restoreEntries } from '@features/entries/queries';
-import { readConnection } from './connection';
+import { restoreEntries, getEntries } from '@features/entries/queries';
+import { readConnection, writeConnection } from './connection';
 import { readLastBackupAt } from '@shared/backup-safety';
+import { buildBackupText } from '@features/settings/backup-payload';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 vi.mock('./gis', () => ({ requestToken: vi.fn() }));
@@ -22,8 +23,14 @@ vi.mock('./drive-api', () => ({
 
 import { getBrowserDb } from '@db/browser';
 import { requestToken } from './gis';
-import { findOrCreateFolder, uploadBackup, listBackups, deleteFile } from './drive-api';
-import { backupNow } from './actions';
+import {
+  findOrCreateFolder,
+  uploadBackup,
+  listBackups,
+  downloadFile,
+  deleteFile,
+} from './drive-api';
+import { backupNow, restoreFromDrive } from './actions';
 
 const ENTRY = {
   date: '2026-07-15',
@@ -55,6 +62,7 @@ describe('backupNow', () => {
   });
 
   it('uploads, stamps lastSyncedAt AND the local backup timestamp, and clears needsReconnect', async () => {
+    writeConnection({ connected: true, folderId: null, lastSyncedAt: null, needsReconnect: true });
     await backupNow({ interactive: false });
     expect(uploadBackup).toHaveBeenCalledTimes(1);
     const conn = readConnection();
@@ -83,5 +91,53 @@ describe('backupNow', () => {
     vi.mocked(getBrowserDb).mockResolvedValue(empty);
     await backupNow({ interactive: false });
     expect(uploadBackup).not.toHaveBeenCalled();
+    expect(requestToken).not.toHaveBeenCalled(); // empty ledger never prompts for auth
+  });
+});
+
+describe('restoreFromDrive', () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    const db = makeNodeProxyDb();
+    await ensureEntriesTable(db);
+    await ensureCategoriesTable(db);
+    await ensureAccountsTable(db);
+    await ensureRecurrencesTable(db);
+    await ensureBudgetsTable(db);
+    await ensureSettingsTable(db);
+    await restoreEntries(db, [ENTRY]);
+    vi.mocked(getBrowserDb).mockResolvedValue(db);
+    vi.mocked(requestToken).mockResolvedValue('tok');
+  });
+
+  it('rejects a non-backup file before touching the ledger — no data loss', async () => {
+    vi.mocked(downloadFile).mockResolvedValue('this is not a backup');
+    await expect(restoreFromDrive('some-id')).rejects.toThrow('That file is not a moniflow backup');
+    const db = await getBrowserDb();
+    const rows = await getEntries(db);
+    expect(rows).toHaveLength(1); // untouched — the seeded ENTRY survives the failed restore
+    expect(rows[0]?.category).toBe('Coffee');
+  });
+
+  it('restores a real v3 combined backup', async () => {
+    const sourceDb = makeNodeProxyDb();
+    await ensureEntriesTable(sourceDb);
+    await ensureCategoriesTable(sourceDb);
+    await ensureAccountsTable(sourceDb);
+    await ensureRecurrencesTable(sourceDb);
+    await ensureBudgetsTable(sourceDb);
+    await ensureSettingsTable(sourceDb);
+    await restoreEntries(sourceDb, [{ ...ENTRY, category: 'Rent', amount: -50000 }]);
+    const { text } = await buildBackupText(sourceDb);
+    vi.mocked(downloadFile).mockResolvedValue(text);
+
+    const summary = await restoreFromDrive('some-id');
+
+    expect(summary.entries).toBe(1);
+    const db = await getBrowserDb();
+    const rows = await getEntries(db);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.category).toBe('Rent');
   });
 });
