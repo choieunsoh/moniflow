@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
-import { getEntries } from '@features/entries/queries';
-import { serializeMonefyCsv } from '@features/entries/import';
-import { getCategoryCatalog } from '@features/categories/queries';
-import { getAccountCatalog } from '@features/accounts/queries';
-import { getRuleCatalog } from '@features/recurring/queries';
-import { getBudgetCatalog } from '@features/budgets/queries';
-import { getAllSettings } from './queries';
-import { serializeCatalogJson } from './catalog';
+import { buildBackupText } from './backup-payload';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 
@@ -54,31 +47,15 @@ export function useBackupData(): { ready: boolean; data: BackupData | null } {
     let live = true;
     void withDb(async (db) => {
       setReady(false);
-      const [rows, categories, accounts, recurrences, budgets, settings] = await Promise.all([
-        getEntries(db),
-        getCategoryCatalog(db),
-        getAccountCatalog(db),
-        getRuleCatalog(db),
-        getBudgetCatalog(db),
-        getAllSettings(db),
-      ]);
-      if (!live) return; // a bumpDataVersion mid-read would otherwise publish the older ledger
+      const payload = await buildBackupText(db);
+      if (!live) return;
       const day = todayIso();
-      const text = serializeCatalogJson({
-        version: 3,
-        categories,
-        accounts,
-        recurrences,
-        entriesCsv: serializeMonefyCsv(rows),
-        budgets,
-        settings,
-      });
       setData({
-        file: { name: `moniflow-backup-${day}.txt`, type: BACKUP_MIME, text },
-        entryCount: rows.length,
-        categoryCount: categories.length,
-        accountCount: accounts.length,
-        budgetCount: budgets.length,
+        file: { name: `moniflow-backup-${day}.txt`, type: BACKUP_MIME, text: payload.text },
+        entryCount: payload.entryCount,
+        categoryCount: payload.categoryCount,
+        accountCount: payload.accountCount,
+        budgetCount: payload.budgetCount,
       });
       setReady(true);
     });
