@@ -7,6 +7,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { isActivePath } from './active-path';
 import { cycleHref } from './cycle-href';
 import { MoreSheet } from './MoreSheet';
+import { useBackupStatus } from '../use-backup-status';
 
 // App-style tab bar, always visible, centered to the app column. Five slots:
 // Home · Records · [＋ expense FAB → /entries/new] · Analytics · More.
@@ -20,6 +21,9 @@ export function BottomBar() {
   // More sheet but still reads a cycle — see MoreSheet's `cycle: true` flag.
   const cycle = useSearchParams().get('cycle');
   const [moreOpen, setMoreOpen] = useState(false);
+  // Settings (and its Backup screen) lives in the More sheet, so an overdue backup rides a dot on the
+  // More tab — discoverable without opening the sheet, silent while backups are current.
+  const { overdue: backupOverdue } = useBackupStatus();
 
   return (
     <>
@@ -60,6 +64,7 @@ export function BottomBar() {
               label="More"
               active={moreOpen}
               icon={<MoreIcon />}
+              alert={backupOverdue}
               onClick={() => setMoreOpen(true)}
             />
           </li>
@@ -93,15 +98,36 @@ function tabColor(active: boolean): string {
 }
 
 // The shared tab visual: icon in a pill (accent-soft when active) over a label. The pill scales down
-// on press for tactile feedback.
-function TabInner({ active, icon, label }: { active: boolean; icon: ReactNode; label: string }) {
+// on press for tactile feedback. `alert` rides an accent dot on the icon — the accessible-name change
+// lives on the button, so the signal is never colour-alone.
+function TabInner({
+  active,
+  icon,
+  label,
+  alert = false,
+}: {
+  active: boolean;
+  icon: ReactNode;
+  label: string;
+  alert?: boolean;
+}) {
   return (
     <>
       <span
-        className="grid place-items-center rounded-full px-4 py-1 transition-[background-color,transform] duration-200 group-active:scale-90"
+        className="relative grid place-items-center rounded-full px-4 py-1 transition-[background-color,transform] duration-200 group-active:scale-90"
         style={{ background: active ? 'var(--color-accent-soft)' : 'transparent' }}
       >
         {icon}
+        {alert ? (
+          <span
+            aria-hidden
+            className="absolute top-0.5 right-2.5 size-2 rounded-full"
+            style={{
+              background: 'var(--color-accent)',
+              boxShadow: '0 0 0 2px var(--color-bg)',
+            }}
+          />
+        ) : null}
       </span>
       {/* The bar is a fixed 5-column grid, so a scaled-up label has nowhere to grow — at 200% zoom
           the longer labels used to overrun their column and collide with their neighbours. Clamped
@@ -147,11 +173,13 @@ function BarButton({
   label,
   active,
   icon,
+  alert = false,
   onClick,
 }: {
   label: string;
   active: boolean;
   icon: ReactNode;
+  alert?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -160,10 +188,12 @@ function BarButton({
       onClick={onClick}
       aria-haspopup="dialog"
       aria-expanded={active}
+      // The dot's meaning, spoken — so the nudge is a wording change, not colour alone.
+      aria-label={alert ? `${label} — backup overdue` : undefined}
       className="group flex min-h-[44px] w-full flex-col items-center justify-center gap-1 pt-2 pb-1 transition-colors duration-200"
       style={{ color: tabColor(active) }}
     >
-      <TabInner active={active} icon={icon} label={label} />
+      <TabInner active={active} icon={icon} label={label} alert={alert} />
     </button>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useSettings } from '@features/settings/use-settings';
 import { useBackupData, type BackupFile } from '@features/settings/use-backup-data';
 import { ICON_SETS, FONT_SCALES, KEYPAD_LAYOUTS } from '@features/settings/queries';
@@ -13,6 +14,9 @@ import {
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
 import { saveFile } from '@shared/save-file';
+import { bumpDataVersion } from '@shared/data-version';
+import { useBackupStatus } from '@shared/use-backup-status';
+import { isStoragePersisted, writeLastBackupAt } from '@shared/backup-safety';
 import { toast } from '@shared/ui/toast';
 import { withSaveToast } from '@shared/ui/with-save-toast';
 import { PageContainer } from '@shared/ui/PageContainer';
@@ -46,6 +50,10 @@ const KEYPAD_LAYOUT_LABELS = {
 async function exportFile(file: BackupFile, done: string): Promise<void> {
   try {
     await saveFile(file.name, file.type, file.text);
+    // Only on a genuine success: stamp this device's last-backup time, then bump so useBackupStatus
+    // re-reads it everywhere — the overdue nudge here and the dot on the More tab both clear at once.
+    writeLastBackupAt(Date.now());
+    bumpDataVersion();
     // States the count, which the browser's own download chrome can't: a silent success is
     // indistinguishable from a swallowed failure, and the count is what tells you the file is the
     // whole ledger and not an empty header. Mirrors the "Restored N entries" toast on the way back in.
@@ -55,10 +63,25 @@ async function exportFile(file: BackupFile, done: string): Promise<void> {
   }
 }
 
+const days = new Intl.NumberFormat('en-US');
+
 export default function SettingsPage() {
   const { ready, data } = useSettings();
   // Serialized ahead of the tap so the export handlers can reach navigator.share synchronously.
   const { ready: backupReady, data: backup } = useBackupData();
+  // Backup freshness (nudge) and whether OPFS is protected (transparency line). Both are honest-
+  // ceiling signals for a browser-only ledger — see shared/backup-safety.ts.
+  const { overdue: backupOverdue, daysSince } = useBackupStatus();
+  const [persisted, setPersisted] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    void isStoragePersisted().then((p) => {
+      if (live) setPersisted(p);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   if (!ready || data === null) {
     return (
@@ -235,6 +258,20 @@ export default function SettingsPage() {
           replaces every current entry; everything else is merged in, never deleted. Restore also
           accepts a plain Monefy CSV (ledger only), so imports from Monefy still work.
         </p>
+        {persisted !== null ? (
+          <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
+            {persisted
+              ? 'Storage: protected — this device won’t clear your ledger to free space.'
+              : 'Storage: not protected — export regularly to be safe.'}
+          </p>
+        ) : null}
+        {backupOverdue ? (
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            {daysSince === null
+              ? 'You haven’t backed up yet.'
+              : `Last backed up ${days.format(daysSince)} ${daysSince === 1 ? 'day' : 'days'} ago.`}
+          </p>
+        ) : null}
         <button
           type="button"
           className="btn btn-ghost w-fit"
