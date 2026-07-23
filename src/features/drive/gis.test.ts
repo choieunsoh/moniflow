@@ -3,7 +3,22 @@ import { requestToken } from './gis';
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
-// Pre-insert the GIS script so the loader resolves immediately, and stub the global token client.
+// A token-client stub whose response depends on the prompt it's called with, recording every prompt
+// seen. `on` maps a prompt ('' | 'consent') to either a token to resolve or an error to reject.
+function stubGoogle(on: { [p: string]: { access_token?: string; error?: string } }): string[] {
+  const prompts: string[] = [];
+  const initTokenClient = vi.fn(
+    (cfg: { callback: (r: { access_token?: string; error?: string }) => void }) => ({
+      requestAccessToken: (args: { prompt: string }) => {
+        prompts.push(args.prompt);
+        cfg.callback(on[args.prompt] ?? { error: 'unexpected_prompt' });
+      },
+    }),
+  );
+  Reflect.set(globalThis, 'google', { accounts: { oauth2: { initTokenClient } } });
+  return prompts;
+}
+
 describe('requestToken', () => {
   beforeEach(() => {
     for (const el of Array.from(document.querySelectorAll('script'))) el.remove();
@@ -12,32 +27,40 @@ describe('requestToken', () => {
     document.head.appendChild(s);
   });
 
-  it('resolves the access token from the GIS callback using the silent prompt', async () => {
-    let capturedPrompt: string | undefined;
-    const initTokenClient = vi.fn((cfg: { callback: (r: { access_token?: string }) => void }) => ({
-      requestAccessToken: (args: { prompt: string }) => {
-        capturedPrompt = args.prompt;
-        cfg.callback({ access_token: 'tok-123' });
-      },
-    }));
-    Reflect.set(globalThis, 'google', { accounts: { oauth2: { initTokenClient } } });
-
-    await expect(requestToken({ interactive: false })).resolves.toBe('tok-123');
-    expect(capturedPrompt).toBe('');
+  it('auto (non-interactive) uses only the silent prompt and never falls back to consent', async () => {
+    const prompts = stubGoogle({ '': { access_token: 'tok-silent' } });
+    await expect(requestToken({ interactive: false })).resolves.toBe('tok-silent');
+    expect(prompts).toEqual(['']);
   });
 
-  it('rejects when the callback returns no token, using the consent prompt', async () => {
-    let capturedPrompt: string | undefined;
-    const initTokenClient = vi.fn((cfg: { callback: (r: { error?: string }) => void }) => ({
-      requestAccessToken: (args: { prompt: string }) => {
-        capturedPrompt = args.prompt;
-        cfg.callback({ error: 'access_denied' });
-      },
-    }));
-    Reflect.set(globalThis, 'google', { accounts: { oauth2: { initTokenClient } } });
+  it('auto (non-interactive) rejects on silent failure without prompting for consent', async () => {
+    const prompts = stubGoogle({ '': { error: 'no_session' } });
+    await expect(requestToken({ interactive: false })).rejects.toThrow('no_session');
+    expect(prompts).toEqual(['']); // no consent attempt — the whole point of the silent path
+  });
 
+  it('a tap reuses an existing grant SILENTLY — no consent dialog when the session is alive', async () => {
+    const prompts = stubGoogle({ '': { access_token: 'tok-reused' } });
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-reused');
+    expect(prompts).toEqual(['']); // the nag fix: interactive did NOT force consent
+  });
+
+  it('a tap falls back to consent only when the silent path fails', async () => {
+    const prompts = stubGoogle({
+      '': { error: 'no_session' },
+      consent: { access_token: 'tok-granted' },
+    });
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-granted');
+    expect(prompts).toEqual(['', 'consent']); // silent first, then the consent flow
+  });
+
+  it('a tap rejects when both the silent and the consent attempts fail', async () => {
+    const prompts = stubGoogle({
+      '': { error: 'no_session' },
+      consent: { error: 'access_denied' },
+    });
     await expect(requestToken({ interactive: true })).rejects.toThrow('access_denied');
-    expect(capturedPrompt).toBe('consent');
+    expect(prompts).toEqual(['', 'consent']);
   });
 
   it('retries after a failed script load instead of caching the rejection', async () => {
@@ -53,10 +76,7 @@ describe('requestToken', () => {
     firstScript?.dispatchEvent(new Event('error'));
     await expect(firstAttempt).rejects.toThrow('failed to load Google Identity Services');
 
-    const initTokenClient = vi.fn((cfg: { callback: (r: { access_token?: string }) => void }) => ({
-      requestAccessToken: () => cfg.callback({ access_token: 'tok-456' }),
-    }));
-    Reflect.set(globalThis, 'google', { accounts: { oauth2: { initTokenClient } } });
+    stubGoogle({ '': { access_token: 'tok-456' } });
 
     const secondAttempt = freshRequestToken({ interactive: false });
     const secondScript = document.querySelector<HTMLScriptElement>(`script[src="${GIS_SRC}"]`);
