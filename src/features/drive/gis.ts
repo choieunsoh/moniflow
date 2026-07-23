@@ -39,7 +39,7 @@ function loadGis(): Promise<void> {
   return loading;
 }
 
-export async function requestToken(opts: { interactive: boolean }): Promise<string> {
+async function requestTokenRaw(prompt: '' | 'consent'): Promise<string> {
   await loadGis();
   if (typeof google === 'undefined' || google.accounts?.oauth2 === undefined) {
     throw new Error('Google Identity Services unavailable');
@@ -54,6 +54,22 @@ export async function requestToken(opts: { interactive: boolean }): Promise<stri
       },
       error_callback: (err) => reject(new Error(err.type)),
     });
-    client.requestAccessToken({ prompt: opts.interactive ? 'consent' : '' });
+    client.requestAccessToken({ prompt });
   });
+}
+
+// Silent first: prompt:'' reuses an existing grant with NO account chooser or consent dialog (the
+// documented re-auth path — see the token-model migration guide). The auto/background path stops here.
+// A user-initiated call (a tap) falls back to the full consent flow ONLY when silent fails — a lapsed
+// session or the first-ever grant — so tapping "Back up now" never re-prompts while the Google session
+// is alive. Passing prompt:'consent' unconditionally (the old behavior) forced consent on every tap.
+// ponytail: assumes GIS surfaces a silent-prompt failure via callback/error_callback (it does — both
+// are wired above). If a silent request is ever seen to hang, wrap the first await in a timeout.
+export async function requestToken(opts: { interactive: boolean }): Promise<string> {
+  try {
+    return await requestTokenRaw('');
+  } catch (err) {
+    if (!opts.interactive) throw err;
+    return requestTokenRaw('consent');
+  }
 }
