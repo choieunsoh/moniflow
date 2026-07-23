@@ -71,10 +71,26 @@ function storeCachedToken(token: string, expiresIn: string | number | undefined)
   }
 }
 
-// Drop the cached token (call on disconnect). The in-memory copy AND the persisted one.
+// Drop the cached token. The in-memory copy AND the persisted one.
 export function clearToken(): void {
   tokenMemo = null;
   if (typeof window !== 'undefined') localStorage.removeItem(TOKEN_KEY);
+}
+
+// Best-effort revocation of the Google grant, for "Disconnect". Only a currently-valid access token
+// can revoke the grant, so we revoke the cached one when we hold it; if none is valid we skip rather
+// than pop a dialog just to fetch a token to revoke (disconnect must never prompt). The local token
+// cache is cleared either way. Without this, "Disconnect" only forgets the grant locally — the app
+// could still mint tokens silently until the user revokes it by hand in their Google account.
+export async function revokeAccess(): Promise<void> {
+  const token = validCachedToken();
+  clearToken();
+  if (token === null) return;
+  await loadGis().catch(() => undefined);
+  if (typeof google === 'undefined' || google.accounts?.oauth2 === undefined) return;
+  await new Promise<void>((resolve) => {
+    google.accounts.oauth2.revoke(token, () => resolve());
+  });
 }
 
 function loadGis(): Promise<void> {

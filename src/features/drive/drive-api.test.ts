@@ -33,6 +33,15 @@ describe('drive-api', () => {
     ]);
   });
 
+  it("escapes a single quote in a name so it can't break out of the Drive query", async () => {
+    mockFetchOnce({ files: [] }); // list → empty
+    mockFetchOnce({ id: 'f' }); // create
+    await findOrCreateFolder('tok', "Bob's Backups");
+    const arg = vi.mocked(fetch).mock.calls[0]?.[0];
+    const listUrl = decodeURIComponent(typeof arg === 'string' ? arg : '');
+    expect(listUrl).toContain("name='Bob\\'s Backups'"); // the ' is backslash-escaped, not raw
+  });
+
   it('updates in place when a file with the same name exists (one-per-day)', async () => {
     mockFetchOnce({ files: [{ id: 'existing', name: 'moniflow-backup-2026-07-22.txt' }] }); // find by name
     mockFetchOnce({ id: 'existing' }); // PATCH media

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { requestToken, clearToken } from './gis';
+import { requestToken, clearToken, revokeAccess } from './gis';
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
@@ -96,6 +96,27 @@ describe('requestToken', () => {
     clearToken();
     await requestToken({ interactive: true });
     expect(prompts).toEqual(['', '']); // cache cleared → GIS called again
+  });
+
+  it('revokeAccess revokes the cached token with Google and clears the cache', async () => {
+    const revoke = vi.fn((_t: string, done: () => void) => done());
+    const initTokenClient = vi.fn((cfg: { callback: (r: StubResponse) => void }) => ({
+      requestAccessToken: () => cfg.callback({ access_token: 'tok-rev', expires_in: '3600' }),
+    }));
+    Reflect.set(globalThis, 'google', { accounts: { oauth2: { initTokenClient, revoke } } });
+    await requestToken({ interactive: true }); // caches tok-rev
+    await revokeAccess();
+    expect(revoke).toHaveBeenCalledWith('tok-rev', expect.any(Function));
+    // cache cleared → a subsequent request must hit GIS again
+    await requestToken({ interactive: false });
+    expect(initTokenClient).toHaveBeenCalledTimes(2);
+  });
+
+  it('revokeAccess skips revoke when no valid token is cached, but still clears locally', async () => {
+    const revoke = vi.fn();
+    Reflect.set(globalThis, 'google', { accounts: { oauth2: { revoke } } });
+    await revokeAccess(); // nothing cached → nothing to revoke without prompting
+    expect(revoke).not.toHaveBeenCalled();
   });
 
   it('retries after a failed script load instead of caching the rejection', async () => {
