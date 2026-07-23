@@ -139,10 +139,7 @@ export function DriveBackup() {
               type="button"
               className="btn btn-ghost w-fit"
               disabled={busy}
-              onClick={() => {
-                disconnectDrive();
-                toast('Disconnected from Drive');
-              }}
+              onClick={() => void run(disconnectDrive, 'Disconnected from Drive')}
             >
               Disconnect
             </button>

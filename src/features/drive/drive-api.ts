@@ -17,6 +17,14 @@ async function driveFetch(token: string, url: string, init: RequestInit): Promis
   return res;
 }
 
+// Escape a value for use inside a Drive query string literal (the q= parameter, e.g. name='...').
+// Per the Drive API you backslash-escape a backslash and a single quote. The interpolated names today
+// are app constants / dates, but escaping keeps the query injection-safe if a name ever becomes
+// user-controlled (a stray ' would otherwise break out and alter which files are listed or deleted).
+function escapeQuery(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 function readId(body: unknown): string {
   if (typeof body === 'object' && body !== null && 'id' in body && typeof body.id === 'string') {
     return body.id;
@@ -49,7 +57,9 @@ function readFiles(body: unknown): DriveFile[] {
 }
 
 export async function findOrCreateFolder(token: string, name: string): Promise<string> {
-  const q = encodeURIComponent(`name='${name}' and mimeType='${FOLDER_MIME}' and trashed=false`);
+  const q = encodeURIComponent(
+    `name='${escapeQuery(name)}' and mimeType='${FOLDER_MIME}' and trashed=false`,
+  );
   const listed = await driveFetch(token, `${API}/files?q=${q}&spaces=drive&fields=files(id,name)`, {
     method: 'GET',
   });
@@ -81,7 +91,9 @@ export async function uploadBackup(
   text: string,
 ): Promise<void> {
   // One file per day: if today's file exists, replace its media; otherwise create a new one.
-  const q = encodeURIComponent(`name='${name}' and '${folderId}' in parents and trashed=false`);
+  const q = encodeURIComponent(
+    `name='${escapeQuery(name)}' and '${folderId}' in parents and trashed=false`,
+  );
   const found = await driveFetch(token, `${API}/files?q=${q}&fields=files(id,name)`, {
     method: 'GET',
   });

@@ -12,7 +12,10 @@ import { readLastBackupAt } from '@shared/backup-safety';
 import { buildBackupText } from '@features/settings/backup-payload';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
-vi.mock('./gis', () => ({ requestToken: vi.fn(), clearToken: vi.fn() }));
+vi.mock('./gis', () => ({
+  requestToken: vi.fn(),
+  revokeAccess: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('./drive-api', () => ({
   findOrCreateFolder: vi.fn(),
   uploadBackup: vi.fn(),

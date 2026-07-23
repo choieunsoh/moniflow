@@ -8,7 +8,7 @@ import { buildBackupText } from '@features/settings/backup-payload';
 import { writeLastBackupAt } from '@shared/backup-safety';
 import { bumpDataVersion } from '@shared/data-version';
 import { todayIso } from '@shared/date';
-import { requestToken, clearToken } from './gis';
+import { requestToken, revokeAccess } from './gis';
 import {
   findOrCreateFolder,
   uploadBackup,
@@ -48,9 +48,9 @@ export async function connectDrive(): Promise<void> {
   }
 }
 
-export function disconnectDrive(): void {
+export async function disconnectDrive(): Promise<void> {
+  await revokeAccess(); // revoke the Google grant (best-effort) AND drop the cached token
   clearConnection();
-  clearToken(); // drop the cached access token too — disconnect should require a fresh grant
   bumpDataVersion();
 }
 
