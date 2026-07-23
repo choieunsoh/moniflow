@@ -1,26 +1,28 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { requestToken } from './gis';
+import { requestToken, clearToken } from './gis';
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
+type StubResponse = { access_token?: string; error?: string; expires_in?: string };
+
 // A token-client stub whose response depends on the prompt it's called with, recording every prompt
-// seen. `on` maps a prompt ('' | 'consent') to either a token to resolve or an error to reject.
-function stubGoogle(on: { [p: string]: { access_token?: string; error?: string } }): string[] {
+// seen. `on` maps a prompt ('' | 'consent') to a token/error (optionally with expires_in for caching).
+function stubGoogle(on: { [p: string]: StubResponse }): string[] {
   const prompts: string[] = [];
-  const initTokenClient = vi.fn(
-    (cfg: { callback: (r: { access_token?: string; error?: string }) => void }) => ({
-      requestAccessToken: (args: { prompt: string }) => {
-        prompts.push(args.prompt);
-        cfg.callback(on[args.prompt] ?? { error: 'unexpected_prompt' });
-      },
-    }),
-  );
+  const initTokenClient = vi.fn((cfg: { callback: (r: StubResponse) => void }) => ({
+    requestAccessToken: (args: { prompt: string }) => {
+      prompts.push(args.prompt);
+      cfg.callback(on[args.prompt] ?? { error: 'unexpected_prompt' });
+    },
+  }));
   Reflect.set(globalThis, 'google', { accounts: { oauth2: { initTokenClient } } });
   return prompts;
 }
 
 describe('requestToken', () => {
   beforeEach(() => {
+    clearToken(); // cached token is module state — a leak across tests would hide a real GIS call
+    localStorage.clear();
     for (const el of Array.from(document.querySelectorAll('script'))) el.remove();
     const s = document.createElement('script');
     s.src = GIS_SRC;
@@ -61,6 +63,39 @@ describe('requestToken', () => {
     });
     await expect(requestToken({ interactive: true })).rejects.toThrow('access_denied');
     expect(prompts).toEqual(['', 'consent']);
+  });
+
+  it('reuses a still-valid cached token WITHOUT calling GIS again (no second popup)', async () => {
+    const prompts = stubGoogle({ '': { access_token: 'tok-cached', expires_in: '3600' } });
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-cached');
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-cached');
+    expect(prompts).toEqual(['']); // one GIS call total — the second tap hit the cache, no popup
+  });
+
+  it('does not reuse an expired token — re-fetches from GIS', async () => {
+    // expires_in below the 5-min safety margin lands the expiry in the past → the cache is stale.
+    const prompts = stubGoogle({ '': { access_token: 'tok-short', expires_in: '100' } });
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-short');
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-short');
+    expect(prompts).toEqual(['', '']); // two GIS calls — the stale token was not reused
+  });
+
+  it('a token cached in localStorage survives a reload (fresh module) — no popup', async () => {
+    stubGoogle({ '': { access_token: 'tok-persisted', expires_in: '3600' } });
+    await requestToken({ interactive: true }); // writes the cache to localStorage
+    vi.resetModules();
+    const { requestToken: freshRequestToken } = await import('./gis');
+    // No google stub on the fresh module — if it reaches GIS this throws. It must serve from storage.
+    Reflect.set(globalThis, 'google', undefined);
+    await expect(freshRequestToken({ interactive: false })).resolves.toBe('tok-persisted');
+  });
+
+  it('clearToken drops the cache so the next call re-fetches', async () => {
+    const prompts = stubGoogle({ '': { access_token: 'tok-x', expires_in: '3600' } });
+    await requestToken({ interactive: true });
+    clearToken();
+    await requestToken({ interactive: true });
+    expect(prompts).toEqual(['', '']); // cache cleared → GIS called again
   });
 
   it('retries after a failed script load instead of caching the rejection', async () => {
