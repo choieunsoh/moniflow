@@ -94,4 +94,4 @@ Moniflow is an independent project and is **not affiliated with or endorsed by M
 
 ## License
 
-No license has been chosen yet, so the default applies: **all rights reserved**. If you'd like others to use, modify, or contribute, add a `LICENSE` file (e.g. MIT).
+[MIT](./LICENSE) © 2026 Tod Kiattipong
