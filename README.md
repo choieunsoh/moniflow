@@ -6,6 +6,10 @@ Live demo: **[mymoniflow.vercel.app](https://mymoniflow.vercel.app)**
 
 > Moniflow is a static web app shaped like a phone-sized column with a bottom tab bar. It stores signed financial entries in a **SQLite database that lives in the browser** (OPFS, via SQLite WASM) and renders them through a small Next.js UI. It's built for one person tracking their own spending — it imports [Monefy](https://www.monefy.me/) CSV exports and is scoped to a monthly billing cycle with a configurable cutoff day.
 
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="Moniflow home screen — cycle spending donut and category breakdown" width="300" />
+</p>
+
 ## Why it's different
 
 - **The browser is the system of record.** The ledger is a real SQLite database running in a Web Worker over [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system). There is no backend that reads or writes your data.
