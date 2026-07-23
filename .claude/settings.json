@@ -73,18 +73,5 @@
     ],
     "allow": ["Read(*)", "Edit(*)", "Glob(*)", "Grep(*)"],
     "ask": ["Bash(git push:*)"]
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"C:/Users/Kiattipong/.thanu/scripts/claude-hooks/stop.js\""
-          }
-        ]
-      }
-    ]
   }
 }
