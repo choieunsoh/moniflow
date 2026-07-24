@@ -6,6 +6,7 @@ import { PageContainer } from '@shared/ui/PageContainer';
 import { useAnalytics } from '@features/entries/use-analytics';
 import { TrendChart } from '@features/entries/ui/TrendChart';
 import { SpendHeatmap } from '@features/entries/ui/SpendHeatmap';
+import { AnalyticsSkeleton } from '@features/entries/ui/AnalyticsSkeleton';
 import { TopNotesList } from '@features/entries/ui/TopNotesList';
 import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
@@ -54,13 +55,7 @@ export default function AnalyticsPage() {
   if (!ready || data === null) {
     return (
       <PageContainer size="full">
-        <div
-          role="status"
-          className="grid h-32 place-items-center text-sm"
-          style={{ color: 'var(--color-muted)' }}
-        >
-          …
-        </div>
+        <AnalyticsSkeleton />
       </PageContainer>
     );
   }

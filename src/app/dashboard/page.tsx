@@ -3,6 +3,7 @@
 import { PageContainer } from '@shared/ui/PageContainer';
 import { useDashboard } from '@features/entries/use-dashboard';
 import { DashboardCards } from '@features/entries/ui/DashboardCards';
+import { DashboardSkeleton } from '@features/entries/ui/DashboardSkeleton';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
 // Dashboard = the current-cycle overview. Home answers "what did I spend this cycle"; Analytics "is
@@ -15,13 +16,7 @@ export default function DashboardPage() {
   if (!ready || data === null) {
     return (
       <PageContainer size="full">
-        <div
-          role="status"
-          className="grid h-32 place-items-center text-sm"
-          style={{ color: 'var(--color-muted)' }}
-        >
-          …
-        </div>
+        <DashboardSkeleton />
       </PageContainer>
     );
   }
