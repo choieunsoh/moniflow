@@ -11,6 +11,7 @@ import { TopNotesList } from '@features/entries/ui/TopNotesList';
 import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AnomalyBanner } from '@features/entries/ui/AnomalyBanner';
+import { CycleDeltaCard } from '@features/entries/ui/CycleDeltaCard';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { formatBahtWhole } from '@shared/money';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
@@ -70,6 +71,7 @@ export default function AnalyticsPage() {
     iconSet,
     cycleRows,
     budgetLine,
+    delta,
     anomalies,
     heatmapCells,
     topNotes,
@@ -195,6 +197,8 @@ export default function AnalyticsPage() {
           </ul>
         )}
       </section>
+
+      {delta !== null ? <CycleDeltaCard delta={delta} /> : null}
 
       {/* The trend panel is the page's primary; the heatmap and top-notes are supporting. Grouping
           them in one tighter-gap block (12px between the two, vs the 24px PageContainer gap above)

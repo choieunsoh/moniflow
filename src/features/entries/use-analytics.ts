@@ -8,6 +8,7 @@ import { TREND_CYCLES, toTrendBars, monthLabel, type TrendBar } from './trend';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getEmojiMap, getHueMap } from '@features/categories/queries';
 import { getBudgets } from '@features/budgets/queries';
+import { cycleDelta, type CycleDelta } from './dashboard';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 import { groupByDate } from './by-date';
@@ -39,6 +40,9 @@ export type AnalyticsData = {
   // category's own limit when filtered, null when neither is set. The chart draws it as a passive
   // reference line (see buildTrendOption) — never an axis constraint.
   budgetLine: number | null;
+  // Anchor cycle vs the one before it, unfiltered only (see the derivation comment below). null when
+  // filtered, or when there is no comparable earlier cycle.
+  delta: CycleDelta | null;
   topNotes: NoteRow[];
   heatmapCells: HeatmapCell[];
   anomalies: Anomaly[];
@@ -159,6 +163,15 @@ export function useAnalytics(
       }
       const budgetLine = category === null ? totalLimit : (limits.get(category) ?? null);
 
+      // The anchor cycle vs the one before it — the trend window's last two bars, so no extra query.
+      // A zero prev bar means no comparable earlier cycle (null). Unfiltered only: filtered, `bars`
+      // is one category's trend and a "vs last" there would answer a different question.
+      const lastBar = bars[bars.length - 1];
+      const prevBar = bars[bars.length - 2];
+      const prevTotal = prevBar !== undefined && prevBar.value > 0 ? prevBar.value : null;
+      const delta =
+        category === null && lastBar !== undefined ? cycleDelta(lastBar.value, prevTotal) : null;
+
       setData({
         activeKey,
         currentKey,
@@ -170,6 +183,7 @@ export function useAnalytics(
         iconSet,
         cycleRows,
         budgetLine,
+        delta,
         topNotes: notes,
         heatmapCells,
         anomalies: flagged,
