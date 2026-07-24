@@ -232,6 +232,12 @@ describe('postsBetween', () => {
     ]);
   });
 
+  it('includes an occurrence landing exactly on `through`', () => {
+    expect(postsBetween(monthly, '2026-07-20', '2026-08-15')).toEqual([
+      { date: '2026-08-15', seq: 8 },
+    ]);
+  });
+
   it('is empty when nothing is due before `through`', () => {
     expect(postsBetween(monthly, '2026-07-20', '2026-08-10')).toEqual([]);
   });
