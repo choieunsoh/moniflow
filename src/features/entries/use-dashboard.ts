@@ -8,6 +8,8 @@ import { currentCycleKey, cycleFromKey, stepKey, cycleProgress, type Cycle } fro
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getEmojiMap, getHueMap } from '@features/categories/queries';
 import { getBudgets } from '@features/budgets/queries';
+import { listRules } from '@features/recurring/queries';
+import { committedThisCycle, type Committed } from '@features/recurring/upcoming';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 import {
@@ -33,6 +35,7 @@ export type DashboardData = {
   safePerDay: number | null;
   avgPerDay: number;
   projected: number | null;
+  upcoming: Committed;
   delta: CycleDelta | null;
   recent: EntryRow[];
   emojiMap: Record<string, string>;
@@ -63,11 +66,12 @@ export function useDashboard(): { ready: boolean; data: DashboardData | null } {
       const cycle = cycleFromKey(currentKey, cutoff);
       const prev = cycleFromKey(stepKey(currentKey, -1), cutoff);
 
-      const [summary, prevSummary, entriesInCycle, budgetRows] = await Promise.all([
+      const [summary, prevSummary, entriesInCycle, budgetRows, rules] = await Promise.all([
         getCycleSummary(db, cycle.start, cycle.end),
         getCycleSummary(db, prev.start, prev.end),
         getEntriesInRange(db, cycle.start, cycle.end),
         getBudgets(db),
+        listRules(db),
       ]);
 
       const total = Math.abs(summary.outflow);
@@ -81,6 +85,7 @@ export function useDashboard(): { ready: boolean; data: DashboardData | null } {
       const daysElapsed = progress.day;
       const cycleLength = progress.total;
       const daysLeft = cycleLength - daysElapsed + 1; // today inclusive
+      const upcoming = committedThisCycle(rules, todayIso(), cycle.end);
 
       // Newest first; id (autoincrement) breaks ties within a day. Slice in JS — a cycle is ~a month
       // of rows, far too few to warrant a dedicated LIMIT query.
@@ -98,9 +103,10 @@ export function useDashboard(): { ready: boolean; data: DashboardData | null } {
         daysElapsed,
         daysLeft,
         cycleLength,
-        safePerDay: safeToSpendPerDay(totalBudget, total, daysLeft),
+        safePerDay: safeToSpendPerDay(totalBudget, total, upcoming.total, daysLeft),
         avgPerDay: averagePerDay(total, daysElapsed),
         projected: projectCycleTotal(total, daysElapsed, cycleLength),
+        upcoming,
         delta: cycleDelta(total, prevTotal),
         recent,
         emojiMap,

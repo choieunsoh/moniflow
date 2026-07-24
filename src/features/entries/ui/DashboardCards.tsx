@@ -16,6 +16,7 @@ export function DashboardCards({ data }: { data: DashboardData }) {
         safePerDay={data.safePerDay}
         avgPerDay={data.avgPerDay}
         daysLeft={data.daysLeft}
+        upcoming={data.upcoming}
       />
       <ProjectedCard projected={data.projected} totalBudget={data.totalBudget} />
       <VsLastCard delta={data.delta} />
@@ -46,10 +47,12 @@ function SafeToSpendCard({
   safePerDay,
   avgPerDay,
   daysLeft,
+  upcoming,
 }: {
   safePerDay: number | null;
   avgPerDay: number;
   daysLeft: number;
+  upcoming: DashboardData['upcoming'];
 }) {
   if (safePerDay === null) {
     return (
@@ -63,6 +66,12 @@ function SafeToSpendCard({
         >
           Set a total budget for a safe-to-spend figure →
         </Link>
+        {upcoming.count > 0 ? (
+          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            Upcoming: {formatBahtWhole(upcoming.total)} · {upcoming.count}{' '}
+            {upcoming.count === 1 ? 'bill' : 'bills'} due
+          </span>
+        ) : null}
       </CardShell>
     );
   }
@@ -75,6 +84,12 @@ function SafeToSpendCard({
         <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
           Nothing left in this cycle's budget
         </span>
+        {upcoming.count > 0 ? (
+          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+            Upcoming: {formatBahtWhole(upcoming.total)} · {upcoming.count}{' '}
+            {upcoming.count === 1 ? 'bill' : 'bills'} due
+          </span>
+        ) : null}
       </CardShell>
     );
   }
@@ -84,6 +99,12 @@ function SafeToSpendCard({
       <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
         over {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
       </span>
+      {upcoming.count > 0 ? (
+        <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+          Upcoming: {formatBahtWhole(upcoming.total)} · {upcoming.count}{' '}
+          {upcoming.count === 1 ? 'bill' : 'bills'} due
+        </span>
+      ) : null}
     </CardShell>
   );
 }

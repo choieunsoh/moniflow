@@ -6,6 +6,8 @@ import { ensureSettingsTable } from '@features/settings/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { addEntries } from './queries';
 import { setBudget } from '@features/budgets/queries';
+import { ensureRecurrencesTable } from '@features/recurring/schema';
+import { addRule } from '@features/recurring/queries';
 import { bumpDataVersion } from '@shared/data-version';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
@@ -25,6 +27,7 @@ describe('useDashboard', () => {
     await ensureEntriesTable(db);
     await ensureSettingsTable(db);
     await ensureBudgetsTable(db);
+    await ensureRecurrencesTable(db);
     await addEntries(db, [
       // Current cycle '2026-07' (18 Jul → 17 Aug): 180 spent over 3 entries.
       { date: '2026-07-18', account: 'Cash', category: 'Food', amount: -100 },
@@ -75,5 +78,28 @@ describe('useDashboard', () => {
     act(() => bumpDataVersion());
 
     await waitFor(() => expect(result.current.data?.total).toBe(200));
+  });
+
+  it('reserves this cycle’s upcoming recurring bills from safe-to-spend', async () => {
+    const db = await getBrowserDb();
+    await addRule(db, {
+      name: 'Gym',
+      day: 25,
+      intervalMonths: 1,
+      amount: 500, // POSITIVE magnitude (schema stores bills positive)
+      startDate: '2026-07-25',
+      startSeq: 1,
+      totalCount: null,
+      lastPosted: null,
+    });
+
+    const { result } = renderHook(() => useDashboard());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — ready implies data');
+
+    expect(data.upcoming).toEqual({ total: 500, count: 1 });
+    // remaining = 3000 budget − 180 spent − 500 committed = 2320, over 29 days
+    expect(data.safePerDay).toBeCloseTo(2320 / 29);
   });
 });

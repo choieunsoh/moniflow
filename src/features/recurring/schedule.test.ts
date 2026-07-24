@@ -5,6 +5,7 @@ import {
   paidCount,
   maxPosts,
   duePosts,
+  postsBetween,
   progressOf,
   noteFor,
   nextOccurrence,
@@ -205,5 +206,53 @@ describe('nextOccurrence', () => {
   });
   it('rolls a yearly rule to next year when its month has passed', () => {
     expect(nextOccurrence(5, 3, '2026-07-10', 12)).toBe('2027-03-05');
+  });
+});
+
+describe('postsBetween', () => {
+  const monthly: Rule = {
+    day: 15,
+    intervalMonths: 1,
+    startDate: '2026-01-15',
+    startSeq: 1,
+    totalCount: null,
+    lastPosted: '2026-07-15',
+  };
+
+  it('returns occurrences strictly after `after`, through `through` inclusive', () => {
+    // window is the rest of a cycle: after today (2026-07-20), through cycle end (2026-08-24)
+    expect(postsBetween(monthly, '2026-07-20', '2026-08-24')).toEqual([
+      { date: '2026-08-15', seq: 8 },
+    ]);
+  });
+
+  it('excludes an occurrence falling on `after` itself', () => {
+    expect(postsBetween(monthly, '2026-08-15', '2026-09-30')).toEqual([
+      { date: '2026-09-15', seq: 9 },
+    ]);
+  });
+
+  it('includes an occurrence landing exactly on `through`', () => {
+    expect(postsBetween(monthly, '2026-07-20', '2026-08-15')).toEqual([
+      { date: '2026-08-15', seq: 8 },
+    ]);
+  });
+
+  it('is empty when nothing is due before `through`', () => {
+    expect(postsBetween(monthly, '2026-07-20', '2026-08-10')).toEqual([]);
+  });
+
+  it('respects an installment cap — no posts past the final one', () => {
+    const installment: Rule = {
+      day: 1,
+      intervalMonths: 1,
+      startDate: '2026-06-01',
+      startSeq: 1,
+      totalCount: 3, // final due date 2026-08-01
+      lastPosted: '2026-07-01',
+    };
+    expect(postsBetween(installment, '2026-07-20', '2026-12-31')).toEqual([
+      { date: '2026-08-01', seq: 3 },
+    ]);
   });
 });
