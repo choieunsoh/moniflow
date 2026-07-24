@@ -7,6 +7,7 @@ import { useAnalytics } from '@features/entries/use-analytics';
 import { TrendChart } from '@features/entries/ui/TrendChart';
 import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
+import { AnomalyBanner } from '@features/entries/ui/AnomalyBanner';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { formatBahtWhole } from '@shared/money';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
@@ -38,8 +39,18 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { activeKey, bars, categories, total, emojiMap, hueMap, iconSet, cycleRows, budgetLine } =
-    data;
+  const {
+    activeKey,
+    bars,
+    categories,
+    total,
+    emojiMap,
+    hueMap,
+    iconSet,
+    cycleRows,
+    budgetLine,
+    anomalies,
+  } = data;
   const base = `/analytics?cycle=${activeKey}`;
 
   // No spend anywhere in the window — reuse Home's empty state rather than inventing a second one.
@@ -70,6 +81,7 @@ export default function AnalyticsPage() {
       {/* sr-only heading root — Analytics' visible top heading is the <h2> panel title ("All
           spending" / the category), so without this the heading list has no <h1>. */}
       <h1 className="sr-only">Analytics</h1>
+      <AnomalyBanner anomalies={anomalies} />
       <section className="panel flex flex-col gap-5 p-5">
         <header className="flex items-baseline justify-between gap-2">
           <div className="flex min-w-0 flex-col gap-1">
