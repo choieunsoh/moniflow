@@ -57,7 +57,7 @@ function SafeToSpendCard({
   if (safePerDay === null) {
     return (
       <CardShell title="Average / day so far">
-        <span className="tnum text-2xl font-semibold">{formatBahtWhole(avgPerDay)}</span>
+        <span className="tnum text-4xl font-semibold">{formatBahtWhole(avgPerDay)}</span>
         <Link
           href="/budgets"
           prefetch={false}
@@ -78,7 +78,7 @@ function SafeToSpendCard({
   if (safePerDay === 0) {
     return (
       <CardShell title="Safe to spend / day">
-        <span className="tnum text-2xl font-semibold" style={{ color: 'var(--color-loss)' }}>
+        <span className="tnum text-4xl font-semibold" style={{ color: 'var(--color-loss)' }}>
           {formatBahtWhole(0)}
         </span>
         <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
@@ -95,7 +95,7 @@ function SafeToSpendCard({
   }
   return (
     <CardShell title="Safe to spend / day">
-      <span className="tnum text-2xl font-semibold">{formatBahtWhole(safePerDay)}</span>
+      <span className="tnum text-4xl font-semibold">{formatBahtWhole(safePerDay)}</span>
       <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
         over {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
       </span>
