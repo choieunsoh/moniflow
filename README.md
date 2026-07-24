@@ -59,7 +59,7 @@ npm test             # vitest
 
 Because the ledger lives in the browser, there's no seed data and no `.db` file to point at — open **Settings → Backup** and restore a Monefy CSV export to load data.
 
-> **Note:** browser storage (OPFS) is scoped **per origin**. `127.0.0.1:4010` and `localhost:4010` are *different* origins with separate databases, as is any deployed host. Data does not sync between them — that's what the backup features are for.
+> **Note:** browser storage (OPFS) is scoped **per origin**. `127.0.0.1:4010` and `localhost:4010` are _different_ origins with separate databases, as is any deployed host. Data does not sync between them — that's what the backup features are for.
 
 ### Optional: Google Drive backup
 
@@ -70,7 +70,7 @@ Set a public Google OAuth client ID to enable the Drive backup feature (leave it
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ```
 
-You'll need a Google Cloud OAuth **Web** client with the Drive API enabled, the `drive.file` scope, and your app's origins listed under *Authorized JavaScript origins*. The client ID is public by design (it ships in the bundle); there is no client secret in the browser flow.
+You'll need a Google Cloud OAuth **Web** client with the Drive API enabled, the `drive.file` scope, and your app's origins listed under _Authorized JavaScript origins_. The client ID is public by design (it ships in the bundle); there is no client secret in the browser flow.
 
 ## Data & privacy
 
