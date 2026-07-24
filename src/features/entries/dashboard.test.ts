@@ -8,21 +8,25 @@ import {
 } from './dashboard';
 
 describe('safeToSpendPerDay', () => {
-  it('spreads the remaining budget over the days left', () => {
-    // 3000 budget − 180 spent = 2820 remaining, over 29 days = ~97.24/day
-    expect(safeToSpendPerDay(3000, 180, 29)).toBeCloseTo(2820 / 29);
+  it('spreads budget minus spent minus committed over the days left', () => {
+    // 3000 budget − 180 spent − 400 committed = 2420 remaining, over 29 days
+    expect(safeToSpendPerDay(3000, 180, 400, 29)).toBeCloseTo(2420 / 29);
+  });
+
+  it('committed 0 leaves the old behaviour intact', () => {
+    expect(safeToSpendPerDay(3000, 180, 0, 29)).toBeCloseTo(2820 / 29);
   });
 
   it('returns null when no total budget is set (caller shows the average instead)', () => {
-    expect(safeToSpendPerDay(null, 180, 29)).toBeNull();
+    expect(safeToSpendPerDay(null, 180, 400, 29)).toBeNull();
   });
 
-  it('floors at 0 when already over budget', () => {
-    expect(safeToSpendPerDay(100, 250, 10)).toBe(0);
+  it('floors at 0 when spent plus committed exceeds the budget', () => {
+    expect(safeToSpendPerDay(100, 60, 60, 10)).toBe(0);
   });
 
   it('never divides by zero on the last day', () => {
-    expect(safeToSpendPerDay(300, 100, 0)).toBe(200); // remaining spread over max(1,0)=1
+    expect(safeToSpendPerDay(300, 100, 0, 0)).toBe(200);
   });
 });
 
