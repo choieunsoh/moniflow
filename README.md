@@ -20,10 +20,10 @@ Live demo: **[mymoniflow.vercel.app](https://mymoniflow.vercel.app)**
 ## Features
 
 - **Keypad entry** — a Monefy-style calculator keypad for fast expense entry, with per-entry currency conversion.
-- **Cycle dashboard** — the current billing cycle's spending as a by-category donut plus a ranked breakdown, with a chart / list toggle.
+- **Home** — the current billing cycle's spending as a by-category donut plus a ranked breakdown (chart / list toggle), with the cycle's safe-to-spend per day, projected total, and upcoming bills folded in.
 - **Records** — the cycle's expenses grouped by day, swipe to edit or delete, with live cross-cycle search.
 - **Budgets** — standing per-category monthly limits, surfaced on the home view.
-- **Analytics** — multi-cycle spending trends.
+- **Trends** — multi-cycle spending trends, with your own average line and a this-cycle-vs-last comparison.
 - **Categories & Accounts** — first-class, with switchable icon sets (emoji / Phosphor / Lucide) and colors.
 - **Trips** — foreign-currency spending grouped into trips (non-THB entries surface here).
 - **Recurring records** — self-posting rules for subscriptions, bills, and installments, swept on app open.

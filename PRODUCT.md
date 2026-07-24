@@ -20,17 +20,19 @@ SQLite database inside the browser (OPFS, via SQLite WASM) — the browser is th
 not a server. Every page is `'use client'` and loads its own data after mount; writes go through
 each feature's `actions.ts`, plain async functions rather than Server Actions. The app is scoped to
 a monthly **billing cycle** (a configurable cutoff day) and organised as a phone-sized column with a
-bottom tab bar — **Home · Records · ＋ · Analytics · More**:
+bottom tab bar — **Home · Records · ＋ · Trends · More**:
 
 - **Home** — the cycle's total spend and (where set) its budget meter, over a by-category donut with
   the cycle's transaction count annotating the hole, plus a ranked category breakdown (chart / list
   toggle). The total sits in the panel above the ring rather than in the hole so it stays put when
-  the toggle flips, and so the page's biggest figure is its most useful one.
+  the toggle flips, and so the page's biggest figure is its most useful one. On the current cycle it
+  also carries the forward view merged in from the former dashboard — safe-to-spend per day, a
+  projected cycle total, and upcoming recurring bills (shown even before the cycle's first expense).
 - **Records** — the cycle's expenses grouped by day, each a swipe-to-edit/delete row, with live
   cross-cycle search.
-- **Analytics** — the six-cycle spending trend, with a dashed line marking your own average across
-  the window, and a category breakdown below it that narrows to that category's own per-cycle
-  breakdown when filtered.
+- **Trends** — the six-cycle spending trend, with a dashed line marking your own average across
+  the window, a this-cycle-vs-last comparison, and a category breakdown below it that narrows to
+  that category's own per-cycle breakdown when filtered.
 - **More** — **Budgets** (standing per-category monthly limits), **Categories** (add/rename/merge/
   delete, pick each category's icon + colour, and tap a category's count to jump to all its
   records), and **Trips** (foreign-currency spending grouped into trips).
