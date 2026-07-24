@@ -8,6 +8,7 @@ import { pacePhrase } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 import { formatBahtWhole } from '@shared/money';
 import { DonutChart } from '@features/entries/ui/DonutChart';
+import { SafeToSpendCard, ProjectedCard } from '@features/entries/ui/ForwardCards';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { CycleProgress } from '@features/entries/ui/CycleProgress';
@@ -58,6 +59,7 @@ export default function HomePage() {
     progress,
     pacePct,
     showPace,
+    forward,
     ledgerEmpty,
   } = data;
 
@@ -117,6 +119,21 @@ export default function HomePage() {
               </span>
             ) : null}
           </section>
+
+          {forward !== null ? (
+            <div className="-mt-3 flex flex-col gap-4">
+              <SafeToSpendCard
+                safePerDay={forward.safePerDay}
+                avgPerDay={forward.avgPerDay}
+                daysLeft={forward.daysLeft}
+                upcoming={forward.upcoming}
+              />
+              <ProjectedCard
+                projected={forward.projected}
+                totalBudget={totalStatus?.limit ?? null}
+              />
+            </div>
+          ) : null}
 
           <ViewToggle
             className="-mt-3"
