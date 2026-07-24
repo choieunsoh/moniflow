@@ -41,6 +41,19 @@ function CardShell({ title, children }: { title: string; children: ReactNode }) 
   );
 }
 
+// The upcoming-bills sub-line, shared by all three Safe-to-spend variants (allowance / over-budget /
+// no-budget) so the phrasing and the singular/plural rule live in one place. Renders nothing when
+// nothing is due.
+function UpcomingLine({ upcoming }: { upcoming: DashboardData['upcoming'] }) {
+  if (upcoming.count === 0) return null;
+  return (
+    <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+      Upcoming: {formatBahtWhole(upcoming.total)} · {upcoming.count}{' '}
+      {upcoming.count === 1 ? 'bill' : 'bills'} due
+    </span>
+  );
+}
+
 // safePerDay === null → no budget set: show the actual average + a link to set one. === 0 → over
 // budget. Otherwise the per-day allowance.
 function SafeToSpendCard({
@@ -99,12 +112,7 @@ function SafeToSpendCard({
       <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
         over {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
       </span>
-      {upcoming.count > 0 ? (
-        <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Upcoming: {formatBahtWhole(upcoming.total)} · {upcoming.count}{' '}
-          {upcoming.count === 1 ? 'bill' : 'bills'} due
-        </span>
-      ) : null}
+      <UpcomingLine upcoming={upcoming} />
     </CardShell>
   );
 }
