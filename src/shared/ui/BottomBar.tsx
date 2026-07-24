@@ -10,7 +10,7 @@ import { MoreSheet } from './MoreSheet';
 import { useBackupStatus } from '../use-backup-status';
 
 // App-style tab bar, always visible, centered to the app column. Five slots:
-// Home · Records · [＋ expense FAB → /entries/new] · Analytics · More.
+// Home · Records · [＋ expense FAB → /entries/new] · Trends · More.
 // The active tab carries THREE signals — an accent pill behind the icon, accent color, and a heavier
 // label — so the current section is unmistakable, not color alone (per the bottom-nav a11y guidance).
 // Icons are a consistent 24px outline set; the pill animates and presses for tactile feedback.
@@ -54,10 +54,10 @@ export function BottomBar() {
           {/* Spacer: the FAB floats over this column (absolutely positioned below). */}
           <li aria-hidden className="h-0" />
           <BarTab
-            href="/dashboard"
-            label="Dashboard"
-            active={isActivePath(pathname, '/dashboard')}
-            icon={<DashboardIcon />}
+            href={cycleHref('/analytics', cycle)}
+            label="Trends"
+            active={isActivePath(pathname, '/analytics')}
+            icon={<TrendsIcon />}
           />
           <li>
             <BarButton
@@ -234,18 +234,17 @@ function RecordsIcon() {
   );
 }
 
-// Dashboard = the current-cycle "where am I heading" overview — a gauge/dial reads as an at-a-glance
-// status check, distinct from Analytics' trend bars (now in the More sheet) and the More grid.
-function DashboardIcon() {
+// Trends = the six-cycle history / "is this normal" surface (was Analytics, in the More sheet).
+// Ascending bars read as "spending over time", distinct from Home's rising-line overview glyph.
+function TrendsIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
       <path
-        d="M2.5 11a5.5 5.5 0 1 1 11 0"
+        d="M3 13V9 M6.5 13V6 M10 13V8 M13.5 13V4"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
       />
-      <path d="M8 8.5 10.5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }

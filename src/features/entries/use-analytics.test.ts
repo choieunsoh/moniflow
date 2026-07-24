@@ -8,8 +8,14 @@ import { addEntries } from './queries';
 import { setBudget } from '@features/budgets/queries';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
+// delta anchors on "today", so the clock has to be pinned or its meaning drifts with the calendar.
+vi.mock('@shared/date', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@shared/date')>()),
+  todayIso: vi.fn(() => '2026-07-20'),
+}));
 
 import { getBrowserDb } from '@db/browser';
+import { todayIso } from '@shared/date';
 import { useAnalytics } from './use-analytics';
 
 // The window is anchored to the cycle key the caller passes, so — unlike useBudgetsPage's test —
@@ -183,5 +189,25 @@ describe('useAnalytics', () => {
     expect(result.current.data?.anomalies).toEqual([
       { category: 'Food', current: 2100, avg: 1050, ratio: 2 },
     ]);
+  });
+
+  describe('delta (this cycle vs last, moved from the dashboard)', () => {
+    it('reports the unfiltered anchor cycle against the previous one', async () => {
+      // '2026-07-01' falls in cycle '2026-06' (Jun18–Jul17, cutoff 18) — the seeded 1500 (Food 1200 +
+      // Travel 300). The cycle before it, '2026-05', is seeded at 900.
+      vi.mocked(todayIso).mockReturnValue('2026-07-01');
+      const { result } = renderHook(() => useAnalytics(null, null));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+
+      expect(result.current.data?.currentKey).toBe('2026-06');
+      expect(result.current.data?.delta).toEqual({ delta: 600, direction: 'up', prevTotal: 900 });
+    });
+
+    it('is null when filtered to a category', async () => {
+      vi.mocked(todayIso).mockReturnValue('2026-07-01');
+      const { result } = renderHook(() => useAnalytics(null, 'Food'));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      expect(result.current.data?.delta).toBeNull();
+    });
   });
 });

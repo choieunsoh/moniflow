@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Tags, Wallet, Plane, Repeat, Settings, Target, LineChart } from 'lucide-react';
+import { Tags, Wallet, Plane, Repeat, Settings, Target } from 'lucide-react';
 import { cycleHref } from './cycle-href';
 
 // App-launcher grid for the overflow nav — one icon tile per destination, matching the 2×2 grid glyph
@@ -13,7 +13,6 @@ import { cycleHref } from './cycle-href';
 // same way BottomBar's primary tabs do. Budgets landed here when Analytics took its tab slot, and
 // without this it would silently drop the cycle on every tap.
 const LINKS = [
-  { href: '/analytics', label: 'Analytics', Icon: LineChart, cycle: true },
   { href: '/budgets', label: 'Budgets', Icon: Target, cycle: true },
   { href: '/categories', label: 'Categories', Icon: Tags, cycle: false },
   { href: '/accounts', label: 'Accounts', Icon: Wallet, cycle: false },
