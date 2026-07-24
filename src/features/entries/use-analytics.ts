@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
-import { getCategoryBreakdown, type Breakdown } from './queries';
+import { getCategoryBreakdown, getEntriesInRange, type Breakdown } from './queries';
 import { lastCycles, currentCycleKey } from './cycle';
 import { TREND_CYCLES, toTrendBars, monthLabel, type TrendBar } from './trend';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
@@ -10,6 +10,10 @@ import { getEmojiMap, getHueMap } from '@features/categories/queries';
 import { getBudgets } from '@features/budgets/queries';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
+import { groupByDate } from './by-date';
+import { topNotes, type NoteRow } from './by-note';
+import { toHeatmapCells, type HeatmapCell } from './heatmap';
+import { anomalies, type Anomaly } from './anomaly';
 
 // One cycle's spend for the filtered category. The filtered list's row shape — unfiltered the list
 // decomposes by CATEGORY (CategoryRow), filtered it decomposes by CYCLE. Two shapes because they
@@ -35,6 +39,9 @@ export type AnalyticsData = {
   // category's own limit when filtered, null when neither is set. The chart draws it as a passive
   // reference line (see buildTrendOption) — never an axis constraint.
   budgetLine: number | null;
+  topNotes: NoteRow[];
+  heatmapCells: HeatmapCell[];
+  anomalies: Anomaly[];
 };
 
 // Sum a window's breakdowns into one ranked Breakdown[] — the category list under the chart shows
@@ -101,6 +108,12 @@ export function useAnalytics(
         matrix.set(cycles[i].key, byCategory);
       }
 
+      const active = cycles[cycles.length - 1];
+      const cycleEntries = await getEntriesInRange(db, active.start, active.end);
+      const notes = topNotes(cycleEntries);
+      const heatmapCells = toHeatmapCells(groupByDate(cycleEntries), active);
+      const flagged = anomalies(matrix, activeKey);
+
       // Total trend = sum each cycle's row. Category trend = read one column. Same chart.
       const spendByCycle = new Map<string, number>();
       for (const [key, byCategory] of matrix) {
@@ -157,6 +170,9 @@ export function useAnalytics(
         iconSet,
         cycleRows,
         budgetLine,
+        topNotes: notes,
+        heatmapCells,
+        anomalies: flagged,
       });
       setReady(true);
     });

@@ -161,4 +161,27 @@ describe('useAnalytics', () => {
     const summed = rows.reduce((sum, r) => sum + r.value, 0);
     expect(summed).toBe(result.current.data?.total);
   });
+
+  it('exposes anchor-cycle heatmap cells and top-notes', async () => {
+    const { result } = renderHook(() => useAnalytics('2026-07', null));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    // 18 Jul – 17 Aug inclusive = 31 day-cells.
+    expect(result.current.data?.heatmapCells).toHaveLength(31);
+    // one entry in the anchor cycle, no note → the "No note" bucket at 400.
+    expect(result.current.data?.topNotes).toEqual([{ note: 'No note', total: 400, count: 1 }]);
+  });
+
+  it('surfaces a category spending above its own norm as an anomaly', async () => {
+    // Push anchor-cycle Food to 2100 (400 + 1700); prior Food avg is (900 + 1200) / 2 = 1050,
+    // so ratio = 2.0 ≥ 1.5 threshold.
+    const db = await getBrowserDb();
+    await addEntries(db, [
+      { date: '2026-07-21', account: 'Cash', category: 'Food', amount: -1700 },
+    ]);
+    const { result } = renderHook(() => useAnalytics('2026-07', null));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.data?.anomalies).toEqual([
+      { category: 'Food', current: 2100, avg: 1050, ratio: 2 },
+    ]);
+  });
 });
