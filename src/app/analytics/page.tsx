@@ -6,6 +6,7 @@ import { PageContainer } from '@shared/ui/PageContainer';
 import { useAnalytics } from '@features/entries/use-analytics';
 import { TrendChart } from '@features/entries/ui/TrendChart';
 import { SpendHeatmap } from '@features/entries/ui/SpendHeatmap';
+import { TopNotesList } from '@features/entries/ui/TopNotesList';
 import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AnomalyBanner } from '@features/entries/ui/AnomalyBanner';
@@ -52,6 +53,7 @@ export default function AnalyticsPage() {
     budgetLine,
     anomalies,
     heatmapCells,
+    topNotes,
   } = data;
   const base = `/analytics?cycle=${activeKey}`;
 
@@ -174,6 +176,8 @@ export default function AnalyticsPage() {
       </section>
 
       <SpendHeatmap cells={heatmapCells} />
+
+      <TopNotesList notes={topNotes} />
     </PageContainer>
   );
 }
