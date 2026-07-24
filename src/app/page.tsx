@@ -69,6 +69,23 @@ export default function HomePage() {
   // which they were). Empty whenever the cycle fits inside the palette and there is no Other at all.
   const folded = slices.find((s) => s.other)?.folded ?? [];
 
+  // The current cycle's forward cards (safe-to-spend + projection). Defined once and rendered in BOTH
+  // the populated branch (below the headline) and the empty-current-cycle branch (above "Nothing spent"),
+  // so a fresh zero-spend cycle still shows the allowance. `forward` is non-null only for the current
+  // cycle (useHome gates it on isCurrentCycle), so a past cycle and first-run onboarding never render it.
+  const forwardCards =
+    forward !== null ? (
+      <div className="-mt-3 flex flex-col gap-4">
+        <SafeToSpendCard
+          safePerDay={forward.safePerDay}
+          avgPerDay={forward.avgPerDay}
+          daysLeft={forward.daysLeft}
+          upcoming={forward.upcoming}
+        />
+        <ProjectedCard projected={forward.projected} totalBudget={totalStatus?.limit ?? null} />
+      </div>
+    ) : null;
+
   return (
     <PageContainer size="full">
       {/* The page's heading root. Visually redundant with the wordmark + cycle selector, so sr-only —
@@ -120,20 +137,7 @@ export default function HomePage() {
             ) : null}
           </section>
 
-          {forward !== null ? (
-            <div className="-mt-3 flex flex-col gap-4">
-              <SafeToSpendCard
-                safePerDay={forward.safePerDay}
-                avgPerDay={forward.avgPerDay}
-                daysLeft={forward.daysLeft}
-                upcoming={forward.upcoming}
-              />
-              <ProjectedCard
-                projected={forward.projected}
-                totalBudget={totalStatus?.limit ?? null}
-              />
-            </div>
-          ) : null}
+          {forwardCards}
 
           <ViewToggle
             className="-mt-3"
@@ -224,12 +228,15 @@ export default function HomePage() {
           {ledgerEmpty ? (
             <EmptyLedger />
           ) : (
-            <section className="panel px-6 py-16 text-center">
-              <h2 className="text-base font-semibold">Nothing spent in this cycle</h2>
-              <p className="mt-2 text-sm" style={{ color: 'var(--color-muted)' }}>
-                Use the arrows above to look at another cycle.
-              </p>
-            </section>
+            <>
+              {forwardCards}
+              <section className="panel px-6 py-16 text-center">
+                <h2 className="text-base font-semibold">Nothing spent in this cycle</h2>
+                <p className="mt-2 text-sm" style={{ color: 'var(--color-muted)' }}>
+                  Use the arrows above to look at another cycle.
+                </p>
+              </section>
+            </>
           )}
         </CycleSwipe>
       )}
