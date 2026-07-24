@@ -23,7 +23,7 @@ export function TopNotesList({ notes }: { notes: NoteRow[] }) {
                 ({n.count})
               </span>
             </span>
-            <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+            <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
               {formatBahtWhole(n.total)}
             </span>
           </li>

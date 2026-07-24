@@ -15,6 +15,30 @@ import { formatBahtWhole } from '@shared/money';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { trendAverage } from '@features/entries/trend';
 
+// Ambient "this row navigates" affordance for the tappable breakdown/cycle rows — an unfiltered
+// category tap filters the trend, which a pointer user otherwise can't see (mobile has no hover).
+// Faint + 16px so it signals without competing with the figure; aria-hidden, since each Link's own
+// aria-label already carries the intent.
+function RowChevron() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="shrink-0"
+      style={{ color: 'var(--color-faint)' }}
+    >
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
 // Analytics = the zoom-out surface. Home answers "what did I spend this cycle"; this answers "is that
 // normal for me". One screen: the six-cycle spending trend, with a dashed line marking your own
 // average across the window (see trendAverage). Below it sits one of two lists: unfiltered, the
@@ -133,9 +157,10 @@ export default function AnalyticsPage() {
                       ({r.count})
                     </span>
                   </span>
-                  <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                  <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
                     {formatBahtWhole(r.value)}
                   </span>
+                  <RowChevron />
                 </Link>
               </li>
             ))}
@@ -165,9 +190,10 @@ export default function AnalyticsPage() {
                       ({c.count})
                     </span>
                   </span>
-                  <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                  <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
                     {formatBahtWhole(c.value)}
                   </span>
+                  <RowChevron />
                 </Link>
               </li>
             ))}
@@ -175,9 +201,13 @@ export default function AnalyticsPage() {
         )}
       </section>
 
-      <SpendHeatmap cells={heatmapCells} />
-
-      <TopNotesList notes={topNotes} />
+      {/* The trend panel is the page's primary; the heatmap and top-notes are supporting. Grouping
+          them in one tighter-gap block (12px between the two, vs the 24px PageContainer gap above)
+          reads as "1 primary + a supporting pair" instead of three same-weight stacked panels. */}
+      <div className="flex flex-col gap-3">
+        <SpendHeatmap cells={heatmapCells} />
+        <TopNotesList notes={topNotes} />
+      </div>
     </PageContainer>
   );
 }
