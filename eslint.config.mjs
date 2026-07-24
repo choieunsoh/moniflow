@@ -34,7 +34,9 @@ export default defineConfig([
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.config.ts', 'scripts/*.ts'],
+          // scripts/*.ts is NOT listed here: tsconfig.json includes it, and typescript-eslint
+          // errors when a file is both in a project and in allowDefaultProject.
+          allowDefaultProject: ['*.config.ts'],
         },
         tsconfigRootDir: import.meta.dirname,
       },
