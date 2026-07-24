@@ -41,4 +41,31 @@ describe('anomalies', () => {
   it('returns empty when the subject cycle is missing', () => {
     expect(anomalies(m({ '2026-06': { Food: 1000 } }), '2026-07')).toEqual([]);
   });
+
+  it('excludes zero-spend cycles from the basis and ranks multiple anomalies by ratio', () => {
+    const matrix = m({
+      '2026-04': { Food: 1000, Fun: 500 },
+      '2026-05': { Food: 1000, Fun: 500 },
+      '2026-06': { Food: 0 }, // Food's zero here must NOT drag its average down
+      '2026-07': { Food: 2000, Fun: 1500 },
+    });
+    // Food basis [1000,1000] (the 0 excluded) → avg 1000, ratio 2.0
+    // Fun  basis [500,500]                    → avg 500,  ratio 3.0
+    // sorted by ratio desc → Fun before Food
+    expect(anomalies(matrix, '2026-07')).toEqual([
+      { category: 'Fun', current: 1500, avg: 500, ratio: 3 },
+      { category: 'Food', current: 2000, avg: 1000, ratio: 2 },
+    ]);
+  });
+
+  it('flags a ratio exactly at the threshold (>= boundary)', () => {
+    const matrix = m({
+      '2026-05': { Food: 1000 },
+      '2026-06': { Food: 1000 },
+      '2026-07': { Food: 1500 }, // exactly 1.5× the 1000 average
+    });
+    expect(anomalies(matrix, '2026-07')).toEqual([
+      { category: 'Food', current: 1500, avg: 1000, ratio: 1.5 },
+    ]);
+  });
 });
