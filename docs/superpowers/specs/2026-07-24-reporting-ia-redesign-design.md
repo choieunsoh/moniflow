@@ -17,9 +17,11 @@ Moniflow has **three** overlapping reporting surfaces, and their roles collide:
 Two concrete smells:
 
 1. **Home and Dashboard are both current-cycle views, and each holds a premium bottom-tab slot** — two of only four real nav slots spent on one time-context. They are two halves of one story ("what I spent" + "where it's heading").
-2. **`SpendHeatmap`, `TopNotesList`, and `AnomalyBanner` render on *both* Dashboard and Analytics** — the same components with two homes.
+2. **One Dashboard card is misfiled by time-context.** Of Dashboard's four cards (SafeToSpend, Projected, VsLast, Recent), the *this-vs-last-cycle delta* (`VsLast`) is a cross-cycle comparison — a "history" question stranded on a current-cycle screen — and *Recent activity* simply re-lists what the Records tab already shows.
 
 Meanwhile the one genuinely distinct surface — Analytics ("is this normal, over time") — is the one hidden in the overflow sheet.
+
+**Not a problem:** `SpendHeatmap` / `TopNotesList` / `AnomalyBanner` are *not* duplicated — they already live only on Analytics. Phase 1 relocates nothing except the `VsLast` delta.
 
 ## Decision
 
@@ -62,16 +64,16 @@ Vertical stack:
 
 ## Screen 2 — "Trends" (`/analytics`, promoted to a tab)
 
-The "is this normal / where does my money flow" surface, and now the **single home** for the widgets that were duplicated.
+The "is this normal / where does my money flow" surface.
 
 Vertical stack:
 
-1. **Anomaly banner** — existing (`AnomalyBanner`); no longer also on Dashboard.
+1. **Anomaly banner** — existing (`AnomalyBanner`).
 2. **6-cycle trend + budget line + own-average** — existing (`TrendChart`).
-3. **This-vs-last delta (MOVED here)** — the latest trend point, verbalized.
+3. **This-vs-last delta (MOVED here from Dashboard)** — the `VsLast` card; verbalizes the latest trend point. This is the only piece relocated in Phase 1.
 4. **Category breakdown (window)** — existing; tap a row to filter the trend. Gains a **`[By category | By account]` toggle (NEW)** — spending-by-account lives here as a second grouping of the same window, not a new page. (Phase 3.)
-5. **Spend heatmap** — existing (`SpendHeatmap`); single home now.
-6. **Top notes** — existing (`TopNotesList`); single home now.
+5. **Spend heatmap** — existing (`SpendHeatmap`), already here.
+6. **Top notes** — existing (`TopNotesList`), already here.
 
 **Spending-by-account placement rationale:** it belongs on Trends, not the daily screen — it is an analytical "where does my money flow from" question, and keeping it off the This-cycle screen avoids two competing axes there (Chart/List *and* Category/Account).
 
@@ -82,7 +84,7 @@ Vertical stack:
 
 ## Build phasing
 
-1. **Core IA (the restructure).** Merge Home + Dashboard onto `/`; move `SpendHeatmap` / `TopNotesList` / `AnomalyBanner` to Trends only; move the this-vs-last delta to Trends; promote Analytics → **Trends** tab; delete `/dashboard`; drop Analytics from `MoreSheet`; relabel. **Ships the whole restructure on its own.**
+1. **Core IA (the restructure).** Merge Home + Dashboard onto `/` (fold SafeToSpend/Projected/Upcoming into the Home headline; drop Recent activity); move the this-vs-last delta (`VsLast`) to Trends; promote Analytics → **Trends** tab; delete `/dashboard`; drop Analytics from `MoreSheet`; relabel. **Ships the whole restructure on its own.**
 2. **Top transactions** on This cycle (additive).
 3. **Spending-by-account** toggle on Trends (additive).
 
