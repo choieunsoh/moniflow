@@ -4,8 +4,10 @@ import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
+import { ensureRecurrencesTable } from '@features/recurring/schema';
 import { addEntries } from './queries';
 import { bumpDataVersion } from '@shared/data-version';
+import { setBudget } from '@features/budgets/queries';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 // The pace gate depends on how far into the cycle "today" is, so the clock has to be pinned or the
@@ -25,6 +27,7 @@ describe('useHome', () => {
     await ensureEntriesTable(db);
     await ensureSettingsTable(db);
     await ensureBudgetsTable(db);
+    await ensureRecurrencesTable(db);
     // Cutoff defaults to 18, so 2026-07-01 falls in the cycle keyed '2026-06'.
     await addEntries(db, [
       { date: '2026-07-01', account: 'Cash', category: 'Food', amount: -100 },
@@ -80,6 +83,7 @@ describe('useHome', () => {
       await ensureEntriesTable(db);
       await ensureSettingsTable(db);
       await ensureBudgetsTable(db);
+      await ensureRecurrencesTable(db);
       vi.mocked(getBrowserDb).mockResolvedValue(db);
 
       const { result } = renderHook(() => useHome('2026-06'));
@@ -210,6 +214,38 @@ describe('useHome', () => {
 
       await waitFor(() => expect(result.current.ready).toBe(true));
       expect(result.current.data?.activeKey).toBe('2026-05');
+    });
+  });
+
+  describe('forward (current-cycle figures folded in from the old dashboard)', () => {
+    it('carries safe-to-spend, projection and upcoming for the current cycle', async () => {
+      vi.mocked(todayIso).mockReturnValue('2026-06-22'); // day 5 of the current cycle '2026-06'
+      const db = await getBrowserDb();
+      await setBudget(db, null, 3000); // total budget
+
+      const { result } = renderHook(() => useHome(null));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const { data } = result.current;
+      if (data === null) throw new Error('unreachable — ready implies data');
+
+      expect(data.isCurrentCycle).toBe(true);
+      expect(data.forward).not.toBeNull();
+      const f = data.forward;
+      if (f === null) throw new Error('unreachable — asserted non-null above');
+      expect(f.avgPerDay).toBeCloseTo(170 / 5); // 170 spent over 5 elapsed days
+      expect(f.projected).toBeCloseTo((170 / 5) * data.progress.total);
+      expect(f.daysLeft).toBe(data.progress.total - 5 + 1); // today inclusive
+      expect(f.safePerDay).toBeCloseTo((3000 - 170) / f.daysLeft);
+      expect(f.upcoming).toEqual({ total: 0, count: 0 }); // no recurring rules seeded
+    });
+
+    it('is null on a past cycle — nothing to look ahead to', async () => {
+      vi.mocked(todayIso).mockReturnValue('2026-08-01'); // makes '2026-07' current, so '2026-06' is past
+      const { result } = renderHook(() => useHome('2026-06'));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+
+      expect(result.current.data?.isCurrentCycle).toBe(false);
+      expect(result.current.data?.forward).toBeNull();
     });
   });
 });

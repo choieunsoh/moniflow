@@ -15,9 +15,22 @@ import { getBudgets } from '@features/budgets/queries';
 import { toBudgetTotal, type BudgetTotal } from '@features/budgets/budget-status';
 import { getEmojiMap, getHueMap } from '@features/categories/queries';
 import { toDonutSlices, type DonutSlice } from './donut';
-import { MIN_PROJECT_DAYS } from './dashboard';
+import { safeToSpendPerDay, averagePerDay, projectCycleTotal, MIN_PROJECT_DAYS } from './dashboard';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
+import { listRules } from '@features/recurring/queries';
+import { committedThisCycle, type Committed } from '@features/recurring/upcoming';
+
+// The current cycle's forward-looking figures, folded in from the former /dashboard screen. Present
+// only when the cycle on screen is the current one — safe-to-spend and a projection only mean
+// something looking AHEAD, so a past cycle carries null and the page hides them, leaving the donut.
+export type HomeForward = {
+  safePerDay: number | null;
+  avgPerDay: number;
+  projected: number | null;
+  daysLeft: number;
+  upcoming: Committed;
+};
 
 export type HomeData = {
   cutoff: number;
@@ -39,6 +52,7 @@ export type HomeData = {
   progress: Progress;
   pacePct: number | undefined;
   showPace: boolean;
+  forward: HomeForward | null;
   // True only when the ledger is empty EVERYWHERE, not just in the cycle on screen. Home shows
   // first-run onboarding on the former and a quiet "nothing this cycle" on the latter.
   ledgerEmpty: boolean;
@@ -124,6 +138,22 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       // "over pace". Hold the wording back until the same floor the dashboard projects from.
       const showPace = pacePct !== undefined && progress.day >= MIN_PROJECT_DAYS;
 
+      // Forward figures for the current cycle only. listRules is fetched here (not in the top Promise.all)
+      // so a past cycle — the common case when paging back — never pays for it.
+      let forward: HomeForward | null = null;
+      if (isCurrentCycle) {
+        const rules = await listRules(db);
+        const daysLeft = progress.total - progress.day + 1; // today inclusive
+        const upcoming = committedThisCycle(rules, todayIso(), cycle.end);
+        forward = {
+          safePerDay: safeToSpendPerDay(totalLimit, total, upcoming.total, daysLeft),
+          avgPerDay: averagePerDay(total, progress.day),
+          projected: projectCycleTotal(total, progress.day, progress.total),
+          daysLeft,
+          upcoming,
+        };
+      }
+
       // Only asked when this cycle came back empty — a populated cycle is already proof the ledger
       // has something in it, so the common path never pays for the extra round trip.
       const ledgerEmpty = summary.count === 0 ? !(await hasAnyExpense(db)) : false;
@@ -148,6 +178,7 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
         progress,
         pacePct,
         showPace,
+        forward,
         ledgerEmpty,
       });
       setReady(true);
