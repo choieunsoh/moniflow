@@ -116,6 +116,22 @@ export function duePosts(rule: Rule, todayIso: string): Due[] {
   return out;
 }
 
+// Occurrences due strictly after `afterIso`, up to and including `throughIso` — a rule's not-yet-
+// posted future inside a window. Mirrors duePosts' cap/pointer handling; used to total a cycle's
+// upcoming bills WITHOUT posting them. Starts from paidCount so an old subscription doesn't spin
+// through years of posted history to reach the window.
+export function postsBetween(rule: Rule, afterIso: string, throughIso: string): Due[] {
+  const cap = maxPosts(rule);
+  const out: Due[] = [];
+  for (let i = paidCount(rule); cap === null || i < cap; i++) {
+    const date = dueDateAt(rule, i);
+    if (date > throughIso) break;
+    if (date <= afterIso) continue;
+    out.push({ date, seq: rule.startSeq + i });
+  }
+  return out;
+}
+
 // What the page shows. `paid` includes payments made before the rule existed (startSeq - 1), so an
 // installment added at "next is #4" reads "3 of 12 paid" before it ever posts.
 export function progressOf(rule: Rule): Progress {
