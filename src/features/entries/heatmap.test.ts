@@ -35,4 +35,24 @@ describe('toHeatmapCells', () => {
     expect(byDate.get('2026-07-03')).toBe(2); // 50% of max
     expect(byDate.get('2026-07-04')).toBe(0); // empty
   });
+
+  it('crosses a month boundary, both endpoints inclusive', () => {
+    const c: Cycle = { key: '2026-01', start: '2026-01-30', end: '2026-02-02', label: 'Jan' };
+    const cells = toHeatmapCells([group('2026-01-31', -50)], c);
+    expect(cells.map((x) => x.date)).toEqual([
+      '2026-01-30',
+      '2026-01-31',
+      '2026-02-01',
+      '2026-02-02',
+    ]);
+  });
+
+  it('rounds a non-quarter ratio UP (Math.ceil, not floor/round)', () => {
+    const c: Cycle = { key: '2026-03', start: '2026-03-01', end: '2026-03-02', label: 'Mar' };
+    // busiest day 100 → intensity 4; a day at 30% of max → 0.3×4 = 1.2 → ceil = 2 (floor/round = 1)
+    const cells = toHeatmapCells([group('2026-03-01', -100), group('2026-03-02', -30)], c);
+    const byDate = new Map(cells.map((x) => [x.date, x.intensity]));
+    expect(byDate.get('2026-03-01')).toBe(4);
+    expect(byDate.get('2026-03-02')).toBe(2);
+  });
 });
