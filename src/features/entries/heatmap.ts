@@ -31,3 +31,21 @@ export function toHeatmapCells(dayGroups: DayGroup[], cycle: Cycle): HeatmapCell
     return { date, total, intensity };
   });
 }
+
+// Pad the cycle's day cells into whole Sunday-started weeks so each day sits under its real weekday
+// column: `null`s before the first day (its weekday index, Sun=0) and after the last day complete the
+// grid. A null renders as a blank calendar square. Empty input → empty (the caller shows nothing).
+// The cycle is a billing cycle, not a calendar month, so the days flow continuously across the month
+// boundary (…31, 1…) in one grid rather than splitting into named months.
+// ponytail: Sunday-start is hard-wired via getUTCDay(); a Monday-start would shift the lead by
+// `(weekday + 6) % 7` and reorder the header labels — one place each.
+export function toCalendarLayout(cells: HeatmapCell[]): (HeatmapCell | null)[] {
+  if (cells.length === 0) return [];
+  const [y, m, d] = cells[0].date.split('-').map(Number);
+  const lead = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0 = Sunday
+  const out: (HeatmapCell | null)[] = [];
+  for (let i = 0; i < lead; i++) out.push(null);
+  for (const c of cells) out.push(c);
+  while (out.length % 7 !== 0) out.push(null);
+  return out;
+}
