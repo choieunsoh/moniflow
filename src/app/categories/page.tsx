@@ -3,6 +3,7 @@
 import { useCategoriesPage } from '@features/categories/use-categories-page';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { EmojiPicker } from '@features/categories/ui/EmojiPicker';
+import { OffBudgetToggle } from '@features/categories/ui/OffBudgetToggle';
 import { CategoryNameEditor } from '@features/categories/ui/CategoryNameEditor';
 import { AddCategory } from '@features/categories/ui/AddCategory';
 import { DeleteCategoryButton } from '@features/categories/ui/DeleteCategoryButton';
@@ -31,7 +32,7 @@ export default function CategoriesPage() {
     );
   }
 
-  const { counts, emojiMap, hueMap, iconSet, keypadCategories } = data;
+  const { counts, emojiMap, hueMap, offBudgetSet, iconSet, keypadCategories } = data;
 
   return (
     <PageContainer size="full">
@@ -64,6 +65,7 @@ export default function CategoriesPage() {
                   currentHue={hueFor(hueMap, c.category)}
                 />
                 <CategoryNameEditor category={c.category} />
+                <OffBudgetToggle category={c.category} checked={offBudgetSet.has(c.category)} />
                 {c.count === 0 ? (
                   <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
                     0

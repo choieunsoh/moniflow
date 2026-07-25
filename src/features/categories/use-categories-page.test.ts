@@ -4,7 +4,7 @@ import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { addEntries } from '@features/entries/queries';
-import { setCategoryEmoji } from './queries';
+import { setCategoryEmoji, setCategoryOffBudget } from './queries';
 import { bumpDataVersion } from '@shared/data-version';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
@@ -23,6 +23,7 @@ describe('useCategoriesPage', () => {
       { date: '2026-07-03', account: 'Cash', category: 'Transport', amount: -20 },
     ]);
     await setCategoryEmoji(db, 'Food', '🍔');
+    await setCategoryOffBudget(db, 'Transport', true);
     vi.mocked(getBrowserDb).mockResolvedValue(db);
   });
 
@@ -40,6 +41,8 @@ describe('useCategoriesPage', () => {
     const food = data.counts.find((c) => c.category === 'Food');
     expect(food?.count).toBe(2);
     expect(data.emojiMap.Food).toBe('🍔');
+    expect(data.offBudgetSet.has('Transport')).toBe(true);
+    expect(data.offBudgetSet.has('Food')).toBe(false);
     expect(data.keypadCategories.map((c) => c.name).sort()).toEqual(['Food', 'Transport']);
   });
 

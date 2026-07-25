@@ -1,5 +1,10 @@
 import { getBrowserDb } from '@db/browser';
-import { setCategoryEmoji, setCategoryHue, setCategoryOrder } from './queries';
+import {
+  setCategoryEmoji,
+  setCategoryHue,
+  setCategoryOffBudget,
+  setCategoryOrder,
+} from './queries';
 import { isValidDiscHue } from './color';
 import { bumpDataVersion } from '@shared/data-version';
 
@@ -34,5 +39,17 @@ export async function setCategoryHueAction(formData: FormData): Promise<void> {
 export async function reorderCategories(orderedNames: string[]): Promise<void> {
   const db = await getBrowserDb();
   await setCategoryOrder(db, orderedNames);
+  bumpDataVersion();
+}
+
+// Toggle a category's off-budget default. Typed args (not FormData) — a checkbox has no natural
+// submit-button value the way the emoji/hue swatches do, so this posts the boolean directly, same
+// shape as reorderCategories.
+export async function setCategoryOffBudgetAction(
+  category: string,
+  offBudget: boolean,
+): Promise<void> {
+  const db = await getBrowserDb();
+  await setCategoryOffBudget(db, category, offBudget);
   bumpDataVersion();
 }
