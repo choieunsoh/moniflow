@@ -7,6 +7,7 @@ import { ViewToggle } from '@shared/ui/ViewToggle';
 import { useAnalytics } from '@features/entries/use-analytics';
 import { TrendChart } from '@features/entries/ui/TrendChart';
 import { SpendHeatmap } from '@features/entries/ui/SpendHeatmap';
+import { WeekdayCard } from '@features/entries/ui/WeekdayCard';
 import { AnalyticsSkeleton } from '@features/entries/ui/AnalyticsSkeleton';
 import { TopNotesList } from '@features/entries/ui/TopNotesList';
 import { TopTransactionsList } from '@features/entries/ui/TopTransactionsList';
@@ -86,6 +87,7 @@ export default function AnalyticsPage() {
     topNotes,
     categoryTransactions,
     categoryNotes,
+    weekday,
   } = data;
   const isAccountView = grouping === 'account';
   const base = `/analytics?cycle=${activeKey}`;
@@ -265,6 +267,7 @@ export default function AnalyticsPage() {
       {category === null ? (
         <div className="flex flex-col gap-3">
           <SpendHeatmap cells={heatmapCells} />
+          <WeekdayCard stats={weekday} />
           <TopNotesList notes={topNotes} />
         </div>
       ) : null}

@@ -24,6 +24,7 @@ import { topNotes, type NoteRow } from './by-note';
 import { toHeatmapCells, type HeatmapCell } from './heatmap';
 import { anomalies, type Anomaly } from './anomaly';
 import { deltaByCategory, type DeltaContributor } from './delta-breakdown';
+import { byWeekday, type WeekdayStats } from './by-weekday';
 
 // One cycle's spend for the filtered category. The filtered list's row shape — unfiltered the list
 // decomposes by CATEGORY (CategoryRow), filtered it decomposes by CYCLE. Two shapes because they
@@ -67,6 +68,8 @@ export type AnalyticsData = {
   // window-scoping ceiling; the panel subtitle states this.
   categoryTransactions: EntryRow[];
   categoryNotes: NoteRow[];
+  // The active cycle's day-of-week rhythm — app-wide (unfiltered) supporting card.
+  weekday: WeekdayStats;
 };
 
 // Sum a window's breakdowns into one ranked Breakdown[] — the category list under the chart shows
@@ -150,6 +153,7 @@ export function useAnalytics(
       const cycleEntries = await getEntriesInRange(db, active.start, active.end);
       const notes = topNotes(cycleEntries);
       const heatmapCells = toHeatmapCells(groupByDate(cycleEntries), active);
+      const weekday = byWeekday(cycleEntries);
       const flagged = anomalies(matrix, activeKey);
       const inCategory =
         category === null ? [] : cycleEntries.filter((e) => e.category === category);
@@ -240,6 +244,7 @@ export function useAnalytics(
         anomalies: flagged,
         categoryTransactions,
         categoryNotes,
+        weekday,
       });
       setReady(true);
     });
