@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { HomeForward } from '../use-home';
-import { formatBahtWhole } from '@shared/money';
+import { formatBahtWhole, formatCurrencyWhole } from '@shared/money';
 
 // The current-cycle forward cards, moved out of the former DashboardCards so Home can render them
 // under its headline. All the null/0/number decisions are made upstream in the pure dashboard math
@@ -22,10 +22,14 @@ function CardShell({ title, children }: { title: string; children: ReactNode }) 
 // singular/plural rule live in one place. Renders nothing when nothing is due.
 function UpcomingLine({ upcoming }: { upcoming: HomeForward['upcoming'] }) {
   if (upcoming.count === 0) return null;
+  // Foreign bills with no pinned rate show in their own currency ($107), not a fake ฿107; multiple
+  // currencies join with " + ". THB (and pinned-rate foreign) collapse into one ฿ figure upstream.
+  const total = upcoming.byCurrency
+    .map(({ currency, amount }) => formatCurrencyWhole(amount, currency))
+    .join(' + ');
   return (
     <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-      Upcoming: {formatBahtWhole(upcoming.total)} · {upcoming.count}{' '}
-      {upcoming.count === 1 ? 'bill' : 'bills'} due
+      Upcoming: {total} · {upcoming.count} {upcoming.count === 1 ? 'bill' : 'bills'} due
     </span>
   );
 }
@@ -55,12 +59,7 @@ export function SafeToSpendCard({
         >
           Set a total budget for a safe-to-spend figure →
         </Link>
-        {upcoming.count > 0 ? (
-          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Upcoming: {formatBahtWhole(upcoming.total)} · {upcoming.count}{' '}
-            {upcoming.count === 1 ? 'bill' : 'bills'} due
-          </span>
-        ) : null}
+        <UpcomingLine upcoming={upcoming} />
       </CardShell>
     );
   }
@@ -73,12 +72,7 @@ export function SafeToSpendCard({
         <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
           Nothing left in this cycle's budget
         </span>
-        {upcoming.count > 0 ? (
-          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Upcoming: {formatBahtWhole(upcoming.total)} · {upcoming.count}{' '}
-            {upcoming.count === 1 ? 'bill' : 'bills'} due
-          </span>
-        ) : null}
+        <UpcomingLine upcoming={upcoming} />
       </CardShell>
     );
   }

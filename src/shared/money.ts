@@ -79,6 +79,23 @@ export function formatCurrency(amount: number, currency: string): string {
   return formatterFor(currency).format(amount);
 }
 
+// Whole-unit variant of formatCurrency, for glance lines that would rather be short than exact
+// (the Upcoming line). narrowSymbol per currency, rounded to the unit — THB → ฿107, USD → $107.
+const wholeCurrencyFormatters = new Map<string, Intl.NumberFormat>();
+
+export function formatCurrencyWhole(amount: number, currency: string): string {
+  const existing = wholeCurrencyFormatters.get(currency);
+  if (existing !== undefined) return existing.format(amount);
+  const fmt = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    currencyDisplay: 'narrowSymbol',
+    maximumFractionDigits: 0,
+  });
+  wholeCurrencyFormatters.set(currency, fmt);
+  return fmt.format(amount);
+}
+
 // Just the symbol glyph (for picker chips), extracted from Intl parts — no hand-maintained table.
 export function currencySymbol(currency: string): string {
   const part = formatterFor(currency)

@@ -235,7 +235,7 @@ describe('useHome', () => {
       expect(f.avgPerDay).toBeCloseTo(170 / 5); // 170 spent over 5 elapsed days
       expect(f.daysLeft).toBe(data.progress.total - 5 + 1); // today inclusive
       expect(f.safePerDay).toBeCloseTo((3000 - 170) / f.daysLeft);
-      expect(f.upcoming).toEqual({ total: 0, count: 0 }); // no recurring rules seeded
+      expect(f.upcoming).toEqual({ total: 0, count: 0, byCurrency: [] }); // no recurring rules seeded
     });
 
     it('is null on a past cycle — nothing to look ahead to', async () => {
