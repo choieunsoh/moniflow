@@ -21,6 +21,7 @@ import { groupByDate } from './by-date';
 import { topNotes, type NoteRow } from './by-note';
 import { toHeatmapCells, type HeatmapCell } from './heatmap';
 import { anomalies, type Anomaly } from './anomaly';
+import { deltaByCategory, type DeltaContributor } from './delta-breakdown';
 
 // One cycle's spend for the filtered category. The filtered list's row shape — unfiltered the list
 // decomposes by CATEGORY (CategoryRow), filtered it decomposes by CYCLE. Two shapes because they
@@ -53,6 +54,9 @@ export type AnalyticsData = {
   // Anchor cycle vs the one before it, unfiltered only (see the derivation comment below). null when
   // filtered, or when there is no comparable earlier cycle.
   delta: CycleDelta | null;
+  // The top categories that drove `delta`, unfiltered only (empty when filtered). Powers the
+  // CycleDeltaCard "what changed" rows.
+  deltaBreakdown: DeltaContributor[];
   topNotes: NoteRow[];
   heatmapCells: HeatmapCell[];
   anomalies: Anomaly[];
@@ -195,6 +199,14 @@ export function useAnalytics(
       const delta =
         category === null && lastBar !== undefined ? cycleDelta(lastBar.value, prevTotal) : null;
 
+      // Unfiltered only: which categories moved the total. The window's last two cycle keys are the
+      // active cycle and the one before it — the same pair `delta` compares.
+      const prevCycleKey = cycles[cycles.length - 2]?.key;
+      const deltaBreakdown =
+        category === null && delta !== null && prevCycleKey !== undefined
+          ? deltaByCategory(matrix, activeKey, prevCycleKey).slice(0, 4)
+          : [];
+
       setData({
         activeKey,
         currentKey,
@@ -210,6 +222,7 @@ export function useAnalytics(
         cycleRows,
         budgetLine,
         delta,
+        deltaBreakdown,
         topNotes: notes,
         heatmapCells,
         anomalies: flagged,

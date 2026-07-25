@@ -79,6 +79,7 @@ export default function AnalyticsPage() {
     cycleRows,
     budgetLine,
     delta,
+    deltaBreakdown,
     anomalies,
     heatmapCells,
     topNotes,
@@ -231,7 +232,15 @@ export default function AnalyticsPage() {
         )}
       </section>
 
-      {delta !== null ? <CycleDeltaCard delta={delta} /> : null}
+      {delta !== null ? (
+        <CycleDeltaCard
+          delta={delta}
+          contributors={deltaBreakdown}
+          emojiMap={emojiMap}
+          hueMap={hueMap}
+          iconSet={iconSet}
+        />
+      ) : null}
 
       {/* The trend panel is the page's primary; the heatmap and top-notes are supporting. Grouping
           them in one tighter-gap block (12px between the two, vs the 24px PageContainer gap above)
