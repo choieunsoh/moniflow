@@ -16,9 +16,10 @@ import { cycleFromKey, currentCycleKey, cycleProgress, type Cycle, type Progress
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getBudgets } from '@features/budgets/queries';
 import { toBudgetTotal, type BudgetTotal } from '@features/budgets/budget-status';
-import { getEmojiMap, getHueMap } from '@features/categories/queries';
+import { getEmojiMap, getHueMap, getOffBudgetCategories } from '@features/categories/queries';
 import { toDonutSlices, type DonutSlice } from './donut';
-import { safeToSpendPerDay, averagePerDay, projectCycleTotal, MIN_PROJECT_DAYS } from './dashboard';
+import { safeToSpendPerDay, averagePerDay, MIN_PROJECT_DAYS } from './dashboard';
+import { splitBudgetSpend } from './off-budget';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 import { listRules } from '@features/recurring/queries';
@@ -30,7 +31,6 @@ import { committedThisCycle, type Committed } from '@features/recurring/upcoming
 export type HomeForward = {
   safePerDay: number | null;
   avgPerDay: number;
-  projected: number | null;
   daysLeft: number;
   upcoming: Committed;
 };
@@ -48,6 +48,7 @@ export type HomeData = {
   slices: DonutSlice[];
   sliceColors: Map<string, string>;
   total: number;
+  offBudgetTotal: number;
   emojiMap: Record<string, string>;
   hueMap: Record<string, number>;
   iconSet: IconSet;
@@ -95,11 +96,12 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
 
   useEffect(() => {
     void withDb(async (db) => {
-      const [cutoff, emojiMap, hueMap, iconSet] = await Promise.all([
+      const [cutoff, emojiMap, hueMap, iconSet, offBudgetCategories] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
         getHueMap(db),
         getIconSet(db),
+        getOffBudgetCategories(db),
       ]);
 
       const currentKey = currentCycleKey(todayIso(), cutoff);
@@ -117,6 +119,12 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       const topTx = topTransactions(cycleEntries);
       const slices = toDonutSlices(categoryBreakdown);
       const total = slices.reduce((sum, s) => sum + s.value, 0);
+      // The donut stays all-in (total, above); the budget meter, safe-to-spend and pace read only
+      // discretionary spend — off-budget entries (per-entry override or a flagged category) drop out.
+      const { discretionary, offBudget: offBudgetTotal } = splitBudgetSpend(
+        cycleEntries,
+        offBudgetCategories,
+      );
       // One colour per category, shared by the donut legend and the ranked list, so a category keeps
       // the same identity across the view toggle. Categories past the palette fold into Other and are
       // absent here — the list falls back to the accent for them, which is correct: they have no
@@ -132,7 +140,7 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       for (const b of budgetRows) {
         if (b.category !== null) limits.set(b.category, b.amount);
       }
-      const totalStatus = totalLimit === null ? null : toBudgetTotal(totalLimit, total);
+      const totalStatus = totalLimit === null ? null : toBudgetTotal(totalLimit, discretionary);
 
       // Time elapsed in the cycle drives both the standalone header bar and the "today" pace tick on
       // the budget meters — but a pace mark only makes sense while the cycle is live, so pacePct is
@@ -152,9 +160,8 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
         const daysLeft = progress.total - progress.day + 1; // today inclusive
         const upcoming = committedThisCycle(rules, todayIso(), cycle.end);
         forward = {
-          safePerDay: safeToSpendPerDay(totalLimit, total, upcoming.total, daysLeft),
-          avgPerDay: averagePerDay(total, progress.day),
-          projected: projectCycleTotal(total, progress.day, progress.total),
+          safePerDay: safeToSpendPerDay(totalLimit, discretionary, upcoming.total, daysLeft),
+          avgPerDay: averagePerDay(discretionary, progress.day),
           daysLeft,
           upcoming,
         };
@@ -177,6 +184,7 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
         slices,
         sliceColors,
         total,
+        offBudgetTotal,
         emojiMap,
         hueMap,
         iconSet,

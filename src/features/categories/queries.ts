@@ -223,6 +223,30 @@ export function hueFor(map: Record<string, number>, category: string): number | 
   return map[category];
 }
 
+// The set of category NAMES flagged off-budget — loaded like getEmojiMap/getHueMap and used by
+// off-budget.ts to decide which spend the budget meters ignore.
+export async function getOffBudgetCategories(db: Db): Promise<Set<string>> {
+  const rows = await db
+    .select({ name: categories.name })
+    .from(categories)
+    .where(eq(categories.offBudget, 1))
+    .all();
+  return new Set(rows.map((r) => r.name));
+}
+
+// Toggle a category's off-budget default. Mirrors setCategoryHue's update-by-name shape.
+export async function setCategoryOffBudget(
+  db: Db,
+  category: string,
+  offBudget: boolean,
+): Promise<void> {
+  await db
+    .update(categories)
+    .set({ offBudget: offBudget ? 1 : 0 })
+    .where(eq(categories.name, category))
+    .run();
+}
+
 // Resolve a category name to its id, creating the row if the name is new. This is the single
 // write-boundary that turns the name-based UI/import into id-based storage, so seeding the icon HERE
 // is what makes a Monefy CSV restore arrive with meaningful icons rather than 22 identical tags —

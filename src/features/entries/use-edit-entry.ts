@@ -19,6 +19,7 @@ import {
   type IconSet,
   type KeypadLayout,
 } from '@features/settings/queries';
+import { getOffBudgetCategories } from '@features/categories/queries';
 import { withFee } from './fx';
 import { useDataVersion } from '@shared/data-version';
 
@@ -36,6 +37,7 @@ export type EditEntryData =
       ratesAsOf: Record<string, string>;
       iconSet: IconSet;
       keypadLayout: KeypadLayout;
+      offBudgetCategories: Set<string>; // the Keypad's off-budget toggle default
     }
   | {
       keypadEditable: false;
@@ -43,6 +45,7 @@ export type EditEntryData =
       accounts: string[];
       categories: string[];
       notes: string[];
+      offBudgetCategories: Set<string>; // the plain EntryForm's off-budget toggle default
     };
 
 // Edit-entry page's data, read once via the browser OPFS db after mount — mirrors the server
@@ -75,6 +78,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           notes,
           cardFeePct,
           fxRates,
+          offBudgetCategories,
         ] = await Promise.all([
           getIconSet(db),
           getKeypadLayout(db),
@@ -84,6 +88,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           getDistinctNotes(db),
           getCardFeePct(db),
           getFxRates(db),
+          getOffBudgetCategories(db),
         ]);
         const rates: Record<string, number> = {};
         const ratesAsOf: Record<string, string> = {};
@@ -102,14 +107,16 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           ratesAsOf,
           iconSet,
           keypadLayout,
+          offBudgetCategories,
         });
       } else {
-        const [accounts, categories, notes] = await Promise.all([
+        const [accounts, categories, notes, offBudgetCategories] = await Promise.all([
           getDistinctAccounts(db),
           getDistinctCategories(db),
           getDistinctNotes(db),
+          getOffBudgetCategories(db),
         ]);
-        setData({ keypadEditable: false, entry, accounts, categories, notes });
+        setData({ keypadEditable: false, entry, accounts, categories, notes, offBudgetCategories });
       }
       setReady(true);
     });

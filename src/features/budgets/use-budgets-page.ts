@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
-import { getDistinctCategories, getCategoryBreakdown } from '@features/entries/queries';
+import { getDistinctCategories, getEntriesInRange } from '@features/entries/queries';
+import { discretionaryByCategory } from '@features/entries/off-budget';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { getBudgets } from './queries';
 import { toBudgetRows, toBudgetTotal, type BudgetRow, type BudgetTotal } from './budget-status';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
-import { getEmojiMap, getHueMap } from '@features/categories/queries';
+import { getEmojiMap, getHueMap, getOffBudgetCategories } from '@features/categories/queries';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 
@@ -37,10 +38,15 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
       const cutoff = await getCutoff(db);
       const cycle = cycleFromKey(currentCycleKey(todayIso(), cutoff), cutoff);
 
-      // This cycle's spend per category (magnitudes — the ledger stores outflow as negative).
-      const breakdown = await getCategoryBreakdown(db, cycle.start, cycle.end);
-      const spentByCategory = new Map(breakdown.map((b) => [b.key, Math.abs(b.total)]));
-      const totalSpent = breakdown.reduce((sum, b) => sum + Math.abs(b.total), 0);
+      // This cycle's discretionary spend per category (magnitudes, off-budget entries dropped) — the
+      // ledger stores outflow as negative. Matches the Home total meter's discretionary basis (Task 4)
+      // so the Budgets page's Total row and per-category rows stay in step with each other.
+      const [cycleEntries, offBudgetCategories] = await Promise.all([
+        getEntriesInRange(db, cycle.start, cycle.end),
+        getOffBudgetCategories(db),
+      ]);
+      const spentByCategory = discretionaryByCategory(cycleEntries, offBudgetCategories);
+      const totalSpent = [...spentByCategory.values()].reduce((sum, v) => sum + v, 0);
 
       const limits = new Map<string, number>();
       let totalLimit: number | null = null;

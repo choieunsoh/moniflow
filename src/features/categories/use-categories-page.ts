@@ -5,7 +5,7 @@ import { withDb } from '@shared/db-effect';
 import { getCategoryCounts, type CategoryCount } from '@features/entries/queries';
 import { getKeypadCategories } from '@features/entries/keypad-lists';
 import type { KeypadCategory } from '@features/entries/ui/Keypad';
-import { getEmojiMap, getHueMap } from './queries';
+import { getEmojiMap, getHueMap, getOffBudgetCategories } from './queries';
 import { getIconSet, type IconSet } from '@features/settings/queries';
 import { useDataVersion } from '@shared/data-version';
 
@@ -13,6 +13,7 @@ export type CategoriesPageData = {
   counts: CategoryCount[];
   emojiMap: Record<string, string>;
   hueMap: Record<string, number>;
+  offBudgetSet: Set<string>;
   iconSet: IconSet;
   keypadCategories: KeypadCategory[];
 };
@@ -32,15 +33,18 @@ export function useCategoriesPage(): { ready: boolean; data: CategoriesPageData 
       // unmounting the whole tree — which silently closed the reorder sheet (an open <dialog> can't
       // survive its node being replaced) on the very drop that persisted the order. Keeping the last
       // data on screen while the refetch runs is also one less flash per rename/delete/add.
-      const [counts, emojiMap, hueMap, iconSet, keypadCategories] = await Promise.all([
-        getCategoryCounts(db),
-        getEmojiMap(db),
-        getHueMap(db),
-        getIconSet(db),
-        getKeypadCategories(db),
-      ]);
+      const [counts, emojiMap, hueMap, offBudgetSet, iconSet, keypadCategories] = await Promise.all(
+        [
+          getCategoryCounts(db),
+          getEmojiMap(db),
+          getHueMap(db),
+          getOffBudgetCategories(db),
+          getIconSet(db),
+          getKeypadCategories(db),
+        ],
+      );
 
-      setData({ counts, emojiMap, hueMap, iconSet, keypadCategories });
+      setData({ counts, emojiMap, hueMap, offBudgetSet, iconSet, keypadCategories });
       setReady(true);
     });
   }, [version]);

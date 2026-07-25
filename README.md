@@ -20,7 +20,7 @@ Live demo: **[mymoniflow.vercel.app](https://mymoniflow.vercel.app)**
 ## Features
 
 - **Keypad entry** — a Monefy-style calculator keypad for fast expense entry, with per-entry currency conversion.
-- **Home** — the current billing cycle's spending as a by-category donut plus a ranked breakdown (chart / list toggle), with the cycle's safe-to-spend per day, projected total, and upcoming bills folded in.
+- **Home** — the current billing cycle's spending as a by-category donut plus a ranked breakdown (chart / list toggle), with the cycle's safe-to-spend per day and upcoming bills folded in. Irregular one-offs can be marked off-budget so they don't distort the budget meter or pace.
 - **Records** — the cycle's expenses grouped by day, swipe to edit or delete, with live cross-cycle search.
 - **Budgets** — standing per-category monthly limits, surfaced on the home view.
 - **Trends** — multi-cycle spending trends, with your own average line and a this-cycle-vs-last comparison.

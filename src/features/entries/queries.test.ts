@@ -109,6 +109,24 @@ describe('restoreEntries', () => {
   });
 });
 
+describe('off_budget round-trips through addEntries → getEntriesInRange', () => {
+  it('persists an explicit override and reads it back', async () => {
+    const d = await db();
+    await addEntries(d, [
+      { date: '2026-07-01', account: 'cash', category: 'food', amount: -100, offBudget: 1 },
+    ]);
+    const [row] = await getEntriesInRange(d, '2026-07-01', '2026-07-31');
+    expect(row.offBudget).toBe(1);
+  });
+
+  it('defaults to null (inherit the category) when omitted', async () => {
+    const d = await db();
+    await addEntries(d, [{ date: '2026-07-01', account: 'cash', category: 'food', amount: -100 }]);
+    const [row] = await getEntriesInRange(d, '2026-07-01', '2026-07-31');
+    expect(row.offBudget).toBeNull();
+  });
+});
+
 describe('cycle-scoped queries', () => {
   async function seed() {
     const d = await db();

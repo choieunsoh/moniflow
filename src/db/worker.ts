@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import type { Sqlite3Static, Database, BindableValue } from '@sqlite.org/sqlite-wasm';
+import { applyColumnMigrations } from './column-migrations';
 
 // drizzle's sqlite-proxy always sends params as a positional array of SQL-bindable values, so the
 // worker types them as BindableValue[] (assignable to the oo1 bind()'s BindingSpec) rather than unknown[].
@@ -23,9 +24,10 @@ let db: Database | null = null;
 const BOOTSTRAP_SQL = [
   `CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL,
      time TEXT, account_id INTEGER, category_id INTEGER, amount REAL NOT NULL, currency TEXT,
-     original_amount REAL, note TEXT, source TEXT NOT NULL DEFAULT 'manual')`,
+     original_amount REAL, note TEXT, source TEXT NOT NULL DEFAULT 'manual', off_budget INTEGER)`,
   `CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
-     emoji TEXT NOT NULL, hue INTEGER, sort_order INTEGER, archived INTEGER NOT NULL DEFAULT 0)`,
+     emoji TEXT NOT NULL, hue INTEGER, sort_order INTEGER, archived INTEGER NOT NULL DEFAULT 0,
+     off_budget INTEGER NOT NULL DEFAULT 0)`,
   `CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
      icon TEXT NOT NULL, hue INTEGER, sort_order INTEGER, archived INTEGER NOT NULL DEFAULT 0)`,
   `CREATE TABLE IF NOT EXISTS budgets (id INTEGER PRIMARY KEY AUTOINCREMENT, category_id INTEGER, amount REAL NOT NULL)`,
@@ -83,6 +85,15 @@ async function boot(): Promise<void> {
   const pool = await api.installOpfsSAHPoolVfs({ name: 'moniflow-pool' });
   db = new pool.OpfsSAHPoolDb(DB_FILE);
   for (const ddl of BOOTSTRAP_SQL) runStmt(ddl);
+  // A persisted OPFS db from before a column was added skips it: CREATE TABLE IF NOT EXISTS above is a
+  // no-op on an existing table. Add any missing columns now.
+  applyColumnMigrations(
+    (table, column) => {
+      const rows = queryRows(`PRAGMA table_info(${table})`, [], 'all');
+      return Array.isArray(rows) && rows.some((r) => Array.isArray(r) && r[1] === column);
+    },
+    (ddl) => runStmt(ddl),
+  );
 }
 
 let bootPromise: Promise<void> | null = null;

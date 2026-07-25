@@ -23,6 +23,7 @@ function entry(overrides: Partial<Entry>): Entry {
     originalAmount: -400,
     note: null,
     source: 'manual',
+    offBudget: null,
     ...overrides,
   };
 }

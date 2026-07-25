@@ -218,7 +218,7 @@ describe('useHome', () => {
   });
 
   describe('forward (current-cycle figures folded in from the old dashboard)', () => {
-    it('carries safe-to-spend, projection and upcoming for the current cycle', async () => {
+    it('carries safe-to-spend and upcoming for the current cycle', async () => {
       vi.mocked(todayIso).mockReturnValue('2026-06-22'); // day 5 of the current cycle '2026-06'
       const db = await getBrowserDb();
       await setBudget(db, null, 3000); // total budget
@@ -233,7 +233,6 @@ describe('useHome', () => {
       const f = data.forward;
       if (f === null) throw new Error('unreachable — asserted non-null above');
       expect(f.avgPerDay).toBeCloseTo(170 / 5); // 170 spent over 5 elapsed days
-      expect(f.projected).toBeCloseTo((170 / 5) * data.progress.total);
       expect(f.daysLeft).toBe(data.progress.total - 5 + 1); // today inclusive
       expect(f.safePerDay).toBeCloseTo((3000 - 170) / f.daysLeft);
       expect(f.upcoming).toEqual({ total: 0, count: 0 }); // no recurring rules seeded
@@ -246,6 +245,46 @@ describe('useHome', () => {
 
       expect(result.current.data?.isCurrentCycle).toBe(false);
       expect(result.current.data?.forward).toBeNull();
+    });
+
+    it('has no projected figure — the budget-fit projection was retired', async () => {
+      vi.mocked(todayIso).mockReturnValue('2026-06-22'); // day 5 of the current cycle '2026-06'
+      const { result } = renderHook(() => useHome(null));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const { data } = result.current;
+      if (data === null) throw new Error('unreachable — ready implies data');
+      expect(data.forward).not.toBeNull();
+      expect(data.forward).not.toHaveProperty('projected');
+    });
+  });
+
+  describe('off-budget split', () => {
+    it('excludes off-budget spend from totalStatus/safe-to-spend but keeps the donut all-in', async () => {
+      vi.mocked(todayIso).mockReturnValue('2026-06-22'); // day 5 of the current cycle '2026-06'
+      const db = await getBrowserDb();
+      await setBudget(db, null, 3000); // total budget
+      // Seeded cycle '2026-06' already carries 170 (100 + 50 + 20) discretionary. Add an off-budget
+      // entry via the per-entry override — it must count toward the donut total but drop out of the
+      // budget meter, safe-to-spend, and pace.
+      await addEntries(db, [
+        { date: '2026-06-20', account: 'Cash', category: 'Rent', amount: -500, offBudget: 1 },
+      ]);
+      act(() => bumpDataVersion());
+
+      const { result } = renderHook(() => useHome(null));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const { data } = result.current;
+      if (data === null) throw new Error('unreachable — ready implies data');
+
+      expect(data.total).toBe(670); // all-in: 170 + 500
+      expect(data.offBudgetTotal).toBe(500);
+      expect(data.totalStatus).not.toBeNull();
+      expect(data.totalStatus?.spent).toBe(170); // discretionary only
+
+      const f = data.forward;
+      if (f === null) throw new Error('unreachable — asserted non-null above');
+      expect(f.avgPerDay).toBeCloseTo(170 / 5); // discretionary spend over 5 elapsed days
+      expect(f.safePerDay).toBeCloseTo((3000 - 170) / f.daysLeft);
     });
   });
 

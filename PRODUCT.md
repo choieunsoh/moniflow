@@ -26,8 +26,11 @@ bottom tab bar — **Home · Records · ＋ · Trends · More**:
   the cycle's transaction count annotating the hole, plus a ranked category breakdown (chart / list
   toggle). The total sits in the panel above the ring rather than in the hole so it stays put when
   the toggle flips, and so the page's biggest figure is its most useful one. On the current cycle it
-  also carries the forward view merged in from the former dashboard — safe-to-spend per day, a
-  projected cycle total, and upcoming recurring bills (shown even before the cycle's first expense).
+  also carries the forward view merged in from the former dashboard — safe-to-spend per day and
+  upcoming recurring bills (shown even before the cycle's first expense). Irregular one-offs (a yearly
+  bill, a big one-time buy) can be flagged off-budget — per entry or per category — so they stay in the
+  ledger but don't distort the budget meter, pace, or safe-to-spend; Home discloses the off-budget total
+  beneath the headline.
 - **Records** — the cycle's expenses grouped by day, each a swipe-to-edit/delete row, with live
   cross-cycle search.
 - **Trends** — the six-cycle spending trend, with a dashed line marking your own average across

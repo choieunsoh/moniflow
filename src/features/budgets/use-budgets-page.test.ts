@@ -68,4 +68,21 @@ describe('useBudgetsPage', () => {
 
     await waitFor(() => expect(result.current.data?.total.limit).toBe(500));
   });
+
+  it('excludes off-budget entries from a category row spend', async () => {
+    const db = await getBrowserDb();
+    // A per-entry off_budget:1 inside the already-budgeted Food category — a reimbursed one-off that
+    // shouldn't count against the standing limit, per discretionaryByCategory's contract.
+    await addEntries(db, [
+      { date: cycle.start, account: 'Cash', category: 'Food', amount: -300, offBudget: 1 },
+    ]);
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useBudgetsPage());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    const food = result.current.data?.rows.find((r) => r.category === 'Food');
+    // 150 (100+50 from beforeEach) — the 300 off-budget entry is dropped, not folded in.
+    expect(food?.spent).toBe(150);
+  });
 });
