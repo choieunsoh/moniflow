@@ -92,38 +92,3 @@ export function SafeToSpendCard({
     </CardShell>
   );
 }
-
-// projected === null → too early to project. With a budget, show whether the pace lands over/under.
-export function ProjectedCard({
-  projected,
-  totalBudget,
-}: {
-  projected: number | null;
-  totalBudget: number | null;
-}) {
-  if (projected === null) {
-    return (
-      <CardShell title="Projected this cycle">
-        <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Too early to project — check back in a few days
-        </span>
-      </CardShell>
-    );
-  }
-  const over = totalBudget !== null && projected > totalBudget;
-  return (
-    <CardShell title="Projected this cycle">
-      <span className="tnum text-2xl font-semibold">{formatBahtWhole(projected)}</span>
-      {totalBudget !== null ? (
-        <span
-          className="text-sm"
-          style={{ color: over ? 'var(--color-loss)' : 'var(--color-muted)' }}
-        >
-          {over
-            ? `${formatBahtWhole(projected - totalBudget)} over budget at this pace`
-            : 'on track for your budget'}
-        </span>
-      ) : null}
-    </CardShell>
-  );
-}

@@ -8,7 +8,7 @@ import { pacePhrase } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 import { formatBahtWhole } from '@shared/money';
 import { DonutChart } from '@features/entries/ui/DonutChart';
-import { SafeToSpendCard, ProjectedCard } from '@features/entries/ui/ForwardCards';
+import { SafeToSpendCard } from '@features/entries/ui/ForwardCards';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { CycleProgress } from '@features/entries/ui/CycleProgress';
@@ -52,6 +52,7 @@ export default function HomePage() {
     slices,
     sliceColors,
     total,
+    offBudgetTotal,
     emojiMap,
     hueMap,
     iconSet,
@@ -67,6 +68,11 @@ export default function HomePage() {
 
   const showList = view === 'category';
   const hasSpending = summary.count > 0;
+  // The headline figure and the meter must agree on what "spent" means — discretionary spend
+  // (off-budget entries dropped), not the all-in cycle total the donut shows below. totalStatus is
+  // built from the same discretionary figure, so reading its `spent` keeps the two in lockstep; with
+  // no budget set there's no totalStatus to read, so fall back to total minus off-budget directly.
+  const discretionarySpend = totalStatus ? totalStatus.spent : total - offBudgetTotal;
   // The categories the ring folded into Other, carried on the bucket itself (only the fold knows
   // which they were). Empty whenever the cycle fits inside the palette and there is no Other at all.
   const folded = slices.find((s) => s.other)?.folded ?? [];
@@ -84,7 +90,6 @@ export default function HomePage() {
           daysLeft={forward.daysLeft}
           upcoming={forward.upcoming}
         />
-        <ProjectedCard projected={forward.projected} totalBudget={totalStatus?.limit ?? null} />
       </div>
     ) : null;
 
@@ -119,7 +124,7 @@ export default function HomePage() {
                 Spent this cycle
               </h2>
               <span className="tnum text-xl font-semibold">
-                {formatBahtWhole(total)}
+                {formatBahtWhole(discretionarySpend)}
                 {totalStatus ? (
                   <span className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
                     {' '}
@@ -128,6 +133,11 @@ export default function HomePage() {
                 ) : null}
               </span>
             </div>
+            {offBudgetTotal > 0 ? (
+              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                + {formatBahtWhole(offBudgetTotal)} off-budget
+              </span>
+            ) : null}
             {totalStatus ? <BudgetMeter status={totalStatus} pacePct={pacePct} /> : null}
             {/* The pace tick on the meter shows from day 1 — it's geometry. This phrase is a verdict,
                 and on day 1 any spend at all reads as "over pace", so useHome holds it back until
