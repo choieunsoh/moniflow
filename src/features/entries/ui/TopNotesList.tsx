@@ -7,10 +7,18 @@ const MAX_ROWS = 12;
 // topNotes), the question the category breakdown can't answer. A plain ranked list is the honest
 // form for free text: no chart, no icon (a note has no hue). Capped at MAX_ROWS — the long tail of
 // one-off notes isn't worth the scroll.
-export function TopNotesList({ notes }: { notes: NoteRow[] }) {
+export function TopNotesList({
+  notes,
+  // The region's accessible name. Defaults to the current-cycle phrasing (Home/Trends); the /year
+  // recap passes a window-appropriate label so screen readers don't hear "this cycle" on a 12-cycle list.
+  label = 'Top notes this cycle',
+}: {
+  notes: NoteRow[];
+  label?: string;
+}) {
   if (notes.length === 0) return null;
   return (
-    <section className="panel flex flex-col gap-3 p-5" aria-label="Top notes this cycle">
+    <section className="panel flex flex-col gap-3 p-5" aria-label={label}>
       <h2 className="text-sm font-semibold" style={{ color: 'var(--color-muted)' }}>
         Top notes
       </h2>

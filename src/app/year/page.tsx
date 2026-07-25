@@ -11,7 +11,7 @@ import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { formatBaht, formatBahtWhole } from '@shared/money';
-import { formatDayHeading } from '@shared/date';
+import { formatDayHeadingWithYear } from '@shared/date';
 
 // The /year recap — a trailing-12-cycle "where did it go" summary reached from the More sheet. All
 // figures come from useYear (one windowed query, folded by yearSummary). Reuses TrendChart /
@@ -113,7 +113,7 @@ export default function YearPage() {
           <Link
             prefetch={false}
             href={`/entries/edit?id=${biggestTransaction.id}`}
-            aria-label={`${biggestTransaction.note ? `${biggestTransaction.note} (${biggestTransaction.category})` : biggestTransaction.category} ${formatBaht(Math.abs(biggestTransaction.amount))} on ${formatDayHeading(biggestTransaction.date)}`}
+            aria-label={`${biggestTransaction.note ? `${biggestTransaction.note} (${biggestTransaction.category})` : biggestTransaction.category} ${formatBaht(Math.abs(biggestTransaction.amount))} on ${formatDayHeadingWithYear(biggestTransaction.date)}`}
             className="flex min-h-11 items-center gap-3 text-sm"
           >
             <CategoryIcon
@@ -127,7 +127,7 @@ export default function YearPage() {
                 {biggestTransaction.note ? biggestTransaction.note : biggestTransaction.category}
               </span>
               <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                {formatDayHeading(biggestTransaction.date)}
+                {formatDayHeadingWithYear(biggestTransaction.date)}
               </span>
             </span>
             <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
@@ -166,7 +166,7 @@ export default function YearPage() {
 
       <div className="flex flex-col gap-3">
         <WeekdayCard stats={weekday} />
-        <TopNotesList notes={topNotes} />
+        <TopNotesList notes={topNotes} label="Top notes over the last 12 cycles" />
       </div>
     </PageContainer>
   );
