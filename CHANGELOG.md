@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-07-25
+
+### Added
+
+- off-budget spend — exclude irregular one-offs from the budget
+- add a per-category off-budget toggle
+- add the exclude-from-budget toggle to the expense keypad
+- add an exclude-from-budget toggle to the entry form
+- budgets page meters use discretionary spend
+- show discretionary spend + off-budget disclosure on Home, drop Projected
+- compute Home budget math on discretionary spend
+- add off-budget spend split (pure)
+- add category off-budget query + setter
+- add off_budget columns to categories and entries
+- reporting phases 2 & 3 — top transactions + spending by account
+- add a By category / By account toggle to Trends
+- group the Trends window by account when by=account
+- add a sort-by-amount mode to Records
+- show top transactions on Home
+- load the active cycle's top transactions in useHome
+- add topTransactions pure fn
+- reporting IA redesign — merge Home+Dashboard, promote Trends
+- show forward figures on an empty current cycle
+- promote Analytics to the Trends bottom tab, retire Dashboard
+- move the this-vs-last card onto Trends
+- merge the dashboard into Home and delete the /dashboard route
+- fold current-cycle forward figures into useHome
+
+### Fixed
+
+- show upcoming foreign bills in their own currency
+- migrate existing OPFS dbs to add off_budget columns
+- hide the group-by tabs in Records sort-by-amount mode
+- keep Trends anomalies category-based under by=account
+
+### Other
+
+- reorder the More sheet grid
+- drop stale 'projected total' from Home, note off-budget spend
+- add off-budget spend implementation plan
+- add off-budget spend design spec
+- add Phase 2 & 3 reporting plan (top transactions, by-account)
+- update README/PRODUCT nav for the reporting redesign
+- add reporting IA redesign Phase 1 plan; correct spec
+- add reporting IA redesign spec
+
 ## [1.1.0] - 2026-07-24
 
 ### Added
