@@ -14,10 +14,10 @@ import { cycleHref } from './cycle-href';
 // without this it would silently drop the cycle on every tap.
 const LINKS = [
   { href: '/budgets', label: 'Budgets', Icon: Target, cycle: true },
+  { href: '/recurring', label: 'Recurring', Icon: Repeat, cycle: false },
   { href: '/categories', label: 'Categories', Icon: Tags, cycle: false },
   { href: '/accounts', label: 'Accounts', Icon: Wallet, cycle: false },
   { href: '/trips', label: 'Trips', Icon: Plane, cycle: false },
-  { href: '/recurring', label: 'Recurring', Icon: Repeat, cycle: false },
   { href: '/settings', label: 'Settings', Icon: Settings, cycle: false },
 ] as const;
 
