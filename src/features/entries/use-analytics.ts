@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
-import { getCategoryBreakdown, getEntriesInRange, type Breakdown } from './queries';
+import {
+  getCategoryBreakdown,
+  getAccountBreakdown,
+  getEntriesInRange,
+  type Breakdown,
+} from './queries';
 import { lastCycles, currentCycleKey } from './cycle';
 import { TREND_CYCLES, toTrendBars, monthLabel, type TrendBar } from './trend';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getEmojiMap, getHueMap } from '@features/categories/queries';
+import { getAccountIconMap, getAccountHueMap } from '@features/accounts/queries';
 import { getBudgets } from '@features/budgets/queries';
 import { cycleDelta, type CycleDelta } from './dashboard';
 import { todayIso } from '@shared/date';
@@ -35,6 +41,10 @@ export type AnalyticsData = {
   emojiMap: Record<string, string>;
   hueMap: Record<string, number>;
   iconSet: IconSet;
+  // Which grouping the (unfiltered) window list above is showing — category is the default.
+  by: 'category' | 'account';
+  accountIconMap: Record<string, string>;
+  accountHueMap: Record<string, number>;
   cycleRows: CycleRow[];
   // The budget for whatever the chart is showing: the whole-cycle total when unfiltered, that
   // category's own limit when filtered, null when neither is set. The chart draws it as a passive
@@ -79,27 +89,37 @@ function aggregate(breakdowns: Breakdown[][]): Breakdown[] {
 export function useAnalytics(
   cycleKey: string | null,
   category: string | null,
+  by: string | null = null,
 ): { ready: boolean; data: AnalyticsData | null } {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [ready, setReady] = useState(false);
   const version = useDataVersion();
 
   useEffect(() => {
+    const grouping: 'account' | 'category' = by === 'account' ? 'account' : 'category';
     void withDb(async (db) => {
       setReady(false);
-      const [cutoff, emojiMap, hueMap, iconSet] = await Promise.all([
+      const [cutoff, emojiMap, hueMap, iconSet, accountIconMap, accountHueMap] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
         getHueMap(db),
         getIconSet(db),
+        getAccountIconMap(db),
+        getAccountHueMap(db),
       ]);
 
       const currentKey = currentCycleKey(todayIso(), cutoff);
       const activeKey = cycleKey ?? currentKey;
       const cycles = lastCycles(activeKey, TREND_CYCLES, cutoff);
 
+      // Grouping only swaps the unfiltered window: filtered, cycleRows keys off `category` and
+      // needs a category-keyed matrix regardless of `by`.
       const breakdowns = await Promise.all(
-        cycles.map((c) => getCategoryBreakdown(db, c.start, c.end)),
+        cycles.map((c) =>
+          grouping === 'account' && category === null
+            ? getAccountBreakdown(db, c.start, c.end)
+            : getCategoryBreakdown(db, c.start, c.end),
+        ),
       );
 
       // The one primitive: cycle key → category → { spend magnitude, entry count }. Every view below
@@ -181,6 +201,9 @@ export function useAnalytics(
         emojiMap,
         hueMap,
         iconSet,
+        by: grouping,
+        accountIconMap,
+        accountHueMap,
         cycleRows,
         budgetLine,
         delta,
@@ -190,7 +213,7 @@ export function useAnalytics(
       });
       setReady(true);
     });
-  }, [cycleKey, category, version]);
+  }, [cycleKey, category, by, version]);
 
   return { ready, data };
 }

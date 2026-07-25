@@ -191,6 +191,34 @@ describe('useAnalytics', () => {
     ]);
   });
 
+  describe('by=account', () => {
+    it('aggregates the window by account when by="account" and unfiltered', async () => {
+      const db = makeNodeProxyDb();
+      await ensureEntriesTable(db);
+      await ensureSettingsTable(db);
+      await ensureBudgetsTable(db);
+      await addEntries(db, [
+        { date: '2026-07-20', account: 'Cash', category: 'Food', amount: -100 },
+        { date: '2026-07-20', account: 'Cash', category: 'Travel', amount: -50 },
+        { date: '2026-07-20', account: 'Card', category: 'Food', amount: -200 },
+      ]);
+      vi.mocked(getBrowserDb).mockResolvedValue(db);
+
+      const { result } = renderHook(() => useAnalytics(null, null, 'account'));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const rows = result.current.data?.categories ?? [];
+      // Ranked by magnitude: Card 200 then Cash 150.
+      expect(rows.map((r) => r.name)).toEqual(['Card', 'Cash']);
+      expect(result.current.data?.by).toBe('account');
+    });
+
+    it('defaults to category grouping', async () => {
+      const { result } = renderHook(() => useAnalytics(null, null));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      expect(result.current.data?.by).toBe('category');
+    });
+  });
+
   describe('delta (this cycle vs last, moved from the dashboard)', () => {
     it('reports the unfiltered anchor cycle against the previous one', async () => {
       // '2026-07-01' falls in cycle '2026-06' (Jun18–Jul17, cutoff 18) — the seeded 1500 (Food 1200 +
