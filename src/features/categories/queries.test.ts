@@ -15,6 +15,8 @@ import {
   setCategoryOrder,
   getCategoryCatalog,
   restoreCategoryCatalog,
+  getOffBudgetCategories,
+  setCategoryOffBudget,
 } from './queries';
 
 async function db() {
@@ -147,5 +149,27 @@ describe('category catalog read/restore', () => {
     expect(names).toContain('Keep'); // never deleted
     const food = rows.find((r) => r.name === 'Food');
     expect(food).toEqual({ name: 'Food', emoji: '🍜', hue: null, sortOrder: 3, archived: true });
+  });
+});
+
+describe('off-budget categories', () => {
+  it('returns a Set of category names flagged as off-budget', async () => {
+    const d = await db();
+    await addCategory(d, 'Insurance');
+    await addCategory(d, 'Groceries');
+    await setCategoryOffBudget(d, 'Insurance', true);
+    const offBudget = await getOffBudgetCategories(d);
+    expect(offBudget).toBeInstanceOf(Set);
+    expect(offBudget).toContain('Insurance');
+    expect(offBudget).not.toContain('Groceries');
+  });
+
+  it('removes a category from off-budget when set to false', async () => {
+    const d = await db();
+    await addCategory(d, 'Insurance');
+    await setCategoryOffBudget(d, 'Insurance', true);
+    expect(await getOffBudgetCategories(d)).toContain('Insurance');
+    await setCategoryOffBudget(d, 'Insurance', false);
+    expect(await getOffBudgetCategories(d)).not.toContain('Insurance');
   });
 });
