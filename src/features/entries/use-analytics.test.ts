@@ -217,6 +217,26 @@ describe('useAnalytics', () => {
       await waitFor(() => expect(result.current.ready).toBe(true));
       expect(result.current.data?.by).toBe('category');
     });
+
+    it('keeps anomalies category-named even when the list is account-grouped', async () => {
+      // Same spike as "surfaces a category spending above its own norm": push anchor-cycle Food to
+      // 2100 (400 + 1700); prior Food avg is (900 + 1200) / 2 = 1050, ratio = 2.0 ≥ 1.5 threshold.
+      // The matrix feeding anomalies() must stay category-keyed regardless of `by`, so by='account'
+      // must report the exact same (category-named) anomalies as the default category grouping.
+      const db = await getBrowserDb();
+      await addEntries(db, [
+        { date: '2026-07-21', account: 'Cash', category: 'Food', amount: -1700 },
+      ]);
+
+      const byCategory = renderHook(() => useAnalytics('2026-07', null));
+      await waitFor(() => expect(byCategory.result.current.ready).toBe(true));
+      const byAccount = renderHook(() => useAnalytics('2026-07', null, 'account'));
+      await waitFor(() => expect(byAccount.result.current.ready).toBe(true));
+
+      const expected = [{ category: 'Food', current: 2100, avg: 1050, ratio: 2 }];
+      expect(byCategory.result.current.data?.anomalies).toEqual(expected);
+      expect(byAccount.result.current.data?.anomalies).toEqual(expected);
+    });
   });
 
   describe('delta (this cycle vs last, moved from the dashboard)', () => {

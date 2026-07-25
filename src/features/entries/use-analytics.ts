@@ -112,25 +112,28 @@ export function useAnalytics(
       const activeKey = cycleKey ?? currentKey;
       const cycles = lastCycles(activeKey, TREND_CYCLES, cutoff);
 
-      // Grouping only swaps the unfiltered window: filtered, cycleRows keys off `category` and
-      // needs a category-keyed matrix regardless of `by`.
-      const breakdowns = await Promise.all(
-        cycles.map((c) =>
-          grouping === 'account' && category === null
-            ? getAccountBreakdown(db, c.start, c.end)
-            : getCategoryBreakdown(db, c.start, c.end),
-        ),
-      );
-
       // The one primitive: cycle key → category → { spend magnitude, entry count }. Every view below
-      // is a projection of this. Totals arrive negative (outflows); the matrix stores magnitudes.
+      // is a projection of this EXCEPT the window list — anomalies() (and the trend/budget/delta
+      // totals, which agree either way since regrouping doesn't change a cycle's sum) stay
+      // category-keyed regardless of `by`, so an account name can never reach Anomaly.category.
+      const categoryBreakdowns = await Promise.all(
+        cycles.map((c) => getCategoryBreakdown(db, c.start, c.end)),
+      );
       const matrix = new Map<string, Map<string, { total: number; count: number }>>();
-      for (const [i, rows] of breakdowns.entries()) {
+      for (const [i, rows] of categoryBreakdowns.entries()) {
         const byCategory = new Map<string, { total: number; count: number }>();
         for (const row of rows)
           byCategory.set(row.key, { total: Math.abs(row.total), count: row.count });
         matrix.set(cycles[i].key, byCategory);
       }
+
+      // The window LIST's own grouping — a separate aggregation, used only for `categories` below, so
+      // an account-grouped list never reaches anomalies(). Filtered, cycleRows keys off `category` and
+      // stays on the category matrix regardless of `by`.
+      const listBreakdowns =
+        grouping === 'account' && category === null
+          ? await Promise.all(cycles.map((c) => getAccountBreakdown(db, c.start, c.end)))
+          : categoryBreakdowns;
 
       const active = cycles[cycles.length - 1];
       const cycleEntries = await getEntriesInRange(db, active.start, active.end);
@@ -167,7 +170,7 @@ export function useAnalytics(
       const bars = toTrendBars(cycles, spendByCycle, currentKey);
       // Every category in the window, biggest first — no palette cap, no "Other" (the analytics list
       // has no donut ring whose colours it must match). Magnitudes; drop the zero-spend tail.
-      const categories: CategoryRow[] = aggregate(breakdowns)
+      const categories: CategoryRow[] = aggregate(listBreakdowns)
         .map((r) => ({ name: r.key, value: Math.abs(r.total), count: r.count }))
         .filter((c) => c.value > 0);
       const total = [...spendByCycle.values()].reduce((sum, v) => sum + v, 0);
