@@ -191,13 +191,14 @@ export function useAnalytics(
       const budgetLine = category === null ? totalLimit : (limits.get(category) ?? null);
 
       // The anchor cycle vs the one before it — the trend window's last two bars, so no extra query.
-      // A zero prev bar means no comparable earlier cycle (null). Unfiltered only: filtered, `bars`
-      // is one category's trend and a "vs last" there would answer a different question.
+      // Filtered, `bars` is this category's per-cycle spend, so the last two bars give the category's
+      // own current-vs-previous delta — the per-category "vs last cycle" the user asked for.
+      // Unfiltered they are the whole-cycle totals. Either way a zero prev bar means no comparable
+      // earlier cycle (null). deltaBreakdown stays unfiltered-only (Task 2's guard).
       const lastBar = bars[bars.length - 1];
       const prevBar = bars[bars.length - 2];
       const prevTotal = prevBar !== undefined && prevBar.value > 0 ? prevBar.value : null;
-      const delta =
-        category === null && lastBar !== undefined ? cycleDelta(lastBar.value, prevTotal) : null;
+      const delta = lastBar !== undefined ? cycleDelta(lastBar.value, prevTotal) : null;
 
       // Unfiltered only: which categories moved the total. The window's last two cycle keys are the
       // active cycle and the one before it — the same pair `delta` compares.

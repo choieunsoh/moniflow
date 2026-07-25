@@ -251,11 +251,14 @@ describe('useAnalytics', () => {
       expect(result.current.data?.delta).toEqual({ delta: 600, direction: 'up', prevTotal: 900 });
     });
 
-    it('is null when filtered to a category', async () => {
+    it('reports the filtered category own anchor-vs-previous delta, not the whole cycle', async () => {
+      // Same window as the unfiltered case above, but bars now hold Food's own per-cycle spend:
+      // 2026-05 Food 900 → 2026-06 Food 1200 (the unfiltered delta was 900 → 1500, the whole cycle).
       vi.mocked(todayIso).mockReturnValue('2026-07-01');
       const { result } = renderHook(() => useAnalytics(null, 'Food'));
       await waitFor(() => expect(result.current.ready).toBe(true));
-      expect(result.current.data?.delta).toBeNull();
+      expect(result.current.data?.delta).toEqual({ delta: 300, direction: 'up', prevTotal: 900 });
+      expect(result.current.data?.deltaBreakdown).toEqual([]); // still unfiltered-only
     });
   });
 });
