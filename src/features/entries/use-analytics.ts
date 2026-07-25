@@ -8,6 +8,8 @@ import {
   getEntriesInRange,
   type Breakdown,
 } from './queries';
+import { topTransactions } from './top-transactions';
+import type { EntryRow } from './schema';
 import { lastCycles, currentCycleKey } from './cycle';
 import { TREND_CYCLES, toTrendBars, monthLabel, type TrendBar } from './trend';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
@@ -60,6 +62,11 @@ export type AnalyticsData = {
   topNotes: NoteRow[];
   heatmapCells: HeatmapCell[];
   anomalies: Anomaly[];
+  // The active cycle's biggest single expenses and note rollup, scoped to the filtered category.
+  // Empty when unfiltered (the app-wide TopNotesList covers that). Active cycle only — see the spec's
+  // window-scoping ceiling; the panel subtitle states this.
+  categoryTransactions: EntryRow[];
+  categoryNotes: NoteRow[];
 };
 
 // Sum a window's breakdowns into one ranked Breakdown[] — the category list under the chart shows
@@ -144,6 +151,10 @@ export function useAnalytics(
       const notes = topNotes(cycleEntries);
       const heatmapCells = toHeatmapCells(groupByDate(cycleEntries), active);
       const flagged = anomalies(matrix, activeKey);
+      const inCategory =
+        category === null ? [] : cycleEntries.filter((e) => e.category === category);
+      const categoryTransactions = topTransactions(inCategory);
+      const categoryNotes = category === null ? [] : topNotes(inCategory);
 
       // Total trend = sum each cycle's row. Category trend = read one column. Same chart.
       const spendByCycle = new Map<string, number>();
@@ -227,6 +238,8 @@ export function useAnalytics(
         topNotes: notes,
         heatmapCells,
         anomalies: flagged,
+        categoryTransactions,
+        categoryNotes,
       });
       setReady(true);
     });

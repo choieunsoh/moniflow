@@ -177,6 +177,38 @@ describe('useAnalytics', () => {
     expect(result.current.data?.topNotes).toEqual([{ note: 'No note', total: 400, count: 1 }]);
   });
 
+  it('scopes biggest transactions and note rollup to the filtered category', async () => {
+    // Active cycle (2026-07) already has one Food entry (400, no note) from the shared seed. Add
+    // more Food entries with varied amounts + notes, plus a bigger Travel entry that must NOT leak
+    // into the Food-filtered lists.
+    const db = await getBrowserDb();
+    await addEntries(db, [
+      { date: '2026-07-22', account: 'Cash', category: 'Food', amount: -800, note: 'Sushi' },
+      { date: '2026-07-23', account: 'Cash', category: 'Food', amount: -300, note: 'Coffee' },
+      { date: '2026-07-24', account: 'Cash', category: 'Food', amount: -300, note: 'Coffee' },
+      { date: '2026-07-25', account: 'Cash', category: 'Food', amount: -50, note: 'Snack' },
+      { date: '2026-07-26', account: 'Cash', category: 'Food', amount: -20 },
+      { date: '2026-07-27', account: 'Cash', category: 'Food', amount: -10 },
+      { date: '2026-07-28', account: 'Cash', category: 'Travel', amount: -5000, note: 'Flight' },
+    ]);
+
+    const filtered = renderHook(() => useAnalytics('2026-07', 'Food'));
+    await waitFor(() => expect(filtered.result.current.ready).toBe(true));
+    const tx = filtered.result.current.data?.categoryTransactions ?? [];
+    expect(tx.length).toBeLessThanOrEqual(5);
+    expect(tx.every((e) => e.category === 'Food')).toBe(true);
+    expect(tx.map((e) => Math.abs(e.amount))).toEqual([800, 400, 300, 300, 50]); // biggest first
+
+    const notes = filtered.result.current.data?.categoryNotes ?? [];
+    expect(notes.map((n) => n.note)).toEqual(['Sushi', 'Coffee', 'No note', 'Snack']);
+    expect(notes.map((n) => n.total)).toEqual([800, 600, 430, 50]);
+
+    const unfiltered = renderHook(() => useAnalytics('2026-07', null));
+    await waitFor(() => expect(unfiltered.result.current.ready).toBe(true));
+    expect(unfiltered.result.current.data?.categoryTransactions).toEqual([]);
+    expect(unfiltered.result.current.data?.categoryNotes).toEqual([]);
+  });
+
   it('surfaces a category spending above its own norm as an anomaly', async () => {
     // Push anchor-cycle Food to 2100 (400 + 1700); prior Food avg is (900 + 1200) / 2 = 1050,
     // so ratio = 2.0 ≥ 1.5 threshold.

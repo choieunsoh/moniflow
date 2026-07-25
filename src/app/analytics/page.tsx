@@ -9,6 +9,7 @@ import { TrendChart } from '@features/entries/ui/TrendChart';
 import { SpendHeatmap } from '@features/entries/ui/SpendHeatmap';
 import { AnalyticsSkeleton } from '@features/entries/ui/AnalyticsSkeleton';
 import { TopNotesList } from '@features/entries/ui/TopNotesList';
+import { TopTransactionsList } from '@features/entries/ui/TopTransactionsList';
 import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
@@ -83,6 +84,8 @@ export default function AnalyticsPage() {
     anomalies,
     heatmapCells,
     topNotes,
+    categoryTransactions,
+    categoryNotes,
   } = data;
   const isAccountView = grouping === 'account';
   const base = `/analytics?cycle=${activeKey}`;
@@ -242,13 +245,29 @@ export default function AnalyticsPage() {
         />
       ) : null}
 
+      {category !== null ? (
+        <>
+          <TopTransactionsList
+            entries={categoryTransactions}
+            emojiMap={emojiMap}
+            hueMap={hueMap}
+            iconSet={iconSet}
+            cycleKey={activeKey}
+          />
+          <TopNotesList notes={categoryNotes} />
+        </>
+      ) : null}
+
       {/* The trend panel is the page's primary; the heatmap and top-notes are supporting. Grouping
           them in one tighter-gap block (12px between the two, vs the 24px PageContainer gap above)
-          reads as "1 primary + a supporting pair" instead of three same-weight stacked panels. */}
-      <div className="flex flex-col gap-3">
-        <SpendHeatmap cells={heatmapCells} />
-        <TopNotesList notes={topNotes} />
-      </div>
+          reads as "1 primary + a supporting pair" instead of three same-weight stacked panels.
+          Unfiltered only — filtered gets its own category-scoped lists above instead. */}
+      {category === null ? (
+        <div className="flex flex-col gap-3">
+          <SpendHeatmap cells={heatmapCells} />
+          <TopNotesList notes={topNotes} />
+        </div>
+      ) : null}
     </PageContainer>
   );
 }
