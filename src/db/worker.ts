@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import type { Sqlite3Static, Database, BindableValue } from '@sqlite.org/sqlite-wasm';
+import { applyColumnMigrations } from './column-migrations';
 
 // drizzle's sqlite-proxy always sends params as a positional array of SQL-bindable values, so the
 // worker types them as BindableValue[] (assignable to the oo1 bind()'s BindingSpec) rather than unknown[].
@@ -84,6 +85,15 @@ async function boot(): Promise<void> {
   const pool = await api.installOpfsSAHPoolVfs({ name: 'moniflow-pool' });
   db = new pool.OpfsSAHPoolDb(DB_FILE);
   for (const ddl of BOOTSTRAP_SQL) runStmt(ddl);
+  // A persisted OPFS db from before a column was added skips it: CREATE TABLE IF NOT EXISTS above is a
+  // no-op on an existing table. Add any missing columns now.
+  applyColumnMigrations(
+    (table, column) => {
+      const rows = queryRows(`PRAGMA table_info(${table})`, [], 'all');
+      return Array.isArray(rows) && rows.some((r) => Array.isArray(r) && r[1] === column);
+    },
+    (ddl) => runStmt(ddl),
+  );
 }
 
 let bootPromise: Promise<void> | null = null;
