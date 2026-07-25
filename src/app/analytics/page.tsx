@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
+import { ViewToggle } from '@shared/ui/ViewToggle';
 import { useAnalytics } from '@features/entries/use-analytics';
 import { TrendChart } from '@features/entries/ui/TrendChart';
 import { SpendHeatmap } from '@features/entries/ui/SpendHeatmap';
@@ -10,9 +11,11 @@ import { AnalyticsSkeleton } from '@features/entries/ui/AnalyticsSkeleton';
 import { TopNotesList } from '@features/entries/ui/TopNotesList';
 import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
+import { AccountIcon } from '@features/accounts/ui/AccountIcon';
 import { AnomalyBanner } from '@features/entries/ui/AnomalyBanner';
 import { CycleDeltaCard } from '@features/entries/ui/CycleDeltaCard';
 import { emojiFor, hueFor } from '@features/categories/queries';
+import { iconForAccount, hueForAccount } from '@features/accounts/queries';
 import { formatBahtWhole } from '@shared/money';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { trendAverage } from '@features/entries/trend';
@@ -51,7 +54,8 @@ export default function AnalyticsPage() {
   const params = useSearchParams();
   const cycleParam = params.get('cycle');
   const category = params.get('category');
-  const { ready, data } = useAnalytics(cycleParam, category);
+  const by = params.get('by');
+  const { ready, data } = useAnalytics(cycleParam, category, by);
 
   if (!ready || data === null) {
     return (
@@ -69,6 +73,9 @@ export default function AnalyticsPage() {
     emojiMap,
     hueMap,
     iconSet,
+    by: grouping,
+    accountIconMap,
+    accountHueMap,
     cycleRows,
     budgetLine,
     delta,
@@ -76,6 +83,7 @@ export default function AnalyticsPage() {
     heatmapCells,
     topNotes,
   } = data;
+  const isAccountView = grouping === 'account';
   const base = `/analytics?cycle=${activeKey}`;
 
   // No spend anywhere in the window — reuse Home's empty state rather than inventing a second one.
@@ -163,38 +171,63 @@ export default function AnalyticsPage() {
             ))}
           </ul>
         ) : (
-          // The window's full category breakdown — every category, biggest first, no "Other"
-          // rollup (that cap only exists to keep the home donut RING readable; there is no ring
-          // here). Each marker takes the category's own hue. Tap a row to filter the trend to it.
-          <ul className="flex flex-col gap-2.5">
-            {categories.map((c) => (
-              <li key={c.name} className="flex items-center text-sm">
-                <Link
-                  prefetch={false}
-                  href={`${base}&category=${encodeURIComponent(c.name)}`}
-                  aria-label={`${c.name} trend`}
-                  className="flex min-w-0 flex-1 items-center gap-3"
-                >
-                  <CategoryIcon
-                    emoji={emojiFor(emojiMap, c.name)}
-                    name={c.name}
-                    hue={hueFor(hueMap, c.name)}
-                    iconSet={iconSet}
-                  />
-                  <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                    <span className="truncate">{c.name}</span>
-                    <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                      ({c.count})
+          <>
+            {/* Which grouping the window list below is showing. category='account' (grouping) with
+                account rows further below is inert unless the user taps this — the toggle only swaps
+                the list, same as Home's Chart/List. */}
+            <ViewToggle
+              options={[
+                { label: 'By category', active: !isAccountView, href: base },
+                { label: 'By account', active: isAccountView, href: `${base}&by=account` },
+              ]}
+            />
+            {/* The window's full breakdown — every category (or account), biggest first, no "Other"
+                rollup (that cap only exists to keep the home donut RING readable; there is no ring
+                here). Each marker takes its own hue. A category row taps through to filter the
+                trend; an account row taps through to that account's Records instead, since there is
+                no per-account trend view to filter into. */}
+            <ul className="flex flex-col gap-2.5">
+              {categories.map((c) => (
+                <li key={c.name} className="flex items-center text-sm">
+                  <Link
+                    prefetch={false}
+                    href={
+                      isAccountView
+                        ? `/records?cycle=${activeKey}&account=${encodeURIComponent(c.name)}`
+                        : `${base}&category=${encodeURIComponent(c.name)}`
+                    }
+                    aria-label={isAccountView ? `${c.name} records` : `${c.name} trend`}
+                    className="flex min-w-0 flex-1 items-center gap-3"
+                  >
+                    {isAccountView ? (
+                      <AccountIcon
+                        icon={iconForAccount(accountIconMap, c.name)}
+                        name={c.name}
+                        hue={hueForAccount(accountHueMap, c.name)}
+                      />
+                    ) : (
+                      <CategoryIcon
+                        emoji={emojiFor(emojiMap, c.name)}
+                        name={c.name}
+                        hue={hueFor(hueMap, c.name)}
+                        iconSet={iconSet}
+                      />
+                    )}
+                    <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                      <span className="truncate">{c.name}</span>
+                      <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+                        ({c.count})
+                      </span>
                     </span>
-                  </span>
-                  <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-                    {formatBahtWhole(c.value)}
-                  </span>
-                  <RowChevron />
-                </Link>
-              </li>
-            ))}
-          </ul>
+                    <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
+                      {formatBahtWhole(c.value)}
+                    </span>
+                    <RowChevron />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
 
