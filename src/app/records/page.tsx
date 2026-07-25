@@ -155,20 +155,24 @@ export default function RecordsPage() {
         <div className="flex flex-col gap-5">
           {/* Group-by tabs — flip the same entries between day, category and account sections. Text,
               not icons: a tag vs a wallet isn't self-evident the way the BottomBar's home/search
-              glyphs are, and this is a control you read once rather than hit blind. */}
-          <div className="panel flex gap-1 p-1">
-            <ViewLink label="By date" active={groupBy === 'date'} href={viewHref('date')} />
-            <ViewLink
-              label="By category"
-              active={groupBy === 'category'}
-              href={viewHref('category')}
-            />
-            <ViewLink
-              label="By account"
-              active={groupBy === 'account'}
-              href={viewHref('account')}
-            />
-          </div>
+              glyphs are, and this is a control you read once rather than hit blind. Hidden in
+              sort=amount mode: that view's own "Largest first" heading is a different, single-section
+              grouping signal, and these links don't carry sort forward anyway. */}
+          {sort !== 'amount' ? (
+            <div className="panel flex gap-1 p-1">
+              <ViewLink label="By date" active={groupBy === 'date'} href={viewHref('date')} />
+              <ViewLink
+                label="By category"
+                active={groupBy === 'category'}
+                href={viewHref('category')}
+              />
+              <ViewLink
+                label="By account"
+                active={groupBy === 'account'}
+                href={viewHref('account')}
+              />
+            </div>
+          ) : null}
           {/* Summary of the current view (respects the active filter / search). */}
           <div className="flex items-baseline justify-between px-1">
             <span className="flex items-baseline gap-3">
