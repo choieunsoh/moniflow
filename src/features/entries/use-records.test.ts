@@ -117,6 +117,28 @@ describe('useRecords', () => {
     expect(data?.currencySums).toEqual([{ currency: 'JPY', total: 16000 }]);
   });
 
+  describe('sort=amount', () => {
+    it('ranks the cycle entries biggest-first in a single section', async () => {
+      // Cycle '2026-06' holds -100 (07-01), -50 (07-02), -20 (07-03) — newest-first date order is
+      // already the reverse of amount order, so this genuinely discriminates the two orderings.
+      const { result } = renderHook(() => useRecords({ cycle: '2026-06', sort: 'amount' }));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const { data } = result.current;
+      expect(data?.sections).toHaveLength(1);
+      expect(data?.sections[0]?.key).toBe('amount');
+      const amounts = data?.sections[0]?.entries.map((e) => Math.abs(e.amount)) ?? [];
+      expect(amounts).toEqual([100, 50, 20]);
+      expect(data?.sections[0]?.total).toBe(-170);
+    });
+
+    it('is ignored for search, trip, and all-category views', async () => {
+      const { result } = renderHook(() => useRecords({ q: 'concert', sort: 'amount' }));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      // Still spans all cycles / keeps its own ordering — not collapsed to a single 'amount' section.
+      expect(result.current.data?.sections[0]?.key).not.toBe('amount');
+    });
+  });
+
   it('refetches when the data-version bumps after a write', async () => {
     const { result } = renderHook(() => useRecords({ cycle: '2026-06' }));
     await waitFor(() => expect(result.current.ready).toBe(true));

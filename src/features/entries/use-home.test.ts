@@ -248,4 +248,14 @@ describe('useHome', () => {
       expect(result.current.data?.forward).toBeNull();
     });
   });
+
+  describe('topTransactions', () => {
+    it('exposes the active cycle entries ranked by magnitude, biggest first', async () => {
+      const { result } = renderHook(() => useHome('2026-06'));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const top = result.current.data?.topTransactions ?? [];
+      // Seeded cycle 2026-06: Food -100, Food -50, Transport -20.
+      expect(top.map((e) => e.amount)).toEqual([-100, -50, -20]);
+    });
+  });
 });

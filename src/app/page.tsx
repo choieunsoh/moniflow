@@ -16,6 +16,7 @@ import { CycleSwipe } from '@features/entries/ui/CycleSwipe';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { HomeSkeleton } from '@features/entries/ui/HomeSkeleton';
 import { LegendRow } from '@features/entries/ui/LegendRow';
+import { TopTransactionsList } from '@features/entries/ui/TopTransactionsList';
 
 // Home = the expense overview for the current cycle. Chart view: a spending donut with a colour-keyed
 // legend; List view: the same categories as ranked bars. A ?view= toggle switches them.
@@ -61,6 +62,7 @@ export default function HomePage() {
     showPace,
     forward,
     ledgerEmpty,
+    topTransactions,
   } = data;
 
   const showList = view === 'category';
@@ -217,6 +219,14 @@ export default function HomePage() {
               </section>
             )}
           </CycleSwipe>
+
+          <TopTransactionsList
+            entries={topTransactions}
+            emojiMap={emojiMap}
+            hueMap={hueMap}
+            iconSet={iconSet}
+            cycleKey={activeKey}
+          />
         </>
       ) : (
         <CycleSwipe activeKey={activeKey} canGoNext={canGoNext}>

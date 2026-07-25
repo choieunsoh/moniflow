@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
-import { getCategoryBreakdown, getEntriesInRange, type Breakdown } from './queries';
+import {
+  getCategoryBreakdown,
+  getAccountBreakdown,
+  getEntriesInRange,
+  type Breakdown,
+} from './queries';
 import { lastCycles, currentCycleKey } from './cycle';
 import { TREND_CYCLES, toTrendBars, monthLabel, type TrendBar } from './trend';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getEmojiMap, getHueMap } from '@features/categories/queries';
+import { getAccountIconMap, getAccountHueMap } from '@features/accounts/queries';
 import { getBudgets } from '@features/budgets/queries';
 import { cycleDelta, type CycleDelta } from './dashboard';
 import { todayIso } from '@shared/date';
@@ -35,6 +41,10 @@ export type AnalyticsData = {
   emojiMap: Record<string, string>;
   hueMap: Record<string, number>;
   iconSet: IconSet;
+  // Which grouping the (unfiltered) window list above is showing — category is the default.
+  by: 'category' | 'account';
+  accountIconMap: Record<string, string>;
+  accountHueMap: Record<string, number>;
   cycleRows: CycleRow[];
   // The budget for whatever the chart is showing: the whole-cycle total when unfiltered, that
   // category's own limit when filtered, null when neither is set. The chart draws it as a passive
@@ -79,38 +89,51 @@ function aggregate(breakdowns: Breakdown[][]): Breakdown[] {
 export function useAnalytics(
   cycleKey: string | null,
   category: string | null,
+  by: string | null = null,
 ): { ready: boolean; data: AnalyticsData | null } {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [ready, setReady] = useState(false);
   const version = useDataVersion();
 
   useEffect(() => {
+    const grouping: 'account' | 'category' = by === 'account' ? 'account' : 'category';
     void withDb(async (db) => {
       setReady(false);
-      const [cutoff, emojiMap, hueMap, iconSet] = await Promise.all([
+      const [cutoff, emojiMap, hueMap, iconSet, accountIconMap, accountHueMap] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
         getHueMap(db),
         getIconSet(db),
+        getAccountIconMap(db),
+        getAccountHueMap(db),
       ]);
 
       const currentKey = currentCycleKey(todayIso(), cutoff);
       const activeKey = cycleKey ?? currentKey;
       const cycles = lastCycles(activeKey, TREND_CYCLES, cutoff);
 
-      const breakdowns = await Promise.all(
+      // The one primitive: cycle key → category → { spend magnitude, entry count }. Every view below
+      // is a projection of this EXCEPT the window list — anomalies() (and the trend/budget/delta
+      // totals, which agree either way since regrouping doesn't change a cycle's sum) stay
+      // category-keyed regardless of `by`, so an account name can never reach Anomaly.category.
+      const categoryBreakdowns = await Promise.all(
         cycles.map((c) => getCategoryBreakdown(db, c.start, c.end)),
       );
-
-      // The one primitive: cycle key → category → { spend magnitude, entry count }. Every view below
-      // is a projection of this. Totals arrive negative (outflows); the matrix stores magnitudes.
       const matrix = new Map<string, Map<string, { total: number; count: number }>>();
-      for (const [i, rows] of breakdowns.entries()) {
+      for (const [i, rows] of categoryBreakdowns.entries()) {
         const byCategory = new Map<string, { total: number; count: number }>();
         for (const row of rows)
           byCategory.set(row.key, { total: Math.abs(row.total), count: row.count });
         matrix.set(cycles[i].key, byCategory);
       }
+
+      // The window LIST's own grouping — a separate aggregation, used only for `categories` below, so
+      // an account-grouped list never reaches anomalies(). Filtered, cycleRows keys off `category` and
+      // stays on the category matrix regardless of `by`.
+      const listBreakdowns =
+        grouping === 'account' && category === null
+          ? await Promise.all(cycles.map((c) => getAccountBreakdown(db, c.start, c.end)))
+          : categoryBreakdowns;
 
       const active = cycles[cycles.length - 1];
       const cycleEntries = await getEntriesInRange(db, active.start, active.end);
@@ -147,7 +170,7 @@ export function useAnalytics(
       const bars = toTrendBars(cycles, spendByCycle, currentKey);
       // Every category in the window, biggest first — no palette cap, no "Other" (the analytics list
       // has no donut ring whose colours it must match). Magnitudes; drop the zero-spend tail.
-      const categories: CategoryRow[] = aggregate(breakdowns)
+      const categories: CategoryRow[] = aggregate(listBreakdowns)
         .map((r) => ({ name: r.key, value: Math.abs(r.total), count: r.count }))
         .filter((c) => c.value > 0);
       const total = [...spendByCycle.values()].reduce((sum, v) => sum + v, 0);
@@ -181,6 +204,9 @@ export function useAnalytics(
         emojiMap,
         hueMap,
         iconSet,
+        by: grouping,
+        accountIconMap,
+        accountHueMap,
         cycleRows,
         budgetLine,
         delta,
@@ -190,7 +216,7 @@ export function useAnalytics(
       });
       setReady(true);
     });
-  }, [cycleKey, category, version]);
+  }, [cycleKey, category, by, version]);
 
   return { ready, data };
 }

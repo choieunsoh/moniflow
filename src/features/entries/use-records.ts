@@ -24,6 +24,7 @@ export type RecordsParams = {
   currency?: string;
   from?: string;
   to?: string;
+  sort?: string;
 };
 
 export type RecordsSection = {
@@ -63,7 +64,7 @@ export type RecordsData = {
 // computation the page used to run in a Server Component, just moved client-side + async. Re-runs
 // whenever any of the page's search params (or the data-version counter) changes.
 export function useRecords(params: RecordsParams): { ready: boolean; data: RecordsData | null } {
-  const { cycle: cycleParam, category, account, q, view, all, currency, from, to } = params;
+  const { cycle: cycleParam, category, account, q, view, all, currency, from, to, sort } = params;
   const [data, setData] = useState<RecordsData | null>(null);
   const [ready, setReady] = useState(false);
   const version = useDataVersion();
@@ -106,6 +107,9 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
       // else is the active cycle.
       const allCategory = !searching && !tripMode && all === '1' && Boolean(category);
       const spanAll = searching || allCategory || tripMode;
+      // ?sort=amount ranks the active cycle's own entries — search/trip/all-category keep their
+      // own ordering (newest first / spend-ranked), so this only applies to the plain cycle view.
+      const sortByAmount = sort === 'amount' && !spanAll;
       const entries = searching
         ? await searchEntries(db, query)
         : tripMode
@@ -119,8 +123,15 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
       // Each section carries its own foreign-currency subtotals so any header — a day, a category, or
       // an account — can read "¥12,000  ฿2,800" when it holds foreign spending; empty otherwise.
       // Date ranks chronologically; category and account both rank by spend, so they share groupBySpend.
-      const grouped =
-        groupBy === 'date'
+      const grouped = sortByAmount
+        ? [
+            {
+              key: 'amount',
+              entries: [...cycleEntries].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount)),
+              total: cycleEntries.reduce((sum, e) => sum + e.amount, 0),
+            },
+          ]
+        : groupBy === 'date'
           ? groupByDate(ordered).map((g) => ({ key: g.date, entries: g.entries, total: g.total }))
           : groupBySpend(ordered, groupBy === 'category' ? (e) => e.category : (e) => e.account);
       const sections = grouped.map((g) => ({
@@ -155,7 +166,7 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
       });
       setReady(true);
     });
-  }, [cycleParam, category, account, q, view, all, currency, from, to, version]);
+  }, [cycleParam, category, account, q, view, all, currency, from, to, sort, version]);
 
   return { ready, data };
 }

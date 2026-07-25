@@ -6,9 +6,12 @@ import {
   getCycleSummary,
   getCategoryBreakdown,
   hasAnyExpense,
+  getEntriesInRange,
   type Summary,
   type Breakdown,
 } from './queries';
+import { topTransactions } from './top-transactions';
+import type { EntryRow } from './schema';
 import { cycleFromKey, currentCycleKey, cycleProgress, type Cycle, type Progress } from './cycle';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getBudgets } from '@features/budgets/queries';
@@ -41,6 +44,7 @@ export type HomeData = {
   cycle: Cycle;
   summary: Summary;
   categoryBreakdown: Breakdown[];
+  topTransactions: EntryRow[];
   slices: DonutSlice[];
   sliceColors: Map<string, string>;
   total: number;
@@ -104,11 +108,13 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       const canGoNext = activeKey < currentKey;
       const isCurrentCycle = activeKey === currentKey;
       const cycle = cycleFromKey(activeKey, cutoff);
-      const [summary, categoryBreakdown] = await Promise.all([
+      const [summary, categoryBreakdown, cycleEntries] = await Promise.all([
         getCycleSummary(db, cycle.start, cycle.end),
         getCategoryBreakdown(db, cycle.start, cycle.end),
+        getEntriesInRange(db, cycle.start, cycle.end),
       ]);
 
+      const topTx = topTransactions(cycleEntries);
       const slices = toDonutSlices(categoryBreakdown);
       const total = slices.reduce((sum, s) => sum + s.value, 0);
       // One colour per category, shared by the donut legend and the ranked list, so a category keeps
@@ -167,6 +173,7 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
         cycle,
         summary,
         categoryBreakdown,
+        topTransactions: topTx,
         slices,
         sliceColors,
         total,

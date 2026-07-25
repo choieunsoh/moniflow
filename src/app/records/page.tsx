@@ -32,6 +32,7 @@ export default function RecordsPage() {
   const currency = params.get('currency') ?? undefined;
   const from = params.get('from') ?? undefined;
   const to = params.get('to') ?? undefined;
+  const sort = params.get('sort') ?? undefined;
 
   const { ready, data } = useRecords({
     cycle: cycleParam,
@@ -43,6 +44,7 @@ export default function RecordsPage() {
     currency,
     from,
     to,
+    sort,
   });
 
   if (!ready || data === null) {
@@ -79,6 +81,9 @@ export default function RecordsPage() {
     total,
     currencySums,
   } = data;
+
+  // Mirrors the hook's own gate: sort=amount only collapses the plain cycle view to one section.
+  const sortByAmount = sort === 'amount' && !spanAll;
 
   // Tap a section header to filter to just that bucket (staying grouped); tap the active one to
   // clear. Mirrors the row chips — preserves the cycle, the grouping, and the other axis's filter,
@@ -150,20 +155,24 @@ export default function RecordsPage() {
         <div className="flex flex-col gap-5">
           {/* Group-by tabs — flip the same entries between day, category and account sections. Text,
               not icons: a tag vs a wallet isn't self-evident the way the BottomBar's home/search
-              glyphs are, and this is a control you read once rather than hit blind. */}
-          <div className="panel flex gap-1 p-1">
-            <ViewLink label="By date" active={groupBy === 'date'} href={viewHref('date')} />
-            <ViewLink
-              label="By category"
-              active={groupBy === 'category'}
-              href={viewHref('category')}
-            />
-            <ViewLink
-              label="By account"
-              active={groupBy === 'account'}
-              href={viewHref('account')}
-            />
-          </div>
+              glyphs are, and this is a control you read once rather than hit blind. Hidden in
+              sort=amount mode: that view's own "Largest first" heading is a different, single-section
+              grouping signal, and these links don't carry sort forward anyway. */}
+          {sort !== 'amount' ? (
+            <div className="panel flex gap-1 p-1">
+              <ViewLink label="By date" active={groupBy === 'date'} href={viewHref('date')} />
+              <ViewLink
+                label="By category"
+                active={groupBy === 'category'}
+                href={viewHref('category')}
+              />
+              <ViewLink
+                label="By account"
+                active={groupBy === 'account'}
+                href={viewHref('account')}
+              />
+            </div>
+          ) : null}
           {/* Summary of the current view (respects the active filter / search). */}
           <div className="flex items-baseline justify-between px-1">
             <span className="flex items-baseline gap-3">
@@ -199,7 +208,9 @@ export default function RecordsPage() {
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <Chevron />
-                  {groupBy === 'date' ? (
+                  {sortByAmount ? (
+                    <h2 className="truncate text-sm font-semibold">Largest first</h2>
+                  ) : groupBy === 'date' ? (
                     <h2 className="truncate text-sm font-semibold">
                       {spanAll
                         ? formatDayHeadingWithYear(section.key)
