@@ -64,8 +64,9 @@ export type AnalyticsData = {
   heatmapCells: HeatmapCell[];
   anomalies: Anomaly[];
   // The active cycle's biggest single expenses and note rollup, scoped to the filtered category.
-  // Empty when unfiltered (the app-wide TopNotesList covers that). Active cycle only — see the spec's
-  // window-scoping ceiling; the panel subtitle states this.
+  // Empty when unfiltered (the app-wide TopNotesList covers that). Active cycle only (the trend above
+  // is the 6-cycle window) — see the spec's window-scoping ceiling; the lists carry their own
+  // "Top transactions" / "Top notes" headings rather than a time-scope subtitle.
   categoryTransactions: EntryRow[];
   categoryNotes: NoteRow[];
   // The active cycle's day-of-week rhythm — app-wide (unfiltered) supporting card.
@@ -219,7 +220,10 @@ export function useAnalytics(
       // active cycle and the one before it — the same pair `delta` compares.
       const prevCycleKey = cycles[cycles.length - 2]?.key;
       const deltaBreakdown =
-        category === null && delta !== null && prevCycleKey !== undefined
+        category === null &&
+        delta !== null &&
+        delta.direction !== 'same' &&
+        prevCycleKey !== undefined
           ? deltaByCategory(matrix, activeKey, prevCycleKey).slice(0, 4)
           : [];
 
