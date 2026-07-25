@@ -16,6 +16,7 @@ function entry(id: number, category: string, amount: number, account = 'Cash'): 
     originalAmount: null,
     note: null,
     source: 'manual',
+    offBudget: null,
   };
 }
 

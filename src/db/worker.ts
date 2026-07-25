@@ -23,9 +23,10 @@ let db: Database | null = null;
 const BOOTSTRAP_SQL = [
   `CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL,
      time TEXT, account_id INTEGER, category_id INTEGER, amount REAL NOT NULL, currency TEXT,
-     original_amount REAL, note TEXT, source TEXT NOT NULL DEFAULT 'manual')`,
+     original_amount REAL, note TEXT, source TEXT NOT NULL DEFAULT 'manual', off_budget INTEGER)`,
   `CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
-     emoji TEXT NOT NULL, hue INTEGER, sort_order INTEGER, archived INTEGER NOT NULL DEFAULT 0)`,
+     emoji TEXT NOT NULL, hue INTEGER, sort_order INTEGER, archived INTEGER NOT NULL DEFAULT 0,
+     off_budget INTEGER NOT NULL DEFAULT 0)`,
   `CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
      icon TEXT NOT NULL, hue INTEGER, sort_order INTEGER, archived INTEGER NOT NULL DEFAULT 0)`,
   `CREATE TABLE IF NOT EXISTS budgets (id INTEGER PRIMARY KEY AUTOINCREMENT, category_id INTEGER, amount REAL NOT NULL)`,

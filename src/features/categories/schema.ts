@@ -15,6 +15,10 @@ export const categories = sqliteTable('categories', {
   hue: integer('hue'),
   sortOrder: integer('sort_order'),
   archived: integer('archived').notNull().default(0),
+  // off_budget: 1 = this category's spend is excluded from budget meters/pace (see off-budget.ts).
+  // ponytail: lives in OPFS; lost on Monefy-CSV restore (format has no column) — upgrade path is a
+  // native backup carrying category meta.
+  offBudget: integer('off_budget').notNull().default(0),
 });
 
 export type Category = typeof categories.$inferSelect;
@@ -28,7 +32,8 @@ export async function ensureCategoriesTable(db: Db): Promise<void> {
       emoji TEXT NOT NULL,
       hue INTEGER,
       sort_order INTEGER,
-      archived INTEGER NOT NULL DEFAULT 0
+      archived INTEGER NOT NULL DEFAULT 0,
+      off_budget INTEGER NOT NULL DEFAULT 0
     )
   `);
 }

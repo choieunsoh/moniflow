@@ -21,6 +21,8 @@ export const entries = sqliteTable('entries', {
   originalAmount: real('original_amount'),
   note: text('note'),
   source: text('source').notNull().default('manual'), // 'manual' | 'monefy'
+  // off_budget: null = inherit the category, 0 = force include, 1 = force exclude.
+  offBudget: integer('off_budget'),
 });
 
 export type Entry = typeof entries.$inferSelect;
@@ -42,6 +44,7 @@ export type EntryInput = {
   originalAmount?: number | null;
   note?: string | null;
   source?: string;
+  offBudget?: number | null;
 };
 
 // ponytail: ensures the ledger's FK tables (categories, accounts) alongside entries, so calling
@@ -60,7 +63,8 @@ export async function ensureEntriesTable(db: Db): Promise<void> {
       currency TEXT,
       original_amount REAL,
       note TEXT,
-      source TEXT NOT NULL DEFAULT 'manual'
+      source TEXT NOT NULL DEFAULT 'manual',
+      off_budget INTEGER
     )
   `);
 }

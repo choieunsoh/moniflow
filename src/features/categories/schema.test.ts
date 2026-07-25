@@ -10,7 +10,15 @@ describe('ensureCategoriesTable', () => {
     await db.insert(categories).values({ name: 'groceries', emoji: '🛒' }).run();
     const rows = await db.select().from(categories).all();
     expect(rows).toEqual([
-      { id: 1, name: 'groceries', emoji: '🛒', hue: null, sortOrder: null, archived: 0 },
+      {
+        id: 1,
+        name: 'groceries',
+        emoji: '🛒',
+        hue: null,
+        sortOrder: null,
+        archived: 0,
+        offBudget: 0,
+      },
     ]);
     // name is UNIQUE — a duplicate insert throws
     await expect(

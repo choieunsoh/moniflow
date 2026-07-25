@@ -16,6 +16,7 @@ function row(id: number, amount: number): EntryRow {
     originalAmount: null,
     note: null,
     source: 'manual',
+    offBudget: null,
     category: 'Food',
     account: 'Cash',
   };

@@ -16,6 +16,7 @@ function entry(id: number, date: string, amount: number): EntryRow {
     originalAmount: null,
     note: null,
     source: 'manual',
+    offBudget: null,
   };
 }
 
