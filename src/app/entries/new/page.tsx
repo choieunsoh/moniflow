@@ -38,6 +38,7 @@ export default function NewEntryPage() {
     defaultAccount,
     iconSet,
     keypadLayout,
+    offBudgetCategories,
   } = data;
 
   async function handleSubmit(formData: FormData): Promise<void> {
@@ -66,6 +67,7 @@ export default function NewEntryPage() {
         iconSet={iconSet}
         keypadLayout={keypadLayout}
         action={handleSubmit}
+        offBudgetCategories={offBudgetCategories}
       />
     </PageContainer>
   );

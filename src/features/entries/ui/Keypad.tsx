@@ -99,6 +99,7 @@ export function Keypad({
   keypadLayout,
   action = addEntryAction,
   entry,
+  offBudgetCategories,
 }: {
   categories: KeypadCategory[];
   accounts: KeypadAccount[];
@@ -112,6 +113,7 @@ export function Keypad({
   keypadLayout: KeypadLayout;
   action?: (formData: FormData) => Promise<void>;
   entry?: EntryRow;
+  offBudgetCategories: Set<string>;
 }) {
   const noteListId = useId();
   const initialCurrency: Currency =
@@ -141,6 +143,18 @@ export function Keypad({
   const [rateOverride, setRateOverride] = useState<string | null>(initialOverride);
   const [isRefreshing, startRefresh] = useTransition();
 
+  // Tri-state backed by a 2-state checkbox — mirrors EntryForm's toggle. Untouched follows the
+  // effective default for the entry's own category (there's no "currently selected category" for a
+  // NEW entry: the category grid submits on tap, so nothing is picked yet at this point in the
+  // flow, and the default correctly falls back to "no category, no default"). Editing an existing
+  // entry starts already touched when it carries its own explicit override.
+  const category = entry?.category ?? '';
+  const [offBudgetTouched, setOffBudgetTouched] = useState(
+    entry !== undefined && entry.offBudget !== null,
+  );
+  const [offBudgetOverride, setOffBudgetOverride] = useState(entry?.offBudget === 1);
+  const offBudgetChecked = offBudgetTouched ? offBudgetOverride : offBudgetCategories.has(category);
+
   const isCustomDate = date !== today;
   const amount = evaluate(expr); // the FOREIGN figure keyed in
   const validAmount = amount !== null && amount > 0;
@@ -169,6 +183,14 @@ export function Keypad({
       <input type="hidden" name="amount" value={validAmount ? String(amount) : ''} />
       <input type="hidden" name="thb" value={canSubmit ? String(thbValue) : ''} />
       <input type="hidden" name="account" value={account} />
+      {/* Tri-state: '' (untouched, inherits the category default) or an explicit '0'/'1' once the
+          user has flipped the checkbox below. parseEntryForm reads this the same way it reads
+          EntryForm's identically-named field. */}
+      <input
+        type="hidden"
+        name="offBudget"
+        value={offBudgetTouched ? (offBudgetOverride ? '1' : '0') : ''}
+      />
 
       {/* Amount + inputs + keypad */}
       <div className={view === 'keypad' ? 'flex flex-col gap-4' : 'hidden'}>
@@ -360,6 +382,21 @@ export function Keypad({
             );
           })}
         </div>
+
+        {/* One-off override — same tri-state as EntryForm's toggle, checked by default when the
+            entry's own category is off-budget by default (or, on edit, when the entry already
+            carries an explicit override). */}
+        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-text)' }}>
+          <input
+            type="checkbox"
+            checked={offBudgetChecked}
+            onChange={(e) => {
+              setOffBudgetTouched(true);
+              setOffBudgetOverride(e.target.checked);
+            }}
+          />
+          Exclude from budget (one-off)
+        </label>
 
         {/* The note sits between the keypad and the category step, following the order you fill them
             in: key the amount, annotate it, then pick the category that saves it. Enter never submits

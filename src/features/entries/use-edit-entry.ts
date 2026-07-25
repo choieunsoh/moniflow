@@ -37,6 +37,7 @@ export type EditEntryData =
       ratesAsOf: Record<string, string>;
       iconSet: IconSet;
       keypadLayout: KeypadLayout;
+      offBudgetCategories: Set<string>; // the Keypad's off-budget toggle default
     }
   | {
       keypadEditable: false;
@@ -77,6 +78,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           notes,
           cardFeePct,
           fxRates,
+          offBudgetCategories,
         ] = await Promise.all([
           getIconSet(db),
           getKeypadLayout(db),
@@ -86,6 +88,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           getDistinctNotes(db),
           getCardFeePct(db),
           getFxRates(db),
+          getOffBudgetCategories(db),
         ]);
         const rates: Record<string, number> = {};
         const ratesAsOf: Record<string, string> = {};
@@ -104,6 +107,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           ratesAsOf,
           iconSet,
           keypadLayout,
+          offBudgetCategories,
         });
       } else {
         const [accounts, categories, notes, offBudgetCategories] = await Promise.all([

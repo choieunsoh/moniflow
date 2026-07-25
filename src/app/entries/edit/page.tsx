@@ -74,6 +74,7 @@ function EditEntryInner() {
       ratesAsOf,
       iconSet,
       keypadLayout,
+      offBudgetCategories,
     } = data;
     return (
       <PageContainer size="full">
@@ -94,6 +95,7 @@ function EditEntryInner() {
           keypadLayout={keypadLayout}
           action={handleSubmit}
           entry={entry}
+          offBudgetCategories={offBudgetCategories}
         />
       </PageContainer>
     );
