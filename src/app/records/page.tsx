@@ -32,6 +32,7 @@ export default function RecordsPage() {
   const currency = params.get('currency') ?? undefined;
   const from = params.get('from') ?? undefined;
   const to = params.get('to') ?? undefined;
+  const sort = params.get('sort') ?? undefined;
 
   const { ready, data } = useRecords({
     cycle: cycleParam,
@@ -43,6 +44,7 @@ export default function RecordsPage() {
     currency,
     from,
     to,
+    sort,
   });
 
   if (!ready || data === null) {
@@ -79,6 +81,9 @@ export default function RecordsPage() {
     total,
     currencySums,
   } = data;
+
+  // Mirrors the hook's own gate: sort=amount only collapses the plain cycle view to one section.
+  const sortByAmount = sort === 'amount' && !spanAll;
 
   // Tap a section header to filter to just that bucket (staying grouped); tap the active one to
   // clear. Mirrors the row chips — preserves the cycle, the grouping, and the other axis's filter,
@@ -199,7 +204,9 @@ export default function RecordsPage() {
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <Chevron />
-                  {groupBy === 'date' ? (
+                  {sortByAmount ? (
+                    <h2 className="truncate text-sm font-semibold">Largest first</h2>
+                  ) : groupBy === 'date' ? (
                     <h2 className="truncate text-sm font-semibold">
                       {spanAll
                         ? formatDayHeadingWithYear(section.key)
