@@ -42,6 +42,7 @@ describe('parseEntryForm', () => {
         currency: 'THB',
         originalAmount: -120,
         note: null,
+        offBudget: null,
       },
     });
   });
@@ -71,8 +72,23 @@ describe('parseEntryForm', () => {
         currency: 'JPY',
         originalAmount: -1000,
         note: 'dinner',
+        offBudget: null,
       },
     });
+  });
+
+  it('reads an explicit offBudget override (0/1); blank/absent stays null (inherit)', () => {
+    const checked = parseEntryForm(formData({ ...base, offBudget: '1' }));
+    expect(checked.ok).toBe(true);
+    if (checked.ok) expect(checked.entry.offBudget).toBe(1);
+
+    const unchecked = parseEntryForm(formData({ ...base, offBudget: '0' }));
+    expect(unchecked.ok).toBe(true);
+    if (unchecked.ok) expect(unchecked.entry.offBudget).toBe(0);
+
+    const untouched = parseEntryForm(formData(base)); // no `offBudget` key in the form at all
+    expect(untouched.ok).toBe(true);
+    if (untouched.ok) expect(untouched.entry.offBudget).toBeNull();
   });
 
   it('flips the sign for income', () => {

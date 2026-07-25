@@ -4,6 +4,7 @@ import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { addEntries, getEntries } from './queries';
+import { setCategoryOffBudget } from '@features/categories/queries';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 
@@ -57,6 +58,20 @@ describe('useEditEntry', () => {
     if (data.keypadEditable) throw new Error('unreachable — checked above');
     expect(data.categories).toContain('Salary');
     expect(data.accounts).toContain('Cash');
+    expect(data.offBudgetCategories).toBeInstanceOf(Set);
+  });
+
+  it('carries the off-budget category set for the plain form to default its toggle from', async () => {
+    const db = await getBrowserDb();
+    await setCategoryOffBudget(db, 'Salary', true);
+    const income = (await getEntries(db)).find((e) => e.amount > 0);
+    if (income === undefined) throw new Error('seed missing an income row');
+
+    const { result } = renderHook(() => useEditEntry(income.id));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const { data } = result.current;
+    if (data === null || data.keypadEditable) throw new Error('unreachable — checked above');
+    expect(data.offBudgetCategories).toEqual(new Set(['Salary']));
   });
 
   it('resolves ready with data null for an id that does not exist', async () => {

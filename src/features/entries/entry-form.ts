@@ -51,6 +51,12 @@ export function parseEntryForm(fd: FormData): ParseResult {
     }
   }
 
+  // offBudget: '' (checkbox left untouched) means inherit the category default (null); '0'/'1' is
+  // an explicit per-entry override written by the EntryForm toggle. Forms that don't render the
+  // toggle (the Keypad) never submit this field, so readString's '' default lands here too.
+  const offBudgetRaw = readString(fd, 'offBudget');
+  const offBudget = offBudgetRaw === '' ? null : Number(offBudgetRaw);
+
   const sign = direction === 'income' ? 1 : -1;
   const entry: EntryInput = {
     date,
@@ -61,6 +67,7 @@ export function parseEntryForm(fd: FormData): ParseResult {
     currency,
     originalAmount: sign * amount,
     note: note === '' ? null : note,
+    offBudget,
   };
   return { ok: true, entry };
 }

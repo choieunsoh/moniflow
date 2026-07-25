@@ -10,17 +10,36 @@ type EntryFormProps = {
   categories: string[];
   notes: string[];
   entry?: EntryRow;
+  offBudgetCategories: Set<string>;
 };
 
 const fieldClass = 'min-h-11 rounded-[var(--radius-sm)] border px-3 py-2 text-base';
 const fieldStyle = { borderColor: 'var(--color-border)', background: 'var(--color-surface-2)' };
 
 // Add/edit form for a single ledger row, reused by both routes. Controlled only where behavior
-// demands it (currency <-> manual THB field); everything else is an uncontrolled
-// <form action={action}> submit straight to a Server Action — no useActionState, matching the
-// dashboard's no-client-JS-unless-needed stance as closely as a mutable form allows.
-export function EntryForm({ action, accounts, categories, notes, entry }: EntryFormProps) {
+// demands it (currency <-> manual THB field, category <-> off-budget toggle default); everything
+// else is an uncontrolled <form action={action}> submit straight to a Server Action — no
+// useActionState, matching the dashboard's no-client-JS-unless-needed stance as closely as a
+// mutable form allows.
+export function EntryForm({
+  action,
+  accounts,
+  categories,
+  notes,
+  entry,
+  offBudgetCategories,
+}: EntryFormProps) {
   const [currency, setCurrency] = useState(entry?.currency ?? 'THB');
+  const [category, setCategory] = useState(entry?.category ?? '');
+  // Tri-state backed by a 2-state checkbox: untouched follows the selected category's off-budget
+  // default (offBudgetCategories) and submits '' (null, inherit); once flipped it's an explicit
+  // override and submits '0'/'1'. On edit, `entry.offBudget !== null` starts it already touched, so
+  // it shows the entry's own stored value rather than the (possibly different) category default.
+  const [offBudgetTouched, setOffBudgetTouched] = useState(
+    entry !== undefined && entry.offBudget !== null,
+  );
+  const [offBudgetOverride, setOffBudgetOverride] = useState(entry?.offBudget === 1);
+  const offBudgetChecked = offBudgetTouched ? offBudgetOverride : offBudgetCategories.has(category);
   const categoryListId = useId();
   const noteListId = useId();
   const needsManualThb = currency !== 'THB';
@@ -73,7 +92,8 @@ export function EntryForm({ action, accounts, categories, notes, entry }: EntryF
           <input
             name="category"
             list={categoryListId}
-            defaultValue={entry?.category ?? ''}
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
             required
             className={fieldClass}
             style={fieldStyle}
@@ -157,6 +177,26 @@ export function EntryForm({ action, accounts, categories, notes, entry }: EntryF
           />
         </label>
       </div>
+
+      {/* Hidden field carries the tri-state value the checkbox below represents: '' (untouched,
+          inherits the category default) or an explicit '0'/'1' once the user has flipped it. The
+          checkbox itself has no `name` so its own on/off submission never fights this field. */}
+      <input
+        type="hidden"
+        name="offBudget"
+        value={offBudgetTouched ? (offBudgetOverride ? '1' : '0') : ''}
+      />
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={offBudgetChecked}
+          onChange={(e) => {
+            setOffBudgetTouched(true);
+            setOffBudgetOverride(e.target.checked);
+          }}
+        />
+        Exclude from budget (one-off)
+      </label>
 
       <label className="flex flex-col gap-1 text-sm">
         Note

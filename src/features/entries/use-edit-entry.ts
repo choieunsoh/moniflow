@@ -19,6 +19,7 @@ import {
   type IconSet,
   type KeypadLayout,
 } from '@features/settings/queries';
+import { getOffBudgetCategories } from '@features/categories/queries';
 import { withFee } from './fx';
 import { useDataVersion } from '@shared/data-version';
 
@@ -43,6 +44,7 @@ export type EditEntryData =
       accounts: string[];
       categories: string[];
       notes: string[];
+      offBudgetCategories: Set<string>; // the plain EntryForm's off-budget toggle default
     };
 
 // Edit-entry page's data, read once via the browser OPFS db after mount — mirrors the server
@@ -104,12 +106,13 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           keypadLayout,
         });
       } else {
-        const [accounts, categories, notes] = await Promise.all([
+        const [accounts, categories, notes, offBudgetCategories] = await Promise.all([
           getDistinctAccounts(db),
           getDistinctCategories(db),
           getDistinctNotes(db),
+          getOffBudgetCategories(db),
         ]);
-        setData({ keypadEditable: false, entry, accounts, categories, notes });
+        setData({ keypadEditable: false, entry, accounts, categories, notes, offBudgetCategories });
       }
       setReady(true);
     });

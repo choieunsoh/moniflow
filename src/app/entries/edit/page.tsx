@@ -99,7 +99,7 @@ function EditEntryInner() {
     );
   }
 
-  const { entry, accounts, categories, notes } = data;
+  const { entry, accounts, categories, notes, offBudgetCategories } = data;
   return (
     <PageContainer size="form">
       <header className="flex items-start justify-between gap-3">
@@ -117,6 +117,7 @@ function EditEntryInner() {
         categories={categories}
         notes={notes}
         entry={entry}
+        offBudgetCategories={offBudgetCategories}
       />
     </PageContainer>
   );
