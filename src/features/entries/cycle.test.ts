@@ -7,6 +7,8 @@ import {
   cycleProgress,
   lastCycles,
   cyclesInYear,
+  cyclesForMonth,
+  firstTrackedYear,
   formatIsoRange,
 } from './cycle';
 
@@ -146,6 +148,50 @@ describe('cyclesInYear', () => {
       key: '2026-01',
       start: '2026-01-01',
       end: '2026-01-31',
+    });
+  });
+});
+
+describe('firstTrackedYear', () => {
+  it('reports the year of the cycle owning the date, not the date year', () => {
+    // 5 Jan 2025 falls in cycle 2024-12 (18 Dec – 17 Jan) — 2024 must stay reachable.
+    expect(firstTrackedYear('2025-01-05', 18)).toBe(2024);
+    expect(firstTrackedYear('2025-01-20', 18)).toBe(2025);
+  });
+
+  it('has no earliest year for an empty ledger', () => {
+    expect(firstTrackedYear(null)).toBeNull();
+  });
+});
+
+describe('cyclesForMonth', () => {
+  it('returns that month across every tracked year, oldest first', () => {
+    expect(cyclesForMonth(7, '2026-07', 2024).map((c) => c.key)).toEqual([
+      '2024-07',
+      '2025-07',
+      '2026-07',
+    ]);
+  });
+
+  it("stops at the live cycle, so a month later in the year drops this year's slot", () => {
+    // December 2026 has not started — including it would draw a zero bar that reads as
+    // "you spent nothing last December", which is the opposite of the truth.
+    expect(cyclesForMonth(12, '2026-07', 2024).map((c) => c.key)).toEqual(['2024-12', '2025-12']);
+  });
+
+  it('includes the live cycle itself when the month is the current one', () => {
+    expect(cyclesForMonth(7, '2026-07', 2026).map((c) => c.key)).toEqual(['2026-07']);
+  });
+
+  it('returns nothing when the ledger starts after the month has last occurred', () => {
+    expect(cyclesForMonth(12, '2026-07', 2026)).toEqual([]);
+  });
+
+  it('builds full cycles honouring the cutoff', () => {
+    expect(cyclesForMonth(7, '2026-07', 2026, 18)[0]).toMatchObject({
+      key: '2026-07',
+      start: '2026-07-18',
+      end: '2026-08-17',
     });
   });
 });

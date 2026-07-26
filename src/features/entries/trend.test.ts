@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   monthLabel,
+  yearLabel,
   toTrendBars,
   buildTrendOption,
   completeBars,
@@ -26,6 +27,27 @@ describe('monthLabel', () => {
     expect(monthLabel('2026-07')).toBe('Jul');
     expect(monthLabel('2026-01')).toBe('Jan');
     expect(monthLabel('2025-12')).toBe('Dec');
+  });
+});
+
+describe('yearLabel', () => {
+  // /month's axis is years, not months — every bar in that window shares one month, so the month
+  // name would repeat down the whole axis and say nothing.
+  it('renders the cycle key as its start year', () => {
+    expect(yearLabel('2026-07')).toBe('2026');
+    expect(yearLabel('2025-12')).toBe('2025');
+  });
+});
+
+describe('toTrendBars labelling', () => {
+  it('labels by start month by default', () => {
+    const bars = toTrendBars(lastCycles('2026-07', 2), new Map(), '2026-07');
+    expect(bars.map((b) => b.label)).toEqual(['Jun', 'Jul']);
+  });
+
+  it('takes a label function, so a year-keyed window can label by year', () => {
+    const bars = toTrendBars(lastCycles('2026-07', 2), new Map(), '2026-07', yearLabel);
+    expect(bars.map((b) => b.label)).toEqual(['2026', '2026']);
   });
 });
 

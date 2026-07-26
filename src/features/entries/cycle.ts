@@ -99,6 +99,34 @@ export function cyclesInYear(year: number, currentKey: string, cutoff = CUTOFF):
     .map((key) => cycleFromKey(key, cutoff));
 }
 
+// The year of the CYCLE owning the ledger's oldest expense — how far back any year- or month-window
+// may reach. Not the date's own year: an expense on 5 Jan 2025 lives in cycle 2024-12, so 2024 has
+// to stay reachable or its December is unviewable. null for an empty ledger.
+export function firstTrackedYear(firstDate: string | null, cutoff = CUTOFF): number | null {
+  return firstDate === null ? null : Number(cycleOf(firstDate, cutoff).key.split('-')[0]);
+}
+
+// One month's cycle across every tracked year, oldest first — /month's window. `month` is 1-based.
+// Same clip as cyclesInYear and for the same reason: a cycle that has not started yet is not a
+// zero-spend cycle, and toTrendBars would draw it as one.
+//
+// Note this asks "has this month's cycle STARTED", not "has it finished" — so in the current month
+// you get a partial bar alongside the finished years, flagged `partial` like everywhere else.
+export function cyclesForMonth(
+  month: number,
+  currentKey: string,
+  firstYear: number,
+  cutoff = CUTOFF,
+): Cycle[] {
+  const lastYear = Number(currentKey.split('-')[0]);
+  const keys: string[] = [];
+  for (let y = firstYear; y <= lastYear; y++) {
+    const key = `${y}-${pad2(month)}`;
+    if (key <= currentKey) keys.push(key);
+  }
+  return keys.map((key) => cycleFromKey(key, cutoff));
+}
+
 // A span's label in the same house style as a cycle's own — "18 Jan – 26 Jul 2026", with the
 // start's year shown only when the span crosses one. The /year window is not a cycle, but it
 // should not read as a second date dialect.
