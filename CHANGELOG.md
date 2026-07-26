@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-07-26
+
+### Added
+
+- add /report — pick a category, see it over time
+- add /report — one category, seen over time
+- read a category's spend over a year or over all years
+- fold a breakdown matrix into a category report
+
+### Fixed
+
+- tighten category-report review-pass loose ends
+
+### Other
+
+- plan the /report category report
+- spec the /report category report
+
 ## [1.6.0] - 2026-07-26
 
 ### Added
