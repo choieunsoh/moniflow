@@ -198,7 +198,12 @@ export function buildTrendOption(bars: TrendBar[], p: TrendPalette, budget: numb
     // back. `max: undefined` (not omitted) keeps the field statically visible so the regression test
     // can assert on it — TS infers object-literal shape from what's written, and a field that is
     // never present can't be asserted `undefined` without a cast.
-    yAxis: { type: 'value', show: false, max: undefined },
+    // `axisLabel: { show: false }` is NOT redundant next to `show: false`. containLabel above
+    // reserves gutter for each axis's LABELS, and axisLabel.show defaults to true independently of
+    // axis.show — so the hidden y-axis was still claiming ~50px of a 323px chart, pushing every bar
+    // right and costing ~15% of the plot. containLabel has to stay for the x-axis labels, so the
+    // y-axis labels are silenced explicitly instead. See the regression test.
+    yAxis: { type: 'value', show: false, axisLabel: { show: false }, max: undefined },
     series: [
       {
         type: 'bar',

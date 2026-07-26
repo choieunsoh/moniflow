@@ -171,6 +171,17 @@ describe('buildTrendOption reference lines', () => {
     // overlay now — it is clamped, never allowed to drive the axis. The bars stay scaled to the data.
     expect(buildTrendOption(bars, PALETTE, 30_000).yAxis.max).toBeUndefined();
   });
+
+  it('silences the hidden y-axis labels, so they claim no gutter', () => {
+    // Looks redundant next to `show: false` and is NOT. grid.containLabel reserves room for each
+    // axis's LABELS, and axisLabel.show defaults to true independently of axis.show — so a hidden
+    // y-axis still held ~50px of a 323px chart, shoving every bar right and shrinking the plot by
+    // about 15%. Deleting this line brings the dead gutter back with nothing visible to explain it.
+    const option = buildTrendOption(bars, PALETTE);
+    expect(option.yAxis.show).toBe(false);
+    expect(option.yAxis.axisLabel.show).toBe(false);
+    expect(option.grid.containLabel).toBe(true); // still needed: the x-axis labels DO need room
+  });
 });
 
 describe('completeBars', () => {
