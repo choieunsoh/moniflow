@@ -134,6 +134,27 @@ describe('useCategoryReport', () => {
     expect(result.current.data?.categories).toEqual([]);
   });
 
+  // The list's rows navigate WITHIN /report (a year row opens that year's months), so the page never
+  // unmounts and the previous window's data outlives the params that produced it. If ready survives
+  // the change even for one commit, the page renders those stale figures under the new ?year= — which
+  // on a real OPFS read lasts the whole round trip and reads as "it opened the row I tapped before".
+  it('drops ready the instant the window changes, never pairing new params with old figures', async () => {
+    const { result, rerender } = renderHook(
+      ({ year }: { year: number }) => useCategoryReport('monthly', year, 'Food'),
+      { initialProps: { year: 2026 } },
+    );
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.data?.year).toBe(2026);
+
+    rerender({ year: 2024 });
+    // Deliberately not awaited: the claim is that the drop is synchronous with the render, not that
+    // it happens eventually.
+    expect(result.current.ready).toBe(false);
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.data?.year).toBe(2024);
+  });
+
   it('refetches after a write', async () => {
     const { result } = renderHook(() => useCategoryReport('monthly', 2026, null));
     await waitFor(() => expect(result.current.ready).toBe(true));
