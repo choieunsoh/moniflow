@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
-import type { PointerEvent, ReactNode } from 'react';
+import type { PointerEvent, MouseEvent as ReactMouseEvent, ReactNode } from 'react';
+import { beginsDrag, commitHref } from '../swipe';
 
 // Horizontal swipe over a page's content to step its axis (Monefy-style): swipe left → next, right
 // → previous. The content follows the finger (damped) as the affordance, then springs back if the
@@ -14,10 +15,16 @@ import type { PointerEvent, ReactNode } from 'react';
 // construction — deriving the boundary twice is how you get a swipe that navigates somewhere the
 // arrow says is unreachable. A null href is a closed direction: the drag springs back.
 //
+// TAPS AND SWIPES SHARE THE SAME SURFACE. This used to refuse to start on any link or button,
+// because capturing the pointer swallows the click underneath — which made /month's category and
+// year lists, the rows a thumb actually lands on, completely un-swipeable. Instead the press is now
+// left alone until it has clearly travelled sideways (beginsDrag): under that it stays a tap and the
+// link gets its click; past it we capture, and the click that follows is swallowed on the way down
+// so a drag can never also activate whatever it started on.
+//
 // ⚠ Never wrap a `position: sticky` element in this. The transform below is set even at rest
 // (translateX(0px)), and a transformed ancestor becomes the containing block for sticky descendants
 // — the stepper would scroll away instead of pinning. Every caller renders its stepper OUTSIDE.
-const THRESHOLD = 44; // px of travel to commit
 const DAMP = 0.5; // how far the content trails the pointer before commit
 
 export function SwipeNav({
@@ -35,32 +42,54 @@ export function SwipeNav({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const startX = useRef<number | null>(null);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  // Refs, not state: the commit decision must read the distance the pointer ACTUALLY reached, and a
+  // pointerup landing in the same frame as the last pointermove would otherwise close over a stale
+  // render. `dragged` also has to outlive pointerup — the click it suppresses arrives after.
+  const dxRef = useRef(0);
+  const dragged = useRef(false);
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>): void {
-    // A press that lands on an interactive child (category rows, edit buttons) belongs to that child
-    // — capturing the pointer here would swallow its click and the tap would do nothing. Swiping
-    // still works from charts, headings, and the padding around them.
-    if (e.target instanceof Element && e.target.closest('a, button')) return;
-    startX.current = e.clientX;
-    setDragging(true);
-    e.currentTarget.setPointerCapture(e.pointerId);
+    start.current = { x: e.clientX, y: e.clientY };
+    dxRef.current = 0;
+    // Cleared here rather than after suppressing a click, because a drag over empty space produces
+    // no click at all — left set, it would swallow the NEXT genuine tap.
+    dragged.current = false;
+    // Deliberately no capture and no state change yet: until this press proves itself a drag it is
+    // a tap, and the child underneath must be free to handle it.
   }
 
   function onPointerMove(e: PointerEvent<HTMLDivElement>): void {
-    if (startX.current === null) return;
-    setDx(e.clientX - startX.current);
+    if (start.current === null) return;
+    const nextDx = e.clientX - start.current.x;
+    if (!dragged.current) {
+      if (!beginsDrag(nextDx, e.clientY - start.current.y)) return;
+      dragged.current = true;
+      setDragging(true);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    dxRef.current = nextDx;
+    setDx(nextDx);
   }
 
   function onPointerUp(): void {
-    if (startX.current === null) return;
-    if (dx <= -THRESHOLD && nextHref !== null) router.push(nextHref);
-    else if (dx >= THRESHOLD && prevHref !== null) router.push(prevHref);
-    startX.current = null;
+    if (start.current === null) return;
+    const href = dragged.current ? commitHref(dxRef.current, prevHref, nextHref) : null;
+    start.current = null;
     setDragging(false);
     setDx(0);
+    if (href !== null) router.push(href);
+  }
+
+  // Capture phase, so a drag that started on a link is stopped before the link's own onClick runs.
+  // preventDefault covers the anchor's native navigation, stopPropagation the React handler.
+  function onClickCapture(e: ReactMouseEvent<HTMLDivElement>): void {
+    if (!dragged.current) return;
+    dragged.current = false;
+    e.preventDefault();
+    e.stopPropagation();
   }
 
   return (
@@ -68,7 +97,10 @@ export function SwipeNav({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      // The browser takes the gesture over for a vertical pan (touch-action: pan-y) and cancels
+      // ours. Route it through the same teardown so a scroll never leaves the content offset.
       onPointerCancel={onPointerUp}
+      onClickCapture={onClickCapture}
       // A mouse drag over the content can otherwise start the browser's native image/text drag and
       // swallow the gesture — kill it. select-none stops text selection while dragging.
       onDragStart={(e) => e.preventDefault()}
