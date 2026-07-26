@@ -12,6 +12,7 @@ import {
   restoreEntries,
   getCycleSummary,
   hasAnyExpense,
+  getFirstExpenseDate,
   getCategoryBreakdown,
   getEntriesInRange,
   insertEntry,
@@ -148,6 +149,19 @@ describe('cycle-scoped queries', () => {
     // The whole point of this query: home asks it to tell "you have nothing yet" apart from
     // "nothing happened in THIS cycle", so it must ignore cycle bounds entirely.
     expect(await hasAnyExpense(await seed())).toBe(true);
+  });
+
+  it('reports no first expense date for an empty ledger', async () => {
+    expect(await getFirstExpenseDate(await db())).toBeNull();
+  });
+
+  it('returns the earliest expense date, ignoring income', async () => {
+    const d = await seed();
+    await addEntries(d, [
+      { date: '2020-01-01', account: 'visa', category: 'salary', amount: 90000 }, // income
+      { date: '2025-03-09', account: 'visa', category: 'food', amount: -120 },
+    ]);
+    expect(await getFirstExpenseDate(d)).toBe('2025-03-09');
   });
 
   it('summarizes only rows within [start, end]', async () => {

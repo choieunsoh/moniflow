@@ -83,3 +83,25 @@ export function cycleProgress(cycle: Cycle, todayIso: string): Progress {
 export function lastCycles(key: string, n: number, cutoff = CUTOFF): Cycle[] {
   return Array.from({ length: n }, (_, i) => cycleFromKey(stepKey(key, i - n + 1), cutoff));
 }
+
+// The cycles keyed to a calendar year, oldest first — the /year recap's window. Keyed, not dated:
+// a cycle is anchored to its START month, so `2026-01` is 18 Jan → 17 Feb and the year runs
+// 18 Jan 2026 → 17 Jan 2027. That is the cost of a cutoff-based ledger; the page states the real
+// span rather than pretending the year begins on the 1st.
+//
+// The CURRENT year stops at the live cycle (year-to-date). Future cycles are not "zero spend" —
+// toTrendBars renders a missing cycle as a real zero on purpose, so leaving them in would draw
+// five empty bars that read as five months of spending nothing. Keys are zero-padded 'YYYY-MM',
+// so ordering them is a plain string compare.
+export function cyclesInYear(year: number, currentKey: string, cutoff = CUTOFF): Cycle[] {
+  return Array.from({ length: 12 }, (_, i) => `${year}-${pad2(i + 1)}`)
+    .filter((key) => key <= currentKey)
+    .map((key) => cycleFromKey(key, cutoff));
+}
+
+// A span's label in the same house style as a cycle's own — "18 Jan – 26 Jul 2026", with the
+// start's year shown only when the span crosses one. The /year window is not a cycle, but it
+// should not read as a second date dialect.
+export function formatIsoRange(startIso: string, endIso: string): string {
+  return formatRange(new Date(`${startIso}T00:00:00Z`), new Date(`${endIso}T00:00:00Z`));
+}
