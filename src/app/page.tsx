@@ -11,8 +11,9 @@ import { DonutChart } from '@features/entries/ui/DonutChart';
 import { SafeToSpendCard } from '@features/entries/ui/ForwardCards';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
+import { stepKey } from '@features/entries/cycle';
 import { CycleProgress } from '@features/entries/ui/CycleProgress';
-import { CycleSwipe } from '@features/entries/ui/CycleSwipe';
+import { SwipeNav } from '@features/entries/ui/SwipeNav';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { HomeSkeleton } from '@features/entries/ui/HomeSkeleton';
 import { LegendRow } from '@features/entries/ui/LegendRow';
@@ -65,6 +66,15 @@ export default function HomePage() {
     ledgerEmpty,
     topTransactions,
   } = data;
+
+  // Where the swipe lands: the neighbouring cycle, with every other param (?view=) carried across —
+  // changing cycle must not silently drop the view you chose. Forward is closed on today's cycle,
+  // matching CycleSelector's disabled arrow.
+  const swipeHref = (delta: -1 | 1) => {
+    const next = new URLSearchParams(params.toString());
+    next.set('cycle', stepKey(activeKey, delta));
+    return `/?${next.toString()}`;
+  };
 
   const showList = view === 'category';
   const hasSpending = summary.count > 0;
@@ -159,7 +169,7 @@ export default function HomePage() {
             ]}
           />
 
-          <CycleSwipe activeKey={activeKey} canGoNext={canGoNext}>
+          <SwipeNav prevHref={swipeHref(-1)} nextHref={canGoNext ? swipeHref(1) : null}>
             {showList ? (
               <Breakdown
                 title="Spending by category"
@@ -228,7 +238,7 @@ export default function HomePage() {
                 ) : null}
               </section>
             )}
-          </CycleSwipe>
+          </SwipeNav>
 
           <TopTransactionsList
             entries={topTransactions}
@@ -239,7 +249,7 @@ export default function HomePage() {
           />
         </>
       ) : (
-        <CycleSwipe activeKey={activeKey} canGoNext={canGoNext}>
+        <SwipeNav prevHref={swipeHref(-1)} nextHref={canGoNext ? swipeHref(1) : null}>
           {/* Two different emptinesses, and conflating them was a real bug: this branch used to
               fire on `summary.count === 0` alone, so paging back to a quiet month told someone with
               a full ledger "No entries yet" and offered a replace-everything CSV restore as the
@@ -258,7 +268,7 @@ export default function HomePage() {
               </section>
             </>
           )}
-        </CycleSwipe>
+        </SwipeNav>
       )}
     </PageContainer>
   );

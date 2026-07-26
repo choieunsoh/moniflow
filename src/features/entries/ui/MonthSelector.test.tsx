@@ -2,11 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MonthSelector } from './MonthSelector';
 
-const href = (m: number) => `?month=${String(m).padStart(2, '0')}`;
-
 describe('MonthSelector', () => {
-  it('steps to the neighbouring months', () => {
-    render(<MonthSelector month={7} hrefFor={href} />);
+  it('names the neighbouring months and uses the hrefs it is given', () => {
+    render(<MonthSelector month={7} prevHref="?month=06" nextHref="?month=08" />);
     expect(screen.getByText('July')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Previous month: June' })).toHaveAttribute(
       'href',
@@ -18,25 +16,21 @@ describe('MonthSelector', () => {
     );
   });
 
+  // The labels come from stepMonth, the same wrap the page uses to build the hrefs — so a January
+  // back-arrow announces December and goes there.
+  it('names December as January’s previous month', () => {
+    render(<MonthSelector month={1} prevHref="?month=12" nextHref="?month=02" />);
+    expect(screen.getByRole('link', { name: 'Previous month: December' })).toBeInTheDocument();
+  });
+
+  it('names January as December’s next month', () => {
+    render(<MonthSelector month={12} prevHref="?month=11" nextHref="?month=01" />);
+    expect(screen.getByRole('link', { name: 'Next month: January' })).toBeInTheDocument();
+  });
+
   // The calendar is a ring, not a range — there is no first or last month to disable at.
-  it('wraps backwards from January to December', () => {
-    render(<MonthSelector month={1} hrefFor={href} />);
-    expect(screen.getByRole('link', { name: 'Previous month: December' })).toHaveAttribute(
-      'href',
-      '?month=12',
-    );
-  });
-
-  it('wraps forwards from December to January', () => {
-    render(<MonthSelector month={12} hrefFor={href} />);
-    expect(screen.getByRole('link', { name: 'Next month: January' })).toHaveAttribute(
-      'href',
-      '?month=01',
-    );
-  });
-
   it('never disables a direction', () => {
-    render(<MonthSelector month={7} hrefFor={href} />);
+    render(<MonthSelector month={7} prevHref="?month=06" nextHref="?month=08" />);
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 });

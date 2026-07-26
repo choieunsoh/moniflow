@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from '@shared/ui/Chevron';
-import { monthName } from '../trend';
+import { monthName, stepMonth } from '../trend';
 
 // Prev / next MONTH navigation for /month. Pure links that swap ?month= — the page's read hook
 // re-runs on it, so there is no client state here.
@@ -14,16 +14,19 @@ import { monthName } from '../trend';
 // Sticky under the AppHeader like CycleSelector, and for the same reason: the month name IS this
 // page's title, so it has to stay legible while the years scroll past. ponytail: the 3.5rem offset
 // is CycleSelector's literal — they must match, and a --header-h token didn't survive Turbopack.
+// The page owns the URL shape (it also carries ?category=) and passes the SAME two hrefs to
+// SwipeNav, so swiping and tapping always land in the same place.
 export function MonthSelector({
   month,
-  // The page owns the URL shape (it also carries ?category=), so this component never builds one.
-  hrefFor,
+  prevHref,
+  nextHref,
 }: {
   month: number;
-  hrefFor: (month: number) => string;
+  prevHref: string;
+  nextHref: string;
 }) {
-  const prev = month === 1 ? 12 : month - 1;
-  const next = month === 12 ? 1 : month + 1;
+  const prev = stepMonth(month, -1);
+  const next = stepMonth(month, 1);
   return (
     <nav
       className="panel sticky top-[calc(3.5rem_+_env(safe-area-inset-top))] z-[var(--z-header)] flex items-center justify-between p-2"
@@ -31,7 +34,7 @@ export function MonthSelector({
     >
       <Link
         prefetch={false}
-        href={hrefFor(prev)}
+        href={prevHref}
         aria-label={`Previous month: ${monthName(prev)}`}
         className="grid size-11 place-items-center rounded-[var(--radius-md)] transition-colors duration-150 active:bg-[var(--color-surface-2)]"
         style={{ color: 'var(--color-muted)' }}
@@ -41,7 +44,7 @@ export function MonthSelector({
       <span className="text-sm font-semibold">{monthName(month)}</span>
       <Link
         prefetch={false}
-        href={hrefFor(next)}
+        href={nextHref}
         aria-label={`Next month: ${monthName(next)}`}
         className="grid size-11 place-items-center rounded-[var(--radius-md)] transition-colors duration-150 active:bg-[var(--color-surface-2)]"
         style={{ color: 'var(--color-muted)' }}

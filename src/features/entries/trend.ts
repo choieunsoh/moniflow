@@ -28,6 +28,14 @@ export function monthName(month: number): string {
   return monthNameFmt.format(new Date(Date.UTC(2000, month - 1, 1)));
 }
 
+// The month before or after, WRAPPING — the calendar is a ring, so December steps to January and
+// there is no boundary. Shared by MonthSelector (which needs the neighbours for its labels) and
+// /month (which needs them for the hrefs): two copies of this would let the arrow announce "Next
+// month: January" while sending you somewhere else.
+export function stepMonth(month: number, delta: -1 | 1): number {
+  return ((month - 1 + delta + 12) % 12) + 1;
+}
+
 // `partial` marks the live cycle — it is still filling up, so the chart must not present it as
 // comparable to the finished ones. Keyed off the current cycle, NOT "the last bar": a window
 // anchored to a past cycle is complete all the way to its right edge.

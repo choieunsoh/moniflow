@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   monthLabel,
   yearLabel,
+  stepMonth,
   toTrendBars,
   buildTrendOption,
   completeBars,
@@ -36,6 +37,19 @@ describe('yearLabel', () => {
   it('renders the cycle key as its start year', () => {
     expect(yearLabel('2026-07')).toBe('2026');
     expect(yearLabel('2025-12')).toBe('2025');
+  });
+});
+
+describe('stepMonth', () => {
+  it('steps within the year', () => {
+    expect(stepMonth(7, 1)).toBe(8);
+    expect(stepMonth(7, -1)).toBe(6);
+  });
+
+  // The ring, which is the whole reason /month's stepper never disables an arrow.
+  it('wraps December to January and back', () => {
+    expect(stepMonth(12, 1)).toBe(1);
+    expect(stepMonth(1, -1)).toBe(12);
   });
 });
 
