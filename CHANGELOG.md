@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-07-26
+
+### Added
+
+- swipe from anywhere, including tappable rows
+- swipe from anywhere, including tappable rows
+- year/month navigation polish — sticky stepper, swipe, chart gutter
+- swipe to change year and month
+- /month — one calendar month across every year
+- /month — one calendar month across every year
+- calendar-year window on /year, stepped with ?year=
+- calendar-year window on /year, stepped with ?year=
+
+### Fixed
+
+- reclaim the ~50px gutter a hidden y-axis was holding
+- make the year stepper sticky, like the cycle and month ones
+
+### Other
+
+- lift RowChevron into shared/ui/Chevron
+- lift the stepper chevrons into shared/ui
+
 ## [1.4.0] - 2026-07-25
 
 ### Added
