@@ -5,9 +5,13 @@ import { getCategoryBreakdown } from './queries';
 // so /month can hand its cycles straight in without a mapping step.
 export type BreakdownWindow = { key: string; start: string; end: string };
 
-// window key → category → { value, count }. THE primitive behind every category-over-time surface:
-// unfiltered a view sums a row, filtered it reads one column. Values are MAGNITUDES — totals arrive
-// negative (the ledger's sign) and every read surface in this app shows spend.
+// window key → category → { value, count }. The primitive behind /month and /report: unfiltered a
+// view sums a row, filtered it reads one column. Values are MAGNITUDES — totals arrive negative (the
+// ledger's sign) and every read surface in this app shows spend.
+//
+// use-analytics.ts hand-rolls a structurally identical matrix under its own `{ total, count }` field
+// name, because anomaly.ts and delta-breakdown.ts are typed against `total` — converging it onto this
+// type is a real follow-up, just not one this branch takes on.
 export type BreakdownMatrix = Map<string, Map<string, { value: number; count: number }>>;
 
 // ponytail: one bounded aggregate per window rather than a single windowed query — a window boundary

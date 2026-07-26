@@ -36,7 +36,7 @@ export function foldCategoryReport(
   return {
     bars,
     total: bars.reduce((sum, b) => sum + b.value, 0),
-    categories: category === null ? rankCategories(matrix) : [],
+    categories: category === null ? rankCategories(matrix, periods) : [],
     rows: category === null ? [] : toRows(matrix, periods, category),
   };
 }
@@ -54,14 +54,19 @@ function periodValue(
 
 // Ranked over the WHOLE window, not over one period. The list is the picker, so its figure has to be
 // the one the report headline will show when you tap through — a row that promises ฿48,200 and lands
-// on ฿3,100 is the bug this page exists to avoid.
-function rankCategories(matrix: BreakdownMatrix): ReportCategory[] {
+// on ฿3,100 is the bug this page exists to avoid. Structural, not conventional: summing over `periods`
+// rather than `matrix.values()` means a matrix entry outside the period list can never leak into a
+// picker figure, whatever a future caller passes.
+function rankCategories(matrix: BreakdownMatrix, periods: ReportPeriod[]): ReportCategory[] {
   const totals = new Map<string, { value: number; count: number }>();
-  for (const byCategory of matrix.values())
+  for (const p of periods) {
+    const byCategory = matrix.get(p.key);
+    if (byCategory === undefined) continue;
     for (const [name, v] of byCategory) {
       const cur = totals.get(name) ?? { value: 0, count: 0 };
       totals.set(name, { value: cur.value + v.value, count: cur.count + v.count });
     }
+  }
   return [...totals.entries()]
     .map(([name, v]) => ({ name, value: v.value, count: v.count }))
     .filter((c) => c.value > 0)

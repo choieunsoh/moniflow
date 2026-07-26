@@ -138,11 +138,16 @@ export default function ReportPage() {
         ]}
       />
 
-      <TrendChart
-        bars={bars}
-        budget={null}
-        label={`${heading} ${view === 'monthly' ? `month by month in ${activeYear}` : 'year by year'}`}
-      />
+      {/* A window with nothing in it still shows the toggle and the ฿0 headline above, but a flat
+          zero-value chart under that headline draws a shape that promises data it doesn't have —
+          /year suppresses its chart the same way in the equivalent branch. */}
+      {total === 0 ? null : (
+        <TrendChart
+          bars={bars}
+          budget={null}
+          label={`${heading} ${view === 'monthly' ? `month by month in ${activeYear}` : 'year by year'}`}
+        />
+      )}
 
       {/* Named because the chart's Average line is a figure without a basis — a reader sees the
           dashes but not what they average over, and that basis is most of the claim. */}
@@ -216,7 +221,7 @@ export default function ReportPage() {
     ) : categories.length === 0 ? (
       <section className="panel px-6 py-12 text-center">
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Nothing recorded in {activeYear}.
+          {view === 'monthly' ? `Nothing recorded in ${activeYear}.` : 'Nothing recorded yet.'}
         </p>
       </section>
     ) : (
@@ -267,7 +272,9 @@ export default function ReportPage() {
 
   return (
     <PageContainer size="full">
-      <h1 className="sr-only">Category report</h1>
+      <h1 className="sr-only">
+        {heading} — {view === 'monthly' ? `month by month in ${activeYear}` : 'year by year'}
+      </h1>
       {/* The stepper stays OUTSIDE SwipeNav — SwipeNav sets a transform even at rest, and a
           transformed ancestor would stop it sticking. */}
       {view === 'monthly' ? (

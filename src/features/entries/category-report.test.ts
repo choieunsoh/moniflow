@@ -60,6 +60,21 @@ describe('foldCategoryReport', () => {
     ]);
   });
 
+  it('unfiltered, ranks only over the periods passed in, not every matrix key', () => {
+    // '2026-03' (Travel: 200) sits in the matrix but is left out of the period list — a caller
+    // scoping to a subset of the window must not have a matrix entry outside it leak into the
+    // picker figures.
+    const subset = PERIODS.slice(0, 2);
+    const report = foldCategoryReport(MATRIX, subset, null);
+    const rankedTotal = report.categories.reduce((sum, c) => sum + c.value, 0);
+    const barsTotal = report.bars.reduce((sum, b) => sum + b.value, 0);
+    expect(rankedTotal).toBe(barsTotal);
+    expect(report.categories).toEqual([
+      { name: 'Food', value: 1300, count: 6 },
+      { name: 'Travel', value: 500, count: 1 },
+    ]);
+  });
+
   it('carries each period’s partial flag onto its bar', () => {
     const report = foldCategoryReport(MATRIX, PERIODS, null);
     expect(report.bars.map((b) => b.partial)).toEqual([false, false, true]);

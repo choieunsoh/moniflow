@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
 import { getFirstExpenseDate } from './queries';
-import { buildBreakdownMatrix } from './breakdown-matrix';
+import { buildBreakdownMatrix, type BreakdownMatrix } from './breakdown-matrix';
 import { cyclesForMonth, currentCycleKey, firstTrackedYear, type Cycle } from './cycle';
 import { toTrendBars, yearLabel, monthName, type TrendBar } from './trend';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
@@ -118,10 +118,7 @@ function toDelta(latest: TrendBar | null, previous: TrendBar | null): MonthDelta
   };
 }
 
-function rankCategories(
-  matrix: Map<string, Map<string, { value: number; count: number }>>,
-  latest: TrendBar | null,
-): MonthCategory[] {
+function rankCategories(matrix: BreakdownMatrix, latest: TrendBar | null): MonthCategory[] {
   const byCategory = latest === null ? undefined : matrix.get(latest.key);
   if (byCategory === undefined) return [];
   return [...byCategory.entries()]
@@ -134,11 +131,7 @@ function rankCategories(
 // chart. Years with no spend in that category are kept — unlike the analytics cycle list, a missing
 // year here IS the answer ("you did not buy this in 2019"), and dropping it would silently shorten
 // a list the chart still draws in full.
-function toYearRows(
-  matrix: Map<string, Map<string, { value: number; count: number }>>,
-  cycles: Cycle[],
-  category: string,
-): MonthYearRow[] {
+function toYearRows(matrix: BreakdownMatrix, cycles: Cycle[], category: string): MonthYearRow[] {
   return cycles.map((c) => {
     const hit = matrix.get(c.key)?.get(category);
     return {
