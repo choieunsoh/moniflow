@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { RowChevron } from '@shared/ui/Chevron';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { ViewToggle } from '@shared/ui/ViewToggle';
 import { useAnalytics } from '@features/entries/use-analytics';
@@ -24,28 +25,6 @@ import { trendAverage } from '@features/entries/trend';
 
 // Ambient "this row navigates" affordance for the tappable breakdown/cycle rows — an unfiltered
 // category tap filters the trend, which a pointer user otherwise can't see (mobile has no hover).
-// Faint + 16px so it signals without competing with the figure; aria-hidden, since each Link's own
-// aria-label already carries the intent.
-function RowChevron() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className="shrink-0"
-      style={{ color: 'var(--color-faint)' }}
-    >
-      <path d="m9 6 6 6-6 6" />
-    </svg>
-  );
-}
-
 // Analytics = the zoom-out surface. Home answers "what did I spend this cycle"; this answers "is that
 // normal for me". One screen: the six-cycle spending trend, with a dashed line marking your own
 // average across the window (see trendAverage). Below it sits one of two lists: unfiltered, the
