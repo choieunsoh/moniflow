@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
-import { getCategoryBreakdown, getFirstExpenseDate } from './queries';
+import { getFirstExpenseDate } from './queries';
+import { buildBreakdownMatrix, type BreakdownMatrix } from './breakdown-matrix';
 import { cyclesForMonth, currentCycleKey, firstTrackedYear, type Cycle } from './cycle';
 import { toTrendBars, yearLabel, monthName, type TrendBar } from './trend';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
@@ -42,12 +43,7 @@ export type MonthData = {
 // /month's data: one calendar month seen across every year the ledger covers, optionally scoped to
 // a category. Re-runs on ?month=/?category= change or after any write.
 //
-// ponytail: one getCategoryBreakdown per year rather than a single windowed query — the same call
-// this makes on Trends, for the same reason recorded there: a cycle boundary is a cutoff-day concept
-// computed in cycle.ts, not something SQL knows, so one statement would need a CASE ladder or raw-row
-// bucketing that defeats the GROUP BY. A dozen bounded aggregates against local OPFS is cheap; the
-// alternative is loading a decade of rows to use a twelfth of them. Collapse it if a slow device
-// ever makes it felt.
+// The per-window aggregate strategy and its ceiling are documented on buildBreakdownMatrix.
 export function useMonth(
   month: number | null,
   category: string | null,
@@ -75,7 +71,7 @@ export function useMonth(
 
       // cycle key → category → {value, count}. The one primitive, exactly as use-analytics builds
       // it: unfiltered every view sums a row, filtered it reads one column.
-      const matrix = await buildMatrix(db, cycles);
+      const matrix = await buildBreakdownMatrix(db, cycles);
 
       const spendByCycle = new Map<string, number>();
       for (const [key, byCategory] of matrix)
@@ -110,22 +106,6 @@ export function useMonth(
   return { ready, data };
 }
 
-async function buildMatrix(
-  db: Parameters<typeof getCategoryBreakdown>[0],
-  cycles: Cycle[],
-): Promise<Map<string, Map<string, { value: number; count: number }>>> {
-  const breakdowns = await Promise.all(cycles.map((c) => getCategoryBreakdown(db, c.start, c.end)));
-  const matrix = new Map<string, Map<string, { value: number; count: number }>>();
-  for (const [i, rows] of breakdowns.entries()) {
-    const byCategory = new Map<string, { value: number; count: number }>();
-    // Totals arrive negative (the ledger's sign); every /month figure is a magnitude.
-    for (const row of rows)
-      byCategory.set(row.key, { value: Math.abs(row.total), count: row.count });
-    matrix.set(cycles[i].key, byCategory);
-  }
-  return matrix;
-}
-
 function toDelta(latest: TrendBar | null, previous: TrendBar | null): MonthDelta | null {
   if (latest === null || previous === null || latest.partial) return null;
   const amount = latest.value - previous.value;
@@ -138,10 +118,7 @@ function toDelta(latest: TrendBar | null, previous: TrendBar | null): MonthDelta
   };
 }
 
-function rankCategories(
-  matrix: Map<string, Map<string, { value: number; count: number }>>,
-  latest: TrendBar | null,
-): MonthCategory[] {
+function rankCategories(matrix: BreakdownMatrix, latest: TrendBar | null): MonthCategory[] {
   const byCategory = latest === null ? undefined : matrix.get(latest.key);
   if (byCategory === undefined) return [];
   return [...byCategory.entries()]
@@ -154,11 +131,7 @@ function rankCategories(
 // chart. Years with no spend in that category are kept — unlike the analytics cycle list, a missing
 // year here IS the answer ("you did not buy this in 2019"), and dropping it would silently shorten
 // a list the chart still draws in full.
-function toYearRows(
-  matrix: Map<string, Map<string, { value: number; count: number }>>,
-  cycles: Cycle[],
-  category: string,
-): MonthYearRow[] {
+function toYearRows(matrix: BreakdownMatrix, cycles: Cycle[], category: string): MonthYearRow[] {
   return cycles.map((c) => {
     const hit = matrix.get(c.key)?.get(category);
     return {
