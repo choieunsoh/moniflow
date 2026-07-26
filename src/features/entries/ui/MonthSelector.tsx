@@ -25,7 +25,10 @@ export function MonthSelector({
   const prev = month === 1 ? 12 : month - 1;
   const next = month === 12 ? 1 : month + 1;
   return (
-    <nav className="panel sticky top-[calc(3.5rem_+_env(safe-area-inset-top))] z-[var(--z-header)] flex items-center justify-between p-2">
+    <nav
+      className="panel sticky top-[calc(3.5rem_+_env(safe-area-inset-top))] z-[var(--z-header)] flex items-center justify-between p-2"
+      aria-label="Month"
+    >
       <Link
         prefetch={false}
         href={hrefFor(prev)}

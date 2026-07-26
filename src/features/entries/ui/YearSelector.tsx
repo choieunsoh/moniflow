@@ -9,6 +9,11 @@ import { ChevronLeft, ChevronRight } from '@shared/ui/Chevron';
 // year of nothing. A boundary renders as a real `disabled` button rather than a hidden control, so
 // a screen-reader user is told the direction exists and is exhausted — hiding it instead leaves the
 // row with one arrow and no way to learn that was the edge rather than the design.
+//
+// Sticky under the AppHeader, in the same shell as CycleSelector and MonthSelector: a stepper is
+// this app's primary page control, and one of the three scrolling away while the other two held
+// made moving between the surfaces feel like moving between two apps. ponytail: the 3.5rem offset
+// is CycleSelector's literal — all three must match, and a --header-h token didn't survive Turbopack.
 export function YearSelector({
   year,
   firstYear,
@@ -22,7 +27,10 @@ export function YearSelector({
   const canGoBack = firstYear !== null && year > firstYear;
   const canGoForward = year < currentYear;
   return (
-    <nav className="flex items-center gap-1" aria-label="Year">
+    <nav
+      className="panel sticky top-[calc(3.5rem_+_env(safe-area-inset-top))] z-[var(--z-header)] flex items-center justify-between p-2"
+      aria-label="Year"
+    >
       {canGoBack ? (
         <Link
           prefetch={false}
@@ -38,7 +46,7 @@ export function YearSelector({
           <ChevronLeft />
         </BoundaryArrow>
       )}
-      <span className="tnum min-w-[3.5rem] text-center text-base font-semibold">{year}</span>
+      <span className="tnum text-sm font-semibold">{year}</span>
       {canGoForward ? (
         <Link
           prefetch={false}

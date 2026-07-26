@@ -72,19 +72,20 @@ export default function YearPage() {
     );
   }
 
+  const selector = <YearSelector year={year} firstYear={firstYear} currentYear={currentYear} />;
+
+  // The panel keeps its own title now that the year has moved up into the sticky bar — without it
+  // the first thing in the panel would be a bare figure, and the sticky bar scrolled past means the
+  // year it belongs to is off-screen. rangeLabel carries the year, so nothing is lost.
   const header = (
-    <header className="flex flex-col gap-1">
-      <div className="flex items-center justify-between gap-2">
-        {/* -ml-3 pulls the chevron's 44px tap target back so the glyph, not its padding, lines up
-            with the panel's edge and the total opposite it. */}
-        <div className="-ml-3">
-          <YearSelector year={year} firstYear={firstYear} currentYear={currentYear} />
-        </div>
-        <span className="tnum shrink-0 text-lg font-semibold">{formatBahtWhole(total)}</span>
+    <header className="flex items-baseline justify-between gap-2">
+      <div className="flex min-w-0 flex-col gap-1">
+        <h2 className="text-base font-semibold">Year in review</h2>
+        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+          {rangeLabel}
+        </span>
       </div>
-      <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-        {rangeLabel}
-      </span>
+      <span className="tnum shrink-0 text-lg font-semibold">{formatBahtWhole(total)}</span>
     </header>
   );
 
@@ -92,7 +93,8 @@ export default function YearPage() {
     return (
       <PageContainer size="full">
         <h1 className="sr-only">Year in review — {year}</h1>
-        <section className="panel flex flex-col gap-5 p-5">
+        {selector}
+        <section className="panel -mt-3 flex flex-col gap-5 p-5">
           {header}
           <p className="py-6 text-center text-sm" style={{ color: 'var(--color-muted)' }}>
             Nothing recorded in {year}.
@@ -105,8 +107,9 @@ export default function YearPage() {
   return (
     <PageContainer size="full">
       <h1 className="sr-only">Year in review — {year}</h1>
+      {selector}
 
-      <section className="panel flex flex-col gap-5 p-5">
+      <section className="panel -mt-3 flex flex-col gap-5 p-5">
         {header}
         <TrendChart bars={bars} budget={null} label={`Spending in ${year}`} />
       </section>
