@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ChevronLeft, ChevronRight } from '@shared/ui/Chevron';
 import { cycleFromKey, stepKey } from '../cycle';
 
 // Prev / current / next cycle navigation. Pure links that swap the ?cycle= param and re-render the
@@ -66,33 +67,5 @@ export function CycleSelector({
         </button>
       )}
     </nav>
-  );
-}
-
-function ChevronLeft() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M10 3 5 8l5 5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ChevronRight() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M6 3l5 5-5 5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
