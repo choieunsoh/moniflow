@@ -39,7 +39,13 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
 
   useEffect(() => {
     void withDb(async (db) => {
-      setReady(false);
+      // NOT setReady(false) on a refetch, unlike the read-only pages. The route swaps in a skeleton
+      // whenever this is false, which REMOUNTS the keypad and throws away everything half-entered —
+      // the amount, the note, the chosen account, which picker you were on. Seeding the starter set
+      // from the empty category picker bumps the data-version and so hit exactly that: you tapped
+      // "Use the starter set", got your ten categories, and found the ฿100 you had just keyed reset
+      // to ฿0. The lists here are small and change rarely; showing the previous ones for the
+      // handful of milliseconds a refetch takes costs nothing next to losing live input.
       const [
         iconSet,
         keypadLayout,
