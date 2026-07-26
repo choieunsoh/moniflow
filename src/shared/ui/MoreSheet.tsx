@@ -12,6 +12,7 @@ import {
   Target,
   CalendarRange,
   CalendarClock,
+  PieChart,
 } from 'lucide-react';
 import { cycleHref } from './cycle-href';
 
@@ -23,9 +24,9 @@ import { cycleHref } from './cycle-href';
 // because those are the pages you open to look at something — Plan and Set up are visited
 // deliberately and less often.
 //
-// Eight tiles across three columns means one short row, and it is Plan's. That is why the captions
-// earn their space: under a heading the gap reads as the end of a group, and unlabelled it just
-// reads as a hole.
+// Nine tiles across three columns: Review and Set up each fill a row, and the short row is Plan's.
+// That is why the captions earn their space — under a heading the gap reads as the end of a group,
+// and unlabelled it just reads as a hole.
 //
 // `cycle: true` marks a destination that READS the selected cycle, so its href carries ?cycle= the
 // same way BottomBar's primary tabs do. Budgets landed here when Analytics took its tab slot, and
@@ -39,6 +40,9 @@ const GROUPS = [
       // cycle: false — /month is keyed by ?month=, a calendar month with no year attached, so a
       // ?cycle= tagging along would be inert noise in the URL.
       { href: '/month', label: 'Month', Icon: CalendarClock, cycle: false },
+      // cycle: false — /report is keyed by ?year=/?view=, a window of its own choosing; a ?cycle=
+      // tagging along would be inert noise in the URL.
+      { href: '/report', label: 'Report', Icon: PieChart, cycle: false },
       { href: '/trips', label: 'Trips', Icon: Plane, cycle: false },
     ],
   },
