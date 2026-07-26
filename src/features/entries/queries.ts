@@ -141,6 +141,21 @@ export async function hasAnyExpense(db: Db): Promise<boolean> {
   return rows.length > 0;
 }
 
+// The oldest expense in the ledger, or null when there is none. /year's stepper clamps against it
+// so you can't walk back through empty years forever. ORDER BY + LIMIT 1 rather than min(): same
+// answer, one indexed row, and no sql`` template to type around. Expenses only, matching every
+// other read surface — an ancient income row must not open a year with nothing to show.
+export async function getFirstExpenseDate(db: Db): Promise<string | null> {
+  const rows = await db
+    .select({ date: entries.date })
+    .from(entries)
+    .where(lt(entries.amount, 0))
+    .orderBy(entries.date)
+    .limit(1)
+    .all();
+  return rows[0]?.date ?? null;
+}
+
 // GROUP BY in SQL so a cycle view never loads the full 10-year ledger. Sorted by magnitude in JS
 // (the result set is at most one row per category — tiny).
 export async function getCategoryBreakdown(

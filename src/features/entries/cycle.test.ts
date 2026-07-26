@@ -6,6 +6,8 @@ import {
   stepKey,
   cycleProgress,
   lastCycles,
+  cyclesInYear,
+  formatIsoRange,
 } from './cycle';
 
 describe('cycleOf (cutoff 18)', () => {
@@ -96,5 +98,64 @@ describe('lastCycles', () => {
   it('honours a non-default cutoff', () => {
     const [first] = lastCycles('2026-07', 2, 1);
     expect(first).toMatchObject({ key: '2026-06', start: '2026-06-01', end: '2026-06-30' });
+  });
+});
+
+describe('cyclesInYear', () => {
+  it('stops at the live cycle in the current year (year-to-date)', () => {
+    expect(cyclesInYear(2026, '2026-07').map((c) => c.key)).toEqual([
+      '2026-01',
+      '2026-02',
+      '2026-03',
+      '2026-04',
+      '2026-05',
+      '2026-06',
+      '2026-07',
+    ]);
+  });
+
+  it('returns all twelve cycles for a past year', () => {
+    const keys = cyclesInYear(2025, '2026-07').map((c) => c.key);
+    expect(keys).toHaveLength(12);
+    expect(keys[0]).toBe('2025-01');
+    expect(keys[11]).toBe('2025-12');
+  });
+
+  it('returns an empty window for a future year', () => {
+    expect(cyclesInYear(2027, '2026-07')).toEqual([]);
+  });
+
+  it('starts the year on the cutoff, not the 1st', () => {
+    expect(cyclesInYear(2026, '2026-07', 18)[0]).toMatchObject({
+      key: '2026-01',
+      start: '2026-01-18',
+      end: '2026-02-17',
+    });
+  });
+
+  it("runs December's cycle into the next January", () => {
+    expect(cyclesInYear(2025, '2026-07', 18)[11]).toMatchObject({
+      key: '2025-12',
+      start: '2025-12-18',
+      end: '2026-01-17',
+    });
+  });
+
+  it('honours a non-default cutoff', () => {
+    expect(cyclesInYear(2026, '2026-07', 1)[0]).toMatchObject({
+      key: '2026-01',
+      start: '2026-01-01',
+      end: '2026-01-31',
+    });
+  });
+});
+
+describe('formatIsoRange', () => {
+  it('shows the year once when the span stays inside it', () => {
+    expect(formatIsoRange('2026-01-18', '2026-07-26')).toBe('18 Jan – 26 Jul 2026');
+  });
+
+  it('shows both years when the span crosses one', () => {
+    expect(formatIsoRange('2025-12-18', '2026-01-17')).toBe('18 Dec 2025 – 17 Jan 2026');
   });
 });
