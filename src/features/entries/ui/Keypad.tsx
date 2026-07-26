@@ -12,6 +12,7 @@ import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
 import { CloseButton } from './CloseButton';
 import { refreshFxRatesAction } from '@features/settings/actions';
+import { seedStarterSetAction } from '@features/categories/actions';
 import type { IconSet, KeypadLayout } from '@features/settings/queries';
 import type { EntryRow } from '../schema';
 
@@ -142,6 +143,22 @@ export function Keypad({
   // `null` = follow the cached rate (shown to 4 dp); a string = the value the user typed/edited.
   const [rateOverride, setRateOverride] = useState<string | null>(initialOverride);
   const [isRefreshing, startRefresh] = useTransition();
+  // Which picker is currently naming a new entry, and the name being typed. A fresh ledger has no
+  // categories and no accounts, and the keypad could only ever pick from what already existed — so
+  // the first run dead-ended on a blank chooser. Naming one here is enough: categoryIdFor and
+  // accountIdFor both insert-on-conflict-do-nothing when the expense is written, giving the new row
+  // a keyword-derived icon, so nothing has to be created up front.
+  const [naming, setNaming] = useState<null | 'category' | 'account'>(null);
+  const [draftName, setDraftName] = useState('');
+  const [isSeeding, startSeeding] = useTransition();
+
+  // DERIVED, not synced. The keypad deliberately survives a data refetch now (see use-new-entry),
+  // so it also keeps an `account` picked before there WERE any accounts — the empty string. Seeding
+  // the starter set mid-entry hit exactly that: the tiles arrived, the expense submitted with no
+  // account, and the row was silently lost. Reading through the default instead of writing state in
+  // an effect fixes it without a cascading render, and an explicit choice still wins because
+  // setAccount makes `account` non-empty.
+  const effectiveAccount = account === '' ? defaultAccount : account;
 
   // Tri-state backed by a 2-state checkbox — mirrors EntryForm's toggle. Untouched follows the
   // effective default for the entry's own category (there's no "currently selected category" for a
@@ -182,7 +199,7 @@ export function Keypad({
       <input type="hidden" name="direction" value="expense" />
       <input type="hidden" name="amount" value={validAmount ? String(amount) : ''} />
       <input type="hidden" name="thb" value={canSubmit ? String(thbValue) : ''} />
-      <input type="hidden" name="account" value={account} />
+      <input type="hidden" name="account" value={effectiveAccount} />
       {/* Tri-state: '' (untouched, inherits the category default) or an explicit '0'/'1' once the
           user has flipped the checkbox below. parseEntryForm reads this the same way it reads
           EntryForm's identically-named field. */}
@@ -252,11 +269,11 @@ export function Keypad({
             type="button"
             onClick={() => setView('account')}
             aria-haspopup="true"
-            aria-label={`Account: ${account}`}
+            aria-label={`Account: ${effectiveAccount}`}
             className="tap min-w-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
             style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
           >
-            <span className="min-w-0 truncate">{account}</span>
+            <span className="min-w-0 truncate">{effectiveAccount}</span>
             <span aria-hidden className="shrink-0">
               ▾
             </span>
@@ -502,7 +519,7 @@ export function Keypad({
         </div>
         <div className="grid grid-cols-3 gap-2">
           {accounts.map((a) => {
-            const on = account === a.name;
+            const on = effectiveAccount === a.name;
             return (
               <button
                 key={a.name}
@@ -528,7 +545,37 @@ export function Keypad({
               </button>
             );
           })}
+          {/* Dashed, so it reads as "make one" rather than another account to pick. */}
+          <button
+            type="button"
+            onClick={() => {
+              setDraftName('');
+              setNaming('account');
+            }}
+            className="flex aspect-square flex-col items-center justify-center gap-1 rounded-[var(--radius-lg)] border border-dashed px-2 text-center text-xs font-medium transition-colors active:opacity-70"
+            style={{ borderColor: 'var(--color-border-strong)', color: 'var(--color-muted)' }}
+          >
+            <span aria-hidden className="text-2xl leading-none">
+              +
+            </span>
+            <span>New</span>
+          </button>
         </div>
+        {naming === 'account' ? (
+          <NameDraft
+            label="Account name"
+            value={draftName}
+            onChange={setDraftName}
+            onCancel={() => setNaming(null)}
+            onConfirm={() => {
+              // The row itself is created by accountIdFor when the expense is written; picking it
+              // here is the same act as picking an existing one.
+              setAccount(draftName.trim());
+              setNaming(null);
+              setView('keypad');
+            }}
+          />
+        ) : null}
       </div>
 
       {/* Category grid — each tile submits the expense with its category. */}
@@ -587,8 +634,129 @@ export function Keypad({
               </button>
             );
           })}
+          {/* Always present, not only when the grid is empty: adding a category used to mean
+              abandoning the half-typed expense for More → Categories and starting over. */}
+          <button
+            type="button"
+            onClick={() => {
+              setDraftName('');
+              setNaming('category');
+            }}
+            className="panel flex flex-col items-center justify-center gap-1 border-dashed px-2 py-3 text-center transition-colors active:opacity-70"
+            style={{ borderColor: 'var(--color-border-strong)' }}
+          >
+            <span
+              aria-hidden
+              className="text-2xl leading-none"
+              style={{ color: 'var(--color-muted)' }}
+            >
+              +
+            </span>
+            <span className="w-full truncate text-xs" style={{ color: 'var(--color-muted)' }}>
+              New
+            </span>
+          </button>
         </div>
+
+        {naming === 'category' ? (
+          <NameDraft
+            label="Category name"
+            value={draftName}
+            onChange={setDraftName}
+            onCancel={() => setNaming(null)}
+            // Submits the expense with the typed name — categoryIdFor creates the row on write and
+            // defaultEmojiFor gives it a glyph, so there is nothing to save separately.
+            submitAs={draftName.trim()}
+          />
+        ) : null}
+
+        {/* A blank chooser was the first-run dead end: no categories, no empty state, no way out
+            but to leave the keypad. The starter set seeds accounts too, since an expense needs
+            both and splitting it would mean two prompts on the same first run. */}
+        {categories.length === 0 && naming === null ? (
+          <div className="panel flex flex-col items-center gap-3 px-6 py-10 text-center">
+            <h2 className="text-base font-semibold">No categories yet</h2>
+            <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+              Start with a standard set — ten categories plus Cash and Card — then rename whatever
+              doesn&rsquo;t fit. Or make your own with + New above.
+            </p>
+            <button
+              type="button"
+              disabled={isSeeding}
+              onClick={() => startSeeding(() => void seedStarterSetAction())}
+              className="btn btn-primary"
+            >
+              {isSeeding ? 'Adding…' : 'Use the starter set'}
+            </button>
+          </div>
+        ) : null}
       </div>
     </form>
+  );
+}
+
+// The inline "name it" row shared by both pickers. `submitAs` makes the confirm a real form submit
+// carrying that category (the expense is saved in the same tap); without it the confirm is a plain
+// button and the caller decides what to do. Blank names can't be confirmed — a trimmed-empty
+// category would otherwise be created as a row with no name.
+function NameDraft({
+  label,
+  value,
+  onChange,
+  onCancel,
+  onConfirm,
+  submitAs,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onConfirm?: () => void;
+  submitAs?: string;
+}) {
+  const empty = value.trim() === '';
+  return (
+    <div className="panel flex flex-col gap-3 p-4">
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span style={{ color: 'var(--color-muted)' }}>{label}</span>
+        <input
+          autoFocus
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          // Matches the note field above verbatim — there is no .input class in globals.css, and a
+          // one-off style here would be the second text field in this component wearing a different
+          // face.
+          className="h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base"
+          style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
+          placeholder="e.g. Coffee"
+        />
+      </label>
+      <div className="flex gap-2">
+        <button type="button" onClick={onCancel} className="btn btn-ghost flex-1">
+          Cancel
+        </button>
+        {submitAs === undefined ? (
+          <button
+            type="button"
+            disabled={empty}
+            onClick={onConfirm}
+            className="btn btn-primary flex-1"
+          >
+            Use it
+          </button>
+        ) : (
+          <button
+            type="submit"
+            name="category"
+            value={submitAs}
+            disabled={empty}
+            className="btn btn-primary flex-1"
+          >
+            Use it
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
