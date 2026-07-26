@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   monthLabel,
   yearLabel,
+  stepMonth,
   toTrendBars,
   buildTrendOption,
   completeBars,
@@ -36,6 +37,19 @@ describe('yearLabel', () => {
   it('renders the cycle key as its start year', () => {
     expect(yearLabel('2026-07')).toBe('2026');
     expect(yearLabel('2025-12')).toBe('2025');
+  });
+});
+
+describe('stepMonth', () => {
+  it('steps within the year', () => {
+    expect(stepMonth(7, 1)).toBe(8);
+    expect(stepMonth(7, -1)).toBe(6);
+  });
+
+  // The ring, which is the whole reason /month's stepper never disables an arrow.
+  it('wraps December to January and back', () => {
+    expect(stepMonth(12, 1)).toBe(1);
+    expect(stepMonth(1, -1)).toBe(12);
   });
 });
 
@@ -170,6 +184,17 @@ describe('buildTrendOption reference lines', () => {
     // limit, so a ฿4,899 bar under a ฿30,000 line rendered at 16% height. The budget is a passive
     // overlay now — it is clamped, never allowed to drive the axis. The bars stay scaled to the data.
     expect(buildTrendOption(bars, PALETTE, 30_000).yAxis.max).toBeUndefined();
+  });
+
+  it('silences the hidden y-axis labels, so they claim no gutter', () => {
+    // Looks redundant next to `show: false` and is NOT. grid.containLabel reserves room for each
+    // axis's LABELS, and axisLabel.show defaults to true independently of axis.show — so a hidden
+    // y-axis still held ~50px of a 323px chart, shoving every bar right and shrinking the plot by
+    // about 15%. Deleting this line brings the dead gutter back with nothing visible to explain it.
+    const option = buildTrendOption(bars, PALETTE);
+    expect(option.yAxis.show).toBe(false);
+    expect(option.yAxis.axisLabel.show).toBe(false);
+    expect(option.grid.containLabel).toBe(true); // still needed: the x-axis labels DO need room
   });
 });
 

@@ -28,6 +28,14 @@ export function monthName(month: number): string {
   return monthNameFmt.format(new Date(Date.UTC(2000, month - 1, 1)));
 }
 
+// The month before or after, WRAPPING — the calendar is a ring, so December steps to January and
+// there is no boundary. Shared by MonthSelector (which needs the neighbours for its labels) and
+// /month (which needs them for the hrefs): two copies of this would let the arrow announce "Next
+// month: January" while sending you somewhere else.
+export function stepMonth(month: number, delta: -1 | 1): number {
+  return ((month - 1 + delta + 12) % 12) + 1;
+}
+
 // `partial` marks the live cycle — it is still filling up, so the chart must not present it as
 // comparable to the finished ones. Keyed off the current cycle, NOT "the last bar": a window
 // anchored to a past cycle is complete all the way to its right edge.
@@ -198,7 +206,12 @@ export function buildTrendOption(bars: TrendBar[], p: TrendPalette, budget: numb
     // back. `max: undefined` (not omitted) keeps the field statically visible so the regression test
     // can assert on it — TS infers object-literal shape from what's written, and a field that is
     // never present can't be asserted `undefined` without a cast.
-    yAxis: { type: 'value', show: false, max: undefined },
+    // `axisLabel: { show: false }` is NOT redundant next to `show: false`. containLabel above
+    // reserves gutter for each axis's LABELS, and axisLabel.show defaults to true independently of
+    // axis.show — so the hidden y-axis was still claiming ~50px of a 323px chart, pushing every bar
+    // right and costing ~15% of the plot. containLabel has to stay for the x-axis labels, so the
+    // y-axis labels are silenced explicitly instead. See the regression test.
+    yAxis: { type: 'value', show: false, axisLabel: { show: false }, max: undefined },
     series: [
       {
         type: 'bar',
