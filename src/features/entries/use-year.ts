@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
 import { getEntriesInRange, getFirstExpenseDate } from './queries';
-import { cyclesInYear, currentCycleKey, cycleOf, formatIsoRange } from './cycle';
+import { cyclesInYear, currentCycleKey, firstTrackedYear, formatIsoRange } from './cycle';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getEmojiMap, getHueMap } from '@features/categories/queries';
 import { todayIso } from '@shared/date';
@@ -49,9 +49,7 @@ export function useYear(year: number | null): { ready: boolean; data: YearData |
       const today = todayIso();
       const currentKey = currentCycleKey(today, cutoff);
       const currentYear = yearOfKey(currentKey);
-      // The first REVIEWABLE year is the one owning the oldest expense's cycle, not the one in its
-      // date: an expense on 5 Jan 2025 lives in cycle 2024-12, so 2024 must stay reachable.
-      const firstYear = firstDate === null ? null : yearOfKey(cycleOf(firstDate, cutoff).key);
+      const firstYear = firstTrackedYear(firstDate, cutoff);
       const activeYear = clamp(year ?? currentYear, firstYear ?? currentYear, currentYear);
 
       const cycles = cyclesInYear(activeYear, currentKey, cutoff);

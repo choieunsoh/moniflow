@@ -3,7 +3,16 @@
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Tags, Wallet, Plane, Repeat, Settings, Target, CalendarRange } from 'lucide-react';
+import {
+  Tags,
+  Wallet,
+  Plane,
+  Repeat,
+  Settings,
+  Target,
+  CalendarRange,
+  CalendarClock,
+} from 'lucide-react';
 import { cycleHref } from './cycle-href';
 
 // App-launcher grid for the overflow nav — one icon tile per destination, matching the 2×2 grid glyph
@@ -19,6 +28,9 @@ const LINKS = [
   { href: '/accounts', label: 'Accounts', Icon: Wallet, cycle: false },
   { href: '/trips', label: 'Trips', Icon: Plane, cycle: false },
   { href: '/year', label: 'Year', Icon: CalendarRange, cycle: false },
+  // cycle: false — /month is keyed by ?month=, a calendar month with no year attached, so a
+  // ?cycle= tagging along would be inert noise in the URL.
+  { href: '/month', label: 'Month', Icon: CalendarClock, cycle: false },
   { href: '/settings', label: 'Settings', Icon: Settings, cycle: false },
 ] as const;
 

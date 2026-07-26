@@ -14,6 +14,20 @@ export function monthLabel(key: string): string {
   return monthFmt.format(new Date(Date.UTC(y, m - 1, 1)));
 }
 
+// /month's axis: every cycle in that window shares one month, so the month name would repeat all
+// the way across and identify nothing. The year is what varies, so the year is the label.
+export function yearLabel(key: string): string {
+  return key.split('-')[0];
+}
+
+// A 1-based month number as its full name — /month's page title and its stepper's labels, where
+// "July" is the subject rather than an axis tick. Any year works; only the month is read.
+const monthNameFmt = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' });
+
+export function monthName(month: number): string {
+  return monthNameFmt.format(new Date(Date.UTC(2000, month - 1, 1)));
+}
+
 // `partial` marks the live cycle — it is still filling up, so the chart must not present it as
 // comparable to the finished ones. Keyed off the current cycle, NOT "the last bar": a window
 // anchored to a past cycle is complete all the way to its right edge.
@@ -25,10 +39,14 @@ export function toTrendBars(
   cycles: Cycle[],
   spendByCycle: Map<string, number>,
   currentKey: string,
+  // How a cycle key becomes an axis label. Defaults to the month name, which is right for every
+  // window that walks forward through months; /month passes yearLabel because its window holds one
+  // month across many years.
+  label: (key: string) => string = monthLabel,
 ): TrendBar[] {
   return cycles.map((c) => ({
     key: c.key,
-    label: monthLabel(c.key),
+    label: label(c.key),
     value: spendByCycle.get(c.key) ?? 0,
     partial: c.key === currentKey,
   }));

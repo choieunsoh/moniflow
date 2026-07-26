@@ -28,3 +28,26 @@ export function ChevronRight() {
     </svg>
   );
 }
+
+// The "this row goes somewhere" affordance — a different job from the steppers above, hence faint
+// and 16px: it signals without competing with the figure it trails. aria-hidden, since each row's
+// own Link carries the intent in its aria-label.
+export function RowChevron() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="shrink-0"
+      style={{ color: 'var(--color-faint)' }}
+    >
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
