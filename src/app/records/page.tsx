@@ -1,6 +1,5 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { PageContainer } from '@shared/ui/PageContainer';
@@ -124,7 +123,6 @@ export default function RecordsPage() {
       {/* sr-only heading root — Records has no visible page title, so without this a screen reader's
           heading list starts at the day/section <h2>s with no <h1> above them. */}
       <h1 className="sr-only">Records</h1>
-      <CycleDebug param={cycleParam} shown={activeKey} />
       {!spanAll && (
         <CycleSelector
           activeKey={activeKey}
@@ -338,55 +336,6 @@ export default function RecordsPage() {
         <EmptyLedger />
       )}
     </PageContainer>
-  );
-}
-
-// ⚠ TEMPORARY DIAGNOSTIC — delete this component and its one call site once the stale-cycle report is
-// closed. It exists to tell three indistinguishable failures apart when Records sticks on the
-// previously opened cycle:
-//
-//   url ≠ param   → the address bar moved but useSearchParams handed React the old value: the router
-//                   is serving stale search params, and no amount of hook guarding would help.
-//   param ≠ shown → React saw the new cycle but the hook rendered an older read's result: an
-//                   out-of-order write (useRecords has no cancellation guard).
-//   all three equal but the entries look wrong → neither; the query itself is the suspect.
-//
-// window.location is the one thing here that must NOT come from React — the whole question is whether
-// React's view has fallen behind the address bar, so reading it through useSearchParams would compare
-// a value against itself. useSyncExternalStore is the sanctioned way to read a mutable external
-// source: its snapshot is re-taken on every render (so this always shows the live bar) and its
-// server snapshot keeps the static export's prerender from mismatching on hydration.
-function readUrlCycle(): string {
-  return new URLSearchParams(window.location.search).get('cycle') ?? '(none)';
-}
-
-function subscribeToUrl(onChange: () => void): () => void {
-  window.addEventListener('popstate', onChange);
-  return () => window.removeEventListener('popstate', onChange);
-}
-
-function CycleDebug({ param, shown }: { param: string | undefined; shown: string }) {
-  const url = useSyncExternalStore(subscribeToUrl, readUrlCycle, () => '—');
-
-  // No ?cycle= at all is the legitimate default (the live cycle), not a mismatch — only compare once
-  // the URL actually carries one.
-  const mismatch = param !== undefined && ((url !== '—' && url !== param) || param !== shown);
-
-  return (
-    <div
-      className="tnum flex flex-col gap-0.5 rounded-[var(--radius-md)] border p-2 text-xs"
-      style={{
-        borderColor: mismatch ? 'var(--color-loss)' : 'var(--color-faint)',
-        color: mismatch ? 'var(--color-loss)' : 'var(--color-muted)',
-      }}
-    >
-      <span className="font-semibold">
-        DEBUG · screenshot this {mismatch ? '· MISMATCH' : '· ok'}
-      </span>
-      <span>url cycle= {url}</span>
-      <span>useSearchParams= {param ?? '(none)'}</span>
-      <span>queried activeKey= {shown}</span>
-    </div>
   );
 }
 
