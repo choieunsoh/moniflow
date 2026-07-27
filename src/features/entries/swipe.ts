@@ -29,7 +29,13 @@ export function resolveSwipe(
 // sits underneath. SwipeNav used to refuse to start on any link or button for exactly this reason,
 // which left the rows a thumb actually lands on un-swipeable — /month's category and year lists are
 // almost entirely links.
-export const DRAG_START = 5;
+//
+// 12, not the 5 this shipped with. 5px is inside the drift of an ordinary thumb tap, and the failure
+// was silent in the worst way: the press became a drag, travelled nowhere near COMMIT so it sprang
+// back without navigating, and SwipeNav still suppressed the click it had captured — so tapping a
+// /report month row did NOTHING, no movement and no navigation. Above both platforms' own tap slop
+// (~8–10px) and still a third of COMMIT, so a real swipe engages just as readily.
+export const DRAG_START = 12;
 
 // And it has to travel this far before it commits. Short of it, the content springs back.
 export const COMMIT = 44;
