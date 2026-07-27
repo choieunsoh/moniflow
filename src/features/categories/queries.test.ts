@@ -148,7 +148,14 @@ describe('category catalog read/restore', () => {
     const names = rows.map((r) => r.name);
     expect(names).toContain('Keep'); // never deleted
     const food = rows.find((r) => r.name === 'Food');
-    expect(food).toEqual({ name: 'Food', emoji: '🍜', hue: null, sortOrder: 3, archived: true });
+    expect(food).toEqual({
+      name: 'Food',
+      emoji: '🍜',
+      hue: null,
+      sortOrder: 3,
+      archived: true,
+      offBudget: false,
+    });
   });
 });
 
@@ -171,5 +178,54 @@ describe('off-budget categories', () => {
     expect(await getOffBudgetCategories(d)).toContain('Insurance');
     await setCategoryOffBudget(d, 'Insurance', false);
     expect(await getOffBudgetCategories(d)).not.toContain('Insurance');
+  });
+});
+
+describe('off_budget in the category catalog', () => {
+  it('reads a category off-budget flag back out of the catalog', async () => {
+    const d = await db();
+    await addCategory(d, 'Insurance');
+    await addCategory(d, 'Groceries');
+    await setCategoryOffBudget(d, 'Insurance', true);
+    const rows = await getCategoryCatalog(d);
+    expect(rows.find((r) => r.name === 'Insurance')?.offBudget).toBe(true);
+    expect(rows.find((r) => r.name === 'Groceries')?.offBudget).toBe(false);
+  });
+
+  it('restores the flag onto a category that does not exist yet', async () => {
+    const d = await db();
+    await restoreCategoryCatalog(d, [
+      { name: 'Insurance', emoji: '🛡️', hue: null, sortOrder: 0, archived: false, offBudget: true },
+    ]);
+    expect(await getOffBudgetCategories(d)).toContain('Insurance');
+  });
+
+  it('clears the flag when the backup says the category is on-budget', async () => {
+    const d = await db();
+    await addCategory(d, 'Insurance');
+    await setCategoryOffBudget(d, 'Insurance', true);
+    await restoreCategoryCatalog(d, [
+      {
+        name: 'Insurance',
+        emoji: '🛡️',
+        hue: null,
+        sortOrder: 0,
+        archived: false,
+        offBudget: false,
+      },
+    ]);
+    expect(await getOffBudgetCategories(d)).not.toContain('Insurance');
+  });
+
+  // A backup written before the field existed carries no opinion, so restoring one must not silently
+  // clear a flag the user set on this device.
+  it('leaves an existing flag untouched when the backup row omits offBudget', async () => {
+    const d = await db();
+    await addCategory(d, 'Insurance');
+    await setCategoryOffBudget(d, 'Insurance', true);
+    await restoreCategoryCatalog(d, [
+      { name: 'Insurance', emoji: '🛡️', hue: null, sortOrder: 0, archived: false },
+    ]);
+    expect(await getOffBudgetCategories(d)).toContain('Insurance');
   });
 });

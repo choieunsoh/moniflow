@@ -176,3 +176,49 @@ describe('classifyBackup', () => {
     expect(classifyBackup('just some junk')).toEqual({ kind: 'invalid' });
   });
 });
+
+describe('category off_budget in the catalog', () => {
+  const withFlag = (offBudget: boolean) =>
+    JSON.stringify({
+      version: 3,
+      categories: [
+        { name: 'Insurance', emoji: '🛡️', hue: null, sortOrder: 0, archived: false, offBudget },
+      ],
+      accounts: [],
+      recurrences: [],
+    });
+
+  it('round-trips a category flagged off-budget', () => {
+    for (const flag of [true, false]) {
+      const parsed = parseCatalogJson(withFlag(flag));
+      expect(parsed?.categories[0].offBudget).toBe(flag);
+    }
+  });
+
+  // Every backup written before this field existed omits it. Those files must still restore, and an
+  // absent flag must stay UNDEFINED rather than defaulting to false — restore uses that distinction to
+  // leave an existing category's flag alone instead of clearing it.
+  it('still parses a pre-existing backup with no offBudget, leaving it undefined', () => {
+    const old = JSON.stringify({
+      version: 1,
+      categories: [{ name: 'Food', emoji: '🍔', hue: 12, sortOrder: 0, archived: false }],
+      accounts: [],
+      recurrences: [],
+    });
+    const parsed = parseCatalogJson(old);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.categories[0].offBudget).toBeUndefined();
+  });
+
+  it('rejects a non-boolean offBudget', () => {
+    const bad = JSON.stringify({
+      version: 3,
+      categories: [
+        { name: 'X', emoji: '🍔', hue: null, sortOrder: 0, archived: false, offBudget: 1 },
+      ],
+      accounts: [],
+      recurrences: [],
+    });
+    expect(parseCatalogJson(bad)).toBeNull();
+  });
+});
