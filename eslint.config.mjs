@@ -20,7 +20,12 @@ export default defineConfig([
     'next-env.d.ts',
     'drizzle/**', // generated migrations + meta — drizzle-kit owns these
     'data/**', // private financial data (git-ignored)
-    'public/**', // static assets served verbatim (e.g. sw.js — a hand-written worker with worker globals)
+    'public/**', // static assets served verbatim (incl. the generated sw.js)
+    // The service worker's source. It lives here rather than in public/ because it has to be
+    // version-stamped into public/sw.js before next build (see scripts/stamp-sw.ts), and it is
+    // exempt for the same reason public/ always was: it runs in a worker, not a browser page, so
+    // self/caches/fetch are its globals and no-undef has no idea.
+    'scripts/sw.template.js',
   ]),
 
   js.configs.recommended,

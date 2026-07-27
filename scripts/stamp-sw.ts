@@ -2,17 +2,21 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Stamps the built service worker with the release version, as a postbuild step.
+// Generates public/sw.js from scripts/sw.template.js, stamped with the release version. Runs from
+// predev:web / prebuild:web — the same generated-into-public pattern as copy-sqlite3.mjs, and
+// public/sw.js is gitignored for the same reason.
 //
 // WHY THIS EXISTS: a browser installs a new service worker only when /sw.js differs byte for byte
-// from the one it already has. public/sw.js is a static file that had not changed since the commit
-// that introduced it, so every deploy shipped identical bytes, no install ever saw an update, and an
+// from the one it already has. sw.js was a static file that had not changed since the commit that
+// introduced it, so every deploy shipped identical bytes, no install ever saw an update, and an
 // installed PWA happily ran a bundle several releases old while each deploy reported success. Three
 // fixes shipped to production without ever reaching the phone that way.
 //
-// The placeholder stays in the CHECKED-IN file and the version is substituted into out/ only, so the
-// repo never carries a build artefact and `git status` stays clean across releases. In dev the
-// literal placeholder is served instead, which is harmless — it is only ever a cache name.
+// WHY PRE-BUILD AND NOT POST: the first attempt stamped out/sw.js afterwards, which works locally
+// and silently does nothing on Vercel — its builder collects the static output during `next build`
+// (visible as "Running onBuildComplete from Vercel" BEFORE the postbuild line in the log), so the
+// stamp landed on a copy that had already been left behind. The generated file has to exist before
+// next build copies public/ into the output.
 export const BUILD_PLACEHOLDER = '__BUILD__';
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -38,12 +42,10 @@ function readVersion(): string {
 }
 
 function main(): void {
-  // next build copies public/ into out/, so this rewrites the COPY — public/sw.js keeps its
-  // placeholder and stays untouched in git.
-  const target = resolve(rootDir, 'out', 'sw.js');
   const version = readVersion();
-  writeFileSync(target, stampServiceWorker(readFileSync(target, 'utf-8'), version));
-  process.stdout.write(`stamped out/sw.js -> moniflow-${version}\n`);
+  const template = readFileSync(resolve(rootDir, 'scripts', 'sw.template.js'), 'utf-8');
+  writeFileSync(resolve(rootDir, 'public', 'sw.js'), stampServiceWorker(template, version));
+  process.stdout.write(`generated public/sw.js -> moniflow-${version}\n`);
 }
 
 const currentModulePath = fileURLToPath(import.meta.url);
