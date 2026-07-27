@@ -84,3 +84,13 @@ export function backupStatus(
   const daysSince = Math.max(0, Math.floor((now - lastBackupAt) / MS_PER_DAY));
   return { overdue: itemCount > 0 && daysSince > OVERDUE_DAYS, daysSince };
 }
+
+// How the backup age READS, kept separate from whether it should nudge. backupStatus answers
+// "is this overdue"; this answers "what do we say", and the two diverge at the edges — 0 days is
+// "today", not "0 days ago". Pure, so the About screen and any future caller word it identically.
+export function backupSummary(status: BackupStatus): string {
+  if (status.daysSince === null) return 'Never backed up';
+  if (status.daysSince === 0) return 'Backed up today';
+  if (status.daysSince === 1) return 'Backed up yesterday';
+  return `Backed up ${status.daysSince} days ago`;
+}

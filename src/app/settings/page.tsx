@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useStoragePersisted } from '@shared/use-storage-persisted';
 import { useSettings } from '@features/settings/use-settings';
 import { useBackupData, type BackupFile } from '@features/settings/use-backup-data';
 import { ICON_SETS, FONT_SCALES, KEYPAD_LAYOUTS } from '@features/settings/queries';
@@ -17,7 +17,7 @@ import { DriveBackup } from '@features/drive/ui/DriveBackup';
 import { saveFile } from '@shared/save-file';
 import { bumpDataVersion } from '@shared/data-version';
 import { useBackupStatus } from '@shared/use-backup-status';
-import { isStoragePersisted, writeLastBackupAt } from '@shared/backup-safety';
+import { writeLastBackupAt } from '@shared/backup-safety';
 import { toast } from '@shared/ui/toast';
 import { withSaveToast } from '@shared/ui/with-save-toast';
 import { PageContainer } from '@shared/ui/PageContainer';
@@ -73,16 +73,7 @@ export default function SettingsPage() {
   // Backup freshness (nudge) and whether OPFS is protected (transparency line). Both are honest-
   // ceiling signals for a browser-only ledger — see shared/backup-safety.ts.
   const { overdue: backupOverdue, daysSince } = useBackupStatus();
-  const [persisted, setPersisted] = useState<boolean | null>(null);
-  useEffect(() => {
-    let live = true;
-    void isStoragePersisted().then((p) => {
-      if (live) setPersisted(p);
-    });
-    return () => {
-      live = false;
-    };
-  }, []);
+  const persisted = useStoragePersisted();
 
   if (!ready || data === null) {
     return (
