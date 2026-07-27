@@ -297,11 +297,16 @@ export async function getCategoryCatalog(db: Db): Promise<CategoryCatalogRow[]> 
       hue: categories.hue,
       sortOrder: categories.sortOrder,
       archived: categories.archived,
+      offBudget: categories.offBudget,
     })
     .from(categories)
     .orderBy(categories.name)
     .all();
-  return rows.map((r) => ({ ...r, archived: Boolean(r.archived) }));
+  return rows.map((r) => ({
+    ...r,
+    archived: Boolean(r.archived),
+    offBudget: Boolean(r.offBudget),
+  }));
 }
 
 // Upsert each row by name — updates the metadata of an existing category, inserts a missing one.
@@ -310,12 +315,23 @@ export async function restoreCategoryCatalog(db: Db, rows: CategoryCatalogRow[])
   if (rows.length === 0) return;
   const mk = (r: CategoryCatalogRow) => {
     const archived = r.archived ? 1 : 0; // column is a raw integer flag (schema: integer, notNull default 0)
+    // A backup predating the off-budget field carries no opinion on it, so omit the column entirely
+    // rather than writing 0 — that leaves an existing category's flag alone (and a new one on the
+    // schema default) instead of silently clearing what the user set on this device.
+    const offBudget = r.offBudget === undefined ? {} : { offBudget: r.offBudget ? 1 : 0 };
     return db
       .insert(categories)
-      .values({ name: r.name, emoji: r.emoji, hue: r.hue, sortOrder: r.sortOrder, archived })
+      .values({
+        name: r.name,
+        emoji: r.emoji,
+        hue: r.hue,
+        sortOrder: r.sortOrder,
+        archived,
+        ...offBudget,
+      })
       .onConflictDoUpdate({
         target: categories.name,
-        set: { emoji: r.emoji, hue: r.hue, sortOrder: r.sortOrder, archived },
+        set: { emoji: r.emoji, hue: r.hue, sortOrder: r.sortOrder, archived, ...offBudget },
       });
   };
   const [first, ...rest] = rows;

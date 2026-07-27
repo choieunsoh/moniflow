@@ -7,6 +7,10 @@ export type CategoryCatalogRow = {
   hue: number | null;
   sortOrder: number | null;
   archived: boolean;
+  // Whether this category's spend is excluded from the budget meters. OPTIONAL because every backup
+  // written before this field existed omits it — and absent must stay absent rather than defaulting
+  // to false, so restoring an old file leaves a flag the user set on this device alone.
+  offBudget?: boolean;
 };
 export type AccountCatalogRow = {
   name: string;
@@ -70,7 +74,9 @@ function isCategoryRow(v: unknown): v is CategoryCatalogRow {
     'sortOrder' in v &&
     isNumOrNull(v.sortOrder) &&
     'archived' in v &&
-    typeof v.archived === 'boolean'
+    typeof v.archived === 'boolean' &&
+    // Optional: absent is valid (a pre-off-budget backup); present must be a boolean.
+    (!('offBudget' in v) || typeof v.offBudget === 'boolean')
   );
 }
 function isAccountRow(v: unknown): v is AccountCatalogRow {

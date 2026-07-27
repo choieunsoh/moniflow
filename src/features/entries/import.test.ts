@@ -36,6 +36,7 @@ describe('parseMonefyCsv', () => {
         originalAmount: -637,
         note: 'โลตัส',
         source: 'monefy',
+        offBudget: null, // 8-column Monefy CSV has no such column → inherit the category
       },
     ]);
   });
@@ -82,10 +83,10 @@ describe('parseMonefyCsv', () => {
 });
 
 describe('serializeMonefyCsv', () => {
-  it('emits the exact Monefy header', () => {
+  it('emits the eight Monefy columns plus the off_budget column moniflow appends', () => {
     expect(serializeMonefyCsv([])).toBe(MONEFY_HEADER);
     expect(MONEFY_HEADER).toBe(
-      'date,account,category,amount,currency,converted amount,currency,description',
+      'date,account,category,amount,currency,converted amount,currency,description,off_budget',
     );
   });
 
@@ -99,9 +100,10 @@ describe('serializeMonefyCsv', () => {
         currency: 'THB',
         originalAmount: -637,
         note: 'lotus',
+        offBudget: null,
       },
     ]);
-    expect(csv.split('\n')[1]).toBe('15/01/2016,#KTC X VISA,shopping,-637,THB,-637,THB,lotus');
+    expect(csv.split('\n')[1]).toBe('15/01/2016,#KTC X VISA,shopping,-637,THB,-637,THB,lotus,');
   });
 
   it('keeps the original currency + amount for a non-THB row (converted stays THB)', () => {
@@ -114,9 +116,10 @@ describe('serializeMonefyCsv', () => {
         currency: 'JPY',
         originalAmount: -1000,
         note: null,
+        offBudget: null,
       },
     ]);
-    expect(csv.split('\n')[1]).toBe('20/03/2019,yen,food,-1000,JPY,-230,THB,');
+    expect(csv.split('\n')[1]).toBe('20/03/2019,yen,food,-1000,JPY,-230,THB,,');
   });
 
   it('quotes a field that contains a comma and doubles embedded quotes', () => {
@@ -129,10 +132,11 @@ describe('serializeMonefyCsv', () => {
         currency: 'THB',
         originalAmount: -50,
         note: 'lunch, with "friends"',
+        offBudget: null,
       },
     ]);
     expect(csv.split('\n')[1]).toBe(
-      '01/07/2026,cash,food,-50,THB,-50,THB,"lunch, with ""friends"""',
+      '01/07/2026,cash,food,-50,THB,-50,THB,"lunch, with ""friends""",',
     );
   });
 
@@ -146,9 +150,10 @@ describe('serializeMonefyCsv', () => {
         currency: null,
         originalAmount: null,
         note: null,
+        offBudget: null,
       },
     ]);
-    expect(csv.split('\n')[1]).toBe('02/07/2026,cash,food,-12,THB,-12,THB,');
+    expect(csv.split('\n')[1]).toBe('02/07/2026,cash,food,-12,THB,-12,THB,,');
   });
 });
 
@@ -163,6 +168,7 @@ describe('serialize ↔ parse round-trip', () => {
         currency: 'THB',
         originalAmount: -637,
         note: 'lotus',
+        offBudget: 1,
       },
       {
         date: '2019-03-20',
@@ -172,6 +178,7 @@ describe('serialize ↔ parse round-trip', () => {
         currency: 'JPY',
         originalAmount: -1000,
         note: null,
+        offBudget: null,
       },
     ];
     const { entries } = parseMonefyCsv(serializeMonefyCsv(rows));
@@ -185,6 +192,7 @@ describe('serialize ↔ parse round-trip', () => {
         originalAmount: -637,
         note: 'lotus',
         source: 'monefy',
+        offBudget: 1,
       },
       {
         date: '2019-03-20',
@@ -195,7 +203,50 @@ describe('serialize ↔ parse round-trip', () => {
         originalAmount: -1000,
         note: null,
         source: 'monefy',
+        offBudget: null,
       },
     ]);
+  });
+});
+
+describe('off_budget survives the CSV round-trip', () => {
+  const row = (offBudget: number | null) => ({
+    date: '2026-07-27',
+    account: 'cash',
+    category: 'insurance',
+    amount: -500,
+    currency: 'THB',
+    originalAmount: -500,
+    note: 'yearly',
+    offBudget,
+  });
+
+  it('emits off_budget as the 9th column: empty for null, 0 and 1 for the forced states', () => {
+    expect(MONEFY_HEADER).toBe(
+      'date,account,category,amount,currency,converted amount,currency,description,off_budget',
+    );
+    const cols = (offBudget: number | null) =>
+      serializeMonefyCsv([row(offBudget)])
+        .split('\n')[1]
+        .split(',');
+    expect(cols(null)[8]).toBe('');
+    expect(cols(0)[8]).toBe('0');
+    expect(cols(1)[8]).toBe('1');
+  });
+
+  it('parses the 9th column back to the null | 0 | 1 tri-state', () => {
+    for (const offBudget of [null, 0, 1]) {
+      const { entries } = parseMonefyCsv(serializeMonefyCsv([row(offBudget)]));
+      expect(entries[0].offBudget).toBe(offBudget);
+    }
+  });
+
+  // A real Monefy export has 8 columns and no such concept. Missing must mean "inherit the
+  // category" (null), never "force on-budget" (0) — the two behave differently in the meters.
+  it('reads a genuine 8-column Monefy CSV as null, not 0', () => {
+    const csv =
+      'date,account,category,amount,currency,converted amount,currency,description\n' +
+      '15/01/2016,cash,shopping,-637,THB,-637,THB,lotus';
+    expect(parseMonefyCsv(csv).entries[0].offBudget).toBeNull();
   });
 });
