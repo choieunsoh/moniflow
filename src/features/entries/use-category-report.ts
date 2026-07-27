@@ -48,6 +48,21 @@ export function useCategoryReport(
   const [ready, setReady] = useState(false);
   const version = useDataVersion();
 
+  // Drop ready DURING RENDER when the window changes — React's "adjusting state when a prop changes",
+  // the same pattern and the same reason as useHome. The effect's own setReady(false) sits inside the
+  // withDb callback, so it lands a microtask late and the page commits one frame of the PREVIOUS
+  // window's figures under the new ?view=/?year=/?category=. That frame is not cosmetic here: this
+  // page's list navigates to ITSELF (a year row opens that year's months), so the component never
+  // unmounts, `data` outlives the params that produced it, and on a real OPFS read the stale frame
+  // lasts the whole round trip — a second drill-down looks like it reopened the first row you tapped.
+  // Deliberately keyed on the REQUESTED params, not the clamped year: they are what the URL changed.
+  const windowKey = `${view}|${year}|${category}`;
+  const [shownKey, setShownKey] = useState(windowKey);
+  if (shownKey !== windowKey) {
+    setShownKey(windowKey);
+    setReady(false);
+  }
+
   useEffect(() => {
     void withDb(async (db) => {
       setReady(false);

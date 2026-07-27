@@ -174,13 +174,20 @@ export default function ReportPage() {
             // are no records behind it, and a 44px target that opens an empty view is a tap the
             // interface promised something for.
             r.count === 0 ? (
+              // Same three columns as the linked row below (gap-3, label / figure / chevron) so the
+              // figures line up down the list. The chevron is present but dimmed rather than dropped:
+              // omitting it shifted every zero row's figure right by its width, and a dimmed one reads
+              // as the disabled affordance it is instead of a missing one.
               <li
                 key={r.key}
-                className="flex min-h-11 items-baseline gap-1 text-sm"
+                className="flex min-h-11 items-center gap-3 text-sm"
                 style={{ color: 'var(--color-faint)' }}
               >
-                <span className="flex-1 truncate">{r.label}</span>
+                <span className="min-w-0 flex-1 truncate">{r.label}</span>
                 <span className="tnum shrink-0">{formatBahtWhole(r.value)}</span>
+                <span className="flex shrink-0 opacity-40">
+                  <RowChevron />
+                </span>
               </li>
             ) : (
               <li key={r.key} className="flex items-center text-sm">

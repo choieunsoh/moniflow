@@ -193,13 +193,19 @@ export default function MonthPage() {
                 // interface promised something for. Rendered plain and muted, it reads as the
                 // "nothing here" it is — which on a long-lived ledger is most of the early years.
                 r.count === 0 ? (
+                  // Same three columns as the linked row below (gap-3, label / figure / chevron) so
+                  // the figures line up down the list; the chevron is dimmed, not dropped, or every
+                  // zero row's figure sits one chevron-width right of the rest.
                   <li
                     key={r.key}
-                    className="flex min-h-11 items-baseline gap-1 text-sm"
+                    className="flex min-h-11 items-center gap-3 text-sm"
                     style={{ color: 'var(--color-faint)' }}
                   >
-                    <span className="flex-1 truncate">{r.label}</span>
+                    <span className="min-w-0 flex-1 truncate">{r.label}</span>
                     <span className="tnum shrink-0">{formatBahtWhole(r.value)}</span>
+                    <span className="flex shrink-0 opacity-40">
+                      <RowChevron />
+                    </span>
                   </li>
                 ) : (
                   <li key={r.key} className="flex items-center text-sm">
