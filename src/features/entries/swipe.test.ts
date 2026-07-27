@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSwipe, beginsDrag, commitHref, DRAG_START, COMMIT } from './swipe';
+import { resolveSwipe, beginsDrag, commitHref, suppressesClick, DRAG_START, COMMIT } from './swipe';
 
 const W = 88; // panel width; threshold = 44
 
@@ -58,6 +58,33 @@ describe('beginsDrag', () => {
     expect(beginsDrag(10, 40)).toBe(false);
     expect(beginsDrag(-10, -40)).toBe(false);
     expect(beginsDrag(20, 20)).toBe(false);
+  });
+});
+
+// The rule that closes the dead zone between DRAG_START and COMMIT. Before this existed, becoming a
+// drag was enough to swallow the click, so a press travelling 12–43px neither navigated (short of
+// COMMIT, it springs back) nor activated the link it started on — the row just ignored the tap.
+describe('suppressesClick', () => {
+  it('lets a drifted press reach its link', () => {
+    expect(suppressesClick(0)).toBe(false);
+    expect(suppressesClick(DRAG_START)).toBe(false);
+    expect(suppressesClick(-20)).toBe(false);
+    // The far edge of the old dead zone: still springs back, so it must still tap.
+    expect(suppressesClick(COMMIT - 1)).toBe(false);
+  });
+
+  it('swallows the click under a press that really was a gesture', () => {
+    expect(suppressesClick(COMMIT)).toBe(true);
+    expect(suppressesClick(-COMMIT)).toBe(true);
+  });
+
+  // There must be NO travel distance that both fails to navigate and fails to tap.
+  it('leaves no distance that does neither', () => {
+    for (let dx = 0; dx <= 200; dx++) {
+      const navigates = commitHref(dx, '/prev', '/next') !== null;
+      const taps = !suppressesClick(dx);
+      expect(navigates || taps).toBe(true);
+    }
   });
 });
 
