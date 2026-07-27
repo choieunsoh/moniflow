@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { OVERDUE_DAYS, backupStatus } from './backup-safety';
+import { OVERDUE_DAYS, backupStatus, backupSummary } from './backup-safety';
 
 const DAY = 86_400_000;
 const NOW = 1_700_000_000_000;
@@ -27,4 +27,15 @@ test('backwards clock floors at zero and is not overdue', () => {
 
 test('no data is never overdue even with an ancient backup', () => {
   expect(backupStatus(NOW - 365 * DAY, NOW, 0)).toEqual({ overdue: false, daysSince: 365 });
+});
+
+// The About screen states the backup age in words. Kept pure and separate from the overdue DECISION
+// above because the two answer different questions — "should we nudge" versus "what do we say" — and
+// only the wording needs to read naturally at 0 and 1 day.
+test('backup summary reads naturally at every age', () => {
+  expect(backupSummary({ overdue: false, daysSince: null })).toBe('Never backed up');
+  expect(backupSummary({ overdue: false, daysSince: 0 })).toBe('Backed up today');
+  expect(backupSummary({ overdue: false, daysSince: 1 })).toBe('Backed up yesterday');
+  expect(backupSummary({ overdue: false, daysSince: 3 })).toBe('Backed up 3 days ago');
+  expect(backupSummary({ overdue: true, daysSince: 42 })).toBe('Backed up 42 days ago');
 });
