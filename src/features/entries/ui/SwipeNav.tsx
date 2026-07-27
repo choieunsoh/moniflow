@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import type { PointerEvent, MouseEvent as ReactMouseEvent, ReactNode } from 'react';
-import { beginsDrag, commitHref } from '../swipe';
+import { beginsDrag, commitHref, suppressesClick } from '../swipe';
 
 // Horizontal swipe over a page's content to step its axis (Monefy-style): swipe left → next, right
 // → previous. The content follows the finger (damped) as the affordance, then springs back if the
@@ -68,7 +68,14 @@ export function SwipeNav({
       if (!beginsDrag(nextDx, e.clientY - start.current.y)) return;
       dragged.current = true;
       setDragging(true);
-      e.currentTarget.setPointerCapture(e.pointerId);
+      // MOUSE ONLY, and this is the whole reason a tap could vanish. Capturing retargets the pointer
+      // to this div, so pointerdown lands on the row and pointerup lands here — different elements,
+      // so the browser never synthesises a click at all. Not suppressed: never generated. Every press
+      // that passed the slop was therefore dead on touch no matter what the click handler decided.
+      // Touch already gives implicit capture to the element that received pointerdown (the row) and
+      // those events bubble here, so the drag tracks a finger perfectly well without it; a mouse gets
+      // no such help and still needs the capture to keep receiving moves outside the div.
+      if (e.pointerType === 'mouse') e.currentTarget.setPointerCapture(e.pointerId);
     }
     dxRef.current = nextDx;
     setDx(nextDx);
@@ -85,9 +92,16 @@ export function SwipeNav({
 
   // Capture phase, so a drag that started on a link is stopped before the link's own onClick runs.
   // preventDefault covers the anchor's native navigation, stopPropagation the React handler.
+  //
+  // Gated on the distance actually travelled, not merely on having become a drag. A press that
+  // passed the slop but stopped short of COMMIT springs back WITHOUT navigating, so swallowing its
+  // click too meant the row did nothing at all — no movement, no navigation, no feedback. That dead
+  // zone is what made tapping a month row feel like the app had ignored you. dxRef still holds the
+  // final travel here: it is cleared on the next pointerdown, not on pointerup.
   function onClickCapture(e: ReactMouseEvent<HTMLDivElement>): void {
     if (!dragged.current) return;
     dragged.current = false;
+    if (!suppressesClick(dxRef.current)) return;
     e.preventDefault();
     e.stopPropagation();
   }
