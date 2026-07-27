@@ -9,6 +9,7 @@
     "dev:web": "next dev -H 127.0.0.1 -p 4010",
     "prebuild:web": "npm run copy:sqlite3",
     "build:web": "next build",
+    "postbuild:web": "node scripts/stamp-sw.ts",
     "start:web": "npx -y serve out -l 4010",
     "deploy:web": "vercel --prod",
     "build": "tsc",
