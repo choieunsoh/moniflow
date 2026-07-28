@@ -71,7 +71,7 @@ All must pass before committing.
   fetches them at runtime, so they must exist before either command.
 - **Schema lives in TWO places and they must stay in lockstep.** Each feature's `schema.ts` is its
   drizzle table + `ensure<Table>Table(db)` (used by the Node shim in tests), but the shipping
-  bootstrap is `BOOTSTRAP_SQL` in `src/db/worker.ts` — the seven-table DDL is duplicated there so `db/`
+  bootstrap is `BOOTSTRAP_SQL` in `src/db/worker.ts` — the eight-table DDL is duplicated there so `db/`
   imports no feature (see the dependency rule). **A new column or table means editing both.**
   `src/db/schema-lockstep.test.ts` is what catches a drift: it bootstraps one db each way and diffs
   sqlite's own `PRAGMA` output, so a new table is covered automatically — but add it to that test's
@@ -98,7 +98,7 @@ src/
 ├── db/                     # the sqlite-proxy seam: features never touch a concrete engine
 │   ├── client.ts           # (@db) the public `Db` type + makeNodeProxyDb re-export
 │   ├── browser.ts          # getBrowserDb() — THE shipping backend (worker + OPFS), memoized
-│   ├── worker.ts           # the WASM/OPFS worker + BOOTSTRAP_SQL (the seven-table DDL)
+│   ├── worker.ts           # the WASM/OPFS worker + BOOTSTRAP_SQL (the eight-table DDL)
 │   ├── rpc.ts              # DbWorkerRpc — request/response plumbing to the worker
 │   └── node-proxy.ts       # in-memory better-sqlite3 backend — TESTS ONLY, never ships
 ├── features/               # organised by domain; each owns schema + queries + actions + ui
@@ -106,6 +106,7 @@ src/
 │   ├── budgets/            # standing per-category monthly limits
 │   ├── categories/         # category display meta (emoji + hue) and the icon-set system
 │   ├── accounts/           # accounts + their icon/hue/order
+│   ├── currencies/         # the currency catalog: codes, per-currency off-budget flag, /currency page
 │   └── settings/           # key-value store: billing cutoff day, icon set, font scale, card FX fee
 └── shared/
     ├── ui/                 # cross-feature shell: PageContainer, AppHeader, BottomBar, MoreSheet…
