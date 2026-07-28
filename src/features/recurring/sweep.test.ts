@@ -7,6 +7,7 @@ import { setCardFeePct, setFxRates } from '@features/settings/queries';
 import { ensureRecurrencesTable, type NewRecurrence } from './schema';
 import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addRule, listRules, rewindRecurrences } from './queries';
+import { setCurrencyArchived } from '@features/currencies/queries';
 import { runSweep } from './sweep';
 
 async function db() {
@@ -107,6 +108,25 @@ describe('runSweep', () => {
     const d = await db();
     await addRule(d, { ...rent, archived: 1 });
     expect(await runSweep(d, '2026-07-20')).toBe(0);
+  });
+
+  it('still posts a live-rate rule after its currency is archived', async () => {
+    // Archiving HKD stops NEW rules being created in it, but must not silently and permanently stop
+    // an already-existing rule from posting — the same invariant editEntryAction/editRuleAction apply
+    // to entries and rules. validCodes must come from getAllCurrencyCodes (archived included), or
+    // rates.ts throws on the "unknown" code and the per-rule catch swallows it forever.
+    const d = await db();
+    await addRule(d, { ...rent, name: 'HK Gym', day: 5, amount: 100, currency: 'HKD' });
+    await setCurrencyArchived(d, 'HKD', true);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ base: 'THB', date: '2026-07-05', rates: { HKD: 0.22 } }), {
+        status: 200,
+      }),
+    );
+    expect(await runSweep(d, '2026-07-20')).toBe(1);
+    expect(fetchSpy).toHaveBeenCalled();
+    const [row] = await d.select().from(entries).all();
+    expect(row.currency).toBe('HKD');
   });
 
   it('converts an FX rule at the due date fixing', async () => {

@@ -2,7 +2,7 @@ import type { Db } from '@db/client';
 import { listRules, markPosted, postRecurringEntries, type PostRow } from './queries';
 import { duePosts, noteFor } from './schedule';
 import { convertAmount, type MidCache } from './rates';
-import { getCurrencyCodes } from '@features/currencies/queries';
+import { getAllCurrencyCodes } from '@features/currencies/queries';
 
 // THE SCHEDULER. There is no server and therefore no cron, so opening the app IS the schedule: this
 // walks every active rule, posts whatever came due while the app was closed (dated its real due
@@ -18,7 +18,12 @@ export async function runSweep(db: Db, todayIso: string): Promise<number> {
   // One fetch per distinct (currency, date) for the whole sweep — two rules sharing a currency and
   // due date hit the network once. Lives only for this call; never persisted or reused across sweeps.
   const midCache: MidCache = new Map();
-  const validCodes = await getCurrencyCodes(db);
+  // Archived, included: posting a rule already standing in a currency is not "picking a new one" —
+  // the same reasoning as editEntryAction/editRuleAction. Using the non-archived getCurrencyCodes
+  // here made archiving a currency silently and permanently stop every live-rate rule in it: rates.ts
+  // throws on an unknown code, the per-rule catch below swallows it, and the untouched pointer
+  // re-fails on every app open with no visible error.
+  const validCodes = await getAllCurrencyCodes(db);
   for (const rule of await listRules(db)) {
     const due = duePosts(rule, todayIso);
     if (due.length === 0) continue;

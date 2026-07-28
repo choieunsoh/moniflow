@@ -20,7 +20,7 @@ import {
   type KeypadLayout,
 } from '@features/settings/queries';
 import { getOffBudgetCategories } from '@features/categories/queries';
-import { listCurrencies, getAllCurrencyCodes } from '@features/currencies/queries';
+import { getAllCurrencyCodes, getTravelCurrencies } from '@features/currencies/queries';
 import { withFee } from './fx';
 import { useDataVersion } from '@shared/data-version';
 
@@ -40,6 +40,7 @@ export type EditEntryData =
       iconSet: IconSet;
       keypadLayout: KeypadLayout;
       offBudgetCategories: Set<string>; // the Keypad's off-budget toggle default
+      travelCurrencies: Set<string>; // the Keypad's off-budget toggle default, travel-currency tier
     }
   | {
       keypadEditable: false;
@@ -49,6 +50,7 @@ export type EditEntryData =
       currencies: string[]; // catalog codes for the plain EntryForm's currency <select>
       notes: string[];
       offBudgetCategories: Set<string>; // the plain EntryForm's off-budget toggle default
+      travelCurrencies: Set<string>; // the plain EntryForm's off-budget toggle default, travel tier
     };
 
 // Edit-entry page's data, read once via the browser OPFS db after mount — mirrors the server
@@ -78,11 +80,12 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           categories,
           accounts,
           currencies,
-          currencyCodes,
+          allCurrencyCodes,
           notes,
           cardFeePct,
           fxRates,
           offBudgetCategories,
+          travelCurrencies,
         ] = await Promise.all([
           getIconSet(db),
           getKeypadLayout(db),
@@ -98,7 +101,16 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           getCardFeePct(db),
           getFxRates(db),
           getOffBudgetCategories(db),
+          getTravelCurrencies(db),
         ]);
+        // getAllCurrencyCodes covers every catalog row, archived included, but not a code that was
+        // never a catalog row at all — reachable via importBackupAction with a raw Monefy CSV
+        // carrying a code the catalog has never seen (e.g. CNY). Without this, such a row falls back
+        // to THB in the Keypad (Keypad.tsx's initialCurrency) and a save rewrites its currency and
+        // drops originalAmount — mirrors editEntryAction's write-time guard, which already keeps an
+        // entry's own currency recognised regardless of catalog membership.
+        const currencyCodes = new Set(allCurrencyCodes);
+        if (entry.currency !== null) currencyCodes.add(entry.currency);
         const rates: Record<string, number> = {};
         const ratesAsOf: Record<string, string> = {};
         for (const [code, e] of Object.entries(fxRates)) {
@@ -118,16 +130,22 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           iconSet,
           keypadLayout,
           offBudgetCategories,
+          travelCurrencies,
         });
       } else {
-        const [accounts, categories, currencyRows, notes, offBudgetCategories] = await Promise.all([
-          getDistinctAccounts(db),
-          getDistinctCategories(db),
-          listCurrencies(db),
-          getDistinctNotes(db),
-          getOffBudgetCategories(db),
-        ]);
-        const currencies = currencyRows.map((r) => r.code);
+        const [accounts, categories, currencyCodes, notes, offBudgetCategories, travelCurrencies] =
+          await Promise.all([
+            getDistinctAccounts(db),
+            getDistinctCategories(db),
+            // Archived included, same reasoning as the keypad-editable branch above: listCurrencies
+            // (non-archived) leaves the controlled <select> with no matching <option> for an archived
+            // currency, rendering blank and silently submitting a different code on save.
+            getAllCurrencyCodes(db),
+            getDistinctNotes(db),
+            getOffBudgetCategories(db),
+            getTravelCurrencies(db),
+          ]);
+        const currencies = [...currencyCodes];
         setData({
           keypadEditable: false,
           entry,
@@ -136,6 +154,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           currencies,
           notes,
           offBudgetCategories,
+          travelCurrencies,
         });
       }
       setReady(true);
