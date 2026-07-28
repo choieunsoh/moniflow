@@ -93,7 +93,7 @@ src/
 │   ├── globals.css         # Tailwind v4 @theme tokens + component classes
 │   ├── manifest.ts         # PWA manifest (icons + public/sw.js make it installable)
 │   ├── page.tsx            # / — cycle spending donut + category breakdown (chart/list)
-│   ├── records/, budgets/, categories/, accounts/, trips/, settings/  # routes
+│   ├── records/, budgets/, categories/, accounts/, currency/, …  # routes (see src/app for the full list)
 │   └── entries/{new,edit}/ # edit is ?id=-parameterised — a static export can't prerender [id]
 ├── db/                     # the sqlite-proxy seam: features never touch a concrete engine
 │   ├── client.ts           # (@db) the public `Db` type + makeNodeProxyDb re-export
