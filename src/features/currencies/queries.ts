@@ -1,5 +1,6 @@
 import { eq, asc } from 'drizzle-orm';
 import type { Db } from '@db/client';
+import type { CurrencyCatalogRow } from '@features/settings/catalog';
 import { currencies, type CurrencyRow } from './schema';
 
 // The currencies this ledger has actually used, plus the ones its owner is likely to. off_budget = 1
@@ -109,4 +110,46 @@ export async function setCurrencyArchived(db: Db, code: string, archived: boolea
     .set({ archived: archived ? 1 : 0 })
     .where(eq(currencies.code, code))
     .run();
+}
+
+// Every currency including archived ones — a backup that dropped archived rows would resurrect them
+// as active on restore.
+export async function getCurrencyCatalog(db: Db): Promise<CurrencyCatalogRow[]> {
+  const rows = await listAllCurrencies(db);
+  return rows.map((r) => ({
+    code: r.code,
+    offBudget: r.offBudget === 1,
+    sortOrder: r.sortOrder,
+    archived: r.archived === 1,
+  }));
+}
+
+// Upsert each row by code — updates an existing currency's flags, inserts a missing one. NEVER
+// deletes: a currency only this device knows about must survive a restore. No seedIfEmpty: this is
+// an INSERT ... ON CONFLICT, not a bare UPDATE, so — unlike setCurrencyOffBudget/setCurrencyArchived
+// — it inserts a row regardless of whether the table has ever been read, and calling it here would
+// just seed defaults this merge is about to overwrite anyway.
+export async function restoreCurrencyCatalog(db: Db, rows: CurrencyCatalogRow[]): Promise<void> {
+  if (rows.length === 0) return;
+  const mk = (r: CurrencyCatalogRow) => {
+    const values = {
+      code: r.code,
+      offBudget: r.offBudget ? 1 : 0,
+      sortOrder: r.sortOrder,
+      archived: r.archived ? 1 : 0,
+    };
+    return db
+      .insert(currencies)
+      .values(values)
+      .onConflictDoUpdate({
+        target: currencies.code,
+        set: {
+          offBudget: values.offBudget,
+          sortOrder: values.sortOrder,
+          archived: values.archived,
+        },
+      });
+  };
+  const [first, ...rest] = rows;
+  await db.batch([mk(first), ...rest.map(mk)]);
 }

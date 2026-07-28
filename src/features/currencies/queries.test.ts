@@ -10,6 +10,8 @@ import {
   addCurrency,
   setCurrencyOffBudget,
   setCurrencyArchived,
+  getCurrencyCatalog,
+  restoreCurrencyCatalog,
 } from './queries';
 
 let db: Db;
@@ -66,5 +68,47 @@ describe('currency catalog', () => {
     await setCurrencyArchived(db, 'GBP', true);
     expect((await listCurrencies(db)).map((r) => r.code)).not.toContain('GBP');
     expect((await listAllCurrencies(db)).map((r) => r.code)).toContain('GBP');
+  });
+});
+
+describe('currency catalog backup', () => {
+  it('merges a restored catalog without deleting local currencies', async () => {
+    await addCurrency(db, 'TWD');
+    await restoreCurrencyCatalog(db, [
+      { code: 'JPY', offBudget: true, sortOrder: 1, archived: false },
+      { code: 'VND', offBudget: true, sortOrder: 9, archived: false },
+    ]);
+    const codes = await getCurrencyCodes(db);
+    expect(codes.has('TWD')).toBe(true);
+    expect(codes.has('VND')).toBe(true);
+    expect(await getTravelCurrencies(db)).toContain('VND');
+  });
+
+  // restoreCurrencyCatalog is a write path against a table that, on a fresh device, may never have
+  // been read — the same shape as the setCurrencyOffBudget/setCurrencyArchived gotcha from Task 2.
+  // Those are bare UPDATEs and no-op silently against a table with zero rows; restoreCurrencyCatalog
+  // is INSERT ... ON CONFLICT DO UPDATE, which inserts unconditionally, so it must work with only
+  // ensureCurrenciesTable having run — no seedIfEmpty, no prior read.
+  it('upserts correctly against a table that was only ever ensured, never read or seeded', async () => {
+    const freshDb = makeNodeProxyDb();
+    await ensureCurrenciesTable(freshDb);
+
+    await restoreCurrencyCatalog(freshDb, [
+      { code: 'JPY', offBudget: true, sortOrder: 1, archived: false },
+    ]);
+
+    const catalog = await getCurrencyCatalog(freshDb);
+    expect(catalog).toEqual([{ code: 'JPY', offBudget: true, sortOrder: 1, archived: false }]);
+  });
+
+  it('round-trips getCurrencyCatalog through restoreCurrencyCatalog, including archived rows', async () => {
+    await setCurrencyArchived(db, 'GBP', true);
+    const catalog = await getCurrencyCatalog(db);
+
+    const freshDb = makeNodeProxyDb();
+    await ensureCurrenciesTable(freshDb);
+    await restoreCurrencyCatalog(freshDb, catalog);
+
+    expect(await getCurrencyCatalog(freshDb)).toEqual(catalog);
   });
 });

@@ -24,7 +24,7 @@ describe('catalog serialize/parse', () => {
 
   it('returns null on wrong/absent version', () => {
     expect(
-      parseCatalogJson(JSON.stringify({ version: 4, categories: [], accounts: [] })),
+      parseCatalogJson(JSON.stringify({ version: 5, categories: [], accounts: [] })),
     ).toBeNull();
     expect(parseCatalogJson(JSON.stringify({ categories: [], accounts: [] }))).toBeNull();
   });
@@ -85,9 +85,9 @@ describe('catalog v2 with recurrences', () => {
     expect(parseCatalogJson(bad)).toBeNull();
   });
 
-  it('rejects a version outside 1–3', () => {
+  it('rejects a version outside 1–4', () => {
     expect(
-      parseCatalogJson(JSON.stringify({ version: 4, categories: [], accounts: [] })),
+      parseCatalogJson(JSON.stringify({ version: 5, categories: [], accounts: [] })),
     ).toBeNull();
   });
 });
@@ -174,6 +174,39 @@ describe('classifyBackup', () => {
 
   it('flags unrecognized junk as invalid', () => {
     expect(classifyBackup('just some junk')).toEqual({ kind: 'invalid' });
+  });
+});
+
+describe('catalog v4 currency catalog', () => {
+  it('round-trips a v4 backup carrying the currency catalog', () => {
+    const data: CatalogData = {
+      version: 4,
+      categories: [],
+      accounts: [],
+      recurrences: [],
+      currencies: [
+        { code: 'THB', offBudget: false, sortOrder: 0, archived: false },
+        { code: 'JPY', offBudget: true, sortOrder: 1, archived: false },
+        { code: 'GBP', offBudget: false, sortOrder: null, archived: true },
+      ],
+    };
+    expect(parseCatalogJson(serializeCatalogJson(data))).toEqual(data);
+  });
+
+  it('still parses a v3 backup with no currencies key', () => {
+    const data: CatalogData = { version: 3, categories: [], accounts: [], recurrences: [] };
+    expect(parseCatalogJson(serializeCatalogJson(data))).toEqual(data);
+  });
+
+  it('rejects a currencies array whose rows are misshaped', () => {
+    const text = JSON.stringify({
+      version: 4,
+      categories: [],
+      accounts: [],
+      recurrences: [],
+      currencies: [{ code: 'JPY' }],
+    });
+    expect(parseCatalogJson(text)).toBeNull();
   });
 });
 
