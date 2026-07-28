@@ -9,6 +9,7 @@ import { ensureAccountsTable } from '@features/accounts/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { ensureRecurrencesTable } from '@features/recurring/schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 
 // THE documented drift hazard: the DDL lives in two hand-maintained places — each feature's
 // ensure*Table (what the Node shim runs, so what every other test runs) and BOOTSTRAP_SQL in
@@ -63,6 +64,7 @@ async function featureDb(): Promise<Db> {
   await ensureBudgetsTable(db);
   await ensureSettingsTable(db);
   await ensureRecurrencesTable(db);
+  await ensureCurrenciesTable(db);
   return db;
 }
 
@@ -74,6 +76,7 @@ const TABLES = [
   'settings',
   'trip_titles',
   'recurrences',
+  'currencies',
 ];
 
 describe('schema lockstep: BOOTSTRAP_SQL vs the ensure*Table functions', () => {
