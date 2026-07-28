@@ -76,6 +76,7 @@ function EditEntryInner() {
       iconSet,
       keypadLayout,
       offBudgetCategories,
+      travelCurrencies,
     } = data;
     return (
       <PageContainer size="full">
@@ -98,12 +99,14 @@ function EditEntryInner() {
           action={handleSubmit}
           entry={entry}
           offBudgetCategories={offBudgetCategories}
+          travelCurrencies={travelCurrencies}
         />
       </PageContainer>
     );
   }
 
-  const { entry, accounts, categories, currencies, notes, offBudgetCategories } = data;
+  const { entry, accounts, categories, currencies, notes, offBudgetCategories, travelCurrencies } =
+    data;
   return (
     <PageContainer size="form">
       <header className="flex items-start justify-between gap-3">
@@ -123,6 +126,7 @@ function EditEntryInner() {
         notes={notes}
         entry={entry}
         offBudgetCategories={offBudgetCategories}
+        travelCurrencies={travelCurrencies}
       />
     </PageContainer>
   );

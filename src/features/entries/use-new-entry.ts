@@ -14,7 +14,7 @@ import {
   type KeypadLayout,
 } from '@features/settings/queries';
 import { getOffBudgetCategories } from '@features/categories/queries';
-import { getCurrencyCodes } from '@features/currencies/queries';
+import { getCurrencyCodes, getTravelCurrencies } from '@features/currencies/queries';
 import { withFee } from './fx';
 import { useDataVersion } from '@shared/data-version';
 
@@ -30,6 +30,7 @@ export type NewEntryData = {
   iconSet: IconSet;
   keypadLayout: KeypadLayout;
   offBudgetCategories: Set<string>; // the Keypad's off-budget toggle default
+  travelCurrencies: Set<string>; // the Keypad's off-budget toggle default, travel-currency tier
 };
 
 // New-entry page's keypad-feeding lists, read once via the browser OPFS db after mount — mirrors the
@@ -60,6 +61,7 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
         fxRates,
         latestAccount,
         offBudgetCategories,
+        travelCurrencies,
       ] = await Promise.all([
         getIconSet(db),
         getKeypadLayout(db),
@@ -72,6 +74,7 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
         getFxRates(db),
         getLatestAccount(db),
         getOffBudgetCategories(db),
+        getTravelCurrencies(db),
       ]);
 
       const rates: Record<string, number> = {};
@@ -95,6 +98,7 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
         iconSet,
         keypadLayout,
         offBudgetCategories,
+        travelCurrencies,
       });
       setReady(true);
     });

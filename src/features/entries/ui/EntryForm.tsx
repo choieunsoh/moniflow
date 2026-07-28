@@ -11,6 +11,7 @@ type EntryFormProps = {
   notes: string[];
   entry?: EntryRow;
   offBudgetCategories: Set<string>;
+  travelCurrencies: Set<string>; // off-budget toggle's travel-currency tier — mirrors isOffBudget
 };
 
 const fieldClass = 'min-h-11 rounded-[var(--radius-sm)] border px-3 py-2 text-base';
@@ -29,6 +30,7 @@ export function EntryForm({
   notes,
   entry,
   offBudgetCategories,
+  travelCurrencies,
 }: EntryFormProps) {
   const [currency, setCurrency] = useState(entry?.currency ?? 'THB');
   const [category, setCategory] = useState(entry?.category ?? '');
@@ -40,7 +42,13 @@ export function EntryForm({
     entry !== undefined && entry.offBudget !== null,
   );
   const [offBudgetOverride, setOffBudgetOverride] = useState(entry?.offBudget === 1);
-  const offBudgetChecked = offBudgetTouched ? offBudgetOverride : offBudgetCategories.has(category);
+  // Mirrors isOffBudget's tiers and Keypad's identical fix: an explicit per-entry value always wins;
+  // untouched, a travel currency (checked against the currently selected `currency`) ORs in on top
+  // of the category default, so an off-budget-by-currency entry doesn't render its checkbox
+  // unchecked.
+  const offBudgetChecked = offBudgetTouched
+    ? offBudgetOverride
+    : offBudgetCategories.has(category) || travelCurrencies.has(currency);
   const categoryListId = useId();
   const noteListId = useId();
   const needsManualThb = currency !== 'THB';

@@ -40,6 +40,7 @@ export default function NewEntryPage() {
     iconSet,
     keypadLayout,
     offBudgetCategories,
+    travelCurrencies,
   } = data;
 
   async function handleSubmit(formData: FormData): Promise<void> {
@@ -70,6 +71,7 @@ export default function NewEntryPage() {
         keypadLayout={keypadLayout}
         action={handleSubmit}
         offBudgetCategories={offBudgetCategories}
+        travelCurrencies={travelCurrencies}
       />
     </PageContainer>
   );
