@@ -224,6 +224,22 @@ export default function ReportPage() {
             ),
           )}
         </ul>
+        {/* The rows stop at aggregates — three taps from here to an actual receipt. /records?all=1
+            already spans every cycle for one category, so this is the shortcut, not a new surface.
+            The count is only stated in the yearly view, where the window IS all time and the figure
+            is therefore the same one the list lands on; monthly holds a single year and would be
+            counting something else. */}
+        <Link
+          prefetch={false}
+          href={`/records?all=1&category=${encodeURIComponent(category)}`}
+          className="tap flex min-h-11 items-center gap-1 text-sm font-medium"
+          style={{ color: 'var(--color-accent-text)' }}
+        >
+          {view === 'yearly'
+            ? `See all ${rows.reduce((n, r) => n + r.count, 0)} records`
+            : 'See all records'}
+          <RowChevron />
+        </Link>
       </section>
     ) : categories.length === 0 ? (
       <section className="panel px-6 py-12 text-center">
