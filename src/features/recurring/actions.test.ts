@@ -56,4 +56,37 @@ describe('editRuleAction — archived currencies', () => {
     const [updated] = await listRules(db);
     expect(updated.currency).toBe('JPY');
   });
+
+  // Symmetric with entries/actions.test.ts's "still rejects a NEW entry submitted in an archived
+  // currency": the fix above must not become a blanket bypass — only RESUBMITTING a rule's own
+  // currency is exempt. A genuine switch to a different currency that happens to be archived is still
+  // rejected, which is what makes "structural mirror of entries" a falsifiable claim rather than an
+  // assertion.
+  it('still rejects switching an existing rule to a different archived currency', async () => {
+    const seed: NewRecurrence = {
+      name: 'Rent',
+      day: 1,
+      intervalMonths: 1,
+      accountId: 1,
+      categoryId: 1,
+      amount: 15000,
+      currency: 'THB',
+      startDate: '2026-07-01',
+    };
+    await addRule(db, seed);
+    const [rule] = await listRules(db);
+    await setCurrencyArchived(db, 'JPY', true); // never this rule's own currency
+
+    const fd = new FormData();
+    fd.set('id', String(rule.id));
+    fd.set('name', rule.name);
+    fd.set('day', String(rule.day));
+    fd.set('intervalMonths', String(rule.intervalMonths));
+    fd.set('account', 'Wise');
+    fd.set('category', 'Travel');
+    fd.set('amount', String(rule.amount));
+    fd.set('currency', 'JPY'); // this rule was never JPY — a genuine switch, not a resubmission
+
+    await expect(editRuleAction(fd)).rejects.toThrow('Choose a valid currency.');
+  });
 });
