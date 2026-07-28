@@ -91,6 +91,7 @@ export function Keypad({
   categories,
   accounts,
   currencies,
+  currencyCodes,
   notes,
   rates,
   ratesAsOf,
@@ -105,6 +106,7 @@ export function Keypad({
   categories: KeypadCategory[];
   accounts: KeypadAccount[];
   currencies: KeypadCurrency[];
+  currencyCodes: Set<string>; // the catalog's valid codes, for isCurrency
   notes: string[];
   rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
   ratesAsOf: Record<string, string>;
@@ -118,7 +120,9 @@ export function Keypad({
 }) {
   const noteListId = useId();
   const initialCurrency: Currency =
-    entry && entry.currency !== null && isCurrency(entry.currency) ? entry.currency : 'THB';
+    entry && entry.currency !== null && isCurrency(entry.currency, currencyCodes)
+      ? entry.currency
+      : 'THB';
   const initialForeign = entry
     ? String(
         Math.abs(

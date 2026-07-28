@@ -5,6 +5,7 @@ import { ensureEntriesTable, entries } from '@features/entries/schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { setCardFeePct, setFxRates } from '@features/settings/queries';
 import { ensureRecurrencesTable, type NewRecurrence } from './schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addRule, listRules, rewindRecurrences } from './queries';
 import { runSweep } from './sweep';
 
@@ -13,6 +14,7 @@ async function db() {
   await ensureEntriesTable(d);
   await ensureSettingsTable(d);
   await ensureRecurrencesTable(d);
+  await ensureCurrenciesTable(d);
   await setCardFeePct(d, 0); // zero fee keeps the arithmetic readable in these tests
   return d;
 }

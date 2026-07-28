@@ -15,6 +15,7 @@ import { parseMonefyCsv } from './import';
 import { addCategory } from '@features/categories/queries';
 import { rewindRecurrences } from '@features/recurring/queries';
 import { bumpDataVersion } from '@shared/data-version';
+import { getCurrencyCodes } from '@features/currencies/queries';
 
 // The feature's write layer, now client-side against the browser OPFS db (offline-first — no
 // 'use server'/revalidatePath; the worker bootstraps tables). React 19 form actions accept these client
@@ -23,23 +24,25 @@ import { bumpDataVersion } from '@shared/data-version';
 // ponytail(Plan 2b): addEntry/editEntry no longer navigate (redirect was a server-only API) — the calling
 // forms will push the route themselves in 2b. The writes persist to OPFS now regardless.
 export async function addEntryAction(formData: FormData): Promise<void> {
-  const result = parseEntryForm(formData);
+  const db = await getBrowserDb();
+  const validCodes = await getCurrencyCodes(db);
+  const result = parseEntryForm(formData, validCodes);
   if (!result.ok) {
     throw new Error(result.error);
   }
-  const db = await getBrowserDb();
   await insertEntry(db, result.entry);
   bumpDataVersion();
   // TODO(Plan 2b): navigate to '/' from the caller.
 }
 
 export async function editEntryAction(formData: FormData): Promise<void> {
-  const result = parseEntryForm(formData);
+  const db = await getBrowserDb();
+  const validCodes = await getCurrencyCodes(db);
+  const result = parseEntryForm(formData, validCodes);
   if (!result.ok) {
     throw new Error(result.error);
   }
   const id = Number(formData.get('id'));
-  const db = await getBrowserDb();
   await updateEntry(db, id, result.entry);
   bumpDataVersion();
   // TODO(Plan 2b): navigate to '/records' from the caller.

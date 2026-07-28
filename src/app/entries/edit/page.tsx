@@ -69,6 +69,7 @@ function EditEntryInner() {
       categories,
       accounts,
       currencies,
+      currencyCodes,
       notes,
       rates,
       ratesAsOf,
@@ -86,6 +87,7 @@ function EditEntryInner() {
           categories={categories}
           accounts={accounts}
           currencies={currencies}
+          currencyCodes={currencyCodes}
           notes={notes}
           rates={rates}
           ratesAsOf={ratesAsOf}
@@ -101,7 +103,7 @@ function EditEntryInner() {
     );
   }
 
-  const { entry, accounts, categories, notes, offBudgetCategories } = data;
+  const { entry, accounts, categories, currencies, notes, offBudgetCategories } = data;
   return (
     <PageContainer size="form">
       <header className="flex items-start justify-between gap-3">
@@ -117,6 +119,7 @@ function EditEntryInner() {
         action={handleSubmit}
         accounts={accounts}
         categories={categories}
+        currencies={currencies}
         notes={notes}
         entry={entry}
         offBudgetCategories={offBudgetCategories}

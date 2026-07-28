@@ -1,13 +1,13 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { CURRENCIES } from '../entry-form';
 import type { EntryRow } from '../schema';
 
 type EntryFormProps = {
   action: (formData: FormData) => Promise<void>;
   accounts: string[];
   categories: string[];
+  currencies: string[];
   notes: string[];
   entry?: EntryRow;
   offBudgetCategories: Set<string>;
@@ -25,6 +25,7 @@ export function EntryForm({
   action,
   accounts,
   categories,
+  currencies,
   notes,
   entry,
   offBudgetCategories,
@@ -114,7 +115,7 @@ export function EntryForm({
             className={fieldClass}
             style={fieldStyle}
           >
-            {CURRENCIES.map((c) => (
+            {currencies.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>

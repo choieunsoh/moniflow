@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addEntries, getEntries } from './queries';
 import { setCategoryOffBudget } from '@features/categories/queries';
 
@@ -16,6 +17,7 @@ describe('useEditEntry', () => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     await ensureSettingsTable(db);
+    await ensureCurrenciesTable(db);
     await addEntries(db, [
       { date: '2026-07-01', account: 'Cash', category: 'Food', amount: -100 },
       { date: '2026-07-02', account: 'Cash', category: 'Salary', amount: 5000 },

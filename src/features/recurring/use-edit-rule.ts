@@ -13,6 +13,7 @@ import { getIconSet, getCardFeePct, getFxRates, type IconSet } from '@features/s
 import { useDataVersion } from '@shared/data-version';
 import { getRule, listRuleMeta } from './queries';
 import type { Recurrence } from './schema';
+import { getCurrencyCodes } from '@features/currencies/queries';
 
 export type EditRuleData = {
   rule: Recurrence;
@@ -23,6 +24,7 @@ export type EditRuleData = {
   categories: KeypadCategory[];
   accounts: KeypadAccount[];
   currencies: KeypadCurrency[];
+  currencyCodes: Set<string>; // the catalog's valid codes, for isCurrency
   rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
   ratesAsOf: Record<string, string>;
   iconSet: IconSet;
@@ -49,12 +51,13 @@ export function useEditRule(id: number): { ready: boolean; data: EditRuleData | 
         return;
       }
 
-      const [iconSet, categories, accounts, currencies, cardFeePct, fxRates, meta] =
+      const [iconSet, categories, accounts, currencies, currencyCodes, cardFeePct, fxRates, meta] =
         await Promise.all([
           getIconSet(db),
           getKeypadCategories(db),
           getKeypadAccounts(db),
           getKeypadCurrencies(db),
+          getCurrencyCodes(db),
           getCardFeePct(db),
           getFxRates(db),
           listRuleMeta(db),
@@ -76,6 +79,7 @@ export function useEditRule(id: number): { ready: boolean; data: EditRuleData | 
         categories,
         accounts,
         currencies,
+        currencyCodes,
         rates,
         ratesAsOf,
         iconSet,

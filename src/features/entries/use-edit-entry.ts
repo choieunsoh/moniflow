@@ -20,6 +20,7 @@ import {
   type KeypadLayout,
 } from '@features/settings/queries';
 import { getOffBudgetCategories } from '@features/categories/queries';
+import { listCurrencies, getCurrencyCodes } from '@features/currencies/queries';
 import { withFee } from './fx';
 import { useDataVersion } from '@shared/data-version';
 
@@ -32,6 +33,7 @@ export type EditEntryData =
       categories: KeypadCategory[];
       accounts: KeypadAccount[];
       currencies: KeypadCurrency[];
+      currencyCodes: Set<string>; // the catalog's valid codes, for isCurrency
       notes: string[]; // the note field's autocomplete pool
       rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
       ratesAsOf: Record<string, string>;
@@ -44,6 +46,7 @@ export type EditEntryData =
       entry: EntryRow;
       accounts: string[];
       categories: string[];
+      currencies: string[]; // catalog codes for the plain EntryForm's currency <select>
       notes: string[];
       offBudgetCategories: Set<string>; // the plain EntryForm's off-budget toggle default
     };
@@ -75,6 +78,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           categories,
           accounts,
           currencies,
+          currencyCodes,
           notes,
           cardFeePct,
           fxRates,
@@ -85,6 +89,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           getKeypadCategories(db),
           getKeypadAccounts(db),
           getKeypadCurrencies(db),
+          getCurrencyCodes(db),
           getDistinctNotes(db),
           getCardFeePct(db),
           getFxRates(db),
@@ -102,6 +107,7 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           categories,
           accounts,
           currencies,
+          currencyCodes,
           notes,
           rates,
           ratesAsOf,
@@ -110,13 +116,23 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           offBudgetCategories,
         });
       } else {
-        const [accounts, categories, notes, offBudgetCategories] = await Promise.all([
+        const [accounts, categories, currencyRows, notes, offBudgetCategories] = await Promise.all([
           getDistinctAccounts(db),
           getDistinctCategories(db),
+          listCurrencies(db),
           getDistinctNotes(db),
           getOffBudgetCategories(db),
         ]);
-        setData({ keypadEditable: false, entry, accounts, categories, notes, offBudgetCategories });
+        const currencies = currencyRows.map((r) => r.code);
+        setData({
+          keypadEditable: false,
+          entry,
+          accounts,
+          categories,
+          currencies,
+          notes,
+          offBudgetCategories,
+        });
       }
       setReady(true);
     });

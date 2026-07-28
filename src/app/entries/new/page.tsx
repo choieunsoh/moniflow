@@ -32,6 +32,7 @@ export default function NewEntryPage() {
     categories,
     accounts,
     currencies,
+    currencyCodes,
     notes,
     rates,
     ratesAsOf,
@@ -59,6 +60,7 @@ export default function NewEntryPage() {
         categories={categories}
         accounts={accounts}
         currencies={currencies}
+        currencyCodes={currencyCodes}
         notes={notes}
         rates={rates}
         ratesAsOf={ratesAsOf}

@@ -1,6 +1,6 @@
 import type { Db } from '@db/client';
 import { getCategoryCounts, getAccountsByUsage, getCurrencyCounts } from './queries';
-import { CURRENCIES } from './entry-form';
+import { listCurrencies } from '@features/currencies/queries';
 import { currencySymbol } from '@shared/money';
 import {
   getEmojiMap,
@@ -60,7 +60,8 @@ export async function getKeypadAccounts(db: Db): Promise<KeypadAccount[]> {
 export async function getKeypadCurrencies(db: Db): Promise<KeypadCurrency[]> {
   const rank = new Map((await getCurrencyCounts(db)).map((c, i) => [c.currency, i]));
   const MAX = Number.MAX_SAFE_INTEGER;
-  const ordered = [...CURRENCIES].sort((a, b) => {
+  const codes = (await listCurrencies(db)).map((r) => r.code);
+  const ordered = codes.sort((a, b) => {
     if (a === b) return 0;
     if (a === 'THB') return -1;
     if (b === 'THB') return 1;

@@ -14,6 +14,7 @@ import {
   type KeypadLayout,
 } from '@features/settings/queries';
 import { getOffBudgetCategories } from '@features/categories/queries';
+import { getCurrencyCodes } from '@features/currencies/queries';
 import { withFee } from './fx';
 import { useDataVersion } from '@shared/data-version';
 
@@ -21,6 +22,7 @@ export type NewEntryData = {
   categories: KeypadCategory[];
   accounts: KeypadAccount[];
   currencies: KeypadCurrency[];
+  currencyCodes: Set<string>; // the catalog's valid codes, for isCurrency
   notes: string[]; // the note field's autocomplete pool
   rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
   ratesAsOf: Record<string, string>;
@@ -52,6 +54,7 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
         categories,
         accounts,
         currencies,
+        currencyCodes,
         notes,
         cardFeePct,
         fxRates,
@@ -63,6 +66,7 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
         getKeypadCategories(db),
         getKeypadAccounts(db),
         getKeypadCurrencies(db),
+        getCurrencyCodes(db),
         getDistinctNotes(db),
         getCardFeePct(db),
         getFxRates(db),
@@ -83,6 +87,7 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
         categories,
         accounts,
         currencies,
+        currencyCodes,
         notes,
         rates,
         ratesAsOf,

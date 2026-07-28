@@ -57,8 +57,18 @@ function EditRuleInner() {
     );
   }
 
-  const { rule, category, account, categories, accounts, currencies, rates, ratesAsOf, iconSet } =
-    data;
+  const {
+    rule,
+    category,
+    account,
+    categories,
+    accounts,
+    currencies,
+    currencyCodes,
+    rates,
+    ratesAsOf,
+    iconSet,
+  } = data;
 
   async function handleSubmit(formData: FormData): Promise<void> {
     await editRuleAction(formData);
@@ -76,6 +86,7 @@ function EditRuleInner() {
         categories={categories}
         accounts={accounts}
         currencies={currencies}
+        currencyCodes={currencyCodes}
         rates={rates}
         ratesAsOf={ratesAsOf}
         defaultAccount={account}

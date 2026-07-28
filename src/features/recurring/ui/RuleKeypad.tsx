@@ -74,6 +74,7 @@ export function RuleKeypad({
   categories,
   accounts,
   currencies,
+  currencyCodes,
   rates,
   ratesAsOf,
   defaultAccount,
@@ -87,6 +88,7 @@ export function RuleKeypad({
   categories: KeypadCategory[];
   accounts: KeypadAccount[];
   currencies: KeypadCurrency[];
+  currencyCodes: Set<string>; // the catalog's valid codes, for isCurrency
   rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
   ratesAsOf: Record<string, string>;
   defaultAccount: string;
@@ -98,7 +100,9 @@ export function RuleKeypad({
   ruleAccount?: string;
 }) {
   const initialCurrency: Currency =
-    rule && rule.currency !== null && isCurrency(rule.currency) ? rule.currency : 'THB';
+    rule && rule.currency !== null && isCurrency(rule.currency, currencyCodes)
+      ? rule.currency
+      : 'THB';
 
   const [expr, setExpr] = useState(rule ? String(rule.amount) : '');
   const [view, setView] = useState<'keypad' | 'schedule' | 'account' | 'currency' | 'category'>(

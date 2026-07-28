@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEntryForm, CURRENCIES } from './entry-form';
+import { parseEntryForm } from './entry-form';
 
 function formData(fields: Record<string, string>): FormData {
   const fd = new FormData();
@@ -21,16 +21,11 @@ const base = {
   note: '',
 };
 
-describe('CURRENCIES', () => {
-  it('includes THB and the trip currencies', () => {
-    expect(CURRENCIES).toContain('THB');
-    expect(CURRENCIES).toContain('JPY');
-  });
-});
+const CODES = new Set(['THB', 'JPY', 'MOP']);
 
 describe('parseEntryForm', () => {
   it('parses a THB expense — thb equals amount, blank time/note become null', () => {
-    const result = parseEntryForm(formData(base));
+    const result = parseEntryForm(formData(base), CODES);
     expect(result).toEqual({
       ok: true,
       entry: {
@@ -60,6 +55,7 @@ describe('parseEntryForm', () => {
         time: '19:45',
         note: 'dinner',
       }),
+      CODES,
     );
     expect(result).toEqual({
       ok: true,
@@ -78,15 +74,15 @@ describe('parseEntryForm', () => {
   });
 
   it('reads an explicit offBudget override (0/1); blank/absent stays null (inherit)', () => {
-    const checked = parseEntryForm(formData({ ...base, offBudget: '1' }));
+    const checked = parseEntryForm(formData({ ...base, offBudget: '1' }), CODES);
     expect(checked.ok).toBe(true);
     if (checked.ok) expect(checked.entry.offBudget).toBe(1);
 
-    const unchecked = parseEntryForm(formData({ ...base, offBudget: '0' }));
+    const unchecked = parseEntryForm(formData({ ...base, offBudget: '0' }), CODES);
     expect(unchecked.ok).toBe(true);
     if (unchecked.ok) expect(unchecked.entry.offBudget).toBe(0);
 
-    const untouched = parseEntryForm(formData(base)); // no `offBudget` key in the form at all
+    const untouched = parseEntryForm(formData(base), CODES); // no `offBudget` key in the form at all
     expect(untouched.ok).toBe(true);
     if (untouched.ok) expect(untouched.entry.offBudget).toBeNull();
   });
@@ -94,6 +90,7 @@ describe('parseEntryForm', () => {
   it('flips the sign for income', () => {
     const result = parseEntryForm(
       formData({ ...base, direction: 'income', category: 'salary', amount: '50000', thb: '50000' }),
+      CODES,
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -103,39 +100,43 @@ describe('parseEntryForm', () => {
   });
 
   it('rejects an empty account', () => {
-    expect(parseEntryForm(formData({ ...base, account: '' }))).toEqual({
+    expect(parseEntryForm(formData({ ...base, account: '' }), CODES)).toEqual({
       ok: false,
       error: 'Account is required.',
     });
   });
 
   it('rejects an empty category', () => {
-    expect(parseEntryForm(formData({ ...base, category: '' }))).toEqual({
+    expect(parseEntryForm(formData({ ...base, category: '' }), CODES)).toEqual({
       ok: false,
       error: 'Category is required.',
     });
   });
 
   it('rejects an empty date', () => {
-    expect(parseEntryForm(formData({ ...base, date: '' }))).toEqual({
+    expect(parseEntryForm(formData({ ...base, date: '' }), CODES)).toEqual({
       ok: false,
       error: 'Date is required.',
     });
   });
 
-  it('rejects a currency outside the allowed set', () => {
-    expect(parseEntryForm(formData({ ...base, currency: 'BTC' }))).toEqual({
-      ok: false,
-      error: 'Choose a valid currency.',
-    });
+  it('rejects a code that is not in the catalog', () => {
+    const fd = formData({ ...base, currency: 'XYZ' });
+    expect(parseEntryForm(fd, CODES)).toEqual({ ok: false, error: 'Choose a valid currency.' });
+  });
+
+  it('accepts a code that only exists in the catalog, not in any const', () => {
+    const fd = formData({ ...base, currency: 'MOP', amount: '114', thb: '515.19' });
+    const result = parseEntryForm(fd, CODES);
+    expect(result.ok).toBe(true);
   });
 
   it('rejects a non-positive or non-numeric amount', () => {
-    expect(parseEntryForm(formData({ ...base, amount: '0' }))).toEqual({
+    expect(parseEntryForm(formData({ ...base, amount: '0' }), CODES)).toEqual({
       ok: false,
       error: 'Amount must be a positive number.',
     });
-    expect(parseEntryForm(formData({ ...base, amount: 'abc' }))).toEqual({
+    expect(parseEntryForm(formData({ ...base, amount: 'abc' }), CODES)).toEqual({
       ok: false,
       error: 'Amount must be a positive number.',
     });
@@ -143,7 +144,7 @@ describe('parseEntryForm', () => {
 
   it('rejects a non-positive THB amount when the currency is not THB', () => {
     expect(
-      parseEntryForm(formData({ ...base, currency: 'JPY', amount: '1000', thb: '0' })),
+      parseEntryForm(formData({ ...base, currency: 'JPY', amount: '1000', thb: '0' }), CODES),
     ).toEqual({ ok: false, error: 'THB amount must be a positive number.' });
   });
 });

@@ -69,6 +69,7 @@ function resolveStartDate(
 export function parseRuleForm(
   formData: FormData,
   todayIso: string,
+  validCodes: Set<string>,
   current?: CurrentRule,
 ): ParseResult {
   const name = str(formData, 'name');
@@ -105,7 +106,7 @@ export function parseRuleForm(
   }
 
   const currency = str(formData, 'currency');
-  if (!isCurrency(currency)) return { ok: false, error: 'Choose a valid currency.' };
+  if (!isCurrency(currency, validCodes)) return { ok: false, error: 'Choose a valid currency.' };
 
   const rate = optionalNumber(formData, 'rate');
   if (rate !== null && (!Number.isFinite(rate) || rate <= 0)) {

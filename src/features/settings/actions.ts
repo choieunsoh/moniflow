@@ -11,7 +11,7 @@ import {
 } from './queries';
 import { setCardFeePct, isValidCardFeePct, getFxRates, setFxRates } from './queries';
 import type { FxRates } from './queries';
-import { CURRENCIES } from '@features/entries/entry-form';
+import { listCurrencies } from '@features/currencies/queries';
 import { frankfurterUrl, parseEcbResponse } from '@features/entries/fx';
 import { wipeAllData } from './data';
 import { bumpDataVersion } from '@shared/data-version';
@@ -92,7 +92,8 @@ export async function refreshFxRatesAction(): Promise<void> {
   const db = await getBrowserDb();
   const next: FxRates = { ...(await getFxRates(db)) };
   try {
-    const res = await fetch(frankfurterUrl(CURRENCIES), { signal: AbortSignal.timeout(8000) });
+    const codes = (await listCurrencies(db)).map((r) => r.code);
+    const res = await fetch(frankfurterUrl(codes), { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const json: unknown = await res.json();
       const { date, thbPerUnit } = parseEcbResponse(json);
