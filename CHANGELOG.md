@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-07-28
+
+### Added
+
+- move the currency list into a database table
+- add the currency page
+- carry the currency catalog through backup v4
+- validate currencies against the catalog, not a const
+- treat travel-currency spend as off-budget
+- seed and query the currency catalog
+- add the currencies table
+
+### Fixed
+
+- stop /currency blanking the whole list on every write
+- reflect the travel-currency tier in the off-budget checkbox
+- close the remaining archived-currency data-loss gaps
+- stop THB being hideable or off-budgetable on /currency
+- test the currency-restore wiring and stop backups mutating the DB
+- stop archived currencies from corrupting existing entries
+
+### Other
+
+- stop the app-routes list from going stale again
+- strengthen the rate-plumbing assertion and mirror the negative case
+- document the currencies feature
+- pin the trips list to explicit currencyDisplay 'symbol'
+- plan the currency catalog feature
+
 ## [1.8.1] - 2026-07-27
 
 ### Fixed
