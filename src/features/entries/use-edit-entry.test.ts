@@ -3,8 +3,10 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addEntries, getEntries } from './queries';
 import { setCategoryOffBudget } from '@features/categories/queries';
+import { setCurrencyArchived } from '@features/currencies/queries';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 
@@ -16,6 +18,7 @@ describe('useEditEntry', () => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     await ensureSettingsTable(db);
+    await ensureCurrenciesTable(db);
     await addEntries(db, [
       { date: '2026-07-01', account: 'Cash', category: 'Food', amount: -100 },
       { date: '2026-07-02', account: 'Cash', category: 'Salary', amount: 5000 },
@@ -72,6 +75,37 @@ describe('useEditEntry', () => {
     const { data } = result.current;
     if (data === null || data.keypadEditable) throw new Error('unreachable — checked above');
     expect(data.offBudgetCategories).toEqual(new Set(['Salary']));
+  });
+
+  // Archiving a currency hides it from the picker (getKeypadCurrencies/listCurrencies), but a
+  // historical entry already in that currency must still be recognised as such when opened for
+  // editing — recognition (Keypad's isCurrency fallback) needs every known code, archived included,
+  // not just the ones still on offer. Getting this wrong is a real data-loss path: the Keypad falls
+  // back to 'THB' for an unrecognised currency, and initialForeign then reads entry.amount (the
+  // THB-converted figure) instead of entry.originalAmount — saving rewrites the row's currency and
+  // drops its original foreign amount.
+  it('recognises an existing entry as being in an archived currency, not silently THB', async () => {
+    const db = await getBrowserDb();
+    await setCurrencyArchived(db, 'JPY', true);
+    await addEntries(db, [
+      {
+        date: '2026-07-03',
+        account: 'Cash',
+        category: 'Trip',
+        amount: -1000,
+        currency: 'JPY',
+        originalAmount: -10000,
+      },
+    ]);
+    const entry = (await getEntries(db)).find((e) => e.currency === 'JPY');
+    if (entry === undefined) throw new Error('seed missing the JPY entry');
+
+    const { result } = renderHook(() => useEditEntry(entry.id));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const { data } = result.current;
+    if (data === null || !data.keypadEditable) throw new Error('unreachable — checked above');
+
+    expect(data.currencyCodes.has('JPY')).toBe(true);
   });
 
   it('resolves ready with data null for an id that does not exist', async () => {

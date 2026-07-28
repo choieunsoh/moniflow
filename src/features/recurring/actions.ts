@@ -7,6 +7,7 @@ import { todayIso } from '@shared/date';
 import { parseRuleForm, type RuleInput } from './rule-form';
 import { addRule, updateRule, archiveRule, getRule } from './queries';
 import type { NewRecurrence } from './schema';
+import { getCurrencyCodes } from '@features/currencies/queries';
 
 // The feature's client-side write layer against the browser OPFS db — plain async functions, not
 // Server Actions (there is no server). A failed parse throws; the caller's boundary surfaces it.
@@ -23,9 +24,10 @@ async function toRow(db: Db, input: RuleInput): Promise<NewRecurrence> {
 }
 
 export async function addRuleAction(formData: FormData): Promise<void> {
-  const result = parseRuleForm(formData, todayIso());
-  if (!result.ok) throw new Error(result.error);
   const db = await getBrowserDb();
+  const validCodes = await getCurrencyCodes(db);
+  const result = parseRuleForm(formData, todayIso(), validCodes);
+  if (!result.ok) throw new Error(result.error);
   await addRule(db, await toRow(db, result.rule));
   bumpDataVersion();
 }
@@ -41,9 +43,17 @@ export async function editRuleAction(formData: FormData): Promise<void> {
   const id = Number(formData.get('id'));
   const db = await getBrowserDb();
   const existing = await getRule(db, id);
+  const validCodes = await getCurrencyCodes(db);
+  // Same reasoning as editEntryAction: an archived currency stops NEW rules, but must not lock an
+  // already-existing rule out of being saved at all once it correctly keeps reading as its own
+  // currency (use-edit-rule's recognition fix).
+  if (existing?.currency !== null && existing?.currency !== undefined) {
+    validCodes.add(existing.currency);
+  }
   const result = parseRuleForm(
     formData,
     todayIso(),
+    validCodes,
     existing && { startDate: existing.startDate, intervalMonths: existing.intervalMonths },
   );
   if (!result.ok) throw new Error(result.error);

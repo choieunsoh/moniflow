@@ -8,6 +8,7 @@ import { rewindRecurrences, restoreRecurrencesFromCatalog } from '@features/recu
 import { restoreCategoryCatalog } from '@features/categories/queries';
 import { restoreAccountCatalog } from '@features/accounts/queries';
 import { restoreBudgetCatalog } from '@features/budgets/queries';
+import { restoreCurrencyCatalog } from '@features/currencies/queries';
 import { restoreSettings } from './queries';
 import { bumpDataVersion } from '@shared/data-version';
 import { todayIso } from '@shared/date';
@@ -22,11 +23,12 @@ export type RestoreSummary = {
   budgets: number;
 };
 
-// Apply a combined (v3) or catalog-only (v1/v2) backup in one shot. Two different semantics on purpose:
-// standing config — categories, accounts, rules, budgets, settings — all MERGE (upsert-by-name/key,
-// never deletes); entries — present only in v3 — REPLACE the whole ledger. Category/account metadata
-// goes first so an entry's or budget's category already carries its emoji/hue and resolves to the right
-// id before it loads. One bumpDataVersion at the end.
+// Apply a combined (v4/v3) or catalog-only (v1/v2) backup in one shot. Two different semantics on
+// purpose: standing config — categories, accounts, currencies, rules, budgets, settings — all MERGE
+// (upsert-by-name/key/code, never deletes); entries — present only in v3+ — REPLACE the whole ledger.
+// Category/account/currency metadata goes first so an entry's or budget's category already carries
+// its emoji/hue, and an entry's currency already exists in the catalog, before it loads. One
+// bumpDataVersion at the end.
 //
 // The ledger replace reuses the CSV path's rewind (rewindRecurrences to the newest entry date) so the
 // recurring rules and the freshly-loaded ledger don't drift — same reasoning as importBackupAction.
@@ -34,6 +36,7 @@ export async function restoreBackupAction(data: CatalogData): Promise<RestoreSum
   const db = await getBrowserDb();
   await restoreCategoryCatalog(db, data.categories);
   await restoreAccountCatalog(db, data.accounts);
+  if (data.currencies !== undefined) await restoreCurrencyCatalog(db, data.currencies);
   await restoreRecurrencesFromCatalog(db, data.recurrences, todayIso());
 
   const budgets = data.budgets ?? [];

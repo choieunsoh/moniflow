@@ -5,9 +5,11 @@ import { ensureCategoriesTable } from '@features/categories/schema';
 import { ensureAccountsTable } from '@features/accounts/schema';
 import { ensureRecurrencesTable } from '@features/recurring/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { ensureSettingsTable } from './schema';
 import { getEntries, restoreEntries } from '@features/entries/queries';
 import { getBudgets, setBudget } from '@features/budgets/queries';
+import { getTravelCurrencies } from '@features/currencies/queries';
 import { recurrences } from '@features/recurring/schema';
 import { getCutoff, getFontScale } from './queries';
 import type { CatalogData } from './catalog';
@@ -45,6 +47,7 @@ describe('restoreBackupAction', () => {
     await ensureAccountsTable(db);
     await ensureRecurrencesTable(db);
     await ensureBudgetsTable(db);
+    await ensureCurrenciesTable(db);
     await ensureSettingsTable(db);
     vi.mocked(getBrowserDb).mockResolvedValue(db);
   });
@@ -116,6 +119,19 @@ describe('restoreBackupAction', () => {
     expect(await getEntries(db)).toHaveLength(0); // ledger cleared to match the backup
     const rules = await db.select().from(recurrences).all();
     expect(rules[0].lastPosted).toBeNull(); // rewound, so the next sweep refills from startDate
+  });
+
+  // USD is not off-budget in the seed defaults (see SEED_CURRENCIES), so this only passes if the
+  // restore actually applied the flag from the file — a currency the seed already marks off-budget
+  // (JPY) would pass even if restoreCurrencyCatalog were never called.
+  it('restores the currency catalog so off-budget currencies are recognised', async () => {
+    const db = await getBrowserDb();
+
+    await restoreBackupAction(
+      combined({ currencies: [{ code: 'USD', offBudget: true, sortOrder: 5, archived: false }] }),
+    );
+
+    expect(await getTravelCurrencies(db)).toContain('USD');
   });
 
   it('a catalog-only file (no entriesCsv/budgets/settings) leaves the ledger untouched', async () => {

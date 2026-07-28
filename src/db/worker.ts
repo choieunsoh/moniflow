@@ -18,7 +18,7 @@ const DB_FILE = '/moniflow.sqlite';
 let api: Sqlite3Static | null = null;
 let db: Database | null = null;
 
-// ponytail: the seven-table DDL is duplicated here (not imported from feature schema.ts) so db/ stays
+// ponytail: the eight-table DDL is duplicated here (not imported from feature schema.ts) so db/ stays
 // feature-free per the dependency rule — the same trade the retired migrate.ts made. Kept in lockstep
 // with the ensure*Table CREATEs by the OPFS smoke check (Task 12) + the query tests (Node shim).
 const BOOTSTRAP_SQL = [
@@ -38,6 +38,8 @@ const BOOTSTRAP_SQL = [
      category_id INTEGER, amount REAL NOT NULL, currency TEXT, rate REAL, total_count INTEGER,
      start_seq INTEGER NOT NULL DEFAULT 1, start_date TEXT NOT NULL, last_posted TEXT,
      archived INTEGER NOT NULL DEFAULT 0)`,
+  `CREATE TABLE IF NOT EXISTS currencies (code TEXT PRIMARY KEY,
+     off_budget INTEGER NOT NULL DEFAULT 0, sort_order INTEGER, archived INTEGER NOT NULL DEFAULT 0)`,
 ];
 
 // Statement with no result set (DDL, INSERT/UPDATE/DELETE, BEGIN/COMMIT/ROLLBACK).

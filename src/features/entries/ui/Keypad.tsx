@@ -91,6 +91,7 @@ export function Keypad({
   categories,
   accounts,
   currencies,
+  currencyCodes,
   notes,
   rates,
   ratesAsOf,
@@ -101,10 +102,12 @@ export function Keypad({
   action = addEntryAction,
   entry,
   offBudgetCategories,
+  travelCurrencies,
 }: {
   categories: KeypadCategory[];
   accounts: KeypadAccount[];
   currencies: KeypadCurrency[];
+  currencyCodes: Set<string>; // the catalog's valid codes, for isCurrency
   notes: string[];
   rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
   ratesAsOf: Record<string, string>;
@@ -115,10 +118,13 @@ export function Keypad({
   action?: (formData: FormData) => Promise<void>;
   entry?: EntryRow;
   offBudgetCategories: Set<string>;
+  travelCurrencies: Set<string>; // off-budget toggle's travel-currency tier — mirrors isOffBudget
 }) {
   const noteListId = useId();
   const initialCurrency: Currency =
-    entry && entry.currency !== null && isCurrency(entry.currency) ? entry.currency : 'THB';
+    entry && entry.currency !== null && isCurrency(entry.currency, currencyCodes)
+      ? entry.currency
+      : 'THB';
   const initialForeign = entry
     ? String(
         Math.abs(
@@ -170,7 +176,14 @@ export function Keypad({
     entry !== undefined && entry.offBudget !== null,
   );
   const [offBudgetOverride, setOffBudgetOverride] = useState(entry?.offBudget === 1);
-  const offBudgetChecked = offBudgetTouched ? offBudgetOverride : offBudgetCategories.has(category);
+  // Mirrors isOffBudget's tiers: an explicit per-entry value always wins; untouched, a travel
+  // currency (checked against the CURRENTLY selected currency, so switching to JPY mid-entry updates
+  // the checkbox live) ORs in on top of the category default. Without this, opening an existing JPY
+  // entry showed the box unchecked while isOffBudget already returned true for it — and toggling it
+  // on-then-off wrote an explicit 0, forcing that trip spend back into the budget.
+  const offBudgetChecked = offBudgetTouched
+    ? offBudgetOverride
+    : offBudgetCategories.has(category) || travelCurrencies.has(currency);
 
   const isCustomDate = date !== today;
   const amount = evaluate(expr); // the FOREIGN figure keyed in

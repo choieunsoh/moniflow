@@ -29,7 +29,16 @@ export default function NewRulePage() {
     );
   }
 
-  const { categories, accounts, currencies, rates, ratesAsOf, defaultAccount, iconSet } = data;
+  const {
+    categories,
+    accounts,
+    currencies,
+    currencyCodes,
+    rates,
+    ratesAsOf,
+    defaultAccount,
+    iconSet,
+  } = data;
 
   async function handleSubmit(formData: FormData): Promise<void> {
     await addRuleAction(formData);
@@ -48,6 +57,7 @@ export default function NewRulePage() {
         categories={categories}
         accounts={accounts}
         currencies={currencies}
+        currencyCodes={currencyCodes}
         rates={rates}
         ratesAsOf={ratesAsOf}
         defaultAccount={defaultAccount}

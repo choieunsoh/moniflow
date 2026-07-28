@@ -1,14 +1,13 @@
 import type { EntryInput } from './schema';
 
-// Every currency the ledger's data has seen (Monefy export + manual entries). THB is home
-// currency; the rest need a manual THB conversion since there's no live FX lookup (deferred).
-export const CURRENCIES = ['THB', 'JPY', 'KRW', 'USD', 'EUR', 'HKD', 'GBP', 'SGD'] as const;
-export type Currency = (typeof CURRENCIES)[number];
+// A currency is an ISO 4217 code held in the `currencies` table, not a compile-time union: the list
+// has to be editable from the phone, because the moment a new currency is needed is the moment you
+// are standing in a country you did not plan to visit. Validation is therefore runtime, against the
+// caller-supplied set of catalog codes — parseEntryForm stays pure and DB-free.
+export type Currency = string;
 
-const currencySet = new Set<string>(CURRENCIES);
-
-export function isCurrency(value: string): value is Currency {
-  return currencySet.has(value);
+export function isCurrency(value: string, validCodes: Set<string>): boolean {
+  return validCodes.has(value);
 }
 
 export type ParseResult = { ok: true; entry: EntryInput } | { ok: false; error: string };
@@ -24,7 +23,7 @@ function readString(fd: FormData, key: string): string {
 // two are equal by construction (the form never shows a second field for them), so `thb` is
 // derived from `amount` in that branch rather than trusted from the form; only non-THB rows
 // validate `thb` independently.
-export function parseEntryForm(fd: FormData): ParseResult {
+export function parseEntryForm(fd: FormData, validCodes: Set<string>): ParseResult {
   const account = readString(fd, 'account');
   const category = readString(fd, 'category');
   const date = readString(fd, 'date');
@@ -36,7 +35,7 @@ export function parseEntryForm(fd: FormData): ParseResult {
   if (account === '') return { ok: false, error: 'Account is required.' };
   if (category === '') return { ok: false, error: 'Category is required.' };
   if (date === '') return { ok: false, error: 'Date is required.' };
-  if (!isCurrency(currency)) return { ok: false, error: 'Choose a valid currency.' };
+  if (!isCurrency(currency, validCodes)) return { ok: false, error: 'Choose a valid currency.' };
 
   const amount = Number(readString(fd, 'amount'));
   if (!Number.isFinite(amount) || amount <= 0) {

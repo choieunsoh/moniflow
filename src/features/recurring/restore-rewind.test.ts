@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { ensureRecurrencesTable } from './schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addRule, listRules, rewindRecurrences } from './queries';
 import { runSweep } from './sweep';
 
@@ -9,6 +10,7 @@ async function db() {
   const d = makeNodeProxyDb();
   await ensureEntriesTable(d);
   await ensureRecurrencesTable(d);
+  await ensureCurrenciesTable(d);
   return d;
 }
 

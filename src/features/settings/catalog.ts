@@ -39,9 +39,18 @@ export type BudgetCatalogRow = { category: string | null; amount: number };
 // One row of the generic settings KV table (cutoff, icon set, font scale, card fee, keypad layout,
 // and the fx-rate cache). Dumped whole rather than key-by-key so a future setting rides along for free.
 export type SettingRow = { key: string; value: string };
+// One currency for backup. `offBudget` marks "spending in this currency means I am abroad", which is
+// configuration the user set by hand — losing it on a fresh-device restore would silently put every
+// past and future trip back inside the monthly budget.
+export type CurrencyCatalogRow = {
+  code: string;
+  offBudget: boolean;
+  sortOrder: number | null;
+  archived: boolean;
+};
 
 export type CatalogData = {
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
   categories: CategoryCatalogRow[];
   accounts: AccountCatalogRow[];
   recurrences: RuleCatalogRow[];
@@ -52,6 +61,8 @@ export type CatalogData = {
   entriesCsv?: string;
   budgets?: BudgetCatalogRow[];
   settings?: SettingRow[];
+  // v4 only: the currency catalog. Optional so every older file still parses.
+  currencies?: CurrencyCatalogRow[];
 };
 
 export function serializeCatalogJson(data: CatalogData): string {
@@ -133,6 +144,20 @@ function isBudgetRow(v: unknown): v is BudgetCatalogRow {
     typeof v.amount === 'number'
   );
 }
+function isCurrencyRow(v: unknown): v is CurrencyCatalogRow {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    'code' in v &&
+    typeof v.code === 'string' &&
+    'offBudget' in v &&
+    typeof v.offBudget === 'boolean' &&
+    'sortOrder' in v &&
+    isNumOrNull(v.sortOrder) &&
+    'archived' in v &&
+    typeof v.archived === 'boolean'
+  );
+}
 function isSettingRow(v: unknown): v is SettingRow {
   return (
     typeof v === 'object' &&
@@ -154,7 +179,7 @@ export function parseCatalogJson(text: string): CatalogData | null {
   if (typeof parsed !== 'object' || parsed === null) return null;
   if (
     !('version' in parsed) ||
-    (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3)
+    (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== 4)
   )
     return null;
   if (!('categories' in parsed) || !Array.isArray(parsed.categories)) return null;
@@ -182,8 +207,15 @@ export function parseCatalogJson(text: string): CatalogData | null {
     if (!Array.isArray(parsed.settings) || !parsed.settings.every(isSettingRow)) return null;
     settingsRows = parsed.settings;
   }
-  // A clean 1 | 2 | 3 literal without a cast (the guard above proved it is one of them).
-  const version = parsed.version === 1 ? 1 : parsed.version === 2 ? 2 : 3;
+  // currencies is a v4-only extra; when present each row must validate (all-or-nothing).
+  let currencyRows: CurrencyCatalogRow[] | undefined;
+  if ('currencies' in parsed) {
+    if (!Array.isArray(parsed.currencies) || !parsed.currencies.every(isCurrencyRow)) return null;
+    currencyRows = parsed.currencies;
+  }
+  // A clean 1 | 2 | 3 | 4 literal without a cast (the guard above proved it is one of them).
+  const version =
+    parsed.version === 1 ? 1 : parsed.version === 2 ? 2 : parsed.version === 3 ? 3 : 4;
   return {
     version,
     categories: parsed.categories,
@@ -193,6 +225,7 @@ export function parseCatalogJson(text: string): CatalogData | null {
     ...(entriesCsv === undefined ? {} : { entriesCsv }),
     ...(budgets === undefined ? {} : { budgets }),
     ...(settingsRows === undefined ? {} : { settings: settingsRows }),
+    ...(currencyRows === undefined ? {} : { currencies: currencyRows }),
   };
 }
 
@@ -202,7 +235,7 @@ export type BackupKind =
   | { kind: 'invalid' }
   | { kind: 'monefy-csv' } // raw Monefy CSV → replaces the ledger (destructive)
   | { kind: 'catalog'; data: CatalogData } // v1/v2 JSON → merges metadata only (non-destructive)
-  | { kind: 'combined'; data: CatalogData }; // v3 JSON → replaces the ledger AND merges metadata
+  | { kind: 'combined'; data: CatalogData }; // versioned JSON → replaces the ledger AND merges metadata
 
 // A Monefy CSV's header line names these three columns (in any order). Cheap sniff; the real parse
 // runs on apply, so a false positive just yields a "couldn't read that backup" toast, not corruption.

@@ -5,6 +5,7 @@ import { ensureCategoriesTable } from '@features/categories/schema';
 import { ensureAccountsTable } from '@features/accounts/schema';
 import { ensureRecurrencesTable } from '@features/recurring/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { restoreEntries, getEntries } from '@features/entries/queries';
 import { readConnection, writeConnection } from './connection';
@@ -54,6 +55,7 @@ describe('backupNow', () => {
     await ensureAccountsTable(db);
     await ensureRecurrencesTable(db);
     await ensureBudgetsTable(db);
+    await ensureCurrenciesTable(db);
     await ensureSettingsTable(db);
     await restoreEntries(db, [ENTRY]);
     vi.mocked(getBrowserDb).mockResolvedValue(db);
@@ -90,6 +92,7 @@ describe('backupNow', () => {
     await ensureAccountsTable(empty);
     await ensureRecurrencesTable(empty);
     await ensureBudgetsTable(empty);
+    await ensureCurrenciesTable(empty);
     await ensureSettingsTable(empty);
     vi.mocked(getBrowserDb).mockResolvedValue(empty);
     expect(await backupNow({ interactive: false })).toBe(false); // empty ledger → no-op, returns false
@@ -108,6 +111,7 @@ describe('restoreFromDrive', () => {
     await ensureAccountsTable(db);
     await ensureRecurrencesTable(db);
     await ensureBudgetsTable(db);
+    await ensureCurrenciesTable(db);
     await ensureSettingsTable(db);
     await restoreEntries(db, [ENTRY]);
     vi.mocked(getBrowserDb).mockResolvedValue(db);
@@ -123,13 +127,14 @@ describe('restoreFromDrive', () => {
     expect(rows[0]?.category).toBe('Coffee');
   });
 
-  it('restores a real v3 combined backup', async () => {
+  it('restores a real combined backup', async () => {
     const sourceDb = makeNodeProxyDb();
     await ensureEntriesTable(sourceDb);
     await ensureCategoriesTable(sourceDb);
     await ensureAccountsTable(sourceDb);
     await ensureRecurrencesTable(sourceDb);
     await ensureBudgetsTable(sourceDb);
+    await ensureCurrenciesTable(sourceDb);
     await ensureSettingsTable(sourceDb);
     await restoreEntries(sourceDb, [{ ...ENTRY, category: 'Rent', amount: -50000 }]);
     const { text } = await buildBackupText(sourceDb);

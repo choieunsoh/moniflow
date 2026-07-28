@@ -5,6 +5,7 @@ import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
 import { ensureRecurrencesTable } from '@features/recurring/schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addEntries } from './queries';
 import { bumpDataVersion } from '@shared/data-version';
 import { setBudget } from '@features/budgets/queries';
@@ -28,6 +29,7 @@ describe('useHome', () => {
     await ensureSettingsTable(db);
     await ensureBudgetsTable(db);
     await ensureRecurrencesTable(db);
+    await ensureCurrenciesTable(db);
     // Cutoff defaults to 18, so 2026-07-01 falls in the cycle keyed '2026-06'.
     await addEntries(db, [
       { date: '2026-07-01', account: 'Cash', category: 'Food', amount: -100 },
@@ -84,6 +86,7 @@ describe('useHome', () => {
       await ensureSettingsTable(db);
       await ensureBudgetsTable(db);
       await ensureRecurrencesTable(db);
+      await ensureCurrenciesTable(db);
       vi.mocked(getBrowserDb).mockResolvedValue(db);
 
       const { result } = renderHook(() => useHome('2026-06'));

@@ -20,6 +20,7 @@ import {
   type KeypadLayout,
 } from '@features/settings/queries';
 import { getOffBudgetCategories } from '@features/categories/queries';
+import { getAllCurrencyCodes, getTravelCurrencies } from '@features/currencies/queries';
 import { withFee } from './fx';
 import { useDataVersion } from '@shared/data-version';
 
@@ -32,20 +33,24 @@ export type EditEntryData =
       categories: KeypadCategory[];
       accounts: KeypadAccount[];
       currencies: KeypadCurrency[];
+      currencyCodes: Set<string>; // the catalog's valid codes, for isCurrency
       notes: string[]; // the note field's autocomplete pool
       rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
       ratesAsOf: Record<string, string>;
       iconSet: IconSet;
       keypadLayout: KeypadLayout;
       offBudgetCategories: Set<string>; // the Keypad's off-budget toggle default
+      travelCurrencies: Set<string>; // the Keypad's off-budget toggle default, travel-currency tier
     }
   | {
       keypadEditable: false;
       entry: EntryRow;
       accounts: string[];
       categories: string[];
+      currencies: string[]; // catalog codes for the plain EntryForm's currency <select>
       notes: string[];
       offBudgetCategories: Set<string>; // the plain EntryForm's off-budget toggle default
+      travelCurrencies: Set<string>; // the plain EntryForm's off-budget toggle default, travel tier
     };
 
 // Edit-entry page's data, read once via the browser OPFS db after mount — mirrors the server
@@ -75,21 +80,37 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           categories,
           accounts,
           currencies,
+          allCurrencyCodes,
           notes,
           cardFeePct,
           fxRates,
           offBudgetCategories,
+          travelCurrencies,
         ] = await Promise.all([
           getIconSet(db),
           getKeypadLayout(db),
           getKeypadCategories(db),
           getKeypadAccounts(db),
           getKeypadCurrencies(db),
+          // All codes, archived included — this feeds the keypad's isCurrency recognition of the
+          // entry it's editing, not what a new save may pick. getCurrencyCodes (non-archived) would
+          // make an archived-currency row unrecognisable and fall back to THB (see use-new-entry.ts,
+          // which correctly keeps getCurrencyCodes for its NEW-entry case).
+          getAllCurrencyCodes(db),
           getDistinctNotes(db),
           getCardFeePct(db),
           getFxRates(db),
           getOffBudgetCategories(db),
+          getTravelCurrencies(db),
         ]);
+        // getAllCurrencyCodes covers every catalog row, archived included, but not a code that was
+        // never a catalog row at all — reachable via importBackupAction with a raw Monefy CSV
+        // carrying a code the catalog has never seen (e.g. CNY). Without this, such a row falls back
+        // to THB in the Keypad (Keypad.tsx's initialCurrency) and a save rewrites its currency and
+        // drops originalAmount — mirrors editEntryAction's write-time guard, which already keeps an
+        // entry's own currency recognised regardless of catalog membership.
+        const currencyCodes = new Set(allCurrencyCodes);
+        if (entry.currency !== null) currencyCodes.add(entry.currency);
         const rates: Record<string, number> = {};
         const ratesAsOf: Record<string, string> = {};
         for (const [code, e] of Object.entries(fxRates)) {
@@ -102,21 +123,39 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           categories,
           accounts,
           currencies,
+          currencyCodes,
           notes,
           rates,
           ratesAsOf,
           iconSet,
           keypadLayout,
           offBudgetCategories,
+          travelCurrencies,
         });
       } else {
-        const [accounts, categories, notes, offBudgetCategories] = await Promise.all([
-          getDistinctAccounts(db),
-          getDistinctCategories(db),
-          getDistinctNotes(db),
-          getOffBudgetCategories(db),
-        ]);
-        setData({ keypadEditable: false, entry, accounts, categories, notes, offBudgetCategories });
+        const [accounts, categories, currencyCodes, notes, offBudgetCategories, travelCurrencies] =
+          await Promise.all([
+            getDistinctAccounts(db),
+            getDistinctCategories(db),
+            // Archived included, same reasoning as the keypad-editable branch above: listCurrencies
+            // (non-archived) leaves the controlled <select> with no matching <option> for an archived
+            // currency, rendering blank and silently submitting a different code on save.
+            getAllCurrencyCodes(db),
+            getDistinctNotes(db),
+            getOffBudgetCategories(db),
+            getTravelCurrencies(db),
+          ]);
+        const currencies = [...currencyCodes];
+        setData({
+          keypadEditable: false,
+          entry,
+          accounts,
+          categories,
+          currencies,
+          notes,
+          offBudgetCategories,
+          travelCurrencies,
+        });
       }
       setReady(true);
     });

@@ -6,6 +6,7 @@ import { ensureCategoriesTable } from '@features/categories/schema';
 import { ensureAccountsTable } from '@features/accounts/schema';
 import { ensureRecurrencesTable } from '@features/recurring/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { ensureSettingsTable } from './schema';
 import { restoreEntries } from '@features/entries/queries';
 import { setBudget } from '@features/budgets/queries';
@@ -35,13 +36,14 @@ describe('useBackupData', () => {
     await ensureAccountsTable(db);
     await ensureRecurrencesTable(db);
     await ensureBudgetsTable(db);
+    await ensureCurrenciesTable(db);
     await ensureSettingsTable(db);
     vi.mocked(getBrowserDb).mockResolvedValue(db);
   });
 
   // The whole point of the hook: the file exists before any tap, so the click handler can reach
   // navigator.share() synchronously and keep the gesture's transient activation.
-  it('serializes one combined v3 file up front so no read is needed on the tap', async () => {
+  it('serializes one combined v4 file up front so no read is needed on the tap', async () => {
     const db = await getBrowserDb();
     await restoreEntries(db, [ENTRY]);
     await setBudget(db, 'Coffee', 5000); // a per-category budget rides along
@@ -57,8 +59,8 @@ describe('useBackupData', () => {
     expect(data.entryCount).toBe(1);
     expect(data.budgetCount).toBe(1);
     const parsed = parseCatalogJson(data.file.text);
-    if (parsed === null) throw new Error('expected a valid v3 backup');
-    expect(parsed.version).toBe(3);
+    if (parsed === null) throw new Error('expected a valid v4 backup');
+    expect(parsed.version).toBe(4);
     // The whole ledger rides along as an embedded Monefy CSV (header + the one entry).
     expect(parsed.entriesCsv).toContain('Coffee');
     expect(parsed.entriesCsv?.split('\n')[0]).toContain('date'); // the Monefy header row

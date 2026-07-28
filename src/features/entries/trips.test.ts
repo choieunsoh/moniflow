@@ -154,6 +154,20 @@ describe('formatForeign', () => {
   it('works for a different currency (HKD)', () => {
     expect(formatForeign(500, 'HKD')).toBe('HK$500');
   });
+
+  it('keeps the yen and won glyphs', () => {
+    expect(formatForeign(1234, 'JPY')).toContain('¥');
+    expect(formatForeign(1234, 'KRW')).toContain('₩');
+  });
+
+  it('distinguishes Hong Kong dollars from US dollars', () => {
+    expect(formatForeign(108, 'HKD')).not.toEqual(formatForeign(108, 'USD'));
+    expect(formatForeign(108, 'HKD')).toContain('HK$');
+  });
+
+  it('falls back to the code for a currency with no symbol', () => {
+    expect(formatForeign(108, 'MOP')).toContain('MOP');
+  });
 });
 
 describe('formatTripRange', () => {

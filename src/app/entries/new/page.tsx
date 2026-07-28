@@ -32,6 +32,7 @@ export default function NewEntryPage() {
     categories,
     accounts,
     currencies,
+    currencyCodes,
     notes,
     rates,
     ratesAsOf,
@@ -39,6 +40,7 @@ export default function NewEntryPage() {
     iconSet,
     keypadLayout,
     offBudgetCategories,
+    travelCurrencies,
   } = data;
 
   async function handleSubmit(formData: FormData): Promise<void> {
@@ -59,6 +61,7 @@ export default function NewEntryPage() {
         categories={categories}
         accounts={accounts}
         currencies={currencies}
+        currencyCodes={currencyCodes}
         notes={notes}
         rates={rates}
         ratesAsOf={ratesAsOf}
@@ -68,6 +71,7 @@ export default function NewEntryPage() {
         keypadLayout={keypadLayout}
         action={handleSubmit}
         offBudgetCategories={offBudgetCategories}
+        travelCurrencies={travelCurrencies}
       />
     </PageContainer>
   );

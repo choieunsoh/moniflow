@@ -9,6 +9,7 @@ import { getBudgets } from './queries';
 import { toBudgetRows, toBudgetTotal, type BudgetRow, type BudgetTotal } from './budget-status';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
 import { getEmojiMap, getHueMap, getOffBudgetCategories } from '@features/categories/queries';
+import { getTravelCurrencies } from '@features/currencies/queries';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 
@@ -41,11 +42,16 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
       // This cycle's discretionary spend per category (magnitudes, off-budget entries dropped) — the
       // ledger stores outflow as negative. Matches the Home total meter's discretionary basis (Task 4)
       // so the Budgets page's Total row and per-category rows stay in step with each other.
-      const [cycleEntries, offBudgetCategories] = await Promise.all([
+      const [cycleEntries, offBudgetCategories, travelCurrencies] = await Promise.all([
         getEntriesInRange(db, cycle.start, cycle.end),
         getOffBudgetCategories(db),
+        getTravelCurrencies(db),
       ]);
-      const spentByCategory = discretionaryByCategory(cycleEntries, offBudgetCategories);
+      const spentByCategory = discretionaryByCategory(
+        cycleEntries,
+        offBudgetCategories,
+        travelCurrencies,
+      );
       const totalSpent = [...spentByCategory.values()].reduce((sum, v) => sum + v, 0);
 
       const limits = new Map<string, number>();

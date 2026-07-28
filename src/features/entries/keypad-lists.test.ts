@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureCategoriesTable } from '@features/categories/schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addCategory, setCategoryOrder } from '@features/categories/queries';
 import { sortByManualOrder, getKeypadCategories, getKeypadCurrencies } from './keypad-lists';
 
@@ -39,6 +40,7 @@ describe('getKeypadCurrencies', () => {
   it('pins THB first, orders the rest by usage, and appends unused currencies', async () => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
+    await ensureCurrenciesTable(db);
     // 3 JPY rows, 1 USD row, no others.
     await db.run(sql`INSERT INTO entries (date, amount, currency, source) VALUES
       ('2026-07-01', -100, 'JPY', 'manual'),
@@ -57,6 +59,7 @@ describe('getKeypadCurrencies', () => {
   it('carries a symbol for each currency', async () => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
+    await ensureCurrenciesTable(db);
     const thb = (await getKeypadCurrencies(db)).find((c) => c.code === 'THB');
     expect(thb?.symbol).toBe('฿');
   });

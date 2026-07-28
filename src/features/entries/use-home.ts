@@ -17,6 +17,7 @@ import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries'
 import { getBudgets } from '@features/budgets/queries';
 import { toBudgetTotal, type BudgetTotal } from '@features/budgets/budget-status';
 import { getEmojiMap, getHueMap, getOffBudgetCategories } from '@features/categories/queries';
+import { getTravelCurrencies } from '@features/currencies/queries';
 import { toDonutSlices, type DonutSlice } from './donut';
 import { safeToSpendPerDay, averagePerDay, MIN_PROJECT_DAYS } from './dashboard';
 import { splitBudgetSpend } from './off-budget';
@@ -96,13 +97,15 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
 
   useEffect(() => {
     void withDb(async (db) => {
-      const [cutoff, emojiMap, hueMap, iconSet, offBudgetCategories] = await Promise.all([
-        getCutoff(db),
-        getEmojiMap(db),
-        getHueMap(db),
-        getIconSet(db),
-        getOffBudgetCategories(db),
-      ]);
+      const [cutoff, emojiMap, hueMap, iconSet, offBudgetCategories, travelCurrencies] =
+        await Promise.all([
+          getCutoff(db),
+          getEmojiMap(db),
+          getHueMap(db),
+          getIconSet(db),
+          getOffBudgetCategories(db),
+          getTravelCurrencies(db),
+        ]);
 
       const currentKey = currentCycleKey(todayIso(), cutoff);
       const activeKey = cycleKey ?? currentKey;
@@ -124,6 +127,7 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       const { discretionary, offBudget: offBudgetTotal } = splitBudgetSpend(
         cycleEntries,
         offBudgetCategories,
+        travelCurrencies,
       );
       // One colour per category, shared by the donut legend and the ranked list, so a category keeps
       // the same identity across the view toggle. Categories past the palette fold into Other and are
