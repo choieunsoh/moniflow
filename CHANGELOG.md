@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-07-28
+
+### Added
+
+- reach a category's whole history from /report
+- paginate the all-time category records at 100 a page
+- link a category report to all its records
+
 ## [1.9.1] - 2026-07-28
 
 ### Fixed
