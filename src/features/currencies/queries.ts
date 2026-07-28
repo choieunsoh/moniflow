@@ -74,6 +74,16 @@ export async function getCurrencyCodes(db: Db): Promise<Set<string>> {
   return new Set(rows.map((r) => r.code));
 }
 
+// Every known code, archived included — for recognising the currency an EXISTING entry is already
+// in, not for deciding whether a NEW entry (or a currency change) may be saved as one. Archiving a
+// currency must not make history unreadable: an old JPY row has to keep reading as JPY even once JPY
+// is hidden from the picker, or the edit keypad falls back to THB and a save then drops the row's
+// original foreign amount. Use getCurrencyCodes for anything write-facing.
+export async function getAllCurrencyCodes(db: Db): Promise<Set<string>> {
+  const rows = await listAllCurrencies(db);
+  return new Set(rows.map((r) => r.code));
+}
+
 export async function addCurrency(db: Db, code: string): Promise<void> {
   await seedIfEmpty(db);
   await db.insert(currencies).values({ code }).onConflictDoNothing().run();

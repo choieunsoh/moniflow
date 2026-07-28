@@ -13,7 +13,7 @@ import { getIconSet, getCardFeePct, getFxRates, type IconSet } from '@features/s
 import { useDataVersion } from '@shared/data-version';
 import { getRule, listRuleMeta } from './queries';
 import type { Recurrence } from './schema';
-import { getCurrencyCodes } from '@features/currencies/queries';
+import { getAllCurrencyCodes } from '@features/currencies/queries';
 
 export type EditRuleData = {
   rule: Recurrence;
@@ -57,7 +57,9 @@ export function useEditRule(id: number): { ready: boolean; data: EditRuleData | 
           getKeypadCategories(db),
           getKeypadAccounts(db),
           getKeypadCurrencies(db),
-          getCurrencyCodes(db),
+          // All codes, archived included — feeds RuleKeypad's isCurrency recognition of the rule
+          // being edited, not what a new save may pick (same reasoning as use-edit-entry.ts).
+          getAllCurrencyCodes(db),
           getCardFeePct(db),
           getFxRates(db),
           listRuleMeta(db),

@@ -44,6 +44,12 @@ export async function editRuleAction(formData: FormData): Promise<void> {
   const db = await getBrowserDb();
   const existing = await getRule(db, id);
   const validCodes = await getCurrencyCodes(db);
+  // Same reasoning as editEntryAction: an archived currency stops NEW rules, but must not lock an
+  // already-existing rule out of being saved at all once it correctly keeps reading as its own
+  // currency (use-edit-rule's recognition fix).
+  if (existing?.currency !== null && existing?.currency !== undefined) {
+    validCodes.add(existing.currency);
+  }
   const result = parseRuleForm(
     formData,
     todayIso(),

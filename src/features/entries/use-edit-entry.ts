@@ -20,7 +20,7 @@ import {
   type KeypadLayout,
 } from '@features/settings/queries';
 import { getOffBudgetCategories } from '@features/categories/queries';
-import { listCurrencies, getCurrencyCodes } from '@features/currencies/queries';
+import { listCurrencies, getAllCurrencyCodes } from '@features/currencies/queries';
 import { withFee } from './fx';
 import { useDataVersion } from '@shared/data-version';
 
@@ -89,7 +89,11 @@ export function useEditEntry(id: number): { ready: boolean; data: EditEntryData 
           getKeypadCategories(db),
           getKeypadAccounts(db),
           getKeypadCurrencies(db),
-          getCurrencyCodes(db),
+          // All codes, archived included — this feeds the keypad's isCurrency recognition of the
+          // entry it's editing, not what a new save may pick. getCurrencyCodes (non-archived) would
+          // make an archived-currency row unrecognisable and fall back to THB (see use-new-entry.ts,
+          // which correctly keeps getCurrencyCodes for its NEW-entry case).
+          getAllCurrencyCodes(db),
           getDistinctNotes(db),
           getCardFeePct(db),
           getFxRates(db),

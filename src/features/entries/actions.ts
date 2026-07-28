@@ -5,6 +5,7 @@ import {
   insertEntry,
   updateEntry,
   deleteEntry,
+  getEntryById,
   renameCategory,
   deleteCategory,
   setTripTitle,
@@ -37,12 +38,19 @@ export async function addEntryAction(formData: FormData): Promise<void> {
 
 export async function editEntryAction(formData: FormData): Promise<void> {
   const db = await getBrowserDb();
+  const id = Number(formData.get('id'));
+  const existing = await getEntryById(db, id);
   const validCodes = await getCurrencyCodes(db);
+  // An archived currency stops NEW entries, but must not lock an already-existing row out of being
+  // saved at all — the entry keeps reading as its own currency (use-edit-entry's recognition fix),
+  // so the hidden field resubmits it unchanged even when the picker no longer offers it.
+  if (existing?.currency !== null && existing?.currency !== undefined) {
+    validCodes.add(existing.currency);
+  }
   const result = parseEntryForm(formData, validCodes);
   if (!result.ok) {
     throw new Error(result.error);
   }
-  const id = Number(formData.get('id'));
   await updateEntry(db, id, result.entry);
   bumpDataVersion();
   // TODO(Plan 2b): navigate to '/records' from the caller.
