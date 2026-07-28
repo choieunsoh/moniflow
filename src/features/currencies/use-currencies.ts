@@ -20,16 +20,19 @@ export type CurrencyPageRow = {
 };
 export type CurrencyPageData = { rows: CurrencyPageRow[]; addable: string[] };
 
-// The /currency page's data. entryCount rides along so the page can warn before archiving a currency
-// that still has history — archiving is reversible, but doing it blind to 478 JPY rows is not obvious.
+// The /currency page's data. entryCount rides along so the page can surface how much history a
+// currency carries in its caption before the user hides it — not a confirm dialog, just visibility.
 export function useCurrencies(): { ready: boolean; data: CurrencyPageData | null } {
   const [data, setData] = useState<CurrencyPageData | null>(null);
   const [ready, setReady] = useState(false);
   const version = useDataVersion();
 
   useEffect(() => {
+    // NOT setReady(false) here — see use-home.ts's identical comment for the full reasoning. This
+    // page's every write (off-budget toggle, hide/restore, add) bumps the data version and refetches;
+    // dropping ready on that swaps the whole list for the "…" skeleton and bounces scroll on every
+    // tap. `ready` still starts false, so first mount shows the placeholder as before.
     void withDb(async (db) => {
-      setReady(false);
       const [catalog, rates, counts] = await Promise.all([
         listAllCurrencies(db),
         getFxRates(db),
