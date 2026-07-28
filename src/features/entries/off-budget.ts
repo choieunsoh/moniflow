@@ -1,10 +1,20 @@
 import type { EntryRow } from './schema';
 
-// The single source of truth for "does this entry count against the budget?" Per-entry off_budget wins
-// (null = inherit the category default). See the off-budget spend spec.
-export function isOffBudget(entry: EntryRow, offBudgetCategories: Set<string>): boolean {
-  const effective = entry.offBudget ?? (offBudgetCategories.has(entry.category) ? 1 : 0);
-  return effective === 1;
+// The single source of truth for "does this entry count against the budget?", in three tiers:
+//   1. An explicit per-entry off_budget (0 or 1) always wins — that is the tri-state's whole job.
+//   2. A travel currency means the entry was made abroad, and a trip is not this month's
+//      discretionary spending. Derived, never stored: the currency column already says it, so a
+//      second "is this a trip" flag would be the same duplication the category names used to carry.
+//      Only currencies flagged off_budget count — USD/EUR/GBP here are online purchases.
+//   3. Otherwise inherit the category default.
+export function isOffBudget(
+  entry: EntryRow,
+  offBudgetCategories: Set<string>,
+  travelCurrencies: Set<string>,
+): boolean {
+  if (entry.offBudget !== null && entry.offBudget !== undefined) return entry.offBudget === 1;
+  if (entry.currency !== null && travelCurrencies.has(entry.currency)) return true;
+  return offBudgetCategories.has(entry.category);
 }
 
 // Split a cycle's entries into discretionary vs off-budget spend magnitudes (the ledger stores outflows
@@ -12,12 +22,13 @@ export function isOffBudget(entry: EntryRow, offBudgetCategories: Set<string>): 
 export function splitBudgetSpend(
   entries: EntryRow[],
   offBudgetCategories: Set<string>,
+  travelCurrencies: Set<string>,
 ): { discretionary: number; offBudget: number } {
   let discretionary = 0;
   let offBudget = 0;
   for (const e of entries) {
     const mag = Math.abs(e.amount);
-    if (isOffBudget(e, offBudgetCategories)) offBudget += mag;
+    if (isOffBudget(e, offBudgetCategories, travelCurrencies)) offBudget += mag;
     else discretionary += mag;
   }
   return { discretionary, offBudget };
@@ -28,10 +39,11 @@ export function splitBudgetSpend(
 export function discretionaryByCategory(
   entries: EntryRow[],
   offBudgetCategories: Set<string>,
+  travelCurrencies: Set<string>,
 ): Map<string, number> {
   const byCat = new Map<string, number>();
   for (const e of entries) {
-    if (isOffBudget(e, offBudgetCategories)) continue;
+    if (isOffBudget(e, offBudgetCategories, travelCurrencies)) continue;
     byCat.set(e.category, (byCat.get(e.category) ?? 0) + Math.abs(e.amount));
   }
   return byCat;

@@ -4,6 +4,7 @@ import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from '@features/entries/schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { ensureBudgetsTable } from './schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addEntries } from '@features/entries/queries';
 import { setBudget } from './queries';
 import { currentCycleKey, cycleFromKey } from '@features/entries/cycle';
@@ -27,6 +28,7 @@ describe('useBudgetsPage', () => {
     await ensureEntriesTable(db);
     await ensureSettingsTable(db);
     await ensureBudgetsTable(db);
+    await ensureCurrenciesTable(db);
     await addEntries(db, [
       { date: cycle.start, account: 'Cash', category: 'Food', amount: -100 },
       { date: cycle.start, account: 'Cash', category: 'Food', amount: -50 },
