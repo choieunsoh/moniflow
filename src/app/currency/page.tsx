@@ -60,36 +60,52 @@ export default function CurrencyPage() {
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <label
-                  className="tap flex items-center gap-1.5 text-xs whitespace-nowrap"
-                  style={{ color: 'var(--color-muted)' }}
-                  title="Off-budget: spending in this currency won't count toward budgets or pace"
-                >
-                  <input
-                    type="checkbox"
-                    checked={row.offBudget}
-                    onChange={(e) =>
-                      void withSaveToast(setCurrencyOffBudgetAction, 'Currency updated')(
-                        row.code,
-                        e.currentTarget.checked,
-                      )
-                    }
-                    aria-label={`Off-budget: exclude ${row.code} from budget meters and pace`}
-                  />
-                  Off-budget
-                </label>
-                <button
-                  type="button"
-                  className="btn btn-ghost tap text-xs"
-                  onClick={() =>
-                    void withSaveToast(
-                      setCurrencyArchivedAction,
-                      row.archived ? 'Currency restored' : 'Currency hidden',
-                    )(row.code, !row.archived)
-                  }
-                >
-                  {row.archived ? 'Restore' : 'Hide'}
-                </button>
+                {row.code === 'THB' ? (
+                  // THB is home currency: it can be neither hidden (archiving it would make every
+                  // new expense fail — the keypad's initialCurrency literal has nowhere else to fall
+                  // back to) nor off-budget (that would zero out every budget meter). No controls, a
+                  // caption instead — the schema.ts comment's "never off-budget" claim was previously
+                  // unenforced anywhere in the UI.
+                  <span
+                    className="text-xs whitespace-nowrap"
+                    style={{ color: 'var(--color-faint)' }}
+                  >
+                    Home currency
+                  </span>
+                ) : (
+                  <>
+                    <label
+                      className="tap flex items-center gap-1.5 text-xs whitespace-nowrap"
+                      style={{ color: 'var(--color-muted)' }}
+                      title="Off-budget: spending in this currency won't count toward budgets or pace"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={row.offBudget}
+                        onChange={(e) =>
+                          void withSaveToast(setCurrencyOffBudgetAction, 'Currency updated')(
+                            row.code,
+                            e.currentTarget.checked,
+                          )
+                        }
+                        aria-label={`Off-budget: exclude ${row.code} from budget meters and pace`}
+                      />
+                      Off-budget
+                    </label>
+                    <button
+                      type="button"
+                      className="btn btn-ghost tap text-xs"
+                      onClick={() =>
+                        void withSaveToast(
+                          setCurrencyArchivedAction,
+                          row.archived ? 'Currency restored' : 'Currency hidden',
+                        )(row.code, !row.archived)
+                      }
+                    >
+                      {row.archived ? 'Restore' : 'Hide'}
+                    </button>
+                  </>
+                )}
               </div>
             </li>
           ))}
