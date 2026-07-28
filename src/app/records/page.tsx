@@ -15,6 +15,7 @@ import { SwipeRow } from '@features/entries/ui/SwipeRow';
 import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
 import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
+import { ChevronLeft, ChevronRight } from '@shared/ui/Chevron';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 
 // Records = the cycle's expenses grouped by day, newest first. Each day is a light header (date +
@@ -33,6 +34,7 @@ export default function RecordsPage() {
   const from = params.get('from') ?? undefined;
   const to = params.get('to') ?? undefined;
   const sort = params.get('sort') ?? undefined;
+  const page = params.get('page') ?? undefined;
 
   const { ready, data } = useRecords({
     cycle: cycleParam,
@@ -45,6 +47,7 @@ export default function RecordsPage() {
     from,
     to,
     sort,
+    page,
   });
 
   if (!ready || data === null) {
@@ -80,7 +83,19 @@ export default function RecordsPage() {
     sections,
     total,
     currencySums,
+    page: activePage,
+    pageCount,
   } = data;
+
+  // Only ?page= moves; every other param rides along, so paging never quietly drops the category
+  // filter or the group-by that got you here. Page 1 drops the param rather than spelling out the
+  // default, matching viewHref below.
+  const pageHref = (n: number) => {
+    const p = new URLSearchParams(params.toString());
+    if (n <= 1) p.delete('page');
+    else p.set('page', String(n));
+    return `/records?${p.toString()}`;
+  };
 
   // Mirrors the hook's own gate: sort=amount only collapses the plain cycle view to one section.
   const sortByAmount = sort === 'amount' && !spanAll;
@@ -289,6 +304,11 @@ export default function RecordsPage() {
               </ul>
             </details>
           ))}
+          {/* Only the all-time category view paginates, and the hook reports pageCount 1 everywhere
+              else — so this one condition covers it without the page knowing which mode is which. */}
+          {pageCount > 1 ? (
+            <Pager page={activePage} pageCount={pageCount} hrefFor={pageHref} />
+          ) : null}
           <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
             Tap a row to edit · swipe left to delete
           </p>
@@ -377,6 +397,72 @@ function BackArrow() {
     >
       <path d="M15 6l-6 6 6 6" />
     </svg>
+  );
+}
+
+// Prev / next through a long category's history. Same shape as the app's steppers (a disabled
+// boundary button rather than a hidden one, so a screen reader is told the direction exists and is
+// exhausted) but NOT sticky — a pager belongs at the end of the rows it pages, and the page already
+// carries a sticky control at the top.
+function Pager({
+  page,
+  pageCount,
+  hrefFor,
+}: {
+  page: number;
+  pageCount: number;
+  hrefFor: (n: number) => string;
+}) {
+  return (
+    <nav className="panel flex items-center justify-between p-2" aria-label="Pages">
+      {page > 1 ? (
+        <Link
+          prefetch={false}
+          href={hrefFor(page - 1)}
+          aria-label={`Previous page: ${page - 1} of ${pageCount}`}
+          className="grid size-11 place-items-center rounded-[var(--radius-md)] transition-colors duration-150 active:bg-[var(--color-surface-2)]"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          <ChevronLeft />
+        </Link>
+      ) : (
+        <PagerEdge label="Previous page — none, this is the first">
+          <ChevronLeft />
+        </PagerEdge>
+      )}
+      <span className="tnum text-sm font-semibold">
+        Page {page} of {pageCount}
+      </span>
+      {page < pageCount ? (
+        <Link
+          prefetch={false}
+          href={hrefFor(page + 1)}
+          aria-label={`Next page: ${page + 1} of ${pageCount}`}
+          className="grid size-11 place-items-center rounded-[var(--radius-md)] transition-colors duration-150 active:bg-[var(--color-surface-2)]"
+          style={{ color: 'var(--color-muted)' }}
+        >
+          <ChevronRight />
+        </Link>
+      ) : (
+        <PagerEdge label="Next page — none, this is the last">
+          <ChevronRight />
+        </PagerEdge>
+      )}
+    </nav>
+  );
+}
+
+function PagerEdge({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      disabled
+      aria-label={label}
+      className="grid size-11 place-items-center"
+      style={{ color: 'var(--color-faint)', opacity: 0.4 }}
+    >
+      {children}
+    </button>
   );
 }
 

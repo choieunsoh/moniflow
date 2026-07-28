@@ -139,6 +139,70 @@ describe('useRecords', () => {
     });
   });
 
+  describe('all-category pagination', () => {
+    // A fresh ledger: 105 rows in one category, all on one day, so the page boundary is the only
+    // thing that can split them and a section count can't be mistaken for the slice working.
+    beforeEach(async () => {
+      const db = makeNodeProxyDb();
+      await ensureEntriesTable(db);
+      await ensureSettingsTable(db);
+      await addEntries(
+        db,
+        Array.from({ length: 105 }, (_, i) => ({
+          date: '2026-03-05',
+          account: 'Cash',
+          category: 'Food',
+          amount: -(i + 1),
+        })),
+      );
+      vi.mocked(getBrowserDb).mockResolvedValue(db);
+    });
+
+    const rowsOnPage = (sections: { entries: unknown[] }[]) =>
+      sections.reduce((n, s) => n + s.entries.length, 0);
+
+    it('shows the first 100 rows but counts and totals the whole category', async () => {
+      const { result } = renderHook(() => useRecords({ all: '1', category: 'Food' }));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const { data } = result.current;
+      expect(data?.page).toBe(1);
+      expect(data?.pageCount).toBe(2);
+      expect(rowsOnPage(data?.sections ?? [])).toBe(100);
+      // The summary figures answer "how big is this category", not "how big is this page" — the
+      // report links here promising 105 records and ฿5,565, and both have to survive the slice.
+      expect(data?.entries).toHaveLength(105);
+      expect(data?.total).toBe(-5565);
+    });
+
+    it('serves the remainder on the last page', async () => {
+      const { result } = renderHook(() => useRecords({ all: '1', category: 'Food', page: '2' }));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const { data } = result.current;
+      expect(data?.page).toBe(2);
+      expect(rowsOnPage(data?.sections ?? [])).toBe(5);
+      expect(data?.total).toBe(-5565); // still the category's total, not the page's
+    });
+
+    it('clamps a page param past the end, and junk, back into range', async () => {
+      const far = renderHook(() => useRecords({ all: '1', category: 'Food', page: '99' }));
+      await waitFor(() => expect(far.result.current.ready).toBe(true));
+      expect(far.result.current.data?.page).toBe(2);
+
+      const junk = renderHook(() => useRecords({ all: '1', category: 'Food', page: 'banana' }));
+      await waitFor(() => expect(junk.result.current.ready).toBe(true));
+      expect(junk.result.current.data?.page).toBe(1);
+    });
+
+    it('leaves the cycle view unpaginated', async () => {
+      // Same 105 rows, reached through the plain cycle view instead. A cycle is bounded by a month,
+      // so paginating it would only ever hide rows the user asked to see all of.
+      const { result } = renderHook(() => useRecords({ cycle: '2026-02' }));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      expect(result.current.data?.pageCount).toBe(1);
+      expect(rowsOnPage(result.current.data?.sections ?? [])).toBe(105);
+    });
+  });
+
   it('refetches when the data-version bumps after a write', async () => {
     const { result } = renderHook(() => useRecords({ cycle: '2026-06' }));
     await waitFor(() => expect(result.current.ready).toBe(true));

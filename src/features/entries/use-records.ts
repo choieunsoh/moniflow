@@ -25,7 +25,14 @@ export type RecordsParams = {
   from?: string;
   to?: string;
   sort?: string;
+  page?: string;
 };
+
+// The all-category view is the one records list with no window bounding it: /report links here for a
+// whole category's history, and the busiest are thousands of rows — each a SwipeRow with its own
+// touch handlers. Every other mode is already bounded (a cycle, a trip's date range, a search the
+// user narrowed), so only this one paginates.
+const PAGE_SIZE = 100;
 
 export type RecordsSection = {
   key: string;
@@ -54,17 +61,35 @@ export type RecordsData = {
   allCategory: boolean;
   spanAll: boolean;
   groupBy: RecordsGroupBy;
+  // The WHOLE matched set, never the page — the count line and `total` below describe the category,
+  // which is what the /report row that linked here promised. `sections` alone holds the page.
   entries: EntryRow[];
   sections: RecordsSection[];
   total: number;
   currencySums: CurrencySum[];
+  // 1-based and already clamped into range; pageCount is 1 in every unpaginated mode, so the page
+  // can gate its pager on `pageCount > 1` without knowing which modes those are.
+  page: number;
+  pageCount: number;
 };
 
 // Records page's ledger view, read once via the browser OPFS db after mount — mirrors the server
 // computation the page used to run in a Server Component, just moved client-side + async. Re-runs
 // whenever any of the page's search params (or the data-version counter) changes.
 export function useRecords(params: RecordsParams): { ready: boolean; data: RecordsData | null } {
-  const { cycle: cycleParam, category, account, q, view, all, currency, from, to, sort } = params;
+  const {
+    cycle: cycleParam,
+    category,
+    account,
+    q,
+    view,
+    all,
+    currency,
+    from,
+    to,
+    sort,
+    page: pageParam,
+  } = params;
   const [data, setData] = useState<RecordsData | null>(null);
   const [ready, setReady] = useState(false);
   const version = useDataVersion();
@@ -118,6 +143,14 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
             ? await getEntriesByCategory(db, category)
             : cycleEntries;
       const ordered = spanAll ? entries : [...entries].reverse(); // newest first
+      // Sliced BEFORE grouping, so a day header's count and subtotal describe the rows actually
+      // under it. Grouping first and slicing sections would leave a header claiming 40 entries over
+      // a list of 3.
+      const pageCount = allCategory ? Math.max(1, Math.ceil(ordered.length / PAGE_SIZE)) : 1;
+      const page = clampPage(pageParam, pageCount);
+      const visible = allCategory
+        ? ordered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+        : ordered;
       const groupBy: RecordsGroupBy =
         view === 'category' ? 'category' : view === 'account' ? 'account' : 'date';
       // Each section carries its own foreign-currency subtotals so any header — a day, a category, or
@@ -132,8 +165,8 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
             },
           ]
         : groupBy === 'date'
-          ? groupByDate(ordered).map((g) => ({ key: g.date, entries: g.entries, total: g.total }))
-          : groupBySpend(ordered, groupBy === 'category' ? (e) => e.category : (e) => e.account);
+          ? groupByDate(visible).map((g) => ({ key: g.date, entries: g.entries, total: g.total }))
+          : groupBySpend(visible, groupBy === 'category' ? (e) => e.category : (e) => e.account);
       const sections = grouped.map((g) => ({
         key: g.key,
         entries: g.entries,
@@ -163,10 +196,20 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
         sections,
         total,
         currencySums,
+        page,
+        pageCount,
       });
       setReady(true);
     });
-  }, [cycleParam, category, account, q, view, all, currency, from, to, sort, version]);
+  }, [cycleParam, category, account, q, view, all, currency, from, to, sort, pageParam, version]);
 
   return { ready, data };
+}
+
+// A hand-typed or stale ?page= must never strand the list on an empty slice — deleting the last rows
+// of a category is exactly how you end up on a page that no longer exists.
+function clampPage(raw: string | undefined, pageCount: number): number {
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) return 1;
+  return Math.min(n, pageCount);
 }
