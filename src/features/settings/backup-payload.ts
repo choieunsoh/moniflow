@@ -9,8 +9,8 @@ import { getCurrencyCatalog } from '@features/currencies/queries';
 import { getAllSettings } from './queries';
 import { serializeCatalogJson } from './catalog';
 
-// The one place that assembles moniflow's combined (v3) backup text. Both the share-sheet export
-// (use-backup-data) and the Drive push read it, so they serialize identically.
+// The one place that assembles moniflow's combined (currently v4) backup text. Both the share-sheet
+// export (use-backup-data) and the Drive push read it, so they serialize identically.
 export type BackupPayload = {
   text: string;
   entryCount: number;

@@ -113,9 +113,15 @@ export async function setCurrencyArchived(db: Db, code: string, archived: boolea
 }
 
 // Every currency including archived ones — a backup that dropped archived rows would resurrect them
-// as active on restore.
+// as active on restore. Reads the table directly (no seedIfEmpty, unlike listAllCurrencies) so
+// building a backup never itself writes to the ledger it's meant to be reading — a device that never
+// opened the currency page would otherwise get the nine seed rows INSERTed as a side effect of export.
 export async function getCurrencyCatalog(db: Db): Promise<CurrencyCatalogRow[]> {
-  const rows = await listAllCurrencies(db);
+  const rows = await db
+    .select()
+    .from(currencies)
+    .orderBy(asc(currencies.sortOrder), asc(currencies.code))
+    .all();
   return rows.map((r) => ({
     code: r.code,
     offBudget: r.offBudget === 1,

@@ -127,7 +127,7 @@ describe('restoreFromDrive', () => {
     expect(rows[0]?.category).toBe('Coffee');
   });
 
-  it('restores a real v3 combined backup', async () => {
+  it('restores a real combined backup', async () => {
     const sourceDb = makeNodeProxyDb();
     await ensureEntriesTable(sourceDb);
     await ensureCategoriesTable(sourceDb);

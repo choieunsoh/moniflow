@@ -235,7 +235,7 @@ export type BackupKind =
   | { kind: 'invalid' }
   | { kind: 'monefy-csv' } // raw Monefy CSV → replaces the ledger (destructive)
   | { kind: 'catalog'; data: CatalogData } // v1/v2 JSON → merges metadata only (non-destructive)
-  | { kind: 'combined'; data: CatalogData }; // v3 JSON → replaces the ledger AND merges metadata
+  | { kind: 'combined'; data: CatalogData }; // versioned JSON → replaces the ledger AND merges metadata
 
 // A Monefy CSV's header line names these three columns (in any order). Cheap sniff; the real parse
 // runs on apply, so a false positive just yields a "couldn't read that backup" toast, not corruption.
