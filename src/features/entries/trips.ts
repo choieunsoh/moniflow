@@ -78,10 +78,15 @@ export function sumByCurrency(entries: Entry[]): CurrencySum[] {
 // (no fraction digits — this ledger treats money as whole units) but takes the ISO 4217 code as a
 // parameter so each trip renders in its own currency's symbol (¥, HK$, ...). Built fresh per call
 // rather than cached, since the currency varies per call and trip lists are small — not a hot path.
+// 'symbol', not 'narrowSymbol': narrowSymbol collapses HKD, USD, SGD and TWD all to a bare "$", so a
+// HK$108 metro fare and a US$108 subscription render identically. 'symbol' yields HK$/NT$/SGD and
+// keeps ¥ and ₩. THB keeps narrowSymbol in shared/money.ts — it is the home currency, unambiguous,
+// and "THB 108" would be a regression there.
 export function formatForeign(amount: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
+    currencyDisplay: 'symbol',
     maximumFractionDigits: 0,
   }).format(amount);
 }
