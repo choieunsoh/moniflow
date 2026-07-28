@@ -57,6 +57,16 @@ describe('currency catalog', () => {
     expect(await listCurrencies(db)).toHaveLength(before.length);
   });
 
+  // sortOrder is nullable and SQLite sorts NULL first under ORDER BY sortOrder ASC. Without an
+  // explicit sortOrder, a newly added currency would land above THB (sortOrder 0) on the page — the
+  // exact path this feature exists for. addCurrency must assign the next sort order (max + 1).
+  it('sorts a newly added currency last, not first', async () => {
+    await addCurrency(db, 'TWD');
+    const codes = (await listCurrencies(db)).map((r) => r.code);
+    expect(codes[0]).toBe('THB');
+    expect(codes[codes.length - 1]).toBe('TWD');
+  });
+
   it('toggles off-budget on a currency', async () => {
     await setCurrencyOffBudget(db, 'USD', true);
     expect(await getTravelCurrencies(db)).toContain('USD');

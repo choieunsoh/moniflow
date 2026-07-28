@@ -85,9 +85,18 @@ export async function getAllCurrencyCodes(db: Db): Promise<Set<string>> {
   return new Set(rows.map((r) => r.code));
 }
 
+// sortOrder is nullable and `ORDER BY sortOrder ASC` sorts NULL first in SQLite, so a code inserted
+// without one would land ABOVE THB (sortOrder 0) instead of after the existing catalog — assign the
+// next slot (max existing + 1) so a newly added currency always sorts last.
 export async function addCurrency(db: Db, code: string): Promise<void> {
   await seedIfEmpty(db);
-  await db.insert(currencies).values({ code }).onConflictDoNothing().run();
+  const rows = await db.select({ sortOrder: currencies.sortOrder }).from(currencies).all();
+  const maxSortOrder = rows.reduce((max, r) => Math.max(max, r.sortOrder ?? -1), -1);
+  await db
+    .insert(currencies)
+    .values({ code, sortOrder: maxSortOrder + 1 })
+    .onConflictDoNothing()
+    .run();
 }
 
 export async function setCurrencyOffBudget(
