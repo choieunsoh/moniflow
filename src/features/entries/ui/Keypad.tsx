@@ -4,7 +4,7 @@ import { useId, useState, useTransition } from 'react';
 import { formatBaht, formatBahtKeyed, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
 import { addEntryAction } from '../actions';
-import { evaluate, nextExpr, OPS } from '../calc';
+import { evaluate, nextExpr, OPS, KEYPAD_KEYS } from '../calc';
 import { toThb } from '../fx';
 import { isCurrency } from '../entry-form';
 import type { Currency } from '../entry-form';
@@ -19,14 +19,6 @@ import type { EntryRow } from '../schema';
 export type KeypadCategory = { name: string; emoji: string; hue?: number };
 export type KeypadAccount = { name: string; icon: string; hue?: number };
 export type KeypadCurrency = { code: Currency; symbol: string };
-
-// The 4-column key grid. Only the digit rows differ between layouts: 'calc' is calculator order
-// (7-8-9 top), 'phone' is telephone/ATM order (1-2-3 top). The operator column (÷ × − +) and the
-// bottom row (. 0 ⌫ +) are identical in both.
-const KEYPAD_KEYS: Record<KeypadLayout, string[]> = {
-  calc: ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'],
-  phone: ['1', '2', '3', '÷', '4', '5', '6', '×', '7', '8', '9', '−', '.', '0', '⌫', '+'],
-};
 
 // The editable FX rate is shown to 4 decimals (enough for every supported currency; the smallest,
 // KRW, is ~0.023 THB per unit). useGrouping off so the value stays a valid <input type=number>.

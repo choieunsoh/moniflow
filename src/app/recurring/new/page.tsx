@@ -38,6 +38,7 @@ export default function NewRulePage() {
     ratesAsOf,
     defaultAccount,
     iconSet,
+    keypadLayout,
   } = data;
 
   async function handleSubmit(formData: FormData): Promise<void> {
@@ -63,6 +64,7 @@ export default function NewRulePage() {
         defaultAccount={defaultAccount}
         today={todayIso()}
         iconSet={iconSet}
+        keypadLayout={keypadLayout}
         action={handleSubmit}
       />
     </PageContainer>

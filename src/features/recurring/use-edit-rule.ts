@@ -9,7 +9,14 @@ import {
 } from '@features/entries/keypad-lists';
 import type { KeypadCategory, KeypadAccount, KeypadCurrency } from '@features/entries/ui/Keypad';
 import { withFee } from '@features/entries/fx';
-import { getIconSet, getCardFeePct, getFxRates, type IconSet } from '@features/settings/queries';
+import {
+  getIconSet,
+  getCardFeePct,
+  getFxRates,
+  getKeypadLayout,
+  type IconSet,
+  type KeypadLayout,
+} from '@features/settings/queries';
 import { useDataVersion } from '@shared/data-version';
 import { getRule, listRuleMeta } from './queries';
 import type { Recurrence } from './schema';
@@ -28,6 +35,7 @@ export type EditRuleData = {
   rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
   ratesAsOf: Record<string, string>;
   iconSet: IconSet;
+  keypadLayout: KeypadLayout;
 };
 
 // Edit-rule page's data, read once via the browser OPFS db after mount — the same shape useEditEntry
@@ -51,19 +59,29 @@ export function useEditRule(id: number): { ready: boolean; data: EditRuleData | 
         return;
       }
 
-      const [iconSet, categories, accounts, currencies, currencyCodes, cardFeePct, fxRates, meta] =
-        await Promise.all([
-          getIconSet(db),
-          getKeypadCategories(db),
-          getKeypadAccounts(db),
-          getKeypadCurrencies(db),
-          // All codes, archived included — feeds RuleKeypad's isCurrency recognition of the rule
-          // being edited, not what a new save may pick (same reasoning as use-edit-entry.ts).
-          getAllCurrencyCodes(db),
-          getCardFeePct(db),
-          getFxRates(db),
-          listRuleMeta(db),
-        ]);
+      const [
+        iconSet,
+        keypadLayout,
+        categories,
+        accounts,
+        currencies,
+        currencyCodes,
+        cardFeePct,
+        fxRates,
+        meta,
+      ] = await Promise.all([
+        getIconSet(db),
+        getKeypadLayout(db),
+        getKeypadCategories(db),
+        getKeypadAccounts(db),
+        getKeypadCurrencies(db),
+        // All codes, archived included — feeds RuleKeypad's isCurrency recognition of the rule
+        // being edited, not what a new save may pick (same reasoning as use-edit-entry.ts).
+        getAllCurrencyCodes(db),
+        getCardFeePct(db),
+        getFxRates(db),
+        listRuleMeta(db),
+      ]);
       if (!alive) return;
 
       const rates: Record<string, number> = {};
@@ -85,6 +103,7 @@ export function useEditRule(id: number): { ready: boolean; data: EditRuleData | 
         rates,
         ratesAsOf,
         iconSet,
+        keypadLayout,
       });
       setReady(true);
     });

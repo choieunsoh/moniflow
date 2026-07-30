@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluate, nextExpr } from './calc';
+import { evaluate, nextExpr, KEYPAD_KEYS } from './calc';
 
 // Type the whole string one key at a time, the way the keypad feeds it.
 const type = (keys: string): string => [...keys].reduce(nextExpr, '');
@@ -84,5 +84,23 @@ describe('evaluate', () => {
 
   it('returns null on malformed input', () => {
     expect(evaluate('12++5')).toBeNull();
+  });
+});
+
+describe('KEYPAD_KEYS', () => {
+  // The two layouts must be the SAME keys in a different order — a layout that quietly dropped '⌫'
+  // or gained a key would render a grid the other one can't, and only one of them is ever on screen.
+  it('offers an identical key set in both layouts', () => {
+    expect([...KEYPAD_KEYS.phone].sort()).toEqual([...KEYPAD_KEYS.calc].sort());
+    expect(KEYPAD_KEYS.calc).toHaveLength(16); // 4 columns × 4 rows
+  });
+
+  it('swaps only the digit rows — the operator column and bottom row stay put', () => {
+    // Column 4 is the operators; the last row is . 0 ⌫ +. Everything a layout changes is a digit.
+    const col4 = (keys: readonly string[]) => keys.filter((_, i) => i % 4 === 3);
+    expect(col4(KEYPAD_KEYS.phone)).toEqual(col4(KEYPAD_KEYS.calc));
+    expect(KEYPAD_KEYS.phone.slice(12)).toEqual(KEYPAD_KEYS.calc.slice(12));
+    expect(KEYPAD_KEYS.calc.slice(0, 3)).toEqual(['7', '8', '9']);
+    expect(KEYPAD_KEYS.phone.slice(0, 3)).toEqual(['1', '2', '3']);
   });
 });
