@@ -68,6 +68,7 @@ function EditRuleInner() {
     rates,
     ratesAsOf,
     iconSet,
+    keypadLayout,
   } = data;
 
   async function handleSubmit(formData: FormData): Promise<void> {
@@ -92,6 +93,7 @@ function EditRuleInner() {
         defaultAccount={account}
         today={todayIso()}
         iconSet={iconSet}
+        keypadLayout={keypadLayout}
         action={handleSubmit}
         rule={rule}
         ruleCategory={category}

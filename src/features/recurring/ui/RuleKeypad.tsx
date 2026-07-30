@@ -2,21 +2,17 @@
 
 import { useState } from 'react';
 import { formatBaht, formatBahtKeyed, formatCurrency } from '@shared/money';
-import { evaluate, nextExpr, OPS } from '@features/entries/calc';
+import { evaluate, nextExpr, OPS, KEYPAD_KEYS } from '@features/entries/calc';
 import { toThb } from '@features/entries/fx';
 import { isCurrency, type Currency } from '@features/entries/entry-form';
 import type { KeypadCategory, KeypadAccount, KeypadCurrency } from '@features/entries/ui/Keypad';
 import { CloseButton } from '@features/entries/ui/CloseButton';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
-import type { IconSet } from '@features/settings/queries';
+import type { IconSet, KeypadLayout } from '@features/settings/queries';
 import type { Recurrence } from '../schema';
 import { ordinal } from '../ordinal';
 import { monthName } from '../month';
-
-// Mirrors Keypad's KEYS — the two money-entry surfaces must key identically, and duplicating the
-// literal costs less than coupling this to entries/ui/Keypad for a layout constant.
-const KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'];
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -80,6 +76,7 @@ export function RuleKeypad({
   defaultAccount,
   today,
   iconSet,
+  keypadLayout,
   action,
   rule,
   ruleCategory,
@@ -94,6 +91,7 @@ export function RuleKeypad({
   defaultAccount: string;
   today: string; // YYYY-MM-DD — only its day-of-month is used, to default a new rule's day
   iconSet: IconSet;
+  keypadLayout: KeypadLayout;
   action: (formData: FormData) => Promise<void>;
   rule?: Recurrence;
   ruleCategory?: string;
@@ -285,7 +283,7 @@ export function RuleKeypad({
         ) : null}
 
         <div className="grid grid-cols-4 gap-2">
-          {KEYS.map((key) => {
+          {KEYPAD_KEYS[keypadLayout].map((key) => {
             const isOp = OPS.includes(key);
             return (
               <button

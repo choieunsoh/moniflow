@@ -1,4 +1,19 @@
+import type { KeypadLayout } from '@features/settings/queries';
+
 export const OPS = '+−×÷';
+
+// The 4-column key grid, shared by EVERY money-entry surface (the ledger keypad and the recurring-
+// rule keypad) so one Settings choice moves all of them. Only the digit rows differ: 'calc' is
+// calculator order (7-8-9 top), 'phone' is telephone/ATM order (1-2-3 top). The operator column
+// (÷ × − +) and the bottom row (. 0 ⌫ +) are identical in both.
+//
+// This lives beside the calculator's grammar rather than in a component: it's the alphabet nextExpr
+// consumes, and a second surface hardcoding its own copy is exactly how the rule keypad silently
+// ignored the layout setting for two releases.
+export const KEYPAD_KEYS = {
+  calc: ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '.', '0', '⌫', '+'],
+  phone: ['1', '2', '3', '÷', '4', '5', '6', '×', '7', '8', '9', '−', '.', '0', '⌫', '+'],
+} as const satisfies Record<KeypadLayout, readonly string[]>;
 
 // The most decimals a keyed figure may carry. Satang is the smallest THB unit, and every supported
 // foreign currency is 2-decimal or coarser (JPY/KRW have none), so 2 is the floor for all of them.
