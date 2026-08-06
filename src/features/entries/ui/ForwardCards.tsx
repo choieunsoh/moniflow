@@ -34,10 +34,18 @@ function UpcomingLine({ upcoming }: { upcoming: HomeForward['upcoming'] }) {
   );
 }
 
-// Today's allowance — the same safe-to-spend arithmetic frozen at the value it held when the day
-// started, so the headline holds still no matter how much you spend before midnight. That is the
-// whole point of it sitting next to SafeToSpendCard, which slides down with every purchase: one is
-// the target, the other the rate from here.
+// What's left of today — today's allowance (safe-to-spend frozen at the value it held when the day
+// started) minus what today has already spent.
+//
+// The HEADLINE is the remainder, not the allowance, for two reasons. It is the number you actually
+// act on: standing in a shop the question is "can I afford this?", and that is the remainder — the
+// allowance is the context it is measured against. And it keeps this card distinguishable from
+// SafeToSpendCard below; leading with the allowance put two near-identical figures (฿1,942 above
+// ฿1,900) a hundred pixels apart, which read as a rendering fault rather than two answers.
+//
+// The frozen figure survives as the DENOMINATOR — the same numerator-of-a-fixed-target shape Home's
+// "Spent this cycle" card already uses (`฿26,298 of ฿50,000`). The remainder moves during the day;
+// what it is measured against does not, which is the whole point of the allowance.
 //
 // Renders nothing without a total budget. SafeToSpendCard already owns that state, link and all, and
 // a second card repeating "set a budget" is noise rather than an answer.
@@ -51,25 +59,25 @@ export function TodayAllowanceCard({
   if (allowance === null) return null;
   const left = allowance - spentToday;
   const over = left < 0;
+  // Overspent flips the title rather than showing a negative under "Left to spend today", which
+  // would be a heading contradicting its own figure. A zero allowance is red for the same reason
+  // SafeToSpendCard paints it red: the cycle's budget is already gone.
+  const alarm = over || allowance === 0;
   return (
-    <CardShell title="Today's allowance">
+    <CardShell title={over ? "Over today's allowance" : 'Left to spend today'}>
       <span
         className="tnum text-4xl font-semibold"
-        // A zero allowance means the cycle's budget is already gone — the same red SafeToSpendCard
-        // uses for it, for the same fact.
-        style={allowance === 0 ? { color: 'var(--color-loss)' } : undefined}
+        style={alarm ? { color: 'var(--color-loss)' } : undefined}
       >
-        {formatBahtWhole(allowance)}
+        {formatBahtWhole(Math.abs(left))}
       </span>
       <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
         {spentToday === 0 ? (
           'Nothing spent yet today'
         ) : (
           <>
-            <span className="tnum">{formatBahtWhole(spentToday)}</span> spent today ·{' '}
-            <span className="tnum" style={over ? { color: 'var(--color-loss)' } : undefined}>
-              {formatBahtWhole(Math.abs(left))} {over ? 'over' : 'left'}
-            </span>
+            <span className="tnum">{formatBahtWhole(spentToday)}</span> of{' '}
+            <span className="tnum">{formatBahtWhole(allowance)}</span> spent today
           </>
         )}
       </span>
