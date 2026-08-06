@@ -8,7 +8,7 @@ import { pacePhrase } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 import { formatBahtWhole } from '@shared/money';
 import { DonutChart } from '@features/entries/ui/DonutChart';
-import { SafeToSpendCard } from '@features/entries/ui/ForwardCards';
+import { SafeToSpendCard, TodayAllowanceCard } from '@features/entries/ui/ForwardCards';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { stepKey } from '@features/entries/cycle';
@@ -94,6 +94,11 @@ export default function HomePage() {
   const forwardCards =
     forward !== null ? (
       <div className="-mt-3 flex flex-col gap-4">
+        {/* Today's answer first, the cycle's answer under it — the allowance is what you check
+            before buying lunch; safe-to-spend is what you check when planning the rest of the
+            cycle. Renders nothing until a total budget exists, leaving the card below to make the
+            single "set a budget" case. */}
+        <TodayAllowanceCard allowance={forward.todayAllowance} spentToday={forward.spentToday} />
         <SafeToSpendCard
           safePerDay={forward.safePerDay}
           avgPerDay={forward.avgPerDay}
