@@ -31,6 +31,14 @@ import { committedThisCycle, type Committed } from '@features/recurring/upcoming
 // something looking AHEAD, so a past cycle carries null and the page hides them, leaving the donut.
 export type HomeForward = {
   safePerDay: number | null;
+  // Today's allowance: the same safe-to-spend figure, but frozen at the value it held at the START
+  // of today, so spending during the day does not move the target you are spending against.
+  // safePerDay answers "what's my rate from here?" and slides down with every purchase; this answers
+  // "what did I have to spend today?" and holds still until tomorrow. null exactly when safePerDay
+  // is — no total budget, nothing to divide.
+  todayAllowance: number | null;
+  // Discretionary spend dated today, so the card can show progress against the frozen allowance.
+  spentToday: number;
   avgPerDay: number;
   daysLeft: number;
   upcoming: Committed;
@@ -163,8 +171,28 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
         const rules = await listRules(db);
         const daysLeft = progress.total - progress.day + 1; // today inclusive
         const upcoming = committedThisCycle(rules, todayIso(), cycle.end);
+        // "As of the start of today" is DERIVED, not snapshotted: run the same split over the
+        // entries dated today and take them back out of spend. That beats storing a daily snapshot
+        // on every count — no midnight job to miss, the figure is identical whether the app is first
+        // opened at 00:01 or 23:59, and it is right on a device that has never been opened today.
+        // Splitting rather than subtracting keeps the off-budget rule in exactly one place.
+        const { discretionary: spentToday } = splitBudgetSpend(
+          cycleEntries.filter((e) => e.date === todayIso()),
+          offBudgetCategories,
+          travelCurrencies,
+        );
         forward = {
           safePerDay: safeToSpendPerDay(totalLimit, discretionary, upcoming.total, daysLeft),
+          // Same fn, same committed bills, earlier `spent` — the allowance is not a second formula.
+          // `discretionary - spentToday` also leaves any future-dated entry in, which is right: it
+          // was already on the books when the day started.
+          todayAllowance: safeToSpendPerDay(
+            totalLimit,
+            discretionary - spentToday,
+            upcoming.total,
+            daysLeft,
+          ),
+          spentToday,
           avgPerDay: averagePerDay(discretionary, progress.day),
           daysLeft,
           upcoming,

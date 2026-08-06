@@ -261,6 +261,77 @@ describe('useHome', () => {
     });
   });
 
+  // The whole point of the allowance: it is the safe-to-spend figure as of the START of today, so
+  // spending during the day moves safePerDay but must NOT move todayAllowance. Derived by excluding
+  // entries dated today — no snapshot, so it is the same number whether the app is opened at 00:01
+  // or 23:59, and on a device that has never been opened today at all.
+  describe('todayAllowance', () => {
+    // Pinned here rather than inherited: mockReturnValue persists across tests, so the date left
+    // behind by whichever describe ran last would otherwise decide this one's arithmetic. At
+    // 2026-07-05 the cycle '2026-06' is current (day 18 of 30, 13 left) and the three seeded
+    // entries (07-01/02/03, 170 total) all fall BEFORE today.
+    beforeEach(() => {
+      vi.mocked(todayIso).mockReturnValue('2026-07-05');
+    });
+
+    it('freezes at the start-of-day figure while today’s spend moves safePerDay', async () => {
+      const db = await getBrowserDb();
+      await setBudget(db, null, 3000);
+      await addEntries(db, [
+        { date: '2026-07-05', account: 'Cash', category: 'Food', amount: -80 },
+      ]);
+
+      const { result } = renderHook(() => useHome(null));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const f = result.current.data?.forward;
+      if (!f) throw new Error('unreachable — the current cycle always carries forward figures');
+
+      expect(f.daysLeft).toBe(13);
+      expect(f.spentToday).toBe(80);
+      // Allowance ignores today's 80: (3000 - 170) / 13.
+      expect(f.todayAllowance).toBeCloseTo((3000 - 170) / 13);
+      // safePerDay does not: (3000 - 250) / 13.
+      expect(f.safePerDay).toBeCloseTo((3000 - 250) / 13);
+
+      // Spend again today. The allowance is unchanged; only spentToday and safePerDay move.
+      await addEntries(db, [
+        { date: '2026-07-05', account: 'Cash', category: 'Food', amount: -45 },
+      ]);
+      act(() => bumpDataVersion());
+      await waitFor(() => expect(result.current.data?.forward?.spentToday).toBe(125));
+
+      const after = result.current.data?.forward;
+      if (!after) throw new Error('unreachable');
+      expect(after.todayAllowance).toBeCloseTo((3000 - 170) / 13);
+      expect(after.safePerDay).toBeCloseTo((3000 - 295) / 13);
+    });
+
+    it('is null with no total budget, matching safePerDay', async () => {
+      const { result } = renderHook(() => useHome(null));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      expect(result.current.data?.forward?.todayAllowance).toBeNull();
+      expect(result.current.data?.forward?.safePerDay).toBeNull();
+    });
+
+    it('drops off-budget spend from both the allowance and today’s figure', async () => {
+      const db = await getBrowserDb();
+      await setBudget(db, null, 3000);
+      await addEntries(db, [
+        { date: '2026-07-02', account: 'Cash', category: 'Rent', amount: -500, offBudget: 1 },
+        { date: '2026-07-05', account: 'Cash', category: 'Rent', amount: -300, offBudget: 1 },
+        { date: '2026-07-05', account: 'Cash', category: 'Food', amount: -60 },
+      ]);
+
+      const { result } = renderHook(() => useHome(null));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const f = result.current.data?.forward;
+      if (!f) throw new Error('unreachable');
+
+      expect(f.spentToday).toBe(60); // the 300 off-budget one does not count
+      expect(f.todayAllowance).toBeCloseTo((3000 - 170) / 13); // nor does the 500
+    });
+  });
+
   describe('off-budget split', () => {
     it('excludes off-budget spend from totalStatus/safe-to-spend but keeps the donut all-in', async () => {
       vi.mocked(todayIso).mockReturnValue('2026-06-22'); // day 5 of the current cycle '2026-06'
