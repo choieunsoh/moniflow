@@ -81,7 +81,6 @@ Negation is correct on both signs: an expense of −2,000 becomes +2,000, an inc
 | `features/entries/by-note.ts` | 16 |
 | `features/entries/year.ts` | 34 |
 | `features/entries/heatmap.ts` | 25 |
-| `features/entries/trips.ts` | 45, 46, 71 |
 | `features/entries/donut.ts` | 58 |
 | `features/entries/breakdown.ts` | 13, 14, 17, 18 |
 | `features/entries/breakdown-matrix.ts` | 33 |
@@ -170,6 +169,13 @@ Default `false`, so the legacy Monefy path is byte-for-byte unchanged. `restore.
 - `anomaly.ts` — no change needed. It consumes the cycle matrix, not raw rows, and already skips
   non-positive totals (`current <= 0`, `v > 0`), so a net-positive category drops out of both the
   subject and the basis on its own once the matrix nets.
+- `trips.ts` — **no change**, correcting an earlier draft of this spec that listed lines 45/46/71.
+  Trips are already inflow-aware and already chose gross on purpose: `getForeignEntries` and
+  `getTripEntries` carry no amount filter (`queries.ts:401,407-408` — *"trips count every foreign
+  row, refunds included"*) and `trips.ts:28-29` states *"a trip answers 'how much moved', not 'net
+  flow', so a refund/credit row still adds to the total"*. That is a live documented decision, not
+  an oversight from the expenses-only era, and this feature does not need it reversed — refunds in
+  scope here are domestic THB, and a foreign row never reaches these functions.
 - Recurring rules, budgets, trips naming, currency catalog: no change.
 
 ## 6. Tests
