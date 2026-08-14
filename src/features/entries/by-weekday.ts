@@ -1,9 +1,10 @@
 import type { EntryRow } from './schema';
 
 // "When in the week does the money go" — the active cycle's spend bucketed by day of week. The
-// heatmap shows WHICH dates; this shows the WEEKLY RHYTHM (peak day, weekend vs weekday). Magnitudes
-// (ledger stores outflows negative). Weekday comes from the UTC date key via Intl — the date keys are
-// UTC-stable, so no timezone drift and no string slicing.
+// heatmap shows WHICH dates; this shows the WEEKLY RHYTHM (peak day, weekend vs weekday). Net
+// (outflows stored negative, inflows positive; negating makes a refund subtract). Weekday comes from
+// the UTC date key via Intl — the date keys are UTC-stable, so no timezone drift and no string
+// slicing.
 export type WeekdayRow = { day: string; total: number; count: number };
 export type WeekdayStats = {
   rows: WeekdayRow[]; // always 7, Mon..Sun

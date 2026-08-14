@@ -21,7 +21,7 @@ function row(note: string | null, amount: number): EntryRow {
 }
 
 describe('topNotes', () => {
-  it('sums magnitudes per note, biggest first', () => {
+  it('nets totals per note, biggest first', () => {
     expect(topNotes([row('Starbucks', -120), row('7-11', -60), row('Starbucks', -80)])).toEqual([
       { note: 'Starbucks', total: 200, count: 2 },
       { note: '7-11', total: 60, count: 1 },
