@@ -491,7 +491,7 @@ describe('searchEntries', () => {
       { date: '2026-03-03', account: 'Cash', category: 'Running shoes', amount: -1200 },
       { date: '2026-07-08', account: 'Kasikorn', category: 'Shoes', amount: -1990 },
       { date: '2026-07-08', time: '20:00', account: 'Cash', category: 'Food', amount: -60, note: 'shoe polish' }, // prettier-ignore
-      { date: '2026-07-09', account: 'Kasikorn', category: 'Salary', amount: 50000 }, // income, excluded
+      { date: '2026-07-09', account: 'Kasikorn', category: 'Salary', amount: 50000 }, // inflow, now searchable too
       { date: '2026-07-10', account: 'Cash', category: 'Coffee', amount: -80 }, // no match
     ]);
     return d;
@@ -507,15 +507,16 @@ describe('searchEntries', () => {
     ]);
   });
 
-  it('matches on account name', async () => {
+  it('matches on account name, inflows included', async () => {
     expect((await searchEntries(await seed(), 'kasikorn')).map((r) => r.category)).toEqual([
-      'Shoes',
-    ]); // income row excluded
+      'Salary', // newest first: 2026-07-09
+      'Shoes', // 2026-07-08
+    ]);
   });
 
-  it('excludes income and returns nothing for a blank query', async () => {
+  it('finds an inflow by its category, and returns nothing for a blank query', async () => {
     const d = await seed();
-    expect(await searchEntries(d, 'salary')).toHaveLength(0); // salary is income
+    expect(await searchEntries(d, 'salary')).toHaveLength(1);
     expect(await searchEntries(d, '   ')).toHaveLength(0);
   });
 
@@ -721,5 +722,43 @@ describe('delete guards protect recurring rules', () => {
     await categoryIdFor(d, 'unused');
     await deleteCategory(d, 'unused');
     expect(await getDistinctCategories(d)).not.toContain('unused');
+  });
+});
+
+describe('refunds in the read surfaces', () => {
+  it('getEntriesInRange includes inflows so refunds reach the aggregations', async () => {
+    const d = await db();
+    await addEntries(d, [
+      { date: '2026-08-14', account: 'Card', category: 'Food', amount: -2000 },
+      { date: '2026-08-14', account: 'Cash', category: 'Food', amount: 500 },
+    ]);
+    const rows = await getEntriesInRange(d, '2026-08-01', '2026-08-31');
+    expect(rows).toHaveLength(2);
+    expect(rows.reduce((sum, r) => sum + r.amount, 0)).toBe(-1500);
+  });
+
+  it('getCategoryBreakdown nets an inflow into its category', async () => {
+    const d = await db();
+    await addEntries(d, [
+      { date: '2026-08-14', account: 'Card', category: 'Food', amount: -2000 },
+      { date: '2026-08-14', account: 'Cash', category: 'Food', amount: 500 },
+    ]);
+    expect(await getCategoryBreakdown(d, '2026-08-01', '2026-08-31')).toEqual([
+      { key: 'Food', total: -1500, count: 2 },
+    ]);
+  });
+
+  it('hasAnyExpense stays false for an inflow-only ledger', async () => {
+    const d = await db();
+    await addEntries(d, [{ date: '2026-08-14', account: 'Cash', category: 'Food', amount: 500 }]);
+    expect(await hasAnyExpense(d)).toBe(false);
+  });
+
+  it('searchEntries finds a refund', async () => {
+    const d = await db();
+    await addEntries(d, [
+      { date: '2026-08-14', account: 'Cash', category: 'Food', amount: 500, note: 'Dinner split' },
+    ]);
+    expect(await searchEntries(d, 'split')).toHaveLength(1);
   });
 });

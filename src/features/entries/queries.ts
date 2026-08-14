@@ -113,13 +113,13 @@ export async function restoreEntries(db: Db, rows: EntryInput[]): Promise<void> 
 
 export type Breakdown = { key: string; total: number; count: number };
 
-// moniflow is a spending tracker: cycle reads return expenses only (amount < 0), so the rare income
-// row never lands in the summary, donut, records or day totals. Income stays in the DB (lossless
-// import) but is out of scope for every UI surface. getCycleSummary derives from this, so it too is
-// spending-only.
+// moniflow tracks spending, but the ledger holds refunds too: money handed back against spending
+// that already happened (a friend repaying their share while the card carried the whole bill). They
+// are ordinary rows with a POSITIVE amount, filed under the category they refund, so every sum here
+// nets on its own. Consumers negate rather than Math.abs — see off-budget.ts and donut.ts.
 export async function getEntriesInRange(db: Db, start: string, end: string): Promise<EntryRow[]> {
   return await entryRowsQuery(db)
-    .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
+    .where(and(gte(entries.date, start), lte(entries.date, end)))
     .all();
 }
 
@@ -172,7 +172,7 @@ export async function getCategoryBreakdown(
       })
       .from(entries)
       .innerJoin(categories, eq(entries.categoryId, categories.id))
-      .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
+      .where(and(gte(entries.date, start), lte(entries.date, end)))
       .groupBy(categories.name)
       .all()
   ).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
@@ -368,27 +368,26 @@ export async function deleteCategory(db: Db, name: string): Promise<void> {
 }
 
 // Free-text search across the whole ledger (not cycle-scoped) — matches a substring of the note,
-// category, or account, case-insensitively, expenses only (same spending-tracker scope as the cycle
-// reads). Newest first. LIKE metacharacters in the query are escaped so a literal '_' or '%' can't
-// widen the match. A blank query returns nothing rather than the whole ledger.
+// category, or account, case-insensitively, refunds included, so a repayment is findable. Newest
+// first. LIKE metacharacters in the query are escaped so a literal '_' or '%' can't widen the match.
+// A blank query returns nothing rather than the whole ledger.
 export async function searchEntries(db: Db, query: string): Promise<EntryRow[]> {
   const q = query.trim();
   if (!q) return [];
   const pattern = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   const has = (col: AnyColumn) => sql`${col} like ${pattern} escape '\\'`;
   return await entryRowsQuery(db)
-    .where(
-      and(lt(entries.amount, 0), or(has(entries.note), has(categories.name), has(accounts.name))),
-    )
+    .where(or(has(entries.note), has(categories.name), has(accounts.name)))
     .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
     .all();
 }
 
-// All-time expenses for one category, newest first — powers the /categories count link, which wants
-// every record in the category, not just the current cycle (unlike the cycle-scoped chip filter).
+// All-time entries for one category, refunds included, newest first — powers the /categories count
+// link, which wants every record in the category, not just the current cycle (unlike the cycle-scoped
+// chip filter).
 export async function getEntriesByCategory(db: Db, category: string): Promise<EntryRow[]> {
   return await entryRowsQuery(db)
-    .where(and(lt(entries.amount, 0), eq(categories.name, category)))
+    .where(eq(categories.name, category))
     .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
     .all();
 }

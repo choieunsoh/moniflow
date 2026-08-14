@@ -35,7 +35,9 @@ describe('useYear', () => {
       { date: '2026-05-20', account: 'Cash', category: 'Food', amount: -1000 },
       // cycle 2026-06 (18 Jun – 17 Jul) — Food 1400
       { date: '2026-06-20', account: 'Cash', category: 'Food', amount: -1400 },
-      // Income is dropped by every read surface — it must not reach the recap.
+      // An inflow now nets into the total — there is no schema-level way to tell income from a
+      // refund — but year.ts's own per-category list still filters value > 0, so Salary itself never
+      // appears as a category row.
       { date: '2026-07-21', account: 'Cash', category: 'Salary', amount: 50000 },
     ]);
   });
@@ -47,7 +49,7 @@ describe('useYear', () => {
     // five months of spending nothing.
     expect(result.current.data?.bars).toHaveLength(7);
     expect(result.current.data?.year).toBe(2026);
-    expect(result.current.data?.total).toBe(2400);
+    expect(result.current.data?.total).toBe(-47600); // 1000 + 1400 - 50000, the seeded Salary included
     expect(result.current.data?.categories[0]).toEqual({ name: 'Food', value: 2400, count: 2 });
     expect(typeof result.current.data?.iconSet).toBe('string');
   });

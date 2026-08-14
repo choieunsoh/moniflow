@@ -38,7 +38,9 @@ describe('useCategoryReport', () => {
       { date: '2026-02-20', account: 'Cash', category: 'Travel', amount: -500 },
       // The live cycle — partial.
       { date: '2026-07-19', account: 'Cash', category: 'Food', amount: -300 },
-      // Income never reaches a read surface.
+      // An inflow now nets into its window — there is no schema-level way to tell income from a
+      // refund — so this stray Salary row swings the Jan 2026 bar (and every total built from it)
+      // negative.
       { date: '2026-01-21', account: 'Cash', category: 'Salary', amount: 50000 },
     ]);
   });
@@ -57,7 +59,8 @@ describe('useCategoryReport', () => {
       'Jun',
       'Jul',
     ]);
-    expect(result.current.data?.bars.map((b) => b.value)).toEqual([1000, 500, 0, 0, 0, 0, 300]);
+    // Jan nets Food -1000 against the seeded Salary +50000.
+    expect(result.current.data?.bars.map((b) => b.value)).toEqual([-49000, 500, 0, 0, 0, 0, 300]);
     expect(result.current.data?.bars.map((b) => b.partial)).toEqual([
       false,
       false,
@@ -67,7 +70,7 @@ describe('useCategoryReport', () => {
       false,
       true,
     ]);
-    expect(result.current.data?.total).toBe(1800);
+    expect(result.current.data?.total).toBe(-48200); // -49000 + 500 + 300
   });
 
   it('monthly ranks the year’s categories for the picker list', async () => {
@@ -108,9 +111,10 @@ describe('useCategoryReport', () => {
     const { result } = renderHook(() => useCategoryReport('yearly', null, null));
     await waitFor(() => expect(result.current.ready).toBe(true));
     expect(result.current.data?.bars.map((b) => b.label)).toEqual(['2024', '2025', '2026']);
-    expect(result.current.data?.bars.map((b) => b.value)).toEqual([1000, 600, 1800]);
+    // 2026 nets Food -1000 + Travel -500 + Food -300 against the seeded Salary +50000.
+    expect(result.current.data?.bars.map((b) => b.value)).toEqual([1000, 600, -48200]);
     expect(result.current.data?.bars.map((b) => b.partial)).toEqual([false, false, true]);
-    expect(result.current.data?.total).toBe(3400);
+    expect(result.current.data?.total).toBe(-46600); // 1000 + 600 - 48200
   });
 
   it('yearly filtered reads one category down the years', async () => {
@@ -158,10 +162,10 @@ describe('useCategoryReport', () => {
   it('refetches after a write', async () => {
     const { result } = renderHook(() => useCategoryReport('monthly', 2026, null));
     await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.data?.total).toBe(1800);
+    expect(result.current.data?.total).toBe(-48200);
 
     await addEntries(db, [{ date: '2026-04-20', account: 'Cash', category: 'Food', amount: -700 }]);
     act(() => bumpDataVersion());
-    await waitFor(() => expect(result.current.data?.total).toBe(2500));
+    await waitFor(() => expect(result.current.data?.total).toBe(-47500));
   });
 });
