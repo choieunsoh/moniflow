@@ -44,7 +44,9 @@ export function Breakdown({
   cycleKey?: string;
   colors?: Map<string, string>;
 }) {
-  const bars = toBars(rows);
+  // A category whose refunds exceed its spend has nothing to show — the donut's own filter drops it,
+  // and the two views must fold at the same point or the toggle changes the answer.
+  const bars = toBars(rows).filter((b) => b.pct > 0);
   // Same fold point as the donut, so both views lead with the same categories in the same order.
   // The tail stays reachable rather than being collapsed into an inert "Other" the way the ring
   // has to — a list can afford to keep every row tappable behind one disclosure.
@@ -52,7 +54,7 @@ export function Breakdown({
   const tail = bars.slice(MAX_SLICES);
 
   const row = (b: Bar) => {
-    const spent = Math.abs(b.total);
+    const spent = Math.max(0, -b.total);
     const limit = limits?.get(b.key);
     const status = limit === undefined ? null : toBudgetTotal(limit, spent);
     // One lookup for both the mark and the bar, so they cannot disagree about a category's colour.
