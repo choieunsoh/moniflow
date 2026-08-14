@@ -33,4 +33,10 @@ describe('topNotes', () => {
       { note: 'No note', total: 100, count: 3 },
     ]);
   });
+
+  it('nets a refund carrying the same note', () => {
+    expect(topNotes([row('Dinner', -2000), row('Dinner', 500)])).toEqual([
+      { note: 'Dinner', total: 1500, count: 2 },
+    ]);
+  });
 });

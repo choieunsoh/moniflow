@@ -48,4 +48,10 @@ describe('byWeekday', () => {
     const stats = byWeekday([e('2026-07-24', -500), e('2026-07-25', -400)]); // Fri weekday, Sat weekend
     expect(stats.weekendRatio).toBe(2);
   });
+
+  it('nets a refund against spend on the same weekday', () => {
+    // 2026-08-14 is a Friday (UTC), matching this file's existing date comments.
+    const stats = byWeekday([e('2026-08-14', -2000), e('2026-08-14', 500)]);
+    expect(stats.rows.find((r) => r.day === 'Fri')).toEqual({ day: 'Fri', total: 1500, count: 2 });
+  });
 });

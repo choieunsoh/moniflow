@@ -28,7 +28,7 @@ export function byWeekday(entries: EntryRow[]): WeekdayStats {
     const day = fmt.format(new Date(`${entry.date}T00:00:00Z`));
     const cell = totals.get(day);
     if (cell === undefined) continue; // defensive; Intl 'short' en-US yields exactly ORDER
-    cell.total += Math.abs(entry.amount);
+    cell.total += -entry.amount;
     cell.count += 1;
   }
 
