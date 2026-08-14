@@ -633,7 +633,7 @@ describe('entries ↔ accounts', () => {
     expect(counts.find((c) => c.account === 'Empty')?.count).toBe(0);
   });
 
-  it('getAccountBreakdown sums expenses per account, sorted by magnitude', async () => {
+  it('getAccountBreakdown sums expenses per account, sorted by descending net spend', async () => {
     const d = await ledger();
     const bd = await getAccountBreakdown(d, '2026-07-01', '2026-07-31');
     expect(bd[0]).toMatchObject({ key: 'Bank', total: -9000, count: 1 });

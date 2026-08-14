@@ -175,7 +175,7 @@ export async function getCategoryBreakdown(
       .where(and(gte(entries.date, start), lte(entries.date, end)))
       .groupBy(categories.name)
       .all()
-  ).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  ).sort((a, b) => a.total - b.total);
 }
 
 export async function insertEntry(db: Db, entry: EntryInput): Promise<void> {
@@ -471,7 +471,7 @@ export async function getAccountBreakdown(
       .where(and(gte(entries.date, start), lte(entries.date, end)))
       .groupBy(accounts.name)
       .all()
-  ).sort((a, b) => -b.total - -a.total);
+  ).sort((a, b) => a.total - b.total);
 }
 
 // Rename an account by id, or MERGE when `to` already names a different account: reassign this

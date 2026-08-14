@@ -90,7 +90,7 @@ function aggregate(breakdowns: Breakdown[][]): Breakdown[] {
         });
     }
   }
-  return [...byKey.values()].sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  return [...byKey.values()].sort((a, b) => a.total - b.total);
 }
 
 // The analytics window's data, read after mount from the browser OPFS db. Re-runs when the ?cycle=
