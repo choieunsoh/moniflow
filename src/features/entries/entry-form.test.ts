@@ -99,6 +99,15 @@ describe('parseEntryForm', () => {
     }
   });
 
+  it('direction=income stores a positive amount and a positive original', () => {
+    const fd = formData({ ...base, direction: 'income', amount: '500', thb: '500' });
+    const result = parseEntryForm(fd, CODES);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return; // narrows the union without a cast
+    expect(result.entry.amount).toBe(500);
+    expect(result.entry.originalAmount).toBe(500);
+  });
+
   it('rejects an empty account', () => {
     expect(parseEntryForm(formData({ ...base, account: '' }), CODES)).toEqual({
       ok: false,

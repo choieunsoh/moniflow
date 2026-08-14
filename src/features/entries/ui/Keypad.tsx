@@ -149,6 +149,9 @@ export function Keypad({
   const [naming, setNaming] = useState<null | 'category' | 'account'>(null);
   const [draftName, setDraftName] = useState('');
   const [isSeeding, startSeeding] = useTransition();
+  // Refunds only — money handed back against spending that already happened, filed under the
+  // category it refunds. On edit, follow the row's own sign.
+  const [isIncome, setIsIncome] = useState(entry !== undefined && entry.amount > 0);
 
   // DERIVED, not synced. The keypad deliberately survives a data refetch now (see use-new-entry),
   // so it also keeps an `account` picked before there WERE any accounts — the empty string. Seeding
@@ -201,7 +204,7 @@ export function Keypad({
       {entry ? <input type="hidden" name="id" value={entry.id} /> : null}
       {entry ? <input type="hidden" name="time" value={entry.time ?? ''} /> : null}
       <input type="hidden" name="currency" value={currency} />
-      <input type="hidden" name="direction" value="expense" />
+      <input type="hidden" name="direction" value={isIncome ? 'income' : 'expense'} />
       <input type="hidden" name="amount" value={validAmount ? String(amount) : ''} />
       <input type="hidden" name="thb" value={canSubmit ? String(thbValue) : ''} />
       <input type="hidden" name="account" value={effectiveAccount} />
@@ -301,8 +304,15 @@ export function Keypad({
           </span>
           <span
             className="tnum text-4xl font-semibold"
-            style={{ color: validAmount ? 'var(--color-text)' : 'var(--color-faint)' }}
+            style={{
+              color: !validAmount
+                ? 'var(--color-faint)'
+                : isIncome
+                  ? 'var(--color-gain)'
+                  : 'var(--color-text)',
+            }}
           >
+            {isIncome ? '+' : ''}
             {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
           </span>
 
@@ -404,6 +414,18 @@ export function Keypad({
             );
           })}
         </div>
+
+        {/* Refund toggle. Quiet, and here rather than in the top date/currency/account row: this
+            happens a few times a month, while that row is read on every entry and has already been
+            trimmed once to keep "Choose category" above the fold on a 412px frame. */}
+        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-text)' }}>
+          <input
+            type="checkbox"
+            checked={isIncome}
+            onChange={(e) => setIsIncome(e.target.checked)}
+          />
+          Money received (refund)
+        </label>
 
         {/* One-off override — same tri-state as EntryForm's toggle, checked by default when the
             entry's own category is off-budget by default (or, on edit, when the entry already
