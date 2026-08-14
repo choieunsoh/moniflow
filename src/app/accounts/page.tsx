@@ -65,7 +65,8 @@ export default function AccountsPage() {
                 <li key={b.key} className="flex items-center gap-3">
                   <span className="min-w-0 flex-1 truncate text-sm">{b.key}</span>
                   <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                    {formatBaht(Math.max(0, -b.total))}
+                    {/* Same filter logic as Breakdown.tsx: pct > 0 ensures total < 0, so -b.total is always positive. */}
+                    {formatBaht(-b.total)}
                   </span>
                 </li>
               ))}

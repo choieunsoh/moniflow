@@ -54,7 +54,10 @@ export function Breakdown({
   const tail = bars.slice(MAX_SLICES);
 
   const row = (b: Bar) => {
-    const spent = Math.max(0, -b.total);
+    // `bars` above is filtered to pct > 0, and toBars derives pct from Math.max(0, -total) — so
+    // every row reaching here has a negative total and this negation is always positive. No clamp:
+    // an unreachable guard is a guard nobody can test, and the filter is the one that does the work.
+    const spent = -b.total;
     const limit = limits?.get(b.key);
     const status = limit === undefined ? null : toBudgetTotal(limit, spent);
     // One lookup for both the mark and the bar, so they cannot disagree about a category's colour.
