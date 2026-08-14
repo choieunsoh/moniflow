@@ -10,11 +10,12 @@ export type Bar = Breakdown & { pct: number; share: number };
 // the share column and the user had to carry it across the toggle. The two are not interchangeable —
 // given four equal rows every pct is 100 and every share is 25.
 export function toBars(items: Breakdown[]): Bar[] {
-  const max = Math.max(0, ...items.map((i) => Math.abs(i.total)));
-  const sum = items.reduce((acc, i) => acc + Math.abs(i.total), 0);
-  return items.map((i) => ({
-    ...i,
-    pct: max === 0 ? 0 : (Math.abs(i.total) / max) * 100,
-    share: sum === 0 ? 0 : Math.round((Math.abs(i.total) / sum) * 100),
+  const net = items.map((i) => ({ item: i, value: Math.max(0, -i.total) }));
+  const max = Math.max(0, ...net.map((n) => n.value));
+  const sum = net.reduce((acc, n) => acc + n.value, 0);
+  return net.map((n) => ({
+    ...n.item,
+    pct: max === 0 ? 0 : (n.value / max) * 100,
+    share: sum === 0 ? 0 : Math.round((n.value / sum) * 100),
   }));
 }

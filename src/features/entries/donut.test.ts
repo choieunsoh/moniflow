@@ -193,3 +193,19 @@ describe('donutSummaryLabel', () => {
     expect(donutSummaryLabel([])).toBe('Spending by category: nothing spent this cycle');
   });
 });
+
+describe('toDonutSlices with inflows', () => {
+  it('nets a refund against its own category', () => {
+    // sum(amount) for Food is -2000 + 500 = -1500
+    const slices = toDonutSlices([row('Food', -1500, 2)]);
+    expect(slices).toHaveLength(1);
+    expect(slices[0].value).toBe(1500);
+  });
+
+  it('drops a category whose refunds exceed its spend rather than drawing it as spending', () => {
+    // A refund landing in a later cycle than the spend it refunds: Food nets POSITIVE.
+    // Math.abs would have drawn a +400 wedge — spending that never happened.
+    const slices = toDonutSlices([row('Rent', -9000, 1), row('Food', 400, 1)]);
+    expect(slices.map((s) => s.name)).toEqual(['Rent']);
+  });
+});

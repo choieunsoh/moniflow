@@ -137,8 +137,7 @@ export function useAnalytics(
       const matrix = new Map<string, Map<string, { total: number; count: number }>>();
       for (const [i, rows] of categoryBreakdowns.entries()) {
         const byCategory = new Map<string, { total: number; count: number }>();
-        for (const row of rows)
-          byCategory.set(row.key, { total: Math.abs(row.total), count: row.count });
+        for (const row of rows) byCategory.set(row.key, { total: -row.total, count: row.count });
         matrix.set(cycles[i].key, byCategory);
       }
 
@@ -191,7 +190,7 @@ export function useAnalytics(
       // Every category in the window, biggest first — no palette cap, no "Other" (the analytics list
       // has no donut ring whose colours it must match). Magnitudes; drop the zero-spend tail.
       const categories: CategoryRow[] = aggregate(listBreakdowns)
-        .map((r) => ({ name: r.key, value: Math.abs(r.total), count: r.count }))
+        .map((r) => ({ name: r.key, value: -r.total, count: r.count }))
         .filter((c) => c.value > 0);
       const total = [...spendByCycle.values()].reduce((sum, v) => sum + v, 0);
 
