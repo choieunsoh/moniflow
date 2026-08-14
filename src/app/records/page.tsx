@@ -8,7 +8,7 @@ import { formatDateRange, formatForeign } from '@features/entries/trips';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { iconForAccount, hueForAccount } from '@features/accounts/queries';
 import { formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
-import { formatBaht } from '@shared/money';
+import { formatBaht, formatSignedBaht } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { CollapseAllButton } from '@features/entries/ui/CollapseAllButton';
 import { SwipeRow } from '@features/entries/ui/SwipeRow';
@@ -213,7 +213,9 @@ export default function RecordsPage() {
                   {formatForeign(c.total, c.currency)}
                 </span>
               ))}
-              <span className="tnum text-sm font-semibold">{formatBaht(Math.abs(total))}</span>
+              <span className="tnum text-sm font-semibold">
+                {total > 0 ? formatSignedBaht(-total) : formatBaht(-total)}
+              </span>
             </span>
           </div>
           {sections.map((section) => (
@@ -276,7 +278,11 @@ export default function RecordsPage() {
                       {formatForeign(c.total, c.currency)}
                     </span>
                   ))}
-                  <span>{formatBaht(Math.abs(section.total))}</span>
+                  <span>
+                    {section.total > 0
+                      ? formatSignedBaht(-section.total)
+                      : formatBaht(-section.total)}
+                  </span>
                 </span>
               </summary>
               <ul className="panel flex flex-col divide-y overflow-hidden">
