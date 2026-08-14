@@ -143,8 +143,8 @@ export async function hasAnyExpense(db: Db): Promise<boolean> {
 
 // The oldest expense in the ledger, or null when there is none. /year's stepper clamps against it
 // so you can't walk back through empty years forever. ORDER BY + LIMIT 1 rather than min(): same
-// answer, one indexed row, and no sql`` template to type around. Expenses only, matching every
-// other read surface — an ancient income row must not open a year with nothing to show.
+// answer, one indexed row, and no sql`` template to type around. Expenses only, deliberately unlike
+// most other read surfaces — an ancient income row must not open a year with nothing to show.
 export async function getFirstExpenseDate(db: Db): Promise<string | null> {
   const rows = await db
     .select({ date: entries.date })
@@ -452,7 +452,7 @@ export async function getAccountCounts(db: Db): Promise<AccountCount[]> {
   ).sort((a, b) => b.count - a.count);
 }
 
-// Per-account spending for a cycle (expenses only, magnitudes sorted desc) — feeds the /accounts donut
+// Per-account net spend for a cycle (refunds included, net sorted desc) — feeds the /accounts donut
 // + breakdown. Same shape/scope as getCategoryBreakdown.
 export async function getAccountBreakdown(
   db: Db,
@@ -468,10 +468,10 @@ export async function getAccountBreakdown(
       })
       .from(entries)
       .innerJoin(accounts, eq(entries.accountId, accounts.id))
-      .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
+      .where(and(gte(entries.date, start), lte(entries.date, end)))
       .groupBy(accounts.name)
       .all()
-  ).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  ).sort((a, b) => -b.total - -a.total);
 }
 
 // Rename an account by id, or MERGE when `to` already names a different account: reassign this

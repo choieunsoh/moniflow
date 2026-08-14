@@ -184,6 +184,10 @@ export function useAnalytics(
                 value: matrix.get(c.key)?.get(category)?.total ?? 0,
                 count: matrix.get(c.key)?.get(category)?.count ?? 0,
               }))
+              // ponytail: a cycle whose refunds exceed its spend drops out here while `total` below
+              // still counts it, so the two disagree. Unreachable under refunds-only scope (it needs
+              // a month of refunds to outweigh a month of spending); revisit if standalone income is
+              // ever modelled.
               .filter((r) => r.value > 0);
 
       const bars = toTrendBars(cycles, spendByCycle, currentKey);

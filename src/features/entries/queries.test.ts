@@ -28,6 +28,7 @@ import {
   renameCategory,
   deleteCategory,
   getForeignEntries,
+  getEntriesByCategory,
   searchEntries,
   getAccountCounts,
   getAccountBreakdown,
@@ -760,5 +761,26 @@ describe('refunds in the read surfaces', () => {
       { date: '2026-08-14', account: 'Cash', category: 'Food', amount: 500, note: 'Dinner split' },
     ]);
     expect(await searchEntries(d, 'split')).toHaveLength(1);
+  });
+
+  // The driving case: dinner on the card, a friend's share refunded in cash. Two different accounts
+  // must both surface — a refund's account is never the expense's account — and the ranking is net
+  // spend, not magnitude, so the refund doesn't outrank the expense it partially offsets.
+  it('getAccountBreakdown includes the refund account and ranks by net spend', async () => {
+    const d = await db();
+    await addEntries(d, [
+      { date: '2026-08-14', account: 'Card', category: 'Food', amount: -2000 },
+      { date: '2026-08-14', account: 'Cash', category: 'Food', amount: 500 },
+    ]);
+    expect(await getAccountBreakdown(d, '2026-08-01', '2026-08-31')).toEqual([
+      { key: 'Card', total: -2000, count: 1 },
+      { key: 'Cash', total: 500, count: 1 },
+    ]);
+  });
+
+  it('getEntriesByCategory includes a refund row', async () => {
+    const d = await db();
+    await addEntries(d, [{ date: '2026-08-14', account: 'Cash', category: 'Food', amount: 500 }]);
+    expect(await getEntriesByCategory(d, 'Food')).toHaveLength(1);
   });
 });
