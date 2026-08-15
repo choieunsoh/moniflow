@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Keypad } from './Keypad';
+import type { EntryRow } from '../schema';
 
 // CloseButton (rendered unconditionally on the keypad view) calls useRouter().back() — mock it the
 // same way SearchBox.test.tsx mocks next/navigation, since there is no real router in this render.
@@ -8,9 +9,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ back: vi.fn() }),
 }));
 
-// Minimal, valid prop set for the add-entry route (no `entry` — the edit path is covered by the
-// `isIncome` initialiser reasoning in Keypad.tsx itself, not here). `action` is a no-op stub: the
-// keypad's own submit wiring isn't under test, only the refund toggle's effect on the two outputs
+// Minimal, valid prop set for the add-entry route (no `entry` — the edit path, where `entry` is
+// passed, is covered separately below by the toggle-initialisation tests). `action` is a no-op stub:
+// the keypad's own submit wiring isn't under test, only the refund toggle's effect on the two outputs
 // that carry it — the hidden `direction` field and the signed amount display.
 function renderKeypad() {
   return render(
@@ -58,22 +59,6 @@ describe('Keypad refund toggle', () => {
   });
 
   it('initialises toggle from existing refund: positive amount starts checked, direction is income', () => {
-    type EntryRow = {
-      id: number;
-      date: string;
-      time: string | null;
-      accountId: number | null;
-      categoryId: number | null;
-      amount: number;
-      currency: string | null;
-      originalAmount: number | null;
-      note: string | null;
-      source: string;
-      offBudget: number | null;
-      category: string;
-      account: string;
-    };
-
     const refundEntry: EntryRow = {
       id: 1,
       date: '2026-08-14',
@@ -119,22 +104,6 @@ describe('Keypad refund toggle', () => {
   });
 
   it('initialises toggle from existing expense: negative amount starts unchecked, direction is expense', () => {
-    type EntryRow = {
-      id: number;
-      date: string;
-      time: string | null;
-      accountId: number | null;
-      categoryId: number | null;
-      amount: number;
-      currency: string | null;
-      originalAmount: number | null;
-      note: string | null;
-      source: string;
-      offBudget: number | null;
-      category: string;
-      account: string;
-    };
-
     const expenseEntry: EntryRow = {
       id: 2,
       date: '2026-08-14',
