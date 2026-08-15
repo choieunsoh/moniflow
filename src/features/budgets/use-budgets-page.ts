@@ -70,9 +70,11 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
 
       const rows = toBudgetRows(distinctCategories, limits, spentByCategory);
       const total = toBudgetTotal(totalLimit, totalSpent);
-      // A tracker leads with what's live this cycle. "Active" = spent something OR has a limit; the
-      // rest is tucked behind a disclosure (mirrors the page's own comment before this moved here).
-      const active = rows.filter((r) => r.spent > 0 || r.limit !== null);
+      // A tracker leads with what's live this cycle. "Active" = spent something (either direction —
+      // a refund-only category nets negative, not zero, and must not vanish from the page) OR has a
+      // limit; the rest is tucked behind a disclosure (mirrors the page's own comment before this
+      // moved here).
+      const active = rows.filter((r) => r.spent !== 0 || r.limit !== null);
       const dormant = rows.filter((r) => r.spent === 0 && r.limit === null);
 
       setData({ cycleLabel: cycle.label, emojis, hues, iconSet, rows, total, active, dormant });

@@ -28,10 +28,13 @@ function classify(limit: number | null, spent: number): BudgetState {
   return 'under';
 }
 
-// Meter fill: share of the limit spent, capped at 100. With no positive limit the bar is full when
-// anything was spent (a 0 budget you've spent against), empty otherwise.
+// Meter fill: share of the limit spent, clamped to 0..100. With no positive limit the bar is full
+// when anything was spent (a 0 budget you've spent against), empty otherwise. The lower clamp matters
+// now that `spent` can be negative (a refund-heavy category nets below zero) — an unclamped negative
+// pct became an invalid CSS width (`width: -10%`), which the CSSOM drops entirely, leaving the fill
+// div at `width: auto` and painting the WHOLE track for a category that owes nothing.
 function fillPct(limit: number | null, spent: number): number {
-  if (limit !== null && limit > 0) return Math.min(100, (spent / limit) * 100);
+  if (limit !== null && limit > 0) return Math.max(0, Math.min(100, (spent / limit) * 100));
   return spent > 0 ? 100 : 0;
 }
 
