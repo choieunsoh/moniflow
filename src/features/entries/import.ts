@@ -95,7 +95,8 @@ export function parseMonefyCsv(text: string, opts?: { keepInflows?: boolean }): 
     // the ledger and desync the /categories counts. moniflow's OWN backup happens to use the same
     // CSV format (settings/restore.ts) and must keep them, or every restore silently deletes every
     // refund — the off_budget v1.8.1 defect class, which only bites on a fresh device.
-    // ponytail: sign is the whole test — Monefy marks outflows negative.
+    // ponytail: sign is the whole test — Monefy marks outflows negative; if a real export ever ships
+    // a 0-amount expense, revisit this bound.
     const amount = cleanAmount(cols[5]);
     if (amount >= 0 && opts?.keepInflows !== true) {
       skipped += 1;
