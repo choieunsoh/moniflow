@@ -362,6 +362,38 @@ describe('useHome', () => {
     });
   });
 
+  // `total` used to be summed from the (filtered) donut slices, which drop any category that nets
+  // positive — a refund-heavy category vanished from the total right along with its wedge. Every
+  // existing `data.total` assertion in this file is all-spend, where `-summary.net` and the old
+  // slice-sum formula agree; this seeds a refund big enough to flip Food net-positive, where they
+  // don't. Pinned locally rather than trusting the file-level mock, which leaks its last
+  // `mockReturnValue` across tests.
+  describe('total with a net-positive category', () => {
+    beforeEach(() => {
+      vi.mocked(todayIso).mockReturnValue('2026-07-05');
+    });
+
+    it('sums the signed total across categories, not the (net-positive-dropping) donut slices', async () => {
+      const db = await getBrowserDb();
+      // Seeded cycle '2026-06' already carries Food -100, Food -50, Transport -20 (net -170). A +200
+      // refund flips Food to net +50, which toDonutSlices drops from the ring entirely — the donut
+      // then sums to 20 (Transport alone), but the true all-in total is -170 + 200 = 30, so the
+      // headline is -30.
+      await addEntries(db, [
+        { date: '2026-07-01', account: 'Cash', category: 'Food', amount: 200 },
+      ]);
+
+      const { result } = renderHook(() => useHome('2026-06'));
+      await waitFor(() => expect(result.current.ready).toBe(true));
+      const { data } = result.current;
+      expect(data).not.toBeNull();
+      if (data === null) throw new Error('unreachable — checked above');
+
+      expect(data.slices.map((s) => s.name)).toEqual(['Transport']); // Food's wedge is dropped
+      expect(data.total).toBe(-30);
+    });
+  });
+
   describe('topTransactions', () => {
     it('exposes the active cycle entries ranked by magnitude, biggest first', async () => {
       const { result } = renderHook(() => useHome('2026-06'));
