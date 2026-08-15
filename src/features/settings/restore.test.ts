@@ -134,6 +134,24 @@ describe('restoreBackupAction', () => {
     expect(await getTravelCurrencies(db)).toContain('USD');
   });
 
+  // Restore shares parseMonefyCsv with the legacy Monefy importer, which drops positive-amount rows
+  // on purpose (income categories). A refund is a positive-amount row under the same category as the
+  // expense it refunds, so a naive shared parse call silently deletes every refund on restore — the
+  // off_budget v1.8.1 defect class, which only bites on a fresh device restore.
+  it('keeps a refund (positive-amount row) through restore', async () => {
+    const db = await getBrowserDb();
+    const csvWithRefund =
+      HEADER +
+      '15/01/2016,Card,Food,-2000,THB,-2000,THB,lunch\n' +
+      '16/01/2016,Cash,Food,500,THB,500,THB,refund';
+
+    const summary = await restoreBackupAction(combined({ entriesCsv: csvWithRefund }));
+
+    expect(summary.entries).toBe(2);
+    const entries = await getEntries(db);
+    expect(entries.map((e) => e.amount)).toEqual([-2000, 500]);
+  });
+
   it('a catalog-only file (no entriesCsv/budgets/settings) leaves the ledger untouched', async () => {
     const db = await getBrowserDb();
     await restoreEntries(db, [

@@ -45,7 +45,7 @@ export async function restoreBackupAction(data: CatalogData): Promise<RestoreSum
 
   let entries: number | null = null;
   if (data.entriesCsv !== undefined) {
-    const rows = parseMonefyCsv(data.entriesCsv).entries;
+    const rows = parseMonefyCsv(data.entriesCsv, { keepInflows: true }).entries;
     await restoreEntries(db, rows); // replace-all; an empty array clears the ledger to match the backup
     // Rewind unconditionally — an empty ledger needs it MOST. Guarding this on rows.length > 0 left
     // every rule pointing at entries the wipe had just deleted, and the sweep, believing it had
