@@ -12,7 +12,7 @@ import { SwipeNav } from '@features/entries/ui/SwipeNav';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { emojiFor, hueFor } from '@features/categories/queries';
-import { formatBaht, formatBahtWhole, formatSignedBaht } from '@shared/money';
+import { formatBahtWhole, formatLedgerSpend } from '@shared/money';
 import { formatDayHeadingWithYear } from '@shared/date';
 
 // The /year recap — a calendar-year "where did it go" summary reached from the More sheet, stepped
@@ -83,11 +83,7 @@ export default function YearPage() {
   // a purchase. Same idiom as SwipeRow: a spend states its cost plainly, a refund gets an explicit +
   // and gain colour, in both the figure and the aria-label.
   const biggestAmountText =
-    biggestTransaction === null
-      ? null
-      : biggestTransaction.amount < 0
-        ? formatBaht(-biggestTransaction.amount)
-        : formatSignedBaht(biggestTransaction.amount);
+    biggestTransaction === null ? null : formatLedgerSpend(biggestTransaction.amount);
   const biggestAmountColor =
     biggestTransaction !== null && biggestTransaction.amount < 0
       ? 'var(--color-text)'

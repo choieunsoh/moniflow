@@ -4,6 +4,7 @@ import {
   formatBahtWhole,
   formatBahtKeyed,
   formatSignedBaht,
+  formatLedgerSpend,
   formatCurrency,
   currencySymbol,
 } from './money';
@@ -54,6 +55,16 @@ describe('formatSignedBaht', () => {
   it('carries the satang through the signed ledger form', () => {
     expect(formatSignedBaht(-1234.56)).toBe('−฿1,234.56');
     expect(formatSignedBaht(120)).toBe('+฿120.00');
+  });
+});
+
+describe('formatLedgerSpend', () => {
+  it('renders an ordinary (negative) row as a plain cost — no sign', () => {
+    expect(formatLedgerSpend(-1234.56)).toBe('฿1,234.56');
+  });
+
+  it('renders a refund (positive) row with an explicit sign', () => {
+    expect(formatLedgerSpend(120)).toBe('+฿120.00');
   });
 });
 

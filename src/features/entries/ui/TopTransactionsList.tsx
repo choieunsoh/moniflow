@@ -3,7 +3,7 @@ import type { EntryRow } from '../schema';
 import type { IconSet } from '@features/settings/queries';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { emojiFor, hueFor } from '@features/categories/queries';
-import { formatBaht, formatSignedBaht } from '@shared/money';
+import { formatLedgerSpend } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
 
 // The cycle's biggest single purchases (see topTransactions) — the outliers the category donut
@@ -45,7 +45,7 @@ export function TopTransactionsList({
           // Ranked by magnitude (see topTransactions), so a big refund can land in this list too —
           // it must not print as a purchase. Same idiom as SwipeRow: a spend states its cost plainly,
           // a refund gets an explicit + and gain colour, in both the visible figure and the aria-label.
-          const amountText = e.amount < 0 ? formatBaht(-e.amount) : formatSignedBaht(e.amount);
+          const amountText = formatLedgerSpend(e.amount);
           const amountColor = e.amount < 0 ? 'var(--color-text)' : 'var(--color-gain)';
           return (
             <li key={e.id}>

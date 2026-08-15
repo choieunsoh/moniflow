@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { PointerEvent } from 'react';
 import { useRef, useState } from 'react';
-import { formatBaht, formatSignedBaht } from '@shared/money';
+import { formatLedgerSpend } from '@shared/money';
 import { formatForeign } from '../trips';
 import { deleteEntryAction } from '../actions';
 import { withSaveToast } from '@shared/ui/with-save-toast';
@@ -147,7 +147,7 @@ export function SwipeRow({
     entry.currency && entry.currency !== 'THB' && entry.originalAmount != null
       ? { amount: Math.abs(entry.originalAmount), currency: entry.currency }
       : null;
-  const baht = entry.amount < 0 ? formatBaht(-entry.amount) : formatSignedBaht(entry.amount);
+  const baht = formatLedgerSpend(entry.amount);
   const amountColor = entry.amount < 0 ? 'var(--color-loss)' : 'var(--color-gain)';
 
   return (
