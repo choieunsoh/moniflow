@@ -56,4 +56,126 @@ describe('Keypad refund toggle', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Money received (refund)' }));
     expect(amountSpan.textContent?.startsWith('+')).toBe(true);
   });
+
+  it('initialises toggle from existing refund: positive amount starts checked, direction is income', () => {
+    type EntryRow = {
+      id: number;
+      date: string;
+      time: string | null;
+      accountId: number | null;
+      categoryId: number | null;
+      amount: number;
+      currency: string | null;
+      originalAmount: number | null;
+      note: string | null;
+      source: string;
+      offBudget: number | null;
+      category: string;
+      account: string;
+    };
+
+    const refundEntry: EntryRow = {
+      id: 1,
+      date: '2026-08-14',
+      time: null,
+      accountId: 1,
+      categoryId: 1,
+      amount: 500,
+      currency: 'THB',
+      originalAmount: null,
+      note: null,
+      source: 'manual',
+      offBudget: null,
+      category: 'Food',
+      account: 'Cash',
+    };
+
+    const { container } = render(
+      <Keypad
+        categories={[]}
+        accounts={[]}
+        currencies={[{ code: 'THB', symbol: '฿' }]}
+        currencyCodes={new Set(['THB'])}
+        notes={[]}
+        rates={{}}
+        ratesAsOf={{}}
+        defaultAccount="Cash"
+        today="2026-08-14"
+        iconSet="emoji"
+        keypadLayout="calc"
+        action={async () => {}}
+        offBudgetCategories={new Set()}
+        travelCurrencies={new Set()}
+        entry={refundEntry}
+      />,
+    );
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Money received (refund)' });
+    expect(checkbox).toBeChecked();
+
+    const direction = container.querySelector<HTMLInputElement>('input[name="direction"]');
+    if (direction === null) throw new Error('direction field not found');
+    expect(direction.value).toBe('income');
+  });
+
+  it('initialises toggle from existing expense: negative amount starts unchecked, direction is expense', () => {
+    type EntryRow = {
+      id: number;
+      date: string;
+      time: string | null;
+      accountId: number | null;
+      categoryId: number | null;
+      amount: number;
+      currency: string | null;
+      originalAmount: number | null;
+      note: string | null;
+      source: string;
+      offBudget: number | null;
+      category: string;
+      account: string;
+    };
+
+    const expenseEntry: EntryRow = {
+      id: 2,
+      date: '2026-08-14',
+      time: null,
+      accountId: 1,
+      categoryId: 1,
+      amount: -500,
+      currency: 'THB',
+      originalAmount: null,
+      note: null,
+      source: 'manual',
+      offBudget: null,
+      category: 'Food',
+      account: 'Cash',
+    };
+
+    const { container } = render(
+      <Keypad
+        categories={[]}
+        accounts={[]}
+        currencies={[{ code: 'THB', symbol: '฿' }]}
+        currencyCodes={new Set(['THB'])}
+        notes={[]}
+        rates={{}}
+        ratesAsOf={{}}
+        defaultAccount="Cash"
+        today="2026-08-14"
+        iconSet="emoji"
+        keypadLayout="calc"
+        action={async () => {}}
+        offBudgetCategories={new Set()}
+        travelCurrencies={new Set()}
+        entry={expenseEntry}
+      />,
+    );
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Money received (refund)' });
+    expect(checkbox).not.toBeChecked();
+
+    const direction = container.querySelector<HTMLInputElement>('input[name="direction"]');
+    if (direction === null) throw new Error('direction field not found');
+    expect(direction.value).toBe('expense');
+  });
 });
