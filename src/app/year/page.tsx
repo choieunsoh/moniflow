@@ -12,7 +12,7 @@ import { SwipeNav } from '@features/entries/ui/SwipeNav';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { emojiFor, hueFor } from '@features/categories/queries';
-import { formatBaht, formatBahtWhole } from '@shared/money';
+import { formatBaht, formatBahtWhole, formatSignedBaht } from '@shared/money';
 import { formatDayHeadingWithYear } from '@shared/date';
 
 // The /year recap — a calendar-year "where did it go" summary reached from the More sheet, stepped
@@ -78,6 +78,20 @@ export default function YearPage() {
   const prevHref = year > firstYear ? `?year=${year - 1}` : null;
   const nextHref = year < currentYear ? `?year=${year + 1}` : null;
   const selector = <YearSelector year={year} prevHref={prevHref} nextHref={nextHref} />;
+
+  // topTransactions ranks by magnitude, so a big refund can win "biggest" too — it must not print as
+  // a purchase. Same idiom as SwipeRow: a spend states its cost plainly, a refund gets an explicit +
+  // and gain colour, in both the figure and the aria-label.
+  const biggestAmountText =
+    biggestTransaction === null
+      ? null
+      : biggestTransaction.amount < 0
+        ? formatBaht(-biggestTransaction.amount)
+        : formatSignedBaht(biggestTransaction.amount);
+  const biggestAmountColor =
+    biggestTransaction !== null && biggestTransaction.amount < 0
+      ? 'var(--color-text)'
+      : 'var(--color-gain)';
 
   // The panel keeps its own title now that the year has moved up into the sticky bar — without it
   // the first thing in the panel would be a bare figure, and the sticky bar scrolled past means the
@@ -162,7 +176,7 @@ export default function YearPage() {
             <Link
               prefetch={false}
               href={`/entries/edit?id=${biggestTransaction.id}`}
-              aria-label={`${biggestTransaction.note ? `${biggestTransaction.note} (${biggestTransaction.category})` : biggestTransaction.category} ${formatBaht(Math.abs(biggestTransaction.amount))} on ${formatDayHeadingWithYear(biggestTransaction.date)}`}
+              aria-label={`${biggestTransaction.note ? `${biggestTransaction.note} (${biggestTransaction.category})` : biggestTransaction.category} ${biggestAmountText} on ${formatDayHeadingWithYear(biggestTransaction.date)}`}
               className="flex min-h-11 items-center gap-3 text-sm"
             >
               <CategoryIcon
@@ -179,8 +193,8 @@ export default function YearPage() {
                   {formatDayHeadingWithYear(biggestTransaction.date)}
                 </span>
               </span>
-              <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-                {formatBaht(Math.abs(biggestTransaction.amount))}
+              <span className="tnum shrink-0" style={{ color: biggestAmountColor }}>
+                {biggestAmountText}
               </span>
             </Link>
           </section>
