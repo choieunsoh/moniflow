@@ -71,6 +71,25 @@ describe('useBudgetsPage', () => {
     await waitFor(() => expect(result.current.data?.total.limit).toBe(500));
   });
 
+  it('keeps a refund-only category in active, not stranded in neither list', async () => {
+    const db = await getBrowserDb();
+    // A category with no expense this cycle, only a refund — nets negative, not zero. Before the
+    // fix this fell into neither `active` (spent > 0) nor `dormant` (spent === 0) and vanished from
+    // the page entirely.
+    await addEntries(db, [{ date: cycle.start, account: 'Cash', category: 'Gifts', amount: 500 }]);
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useBudgetsPage());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — checked above');
+    const gifts = data.rows.find((r) => r.category === 'Gifts');
+    expect(gifts?.spent).toBe(-500);
+    expect(data.active.map((r) => r.category)).toContain('Gifts');
+    expect(data.dormant.map((r) => r.category)).not.toContain('Gifts');
+  });
+
   it('excludes off-budget entries from a category row spend', async () => {
     const db = await getBrowserDb();
     // A per-entry off_budget:1 inside the already-budgeted Food category — a reimbursed one-off that

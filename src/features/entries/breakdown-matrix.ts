@@ -6,8 +6,9 @@ import { getCategoryBreakdown } from './queries';
 export type BreakdownWindow = { key: string; start: string; end: string };
 
 // window key → category → { value, count }. The primitive behind /month and /report: unfiltered a
-// view sums a row, filtered it reads one column. Values are MAGNITUDES — totals arrive negative (the
-// ledger's sign) and every read surface in this app shows spend.
+// view sums a row, filtered it reads one column. Totals arrive negative (the
+// ledger's sign) and inflows positive, so negating yields NET spend — a refund subtracts. A value
+// can be negative when a window's refunds exceed its spend; consumers that render it must clamp.
 //
 // use-analytics.ts hand-rolls a structurally identical matrix under its own `{ total, count }` field
 // name, because anomaly.ts and delta-breakdown.ts are typed against `total` — converging it onto this
@@ -29,8 +30,7 @@ export async function buildBreakdownMatrix(
   const matrix: BreakdownMatrix = new Map();
   for (const [i, rows] of breakdowns.entries()) {
     const byCategory = new Map<string, { value: number; count: number }>();
-    for (const row of rows)
-      byCategory.set(row.key, { value: Math.abs(row.total), count: row.count });
+    for (const row of rows) byCategory.set(row.key, { value: -row.total, count: row.count });
     matrix.set(windows[i].key, byCategory);
   }
   return matrix;

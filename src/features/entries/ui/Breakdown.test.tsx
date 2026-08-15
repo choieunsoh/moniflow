@@ -44,6 +44,39 @@ describe('Breakdown category links', () => {
   });
 });
 
+describe('Breakdown net-positive categories', () => {
+  // Driving case: dinner on a credit card, a friend hands back cash — the refund is filed under the
+  // SAME category, so a category whose refunds this cycle exceed its spend nets positive. The donut
+  // already drops such categories (`toDonutSlices`'s own `value > 0` filter); the list must fold at
+  // the same point or the chart/list toggle would change the answer.
+  const rowsWithRefund: BreakdownRow[] = [
+    { key: 'Food', total: -2400, count: 12 },
+    { key: 'Transport & taxi', total: -600, count: 3 },
+    { key: 'Refunded gift', total: 500, count: 1 },
+  ];
+
+  it('drops a net-positive category from the list, keeping the net-negative ones', () => {
+    render(<Breakdown title="Spending" rows={rowsWithRefund} />);
+    expect(screen.getByText('Food')).toBeInTheDocument();
+    expect(screen.getByText('Transport & taxi')).toBeInTheDocument();
+    expect(screen.queryByText('Refunded gift')).not.toBeInTheDocument();
+  });
+
+  // The escalated half of the bug: an unclamped `spent` fed a net-positive total straight into
+  // `toBudgetTotal`, so a category with no real spend this cycle — only a refund — could still read
+  // as over-budget. A limit smaller than the refund total would classify it "over" under the old
+  // `Math.abs` read; the row must never reach the DOM at all under the fix.
+  it('never drives a budget meter for a net-positive category, even under a limit that would read it as over', () => {
+    const refundOnly: BreakdownRow[] = [{ key: 'Refunded gift', total: 500, count: 1 }];
+    render(
+      <Breakdown title="Spending" rows={refundOnly} limits={new Map([['Refunded gift', 100]])} />,
+    );
+    expect(screen.queryByText('Refunded gift')).not.toBeInTheDocument();
+    // meterCaption's "over" state renders `over ${amount}` — assert that text never reaches the DOM.
+    expect(screen.queryByText(/over/i)).not.toBeInTheDocument();
+  });
+});
+
 describe('Breakdown bar colour', () => {
   // Home passes the donut's slice colours so a category reads the same in both views. Anything
   // without a mapped colour goes NEUTRAL, never the accent: filling unmapped rows with #7132f5 put

@@ -35,8 +35,10 @@ describe('useYear', () => {
       { date: '2026-05-20', account: 'Cash', category: 'Food', amount: -1000 },
       // cycle 2026-06 (18 Jun – 17 Jul) — Food 1400
       { date: '2026-06-20', account: 'Cash', category: 'Food', amount: -1400 },
-      // Income is dropped by every read surface — it must not reach the recap.
-      { date: '2026-07-21', account: 'Cash', category: 'Salary', amount: 50000 },
+      // A real refund against an EXISTING category (dinner on a card, a friend hands back cash) —
+      // the actual shape this branch ships, not the unsupported "Salary" income row this fixture
+      // used to carry. Same category as the two Food rows above, so it nets straight into Food.
+      { date: '2026-07-21', account: 'Cash', category: 'Food', amount: 300 },
     ]);
   });
 
@@ -47,8 +49,8 @@ describe('useYear', () => {
     // five months of spending nothing.
     expect(result.current.data?.bars).toHaveLength(7);
     expect(result.current.data?.year).toBe(2026);
-    expect(result.current.data?.total).toBe(2400);
-    expect(result.current.data?.categories[0]).toEqual({ name: 'Food', value: 2400, count: 2 });
+    expect(result.current.data?.total).toBe(2100); // 1000 + 1400 - 300, the ฿300 Food refund netted in
+    expect(result.current.data?.categories[0]).toEqual({ name: 'Food', value: 2100, count: 3 });
     expect(typeof result.current.data?.iconSet).toBe('string');
   });
 

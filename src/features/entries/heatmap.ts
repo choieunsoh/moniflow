@@ -22,7 +22,7 @@ function eachDay(start: string, end: string): string[] {
 // `intensity` buckets 1..4 against the cycle's busiest day (0 for an empty day), so the render maps
 // it to a background token without knowing any baht figure.
 export function toHeatmapCells(dayGroups: DayGroup[], cycle: Cycle): HeatmapCell[] {
-  const totalByDate = new Map(dayGroups.map((g) => [g.date, Math.abs(g.total)]));
+  const totalByDate = new Map(dayGroups.map((g) => [g.date, Math.max(0, -g.total)]));
   const dates = eachDay(cycle.start, cycle.end);
   const max = Math.max(0, ...dates.map((d) => totalByDate.get(d) ?? 0));
   return dates.map((date) => {

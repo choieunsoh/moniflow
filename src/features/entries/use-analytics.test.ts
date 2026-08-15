@@ -38,7 +38,8 @@ describe('useAnalytics', () => {
       { date: '2026-07-01', account: 'Cash', category: 'Travel', amount: -300 },
       // cycle 2026-07 (18 Jul – 17 Aug) — Food 400
       { date: '2026-07-20', account: 'Cash', category: 'Food', amount: -400 },
-      // Income is dropped by every read surface — it must not reach the trend.
+      // An inflow now nets straight into the trend — there is no schema-level way to tell a genuine
+      // income row from a refund, so this stray Salary row swings the 2026-07 bar and total negative.
       { date: '2026-07-21', account: 'Cash', category: 'Salary', amount: 50000 },
     ]);
     await setBudget(db, null, 20000); // the whole-cycle TOTAL budget (category_id IS NULL)
@@ -64,8 +65,8 @@ describe('useAnalytics', () => {
       '2026-06',
       '2026-07',
     ]);
-    // 2026-06 is Food 1200 + Travel 300; income never lands.
-    expect(bars.map((b) => b.value)).toEqual([0, 0, 0, 900, 1500, 400]);
+    // 2026-06 is Food 1200 + Travel 300; 2026-07 nets Food -400 against the seeded Salary +50000.
+    expect(bars.map((b) => b.value)).toEqual([0, 0, 0, 900, 1500, -49600]);
   });
 
   it('filters the same bars to one category when a filter is active', async () => {
@@ -113,7 +114,7 @@ describe('useAnalytics', () => {
   it('reports the window total', async () => {
     const { result } = renderHook(() => useAnalytics('2026-07', null));
     await waitFor(() => expect(result.current.ready).toBe(true));
-    expect(result.current.data?.total).toBe(2800);
+    expect(result.current.data?.total).toBe(-47200); // 900 + 1500 - 49600, the seeded Salary included
   });
 
   it('falls back to the current cycle when no key is given', async () => {
@@ -173,8 +174,9 @@ describe('useAnalytics', () => {
     await waitFor(() => expect(result.current.ready).toBe(true));
     // 18 Jul – 17 Aug inclusive = 31 day-cells.
     expect(result.current.data?.heatmapCells).toHaveLength(31);
-    // one entry in the anchor cycle, no note → the "No note" bucket at 400.
-    expect(result.current.data?.topNotes).toEqual([{ note: 'No note', total: 400, count: 1 }]);
+    // two entries in the anchor cycle, neither noted → the "No note" bucket nets Food -400 against
+    // the seeded Salary +50000.
+    expect(result.current.data?.topNotes).toEqual([{ note: 'No note', total: -49600, count: 2 }]);
   });
 
   it('scopes biggest transactions and note rollup to the filtered category', async () => {

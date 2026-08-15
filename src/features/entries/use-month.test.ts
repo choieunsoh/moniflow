@@ -39,7 +39,8 @@ describe('useMonth', () => {
       { date: '2024-03-20', account: 'Cash', category: 'Food', amount: -400 },
       { date: '2025-03-20', account: 'Cash', category: 'Food', amount: -600 },
       { date: '2026-03-20', account: 'Cash', category: 'Food', amount: -900 },
-      // Income never reaches a read surface.
+      // An inflow now nets into its cycle — there is no schema-level way to tell income from a
+      // refund — so this stray Salary row swings the 2025 July bar negative.
       { date: '2025-07-21', account: 'Cash', category: 'Salary', amount: 50000 },
     ]);
   });
@@ -48,7 +49,8 @@ describe('useMonth', () => {
     const { result } = renderHook(() => useMonth(7, null));
     await waitFor(() => expect(result.current.ready).toBe(true));
     expect(result.current.data?.bars.map((b) => b.label)).toEqual(['2024', '2025', '2026']);
-    expect(result.current.data?.bars.map((b) => b.value)).toEqual([1000, 2000, 300]);
+    // 2025 nets Food -1500 + Travel -500 against the seeded Salary +50000.
+    expect(result.current.data?.bars.map((b) => b.value)).toEqual([1000, -48000, 300]);
     expect(result.current.data?.monthName).toBe('July');
   });
 

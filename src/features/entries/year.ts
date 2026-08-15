@@ -31,7 +31,7 @@ export function yearSummary(entries: EntryRow[], cycles: Cycle[], currentKey: st
   const perCategory = new Map<string, { value: number; count: number }>();
 
   for (const entry of entries) {
-    const mag = Math.abs(entry.amount);
+    const mag = -entry.amount;
     const cycle = cycles.find((c) => entry.date >= c.start && entry.date <= c.end);
     if (cycle !== undefined) perCycle.set(cycle.key, (perCycle.get(cycle.key) ?? 0) + mag);
     const cat = perCategory.get(entry.category) ?? { value: 0, count: 0 };

@@ -23,7 +23,7 @@ function e(date: string, amount: number): EntryRow {
 
 describe('byWeekday', () => {
   // 2026-07-24 is a Friday; 2026-07-25 Saturday; 2026-07-26 Sunday; 2026-07-27 Monday (UTC).
-  it('buckets magnitudes by UTC weekday, Mon..Sun order', () => {
+  it('nets totals by UTC weekday, Mon..Sun order', () => {
     const stats = byWeekday([e('2026-07-27', -100), e('2026-07-24', -300), e('2026-07-24', -50)]);
     expect(stats.rows.map((r) => r.day)).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
     expect(stats.rows.find((r) => r.day === 'Fri')).toEqual({ day: 'Fri', total: 350, count: 2 });
@@ -47,5 +47,11 @@ describe('byWeekday', () => {
     // Weekday total 500 over 5 slots = 100/slot; weekend total 400 over 2 slots = 200/slot → 2.0
     const stats = byWeekday([e('2026-07-24', -500), e('2026-07-25', -400)]); // Fri weekday, Sat weekend
     expect(stats.weekendRatio).toBe(2);
+  });
+
+  it('nets a refund against spend on the same weekday', () => {
+    // 2026-08-14 is a Friday (UTC), matching this file's existing date comments.
+    const stats = byWeekday([e('2026-08-14', -2000), e('2026-08-14', 500)]);
+    expect(stats.rows.find((r) => r.day === 'Fri')).toEqual({ day: 'Fri', total: 1500, count: 2 });
   });
 });

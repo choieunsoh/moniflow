@@ -42,6 +42,15 @@ describe('toBudgetTotal', () => {
     expect(toBudgetTotal(1000, 4000).pct).toBe(100);
   });
 
+  it('clamps the meter to 0% when a refund nets the category negative', () => {
+    // The reviewer's exact repro: a category with no real spend this cycle, only a ฿500 refund.
+    // An unclamped pct went negative (-10), which is an invalid CSS width the CSSOM drops — the
+    // fill div then falls back to `width: auto` and paints the WHOLE track.
+    const status = toBudgetTotal(5000, -500);
+    expect(status.pct).toBe(0);
+    expect(status.pct).toBeGreaterThanOrEqual(0);
+  });
+
   it('treats a missing limit as unbudgeted (no state, no remaining)', () => {
     const t = toBudgetTotal(null, 500);
     expect(t.state).toBe('none');

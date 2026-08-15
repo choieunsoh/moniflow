@@ -74,8 +74,8 @@ export type AnalyticsData = {
 };
 
 // Sum a window's breakdowns into one ranked Breakdown[] — the category list under the chart shows
-// the WINDOW's composition, not one cycle's. Totals stay negative (the ledger's sign); the caller
-// takes the magnitude when it projects out CategoryRows.
+// the WINDOW's composition, not one cycle's. Totals stay signed (the ledger's sign, net of any
+// refund); the caller negates when it projects out CategoryRows.
 function aggregate(breakdowns: Breakdown[][]): Breakdown[] {
   const byKey = new Map<string, Breakdown>();
   for (const rows of breakdowns) {
@@ -90,7 +90,7 @@ function aggregate(breakdowns: Breakdown[][]): Breakdown[] {
         });
     }
   }
-  return [...byKey.values()].sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  return [...byKey.values()].sort((a, b) => a.total - b.total);
 }
 
 // The analytics window's data, read after mount from the browser OPFS db. Re-runs when the ?cycle=
@@ -137,8 +137,7 @@ export function useAnalytics(
       const matrix = new Map<string, Map<string, { total: number; count: number }>>();
       for (const [i, rows] of categoryBreakdowns.entries()) {
         const byCategory = new Map<string, { total: number; count: number }>();
-        for (const row of rows)
-          byCategory.set(row.key, { total: Math.abs(row.total), count: row.count });
+        for (const row of rows) byCategory.set(row.key, { total: -row.total, count: row.count });
         matrix.set(cycles[i].key, byCategory);
       }
 
@@ -185,13 +184,17 @@ export function useAnalytics(
                 value: matrix.get(c.key)?.get(category)?.total ?? 0,
                 count: matrix.get(c.key)?.get(category)?.count ?? 0,
               }))
+              // ponytail: a cycle whose refunds exceed its spend drops out here while `total` below
+              // still counts it, so the two disagree. Unreachable under refunds-only scope (it needs
+              // a month of refunds to outweigh a month of spending); revisit if standalone income is
+              // ever modelled.
               .filter((r) => r.value > 0);
 
       const bars = toTrendBars(cycles, spendByCycle, currentKey);
       // Every category in the window, biggest first — no palette cap, no "Other" (the analytics list
       // has no donut ring whose colours it must match). Magnitudes; drop the zero-spend tail.
       const categories: CategoryRow[] = aggregate(listBreakdowns)
-        .map((r) => ({ name: r.key, value: Math.abs(r.total), count: r.count }))
+        .map((r) => ({ name: r.key, value: -r.total, count: r.count }))
         .filter((c) => c.value > 0);
       const total = [...spendByCycle.values()].reduce((sum, v) => sum + v, 0);
 

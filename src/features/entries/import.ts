@@ -79,7 +79,7 @@ function parseOffBudget(raw: string | undefined): number | null {
   return null;
 }
 
-export function parseMonefyCsv(text: string): ImportResult {
+export function parseMonefyCsv(text: string, opts?: { keepInflows?: boolean }): ImportResult {
   const rows = parseCsv(text);
   const body = rows.slice(1); // drop header
   const entries: EntryInput[] = [];
@@ -90,12 +90,15 @@ export function parseMonefyCsv(text: string): ImportResult {
       skipped += 1;
       continue;
     }
-    // Spending tracker: drop inflows (income/transfers-in land as amount >= 0). This is what keeps
-    // income-only categories (e.g. เงินสด/salary) out of the ledger, so the /categories counts and
-    // every expenses-only read surface stay in sync. ponytail: sign is the whole test — Monefy marks
-    // outflows negative; if a real export ever ships a 0-amount expense, revisit this bound.
+    // Two callers, opposite needs. The legacy Monefy import (entries/actions.ts) must drop inflows:
+    // a real Monefy export carries income-only categories (salary, transfers-in) that would pollute
+    // the ledger and desync the /categories counts. moniflow's OWN backup happens to use the same
+    // CSV format (settings/restore.ts) and must keep them, or every restore silently deletes every
+    // refund — the off_budget v1.8.1 defect class, which only bites on a fresh device.
+    // ponytail: sign is the whole test — Monefy marks outflows negative; if a real export ever ships
+    // a 0-amount expense, revisit this bound.
     const amount = cleanAmount(cols[5]);
-    if (amount >= 0) {
+    if (amount >= 0 && opts?.keepInflows !== true) {
       skipped += 1;
       continue;
     }

@@ -2,15 +2,16 @@ import { formatBahtWhole } from '@shared/money';
 
 // Pure budget-vs-spend model. Merges standing budgets with the current cycle's spend into ranked,
 // stateful rows so the page can render a live tracker (meter + over/under state) instead of a bare
-// form. No DB, no React — tested in isolation. Spend is always a magnitude (the ledger stores
-// outflow as negative; callers pass Math.abs).
+// form. No DB, no React — tested in isolation. Spend is a NET figure, not a magnitude: a refund
+// files under the same category as the expense it refunds, so a refund-heavy category can spend
+// below zero — see the clamp in fillPct below, which exists because of exactly that.
 
 export type BudgetState = 'over' | 'near' | 'under' | 'none';
 
 export type BudgetRow = {
   category: string;
   limit: number | null; // null = no budget set for this category
-  spent: number; // this cycle, magnitude ≥ 0
+  spent: number; // this cycle, net — can go negative when refunds outweigh spend
   pct: number; // 0..100, clamped — the meter width
   remaining: number; // limit − spent (negative = over); 0 when no limit
   state: BudgetState;
@@ -28,10 +29,13 @@ function classify(limit: number | null, spent: number): BudgetState {
   return 'under';
 }
 
-// Meter fill: share of the limit spent, capped at 100. With no positive limit the bar is full when
-// anything was spent (a 0 budget you've spent against), empty otherwise.
+// Meter fill: share of the limit spent, clamped to 0..100. With no positive limit the bar is full
+// when anything was spent (a 0 budget you've spent against), empty otherwise. The lower clamp matters
+// now that `spent` can be negative (a refund-heavy category nets below zero) — an unclamped negative
+// pct became an invalid CSS width (`width: -10%`), which the CSSOM drops entirely, leaving the fill
+// div at `width: auto` and painting the WHOLE track for a category that owes nothing.
 function fillPct(limit: number | null, spent: number): number {
-  if (limit !== null && limit > 0) return Math.min(100, (spent / limit) * 100);
+  if (limit !== null && limit > 0) return Math.max(0, Math.min(100, (spent / limit) * 100));
   return spent > 0 ? 100 : 0;
 }
 

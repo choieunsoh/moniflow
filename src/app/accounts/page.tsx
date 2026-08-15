@@ -56,14 +56,20 @@ export default function AccountsPage() {
         <section className="panel flex flex-col gap-3 p-4">
           <DonutChart rows={breakdown} label="Spending by account" />
           <ul className="flex flex-col gap-2">
-            {bars.map((b) => (
-              <li key={b.key} className="flex items-center gap-3">
-                <span className="min-w-0 flex-1 truncate text-sm">{b.key}</span>
-                <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                  {formatBaht(Math.abs(b.total))}
-                </span>
-              </li>
-            ))}
+            {/* An account whose refunds exceed its spend has nothing to show — the donut above
+                already drops it (toDonutSlices filters value > 0), so the list must fold at the
+                same point or the two disagree about which accounts had spending. */}
+            {bars
+              .filter((b) => b.pct > 0)
+              .map((b) => (
+                <li key={b.key} className="flex items-center gap-3">
+                  <span className="min-w-0 flex-1 truncate text-sm">{b.key}</span>
+                  <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
+                    {/* Same filter logic as Breakdown.tsx: pct > 0 ensures total < 0, so -b.total is always positive. */}
+                    {formatBaht(-b.total)}
+                  </span>
+                </li>
+              ))}
           </ul>
         </section>
       )}

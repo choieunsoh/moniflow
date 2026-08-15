@@ -39,3 +39,21 @@ describe('toBars', () => {
     ]);
   });
 });
+
+describe('toBars with inflows', () => {
+  it('nets a refund into its category total', () => {
+    const bars = toBars([{ key: 'Food', total: -1500, count: 2 }]);
+    expect(bars[0].pct).toBe(100);
+    expect(bars[0].share).toBe(100);
+  });
+
+  it('gives a net-positive category no width and no share', () => {
+    const bars = toBars([
+      { key: 'Rent', total: -9000, count: 1 },
+      { key: 'Food', total: 400, count: 1 },
+    ]);
+    const food = bars.find((b) => b.key === 'Food');
+    expect(food?.pct).toBe(0);
+    expect(food?.share).toBe(0);
+  });
+});

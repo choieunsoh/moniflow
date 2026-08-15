@@ -58,6 +58,15 @@ export function formatSignedBaht(amount: number): string {
   return `${sign}${formatBaht(Math.abs(amount))}`;
 }
 
+// Renders a ledger amount as a spend figure: plain for an ordinary (negative) row, signed for a
+// refund (positive). A spending surface states its cost plainly on every normal row — putting a `+`
+// on all of them would be noise — so only the exceptional refund earns the explicit sign, via
+// formatSignedBaht. Third call site (SwipeRow, TopTransactionsList, /year) is what promoted this
+// from a local ternary to a shared helper.
+export function formatLedgerSpend(amount: number): string {
+  return amount < 0 ? formatBaht(-amount) : formatSignedBaht(amount);
+}
+
 // Per-currency Intl formatter, memoized. narrowSymbol → ¥, ₩, $, €, HK$, £, S$, ฿; Intl picks the
 // correct fraction digits per currency automatically (JPY/KRW → 0, most others → 2). Used for
 // foreign-currency entry display on the keypad; THB rollups keep formatBaht above.

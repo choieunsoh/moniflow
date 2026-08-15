@@ -113,13 +113,13 @@ export async function restoreEntries(db: Db, rows: EntryInput[]): Promise<void> 
 
 export type Breakdown = { key: string; total: number; count: number };
 
-// moniflow is a spending tracker: cycle reads return expenses only (amount < 0), so the rare income
-// row never lands in the summary, donut, records or day totals. Income stays in the DB (lossless
-// import) but is out of scope for every UI surface. getCycleSummary derives from this, so it too is
-// spending-only.
+// moniflow tracks spending, but the ledger holds refunds too: money handed back against spending
+// that already happened (a friend repaying their share while the card carried the whole bill). They
+// are ordinary rows with a POSITIVE amount, filed under the category they refund, so every sum here
+// nets on its own. Consumers negate rather than Math.abs — see off-budget.ts and donut.ts.
 export async function getEntriesInRange(db: Db, start: string, end: string): Promise<EntryRow[]> {
   return await entryRowsQuery(db)
-    .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
+    .where(and(gte(entries.date, start), lte(entries.date, end)))
     .all();
 }
 
@@ -143,8 +143,8 @@ export async function hasAnyExpense(db: Db): Promise<boolean> {
 
 // The oldest expense in the ledger, or null when there is none. /year's stepper clamps against it
 // so you can't walk back through empty years forever. ORDER BY + LIMIT 1 rather than min(): same
-// answer, one indexed row, and no sql`` template to type around. Expenses only, matching every
-// other read surface — an ancient income row must not open a year with nothing to show.
+// answer, one indexed row, and no sql`` template to type around. Expenses only, deliberately unlike
+// most other read surfaces — an ancient income row must not open a year with nothing to show.
 export async function getFirstExpenseDate(db: Db): Promise<string | null> {
   const rows = await db
     .select({ date: entries.date })
@@ -172,10 +172,10 @@ export async function getCategoryBreakdown(
       })
       .from(entries)
       .innerJoin(categories, eq(entries.categoryId, categories.id))
-      .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
+      .where(and(gte(entries.date, start), lte(entries.date, end)))
       .groupBy(categories.name)
       .all()
-  ).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  ).sort((a, b) => a.total - b.total);
 }
 
 export async function insertEntry(db: Db, entry: EntryInput): Promise<void> {
@@ -368,27 +368,26 @@ export async function deleteCategory(db: Db, name: string): Promise<void> {
 }
 
 // Free-text search across the whole ledger (not cycle-scoped) — matches a substring of the note,
-// category, or account, case-insensitively, expenses only (same spending-tracker scope as the cycle
-// reads). Newest first. LIKE metacharacters in the query are escaped so a literal '_' or '%' can't
-// widen the match. A blank query returns nothing rather than the whole ledger.
+// category, or account, case-insensitively, refunds included, so a repayment is findable. Newest
+// first. LIKE metacharacters in the query are escaped so a literal '_' or '%' can't widen the match.
+// A blank query returns nothing rather than the whole ledger.
 export async function searchEntries(db: Db, query: string): Promise<EntryRow[]> {
   const q = query.trim();
   if (!q) return [];
   const pattern = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   const has = (col: AnyColumn) => sql`${col} like ${pattern} escape '\\'`;
   return await entryRowsQuery(db)
-    .where(
-      and(lt(entries.amount, 0), or(has(entries.note), has(categories.name), has(accounts.name))),
-    )
+    .where(or(has(entries.note), has(categories.name), has(accounts.name)))
     .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
     .all();
 }
 
-// All-time expenses for one category, newest first — powers the /categories count link, which wants
-// every record in the category, not just the current cycle (unlike the cycle-scoped chip filter).
+// All-time entries for one category, refunds included, newest first — powers the /categories count
+// link, which wants every record in the category, not just the current cycle (unlike the cycle-scoped
+// chip filter).
 export async function getEntriesByCategory(db: Db, category: string): Promise<EntryRow[]> {
   return await entryRowsQuery(db)
-    .where(and(lt(entries.amount, 0), eq(categories.name, category)))
+    .where(eq(categories.name, category))
     .orderBy(desc(entries.date), desc(entries.time), desc(entries.id))
     .all();
 }
@@ -453,7 +452,7 @@ export async function getAccountCounts(db: Db): Promise<AccountCount[]> {
   ).sort((a, b) => b.count - a.count);
 }
 
-// Per-account spending for a cycle (expenses only, magnitudes sorted desc) — feeds the /accounts donut
+// Per-account net spend for a cycle (refunds included, net sorted desc) — feeds the /accounts donut
 // + breakdown. Same shape/scope as getCategoryBreakdown.
 export async function getAccountBreakdown(
   db: Db,
@@ -469,10 +468,10 @@ export async function getAccountBreakdown(
       })
       .from(entries)
       .innerJoin(accounts, eq(entries.accountId, accounts.id))
-      .where(and(gte(entries.date, start), lte(entries.date, end), lt(entries.amount, 0)))
+      .where(and(gte(entries.date, start), lte(entries.date, end)))
       .groupBy(accounts.name)
       .all()
-  ).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  ).sort((a, b) => a.total - b.total);
 }
 
 // Rename an account by id, or MERGE when `to` already names a different account: reassign this

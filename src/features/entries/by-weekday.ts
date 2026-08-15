@@ -1,9 +1,10 @@
 import type { EntryRow } from './schema';
 
 // "When in the week does the money go" — the active cycle's spend bucketed by day of week. The
-// heatmap shows WHICH dates; this shows the WEEKLY RHYTHM (peak day, weekend vs weekday). Magnitudes
-// (ledger stores outflows negative). Weekday comes from the UTC date key via Intl — the date keys are
-// UTC-stable, so no timezone drift and no string slicing.
+// heatmap shows WHICH dates; this shows the WEEKLY RHYTHM (peak day, weekend vs weekday). Net
+// (outflows stored negative, inflows positive; negating makes a refund subtract). Weekday comes from
+// the UTC date key via Intl — the date keys are UTC-stable, so no timezone drift and no string
+// slicing.
 export type WeekdayRow = { day: string; total: number; count: number };
 export type WeekdayStats = {
   rows: WeekdayRow[]; // always 7, Mon..Sun
@@ -28,7 +29,7 @@ export function byWeekday(entries: EntryRow[]): WeekdayStats {
     const day = fmt.format(new Date(`${entry.date}T00:00:00Z`));
     const cell = totals.get(day);
     if (cell === undefined) continue; // defensive; Intl 'short' en-US yields exactly ORDER
-    cell.total += Math.abs(entry.amount);
+    cell.total += -entry.amount;
     cell.count += 1;
   }
 
@@ -43,6 +44,10 @@ export function byWeekday(entries: EntryRow[]): WeekdayStats {
 
   const weekdayTotal = rows.filter((r) => !WEEKEND.has(r.day)).reduce((s, r) => s + r.total, 0);
   const weekendTotal = rows.filter((r) => WEEKEND.has(r.day)).reduce((s, r) => s + r.total, 0);
+  // ponytail: only the === 0 divide-by-zero is guarded, not a negative weekdayTotal (now reachable
+  // since totals net refunds) — same unreachability class as this file's other ceilings: it needs
+  // Mon–Fri refunds to outweigh Mon–Fri spend across an entire cycle. Upgrade to
+  // Math.max(0, weekdayTotal) if a ratio ever prints inverted.
   const weekendRatio = weekdayTotal === 0 ? null : weekendTotal / 2 / (weekdayTotal / 5);
 
   return { rows, peak, weekendRatio, totalCount };

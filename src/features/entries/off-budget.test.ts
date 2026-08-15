@@ -47,6 +47,25 @@ describe('off-budget rules', () => {
     expect(m.get('Food')).toBe(600); // the -50 forced-exclude is dropped
     expect(m.has('Insurance')).toBe(false);
   });
+  it('splitBudgetSpend nets a refund against spend in the same category', () => {
+    const entries = [row(-2000, 'Food', null), row(500, 'Food', null)];
+    expect(splitBudgetSpend(entries, cats, noTravel)).toEqual({
+      discretionary: 1500,
+      offBudget: 0,
+    });
+  });
+  it('splitBudgetSpend keeps a refund on the same side as the spend it refunds', () => {
+    // An inflow in an off-budget category reduces the off-budget side, not the discretionary side.
+    const entries = [row(-12000, 'Insurance', null), row(2000, 'Insurance', null)];
+    expect(splitBudgetSpend(entries, cats, noTravel)).toEqual({
+      discretionary: 0,
+      offBudget: 10000,
+    });
+  });
+  it('discretionaryByCategory nets a refund within its category', () => {
+    const entries = [row(-600, 'Food', null), row(100, 'Food', null)];
+    expect(discretionaryByCategory(entries, cats, noTravel)).toEqual(new Map([['Food', 500]]));
+  });
 });
 
 describe('travel currencies', () => {

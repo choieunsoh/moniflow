@@ -55,6 +55,12 @@ describe('toHeatmapCells', () => {
     expect(byDate.get('2026-03-01')).toBe(4);
     expect(byDate.get('2026-03-02')).toBe(2);
   });
+
+  it('clamps a net-positive day (refunds exceeding spend) to zero, not negative', () => {
+    const cells = toHeatmapCells([group('2026-07-02', 500)], cycle);
+    const cell2 = cells.find((c) => c.date === '2026-07-02');
+    expect(cell2).toEqual({ date: '2026-07-02', total: 0, intensity: 0 });
+  });
 });
 
 function cell(date: string): HeatmapCell {

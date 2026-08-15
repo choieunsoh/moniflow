@@ -9,11 +9,14 @@ entries in a **SQLite database that lives in the browser** (OPFS, via SQLite WAS
 through a small **Next.js** web app shaped as a phone-sized column with a bottom tab bar. Single user,
 no cloud, no server. Data is hand-entered (a Monefy-style keypad) or bulk-imported from a **Monefy
 CSV** (THB home currency). It is scoped to a monthly **billing cycle** (a configurable cutoff day).
-It is a **spending tracker**: the ledger holds outflows only — income (inflows, `amount >= 0`) is
-dropped at CSV import (`parseMonefyCsv`) and the keypad only enters expenses — and every UI read
-surface shows expenses (`amount < 0`), enforced in the queries (`getEntriesInRange`,
-`getCategoryBreakdown`, `searchEntries`). The `amount` column stays signed (schema-level), but in
-practice every stored row is negative.
+It is a **spending tracker with refunds**: the ledger is overwhelmingly outflows, but a positive
+`amount` row records money handed back against spending that already happened (a friend repaying
+their share while the card carried the whole bill). A refund is filed under the category it refunds
+and every summed figure nets — consumers negate a stored amount rather than taking `Math.abs`, so an
+expense adds and a refund subtracts. Standalone income (salary) is deliberately unmodellable: it
+would drive its category net-positive and simply drop out of the donut. Bulk Monefy CSV import still
+drops inflows (`parseMonefyCsv`, whose `keepInflows` flag exists for moniflow's own backup restore);
+`hasAnyExpense` and `getFirstExpenseDate` still filter `amount < 0`.
 Scaffolded from the `portfolio-dashboard` stack.
 
 - **Stack — data layer:** Node 24 (nvm) · TypeScript 5.9 strict (ESM; `module: esnext` +

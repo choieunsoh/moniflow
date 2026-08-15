@@ -21,7 +21,7 @@ function row(note: string | null, amount: number): EntryRow {
 }
 
 describe('topNotes', () => {
-  it('sums magnitudes per note, biggest first', () => {
+  it('nets totals per note, biggest first', () => {
     expect(topNotes([row('Starbucks', -120), row('7-11', -60), row('Starbucks', -80)])).toEqual([
       { note: 'Starbucks', total: 200, count: 2 },
       { note: '7-11', total: 60, count: 1 },
@@ -31,6 +31,12 @@ describe('topNotes', () => {
   it('buckets blank and null notes as "No note"', () => {
     expect(topNotes([row(null, -50), row('', -30), row('   ', -20)])).toEqual([
       { note: 'No note', total: 100, count: 3 },
+    ]);
+  });
+
+  it('nets a refund carrying the same note', () => {
+    expect(topNotes([row('Dinner', -2000), row('Dinner', 500)])).toEqual([
+      { note: 'Dinner', total: 1500, count: 2 },
     ]);
   });
 });

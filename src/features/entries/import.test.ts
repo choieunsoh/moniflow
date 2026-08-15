@@ -80,6 +80,53 @@ describe('parseMonefyCsv', () => {
   it('exposes the skip list for review', () => {
     expect(SKIP_CATEGORIES).toContain('บัตรเครดิท');
   });
+
+  it('drops inflows by default, so a Monefy export cannot import its income categories', () => {
+    const csv = `${header}
+14/08/2026,Cash,Food,-2000,THB,-2000,THB,
+14/08/2026,Cash,Salary,30000,THB,30000,THB,`;
+    const { entries, skipped } = parseMonefyCsv(csv);
+    expect(entries).toHaveLength(1);
+    expect(skipped).toBe(1);
+  });
+
+  it('keeps inflows when asked, so a moniflow backup restores its refunds', () => {
+    const csv = `${header}
+14/08/2026,Card,Food,-2000,THB,-2000,THB,
+14/08/2026,Cash,Food,500,THB,500,THB,`;
+    const { entries, skipped } = parseMonefyCsv(csv, { keepInflows: true });
+    expect(entries.map((e) => e.amount)).toEqual([-2000, 500]);
+    expect(skipped).toBe(0);
+  });
+
+  it('round-trips a refund through serialize and parse', () => {
+    // The bug this guards: serializeMonefyCsv writes +500 correctly, parseMonefyCsv used to eat it,
+    // so export -> restore lost every refund with no error anywhere.
+    const rows = [
+      {
+        date: '2026-08-14',
+        account: 'Card',
+        category: 'Food',
+        amount: -2000,
+        currency: 'THB',
+        originalAmount: -2000,
+        note: null,
+        offBudget: null,
+      },
+      {
+        date: '2026-08-14',
+        account: 'Cash',
+        category: 'Food',
+        amount: 500,
+        currency: 'THB',
+        originalAmount: 500,
+        note: null,
+        offBudget: null,
+      },
+    ];
+    const back = parseMonefyCsv(serializeMonefyCsv(rows), { keepInflows: true }).entries;
+    expect(back.map((e) => e.amount)).toEqual([-2000, 500]);
+  });
 });
 
 describe('serializeMonefyCsv', () => {

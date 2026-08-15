@@ -74,6 +74,13 @@ describe('yearSummary', () => {
     expect(s.weekday.totalCount).toBe(2);
   });
 
+  it('nets a refund against spend in the same cycle and category', () => {
+    const entries = [e('2026-06-20', -2000, 'Food'), e('2026-06-20', 500, 'Food')];
+    const s = yearSummary(entries, cycles, '2026-07');
+    expect(s.bars.find((b) => b.key === '2026-06')?.value).toBe(1500);
+    expect(s.categories).toEqual([{ name: 'Food', value: 1500, count: 2 }]);
+  });
+
   it('is empty and null-safe on no entries', () => {
     const s = yearSummary([], cycles, '2026-07');
     expect(s.total).toBe(0);

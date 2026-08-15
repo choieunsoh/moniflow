@@ -46,6 +46,15 @@ describe('groupBySpend', () => {
     expect(groupBySpend([], byCategory)).toEqual([]);
   });
 
+  // Every fixture above is all-negative, where sorting by signed total and by magnitude give the same
+  // order — neither can tell `a.total - b.total` apart from `Math.abs(b.total) - Math.abs(a.total)`.
+  // A net-positive (refund-heavy) bucket is the case that splits them: by signed total it sorts to the
+  // bottom (it owes nothing back); by magnitude a big refund would outrank a small spend.
+  it('sorts by signed total, not magnitude — a net-positive bucket sorts last', () => {
+    const groups = groupBySpend([entry(1, 'Food', -10), entry(2, 'Gifts', 500)], byCategory);
+    expect(groups.map((g) => g.key)).toEqual(['Food', 'Gifts']);
+  });
+
   // The same function drives the Records "by account" tab — only the accessor differs.
   it('buckets by account, largest spend first', () => {
     const groups = groupBySpend(

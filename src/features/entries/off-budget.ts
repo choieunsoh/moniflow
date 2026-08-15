@@ -17,8 +17,10 @@ export function isOffBudget(
   return offBudgetCategories.has(entry.category);
 }
 
-// Split a cycle's entries into discretionary vs off-budget spend magnitudes (the ledger stores outflows
-// negative; both are returned positive). Feeds the budget meter/pace/safe-to-spend and the Home disclose line.
+// Split a cycle's entries into discretionary vs off-budget NET spend (the ledger stores outflows
+// negative and inflows positive; negating makes an expense add and a refund subtract, so both come
+// back positive-as-spend). Feeds the budget meter/pace/safe-to-spend and the Home disclose line.
+// A side can go negative when a cycle's refunds exceed its spend — that is a true figure, not a bug.
 export function splitBudgetSpend(
   entries: EntryRow[],
   offBudgetCategories: Set<string>,
@@ -27,7 +29,7 @@ export function splitBudgetSpend(
   let discretionary = 0;
   let offBudget = 0;
   for (const e of entries) {
-    const mag = Math.abs(e.amount);
+    const mag = -e.amount;
     if (isOffBudget(e, offBudgetCategories, travelCurrencies)) offBudget += mag;
     else discretionary += mag;
   }
@@ -44,7 +46,7 @@ export function discretionaryByCategory(
   const byCat = new Map<string, number>();
   for (const e of entries) {
     if (isOffBudget(e, offBudgetCategories, travelCurrencies)) continue;
-    byCat.set(e.category, (byCat.get(e.category) ?? 0) + Math.abs(e.amount));
+    byCat.set(e.category, (byCat.get(e.category) ?? 0) + -e.amount);
   }
   return byCat;
 }
