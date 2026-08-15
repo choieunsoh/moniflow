@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-08-15
+
+### Added
+
+- record refunds against the category they refund
+- let the keypad record a refund
+- let refunds through the cycle and search reads
+- net inflows in the row-level rollups
+- net inflows in the category aggregates
+- net inflows in the budget split
+
+### Fixed
+
+- show a refund-only category's spend figure on /budgets
+- agree Home's total and Records' by-spend ranking with the netted rollups
+- stop a refund from rendering as a purchase in top-transaction lists
+- clamp the budget meter to 0% and stop dropping refund-only rows
+- stop backup restore from eating refunds
+- clamp and drop net-positive rows from spending lists
+- mark a refund-positive total in Records with its sign
+- net the account breakdown and cover the category read
+
+### Other
+
+- fix stale spend-magnitude comments and a purchase-only label
+- extract the sign-only-on-refund ternary into formatLedgerSpend
+- prove the net-vs-magnitude sort and total fixes can fail
+- fix Keypad.test.tsx's stale comment and shadowed EntryRow type
+- correct two stale comments the refund model outdated
+- replace use-year's unsupported Salary fixture with a real refund
+- describe the refund model in the project overview
+- restore the zero-amount ceiling note in parseMonefyCsv
+- add refund toggle initialization tests
+- remove unreachable Math.max clamps from Breakdown and accounts list
+- cover Breakdown's net-positive category handling
+- sort aggregates by net spend, not magnitude
+- pin the netting arithmetic in year and heatmap rollups
+- plan the income-entries implementation
+- spec income entries as negative spend
+
 ## [1.10.3] - 2026-08-06
 
 ### Fixed
