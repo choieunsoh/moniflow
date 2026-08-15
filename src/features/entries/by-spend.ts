@@ -2,8 +2,10 @@ import type { EntryRow } from './schema';
 
 export type SpendGroup = { key: string; total: number; entries: EntryRow[] };
 
-// Group ledger entries into buckets ranked by spend — largest first (totals are negative, so compare
-// by magnitude). `keyOf` picks the bucket: `e => e.category` for the Records "by category" tab,
+// Group ledger entries into buckets ranked by spend — largest first (totals are negative, so a plain
+// ascending sort puts the biggest spend first; a refund-heavy bucket that nets positive correctly
+// sorts to the bottom, matching getCategoryBreakdown/getAccountBreakdown/use-analytics's aggregate()).
+// `keyOf` picks the bucket: `e => e.category` for the Records "by category" tab,
 // `e => e.account` for "by account". Entry order within a bucket is preserved from the input, so pass
 // entries already in the order you want them listed.
 //
@@ -28,6 +30,6 @@ export function groupBySpend(
     const total = bucketEntries.reduce((sum, entry) => sum + entry.amount, 0);
     groups.push({ key, total, entries: bucketEntries });
   }
-  groups.sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  groups.sort((a, b) => a.total - b.total);
   return groups;
 }

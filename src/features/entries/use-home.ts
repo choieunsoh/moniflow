@@ -129,7 +129,13 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
 
       const topTx = topTransactions(cycleEntries);
       const slices = toDonutSlices(categoryBreakdown);
-      const total = slices.reduce((sum, s) => sum + s.value, 0);
+      // The headline total, NOT summed from the (filtered) slices — toDonutSlices drops any
+      // net-positive category, so a category whose refunds outweigh its spend this cycle would
+      // silently stop contributing to the total too, disagreeing with every other surface (Trends,
+      // /month, /report, /year, Records) which all total the unfiltered set. summary.net is the
+      // signed sum of every entry this cycle (spend negative, refund positive); negating it gives
+      // the all-in spend total. The ring itself keeps dropping the wedge — only the headline changes.
+      const total = -summary.net;
       // The donut stays all-in (total, above); the budget meter, safe-to-spend and pace read only
       // discretionary spend — off-budget entries (per-entry override or a flagged category) drop out.
       const { discretionary, offBudget: offBudgetTotal } = splitBudgetSpend(
@@ -144,8 +150,8 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       const sliceColors = new Map(slices.filter((s) => !s.other).map((s) => [s.name, s.color]));
 
       // Standing budgets: the category=null row is the whole-cycle total; the rest are per-category
-      // caps keyed by name. Spend magnitudes come straight from the category breakdown (totals are
-      // negative — take the abs).
+      // caps keyed by name. discretionary (below) is already a net figure — spend minus any refund
+      // in the same discretionary set — not a magnitude to be abs'd.
       const budgetRows = await getBudgets(db);
       const totalLimit = budgetRows.find((b) => b.category === null)?.amount ?? null;
       const limits = new Map<string, number>();
