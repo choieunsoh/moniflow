@@ -44,6 +44,10 @@ export function byWeekday(entries: EntryRow[]): WeekdayStats {
 
   const weekdayTotal = rows.filter((r) => !WEEKEND.has(r.day)).reduce((s, r) => s + r.total, 0);
   const weekendTotal = rows.filter((r) => WEEKEND.has(r.day)).reduce((s, r) => s + r.total, 0);
+  // ponytail: only the === 0 divide-by-zero is guarded, not a negative weekdayTotal (now reachable
+  // since totals net refunds) — same unreachability class as this file's other ceilings: it needs
+  // Mon–Fri refunds to outweigh Mon–Fri spend across an entire cycle. Upgrade to
+  // Math.max(0, weekdayTotal) if a ratio ever prints inverted.
   const weekendRatio = weekdayTotal === 0 ? null : weekendTotal / 2 / (weekdayTotal / 5);
 
   return { rows, peak, weekendRatio, totalCount };

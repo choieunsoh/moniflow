@@ -74,8 +74,8 @@ export type AnalyticsData = {
 };
 
 // Sum a window's breakdowns into one ranked Breakdown[] — the category list under the chart shows
-// the WINDOW's composition, not one cycle's. Totals stay negative (the ledger's sign); the caller
-// takes the magnitude when it projects out CategoryRows.
+// the WINDOW's composition, not one cycle's. Totals stay signed (the ledger's sign, net of any
+// refund); the caller negates when it projects out CategoryRows.
 function aggregate(breakdowns: Breakdown[][]): Breakdown[] {
   const byKey = new Map<string, Breakdown>();
   for (const rows of breakdowns) {
