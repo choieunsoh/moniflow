@@ -165,9 +165,12 @@ export default function YearPage() {
         </div>
 
         {biggestTransaction !== null ? (
-          <section className="panel flex flex-col gap-3 p-5" aria-label="Biggest single purchase">
+          <section
+            className="panel flex flex-col gap-3 p-5"
+            aria-label="Biggest single transaction"
+          >
             <h2 className="text-sm font-semibold" style={{ color: 'var(--color-muted)' }}>
-              Biggest purchase
+              Biggest transaction
             </h2>
             <Link
               prefetch={false}

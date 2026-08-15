@@ -2,15 +2,16 @@ import { formatBahtWhole } from '@shared/money';
 
 // Pure budget-vs-spend model. Merges standing budgets with the current cycle's spend into ranked,
 // stateful rows so the page can render a live tracker (meter + over/under state) instead of a bare
-// form. No DB, no React — tested in isolation. Spend is always a magnitude (the ledger stores
-// outflow as negative; callers pass Math.abs).
+// form. No DB, no React — tested in isolation. Spend is a NET figure, not a magnitude: a refund
+// files under the same category as the expense it refunds, so a refund-heavy category can spend
+// below zero — see the clamp in fillPct below, which exists because of exactly that.
 
 export type BudgetState = 'over' | 'near' | 'under' | 'none';
 
 export type BudgetRow = {
   category: string;
   limit: number | null; // null = no budget set for this category
-  spent: number; // this cycle, magnitude ≥ 0
+  spent: number; // this cycle, net — can go negative when refunds outweigh spend
   pct: number; // 0..100, clamped — the meter width
   remaining: number; // limit − spent (negative = over); 0 when no limit
   state: BudgetState;

@@ -56,8 +56,10 @@ export type DonutSlice = {
 export function toDonutSlices(rows: Breakdown[]): DonutSlice[] {
   // ponytail: a ring cannot draw a negative wedge, so a category whose refunds exceed its spend is
   // dropped by the filter below rather than shown as a credit. The budget meter still carries the
-  // true negative, so the two disagree by exactly the amount that could not be drawn. Give the ring
-  // a signed centre figure if that ever misleads.
+  // true negative, so the two disagree by exactly the amount that could not be drawn — and since
+  // use-home's headline total is now -summary.net (the unfiltered, signed sum), NOT a sum of these
+  // slices, the visible wedges can also add up to more than the figure printed beside them. Give the
+  // ring a signed centre figure if that ever misleads.
   const mags = rows
     .map((r) => ({ name: r.key, value: -r.total, count: r.count }))
     .filter((s) => s.value > 0);
