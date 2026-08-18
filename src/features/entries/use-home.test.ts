@@ -9,6 +9,7 @@ import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addEntries } from './queries';
 import { bumpDataVersion } from '@shared/data-version';
 import { setBudget } from '@features/budgets/queries';
+import { setFxRates, setCardFeePct } from '@features/settings/queries';
 import { addRule, updateRule } from '@features/recurring/queries';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
@@ -537,5 +538,73 @@ describe('useHome — fixed-cost ceiling', () => {
     // 48280 ceiling − 8000 discretionary = 40280, over the days left (5 Jul → 17 Jul inclusive = 13).
     expect(data.forward?.daysLeft).toBe(13);
     expect(data.forward?.safePerDay).toBeCloseTo(40280 / 13);
+  });
+});
+
+// A foreign bill still to come must be reserved in BAHT. The pure reservation function has no way to
+// reach a rate, so the hook supplies the locally cached fixings — otherwise a $107 bill shrinks the
+// ceiling by ฿107 and the headline overstates what is left by thousands.
+describe('useHome — live-FX bills reserve real baht', () => {
+  beforeEach(async () => {
+    const db = makeNodeProxyDb();
+    await ensureEntriesTable(db);
+    await ensureSettingsTable(db);
+    await ensureBudgetsTable(db);
+    await ensureRecurrencesTable(db);
+    await ensureCurrenciesTable(db);
+    await setBudget(db, null, 50000);
+    await setFxRates(db, { USD: { thbPerUnit: 34.5, asOf: '2026-07-01' } });
+    await setCardFeePct(db, 0); // isolate the rate from the fee; the fee has its own test below
+    await addEntries(db, [
+      { date: '2026-07-01', account: 'Cash', category: 'Food', amount: -8000 },
+    ]);
+    vi.mocked(getBrowserDb).mockResolvedValue(db);
+  });
+
+  it('reserves an unpinned USD bill at the cached rate, not its face amount', async () => {
+    const db = await getBrowserDb();
+    await addRule(db, {
+      name: 'Netflix',
+      day: 10,
+      intervalMonths: 1,
+      amount: 107,
+      currency: 'USD',
+      rate: null, // live FX — the broken case
+      startDate: '2026-07-10',
+      lastPosted: null,
+    });
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useHome('2026-06'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — checked above');
+
+    expect(data.totalStatus?.limit).toBeCloseTo(50000 - 107 * 34.5); // ฿46,308.5, not ฿49,893
+    // The card still names it in the currency the statement will charge.
+    expect(data.forward?.upcoming.byCurrency).toEqual([{ currency: 'USD', amount: 107 }]);
+  });
+
+  it('reserves at the fee-inclusive rate, matching what the sweep will actually book', async () => {
+    const db = await getBrowserDb();
+    await setCardFeePct(db, 2.5);
+    await addRule(db, {
+      name: 'Netflix',
+      day: 10,
+      intervalMonths: 1,
+      amount: 100,
+      currency: 'USD',
+      rate: null,
+      startDate: '2026-07-10',
+      lastPosted: null,
+    });
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useHome('2026-06'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    // resolveRate layers the card fee onto every unpinned rate on the way into the ledger, so a
+    // reservation that skipped it would sit under what the bill really costs.
+    expect(result.current.data?.totalStatus?.limit).toBeCloseTo(50000 - 100 * 34.5 * 1.025);
   });
 });

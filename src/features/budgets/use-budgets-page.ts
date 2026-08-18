@@ -6,6 +6,7 @@ import { getDistinctCategories, getEntriesInRange } from '@features/entries/quer
 import { discretionaryByCategory, splitBudgetSpend } from '@features/entries/off-budget';
 import { listRules } from '@features/recurring/queries';
 import { committedThisCycle } from '@features/recurring/upcoming';
+import { getEffectiveRates } from '@features/recurring/effective-rates';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { getBudgets } from './queries';
 import { toBudgetRows, toBudgetTotal, type BudgetRow, type BudgetTotal } from './budget-status';
@@ -80,7 +81,8 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
         offBudgetCategories,
         travelCurrencies,
       );
-      const upcoming = committedThisCycle(await listRules(db), todayIso(), cycle.end);
+      const [rules, fxRates] = await Promise.all([listRules(db), getEffectiveRates(db)]);
+      const upcoming = committedThisCycle(rules, todayIso(), cycle.end, fxRates);
       const fixedReserve = fixedPosted + upcoming.total;
       const ceiling = totalLimit === null ? null : totalLimit - fixedReserve;
 

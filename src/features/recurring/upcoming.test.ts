@@ -65,3 +65,37 @@ describe('committedThisCycle', () => {
     });
   });
 });
+
+// A live-FX rule (foreign currency, no pinned rate) used to be counted at its FACE amount: a $107
+// bill reserved ฿107 instead of ~฿3,700. Harmless-ish while this figure only nudged safe-to-spend;
+// once it started setting the budget CEILING it became a 30x lie in the headline figure.
+describe('committedThisCycle — live-FX rules', () => {
+  const usd = (amount: number): CommittedRule => ({
+    ...base,
+    amount,
+    rate: null,
+    currency: 'USD',
+  });
+
+  it('converts a live-FX rule at the supplied effective rate', () => {
+    const rates = new Map([['USD', 34.5]]);
+    const got = committedThisCycle([usd(107)], '2026-08-01', '2026-08-31', rates);
+    expect(got.total).toBeCloseTo(107 * 34.5);
+    // Display still names the money in the currency it is actually charged in.
+    expect(got.byCurrency).toEqual([{ currency: 'USD', amount: 107 }]);
+  });
+
+  it('leaves a pinned-rate rule alone — the pin is what the statement charged', () => {
+    const pinned: CommittedRule = { ...base, amount: 107, rate: 36, currency: 'USD' };
+    const got = committedThisCycle([pinned], '2026-08-01', '2026-08-31', new Map([['USD', 34.5]]));
+    expect(got.total).toBeCloseTo(107 * 36); // the pin wins, not the cached rate
+  });
+
+  it('falls back to face value when no rate is known for the currency', () => {
+    // Nothing cached for this code yet (rates never refreshed). Face value under-reserves, but the
+    // alternative is inventing a rate; byCurrency keeps it visibly foreign so the card does not lie.
+    const got = committedThisCycle([usd(107)], '2026-08-01', '2026-08-31', new Map());
+    expect(got.total).toBe(107);
+    expect(got.byCurrency).toEqual([{ currency: 'USD', amount: 107 }]);
+  });
+});

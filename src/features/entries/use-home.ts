@@ -25,6 +25,7 @@ import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 import { listRules } from '@features/recurring/queries';
 import { committedThisCycle, type Committed } from '@features/recurring/upcoming';
+import { getEffectiveRates } from '@features/recurring/effective-rates';
 
 // The current cycle's forward-looking figures, folded in from the former /dashboard screen. Present
 // only when the cycle on screen is the current one — safe-to-spend and a projection only mean
@@ -187,8 +188,10 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       // listRules stays out of the top Promise.all so a past cycle — the common case when paging back
       // — never pays for it. A closed cycle needs no rules anyway: every bill that was going to post
       // in it already has, so its still-to-come half is 0 by definition.
-      const rules = isCurrentCycle ? await listRules(db) : [];
-      const upcoming = committedThisCycle(rules, todayIso(), cycle.end);
+      const [rules, fxRates] = isCurrentCycle
+        ? await Promise.all([listRules(db), getEffectiveRates(db)])
+        : [[], new Map<string, number>()];
+      const upcoming = committedThisCycle(rules, todayIso(), cycle.end, fxRates);
       const fixedReserve = fixedPosted + upcoming.total;
       const ceiling = totalLimit === null ? null : totalLimit - fixedReserve;
       const totalStatus = ceiling === null ? null : toBudgetTotal(ceiling, discretionary);
