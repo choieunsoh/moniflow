@@ -5,6 +5,7 @@ import { ensureEntriesTable } from '@features/entries/schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { ensureBudgetsTable } from './schema';
 import { ensureCurrenciesTable } from '@features/currencies/schema';
+import { ensureRecurrencesTable } from '@features/recurring/schema';
 import { addEntries } from '@features/entries/queries';
 import { setBudget } from './queries';
 import { currentCycleKey, cycleFromKey } from '@features/entries/cycle';
@@ -29,6 +30,9 @@ describe('useBudgetsPage', () => {
     await ensureSettingsTable(db);
     await ensureBudgetsTable(db);
     await ensureCurrenciesTable(db);
+    // The hook now reads standing rules to reserve bills still to come, so the table must exist —
+    // the shipping bootstrap (db/worker.ts) always creates all eight.
+    await ensureRecurrencesTable(db);
     await addEntries(db, [
       { date: cycle.start, account: 'Cash', category: 'Food', amount: -100 },
       { date: cycle.start, account: 'Cash', category: 'Food', amount: -50 },
@@ -105,5 +109,68 @@ describe('useBudgetsPage', () => {
     const food = result.current.data?.rows.find((r) => r.category === 'Food');
     // 150 (100+50 from beforeEach) — the 300 off-budget entry is dropped, not folded in.
     expect(food?.spent).toBe(150);
+  });
+
+  it('takes a posted fixed cost out of the total LIMIT, not the total spend', async () => {
+    const db = await getBrowserDb();
+    await setBudget(db, null, 5000);
+    // A bill a standing rule posted itself. It must not read as discretionary spend, and the limit
+    // it leaves behind is what the page has to show — otherwise Home says ฿4,000 and Budgets says
+    // ฿5,000 for the same cycle.
+    await addEntries(db, [
+      { date: cycle.start, account: 'Cash', category: 'Bills', amount: -1000, source: 'recurring' },
+    ]);
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useBudgetsPage());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — checked above');
+    expect(data.total.limit).toBe(4000); // 5000 − the 1000 bill
+    expect(data.total.spent).toBe(170); // unchanged: the bill is not discretionary spend
+    expect(data.rows.find((r) => r.category === 'Bills')?.spent).toBe(0);
+  });
+
+  // The limit the user TYPED, kept apart from the ceiling the meter measures against. The edit field
+  // has to render this one: feeding it the ceiling puts a number nobody set into an input that saves
+  // on blur, so every visit to the page would bank the deduction and deduct again — 5000 → 4000 →
+  // 3000, a budget that shrinks by its own bills each time you look at it.
+  it('keeps the raw typed limit separate from the reduced ceiling', async () => {
+    const db = await getBrowserDb();
+    await setBudget(db, null, 5000);
+    await addEntries(db, [
+      { date: cycle.start, account: 'Cash', category: 'Bills', amount: -1000, source: 'recurring' },
+    ]);
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useBudgetsPage());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — checked above');
+    expect(data.totalLimit).toBe(5000); // what the field must show
+    expect(data.total.limit).toBe(4000); // what the meter measures against
+    expect(data.fixedReserve).toBe(1000); // what explains the gap between them
+  });
+
+  it('keeps the total spend and the category rows summing to each other', async () => {
+    const db = await getBrowserDb();
+    await setBudget(db, null, 5000);
+    await addEntries(db, [
+      { date: cycle.start, account: 'Cash', category: 'Bills', amount: -1000, source: 'recurring' },
+      { date: cycle.start, account: 'Cash', category: 'Bills', amount: -300 }, // hand-entered, same cat
+    ]);
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useBudgetsPage());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — checked above');
+    // The invariant that keeps the page honest: whatever the rows say, they add up to the total.
+    const rowSum = data.rows.reduce((sum, r) => sum + r.spent, 0);
+    expect(rowSum).toBe(data.total.spent);
+    expect(data.rows.find((r) => r.category === 'Bills')?.spent).toBe(300);
   });
 });

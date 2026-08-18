@@ -111,7 +111,11 @@ export function parseMonefyCsv(text: string, opts?: { keepInflows?: boolean }): 
       currency: cols[4],
       originalAmount: cleanAmount(cols[3]),
       note: note === '' ? null : note,
-      source: 'monefy',
+      // A moniflow backup carries the row's real provenance in the 10th column; a genuine Monefy
+      // export (and any pre-source moniflow backup) has no such column and is an import, so it keeps
+      // the historical default. Blank must never decode to 'recurring' — that would invent a fixed
+      // cost and quietly shrink the ceiling for rows that were ordinary spend.
+      source: cols[9] === undefined || cols[9] === '' ? 'monefy' : cols[9],
       offBudget: parseOffBudget(cols[8]),
     });
   }
@@ -120,12 +124,13 @@ export function parseMonefyCsv(text: string, opts?: { keepInflows?: boolean }): 
 
 // The header moniflow writes — the byte-for-byte inverse of what parseMonefyCsv reads. The first
 // EIGHT columns are Monefy's own (the 5th and 7th are both "currency": the source currency, then the
-// THB home currency, constant); `off_budget` is a 9th column moniflow appends for a field Monefy has
-// no concept of. The extension is compatible both ways: parseMonefyCsv indexes columns, so a real
-// 8-column Monefy export still parses (cols[8] undefined → null), and a reader that knows only the
-// original 8 ignores the extra field.
+// THB home currency, constant); `off_budget` (9th) and `source` (10th) are moniflow's own appended
+// fields for state Monefy has no concept of. The extension is compatible both ways: parseMonefyCsv
+// indexes columns, so a real 8-column Monefy export still parses (missing → the documented default),
+// as does a 9-column moniflow backup written before `source` was carried; and a reader that knows
+// only the original 8 ignores the extras.
 export const MONEFY_HEADER =
-  'date,account,category,amount,currency,converted amount,currency,description,off_budget';
+  'date,account,category,amount,currency,converted amount,currency,description,off_budget,source';
 
 // 'YYYY-MM-DD' (UTC key) → 'DD/MM/YYYY'. UTC (not Bangkok) so it re-parses to the identical key via
 // toIsoDate — a lossless round-trip. en-GB with 2-digit day/month + numeric year renders the slashes.
@@ -149,13 +154,23 @@ function csvField(value: string): string {
 // the unit tests from having to build a full EntryRow (id/time/accountId/… are irrelevant here).
 type ExportRow = Pick<
   EntryRow,
-  'date' | 'account' | 'category' | 'amount' | 'currency' | 'originalAmount' | 'note' | 'offBudget'
+  | 'date'
+  | 'account'
+  | 'category'
+  | 'amount'
+  | 'currency'
+  | 'originalAmount'
+  | 'note'
+  | 'offBudget'
+  | 'source'
 >;
 
 // Pure ledger → Monefy CSV. Inverse of parseMonefyCsv. Amounts emitted plain (no thousands commas);
-// parseCsv strips commas on the way back either way. `time` and `source` have no column in the format
-// and are intentionally not serialized (see the design doc's fidelity caveats). `off_budget` DOES ride
-// along (9th column) — it is user intent, not derivable, so dropping it silently lost data on restore.
+// parseCsv strips commas on the way back either way. `time` alone has no column in the format and is
+// intentionally not serialized (see the design doc's fidelity caveats). `off_budget` (9th) and
+// `source` (10th) DO ride along — both are state the ledger cannot re-derive, so dropping either
+// silently lost data on restore: off_budget is user intent, and source is what marks a row a FIXED
+// cost that comes off the budget rather than counting against it.
 export function serializeMonefyCsv(rows: readonly ExportRow[]): string {
   const lines = [MONEFY_HEADER];
   for (const r of rows) {
@@ -172,6 +187,7 @@ export function serializeMonefyCsv(rows: readonly ExportRow[]): string {
         'THB',
         csvField(r.note ?? ''),
         r.offBudget === null || r.offBudget === undefined ? '' : String(r.offBudget),
+        csvField(r.source),
       ].join(','),
     );
   }

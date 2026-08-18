@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
 import { getDistinctCategories, getEntriesInRange } from '@features/entries/queries';
-import { discretionaryByCategory } from '@features/entries/off-budget';
+import { discretionaryByCategory, splitBudgetSpend } from '@features/entries/off-budget';
+import { listRules } from '@features/recurring/queries';
+import { committedThisCycle } from '@features/recurring/upcoming';
 import { cycleFromKey, currentCycleKey } from '@features/entries/cycle';
 import { getBudgets } from './queries';
 import { toBudgetRows, toBudgetTotal, type BudgetRow, type BudgetTotal } from './budget-status';
@@ -20,6 +22,12 @@ export type BudgetsData = {
   iconSet: IconSet;
   rows: BudgetRow[];
   total: BudgetTotal;
+  // The limit as the user TYPED it, alongside `total` whose limit is the ceiling net of fixed cost.
+  // The two must stay separate: the edit field saves on blur, so rendering the ceiling in it would
+  // bank the deduction as the new limit and deduct again on the next visit.
+  totalLimit: number | null;
+  // This cycle's fixed cost — the gap between the two figures above, so the page can say why.
+  fixedReserve: number;
   active: BudgetRow[];
   dormant: BudgetRow[];
 };
@@ -61,6 +69,21 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
         else limits.set(b.category, b.amount);
       }
 
+      // The same ceiling Home's meter runs on, built the same way — this cycle's whole fixed cost
+      // (bills already posted plus bills still to come) comes off the LIMIT, because the rows above
+      // have already dropped those entries from the SPEND. Compute it here rather than importing
+      // Home's hook: the two pages must agree on the number, not share a React hook. Letting this
+      // page keep the raw limit is what would make Home read ฿4,000 and Budgets ฿5,000 for one cycle.
+      // This page always shows the current cycle, so bills still to come are always in scope.
+      const { fixed: fixedPosted } = splitBudgetSpend(
+        cycleEntries,
+        offBudgetCategories,
+        travelCurrencies,
+      );
+      const upcoming = committedThisCycle(await listRules(db), todayIso(), cycle.end);
+      const fixedReserve = fixedPosted + upcoming.total;
+      const ceiling = totalLimit === null ? null : totalLimit - fixedReserve;
+
       const [emojis, hues, iconSet, distinctCategories] = await Promise.all([
         getEmojiMap(db),
         getHueMap(db),
@@ -69,7 +92,7 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
       ]);
 
       const rows = toBudgetRows(distinctCategories, limits, spentByCategory);
-      const total = toBudgetTotal(totalLimit, totalSpent);
+      const total = toBudgetTotal(ceiling, totalSpent);
       // A tracker leads with what's live this cycle. "Active" = spent something (either direction —
       // a refund-only category nets negative, not zero, and must not vanish from the page) OR has a
       // limit; the rest is tucked behind a disclosure (mirrors the page's own comment before this
@@ -77,7 +100,18 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
       const active = rows.filter((r) => r.spent !== 0 || r.limit !== null);
       const dormant = rows.filter((r) => r.spent === 0 && r.limit === null);
 
-      setData({ cycleLabel: cycle.label, emojis, hues, iconSet, rows, total, active, dormant });
+      setData({
+        cycleLabel: cycle.label,
+        emojis,
+        hues,
+        iconSet,
+        rows,
+        total,
+        totalLimit,
+        fixedReserve,
+        active,
+        dormant,
+      });
       setReady(true);
     });
   }, [version]);

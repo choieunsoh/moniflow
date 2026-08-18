@@ -17,27 +17,49 @@ export function isOffBudget(
   return offBudgetCategories.has(entry.category);
 }
 
-// Split a cycle's entries into discretionary vs off-budget NET spend (the ledger stores outflows
-// negative and inflows positive; negating makes an expense add and a refund subtract, so both come
-// back positive-as-spend). Feeds the budget meter/pace/safe-to-spend and the Home disclose line.
-// A side can go negative when a cycle's refunds exceed its spend — that is a true figure, not a bug.
+// Is this row a FIXED cost — a bill that posted itself from a standing rule rather than a choice
+// made this cycle? Derived from `source`, which the sweep already stamps 'recurring' (recurring/
+// queries.ts postRecurringEntries); no new column, and no per-entry tick to remember on the keypad.
+// Deliberately narrower than "recurring": a bill you paid by hand instead of letting the rule post
+// it is source 'manual' and counts as discretionary. That is the known ceiling of sourcing fixedness
+// from the poster — upgrade path is a per-entry override in the shape off_budget already has.
+export function isFixed(entry: EntryRow): boolean {
+  return entry.source === 'recurring';
+}
+
+// Split a cycle's entries into discretionary / off-budget / fixed NET spend (the ledger stores
+// outflows negative and inflows positive; negating makes an expense add and a refund subtract, so
+// all three come back positive-as-spend). Feeds the budget meter/pace/safe-to-spend and the Home
+// disclose lines. A side can go negative when a cycle's refunds exceed its spend — that is a true
+// figure, not a bug.
+//
+// The two exclusions are NOT interchangeable and off-budget is checked first: off-budget drops a row
+// from the meter's numerator AND leaves the ceiling alone ("don't judge my month by this"), while
+// fixed drops it from the numerator and takes it OUT of the ceiling ("this money was never mine to
+// spend"). A recurring bill sitting in an off-budget category has already been excluded by hand, so
+// letting fixed win there would newly shrink a ceiling the user had deliberately left whole.
 export function splitBudgetSpend(
   entries: EntryRow[],
   offBudgetCategories: Set<string>,
   travelCurrencies: Set<string>,
-): { discretionary: number; offBudget: number } {
+): { discretionary: number; offBudget: number; fixed: number } {
   let discretionary = 0;
   let offBudget = 0;
+  let fixed = 0;
   for (const e of entries) {
     const mag = -e.amount;
     if (isOffBudget(e, offBudgetCategories, travelCurrencies)) offBudget += mag;
+    else if (isFixed(e)) fixed += mag;
     else discretionary += mag;
   }
-  return { discretionary, offBudget };
+  return { discretionary, offBudget, fixed };
 }
 
-// Per-category discretionary spend (off-budget entries dropped) — the Budgets page feeds this to
-// toBudgetRows so per-category meters match the Home total meter.
+// Per-category discretionary spend (off-budget AND fixed entries dropped) — the Budgets page feeds
+// this to toBudgetRows so per-category meters match the Home total meter. Both exclusions have to be
+// applied here, not just off-budget: the total meter's numerator is splitBudgetSpend's discretionary
+// side, and the Budgets page sums THESE rows to build its own total. Drop only one of the two and
+// the two surfaces quietly disagree by exactly the cycle's fixed spend.
 export function discretionaryByCategory(
   entries: EntryRow[],
   offBudgetCategories: Set<string>,
@@ -45,7 +67,7 @@ export function discretionaryByCategory(
 ): Map<string, number> {
   const byCat = new Map<string, number>();
   for (const e of entries) {
-    if (isOffBudget(e, offBudgetCategories, travelCurrencies)) continue;
+    if (isOffBudget(e, offBudgetCategories, travelCurrencies) || isFixed(e)) continue;
     byCat.set(e.category, (byCat.get(e.category) ?? 0) + -e.amount);
   }
   return byCat;

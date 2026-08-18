@@ -58,6 +58,10 @@ export type HomeData = {
   sliceColors: Map<string, string>;
   total: number;
   offBudgetTotal: number;
+  // This cycle's fixed cost, posted so far — the part of `total` that came off the ceiling instead of
+  // counting as spend. Disclosed under the meter so the money is visible somewhere, since the Budgets
+  // page drops these rows from its per-category meters.
+  fixedPosted: number;
   emojiMap: Record<string, string>;
   hueMap: Record<string, number>;
   iconSet: IconSet;
@@ -137,12 +141,14 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       // the all-in spend total. The ring itself keeps dropping the wedge — only the headline changes.
       const total = -summary.net;
       // The donut stays all-in (total, above); the budget meter, safe-to-spend and pace read only
-      // discretionary spend — off-budget entries (per-entry override or a flagged category) drop out.
-      const { discretionary, offBudget: offBudgetTotal } = splitBudgetSpend(
-        cycleEntries,
-        offBudgetCategories,
-        travelCurrencies,
-      );
+      // discretionary spend — off-budget entries (per-entry override or a flagged category) drop out,
+      // and so do fixed ones (bills a standing rule posted itself), which instead come off the
+      // ceiling below.
+      const {
+        discretionary,
+        offBudget: offBudgetTotal,
+        fixed: fixedPosted,
+      } = splitBudgetSpend(cycleEntries, offBudgetCategories, travelCurrencies);
       // One colour per category, shared by the donut legend and the ranked list, so a category keeps
       // the same identity across the view toggle. Categories past the palette fold into Other and are
       // absent here — the list falls back to the accent for them, which is correct: they have no
@@ -158,8 +164,6 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       for (const b of budgetRows) {
         if (b.category !== null) limits.set(b.category, b.amount);
       }
-      const totalStatus = totalLimit === null ? null : toBudgetTotal(totalLimit, discretionary);
-
       // Time elapsed in the cycle drives both the standalone header bar and the "today" pace tick on
       // the budget meters — but a pace mark only makes sense while the cycle is live, so pacePct is
       // undefined on a past cycle (no tick), matching the header bar hiding there.
@@ -170,13 +174,29 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
       // "over pace". Hold the wording back until the same floor the dashboard projects from.
       const showPace = pacePct !== undefined && progress.day >= MIN_PROJECT_DAYS;
 
-      // Forward figures for the current cycle only. listRules is fetched here (not in the top Promise.all)
-      // so a past cycle — the common case when paging back — never pays for it.
+      // THE CEILING — what this cycle actually leaves you to decide about. A fixed cost is money that
+      // was never available to spend, so it comes OUT OF THE BUDGET rather than counting as spend
+      // against it: a ฿50,000 budget with a ฿1,720 electricity bill is a ฿48,280 budget.
+      //
+      // Both halves of the cycle's fixed cost are reserved at once — bills that have already posted
+      // (fixedPosted) and bills still to come (upcoming) — and that is what holds the ceiling STILL.
+      // On the day a bill posts it merely moves from one half to the other and the sum does not
+      // budge. Reserving only the still-to-come half is what the app did before, and it made the
+      // ceiling snap down the morning a bill landed.
+      //
+      // listRules stays out of the top Promise.all so a past cycle — the common case when paging back
+      // — never pays for it. A closed cycle needs no rules anyway: every bill that was going to post
+      // in it already has, so its still-to-come half is 0 by definition.
+      const rules = isCurrentCycle ? await listRules(db) : [];
+      const upcoming = committedThisCycle(rules, todayIso(), cycle.end);
+      const fixedReserve = fixedPosted + upcoming.total;
+      const ceiling = totalLimit === null ? null : totalLimit - fixedReserve;
+      const totalStatus = ceiling === null ? null : toBudgetTotal(ceiling, discretionary);
+
+      // Forward figures for the current cycle only.
       let forward: HomeForward | null = null;
       if (isCurrentCycle) {
-        const rules = await listRules(db);
         const daysLeft = progress.total - progress.day + 1; // today inclusive
-        const upcoming = committedThisCycle(rules, todayIso(), cycle.end);
         // "As of the start of today" is DERIVED, not snapshotted: run the same split over the
         // entries dated today and take them back out of spend. That beats storing a daily snapshot
         // on every count — no midnight job to miss, the figure is identical whether the app is first
@@ -188,16 +208,17 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
           travelCurrencies,
         );
         forward = {
-          safePerDay: safeToSpendPerDay(totalLimit, discretionary, upcoming.total, daysLeft),
-          // Same fn, same committed bills, earlier `spent` — the allowance is not a second formula.
+          safePerDay: safeToSpendPerDay(ceiling, discretionary, daysLeft),
+          // Same fn, same ceiling, earlier `spent` — the allowance is not a second formula.
           // `discretionary - spentToday` also leaves any future-dated entry in, which is right: it
           // was already on the books when the day started.
-          todayAllowance: safeToSpendPerDay(
-            totalLimit,
-            discretionary - spentToday,
-            upcoming.total,
-            daysLeft,
-          ),
+          //
+          // The ceiling is NOT rewound for a bill that posted today, deliberately: `spentToday` is
+          // about choices you made today, and a self-posting bill is not one. Rewinding it would
+          // also drop that bill out of BOTH halves of the reserve for a day — committedThisCycle
+          // only counts bills posting AFTER today — and hand back an allowance that quietly spends
+          // the electricity money.
+          todayAllowance: safeToSpendPerDay(ceiling, discretionary - spentToday, daysLeft),
           spentToday,
           avgPerDay: averagePerDay(discretionary, progress.day),
           daysLeft,
@@ -223,6 +244,7 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
         sliceColors,
         total,
         offBudgetTotal,
+        fixedPosted,
         emojiMap,
         hueMap,
         iconSet,

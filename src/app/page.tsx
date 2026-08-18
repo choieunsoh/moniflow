@@ -54,6 +54,7 @@ export default function HomePage() {
     sliceColors,
     total,
     offBudgetTotal,
+    fixedPosted,
     emojiMap,
     hueMap,
     iconSet,
@@ -81,8 +82,10 @@ export default function HomePage() {
   // The headline figure and the meter must agree on what "spent" means — discretionary spend
   // (off-budget entries dropped), not the all-in cycle total the donut shows below. totalStatus is
   // built from the same discretionary figure, so reading its `spent` keeps the two in lockstep; with
-  // no budget set there's no totalStatus to read, so fall back to total minus off-budget directly.
-  const discretionarySpend = totalStatus ? totalStatus.spent : total - offBudgetTotal;
+  // no budget set there's no totalStatus to read, so fall back to the all-in total minus BOTH
+  // exclusions — dropping only off-budget there would leave the no-budget headline counting fixed
+  // bills the budgeted headline does not.
+  const discretionarySpend = totalStatus ? totalStatus.spent : total - offBudgetTotal - fixedPosted;
   // The categories the ring folded into Other, carried on the bucket itself (only the fold knows
   // which they were). Empty whenever the cycle fits inside the palette and there is no Other at all.
   const folded = slices.find((s) => s.other)?.folded ?? [];
@@ -151,6 +154,17 @@ export default function HomePage() {
             {offBudgetTotal > 0 ? (
               <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
                 + {formatBahtWhole(offBudgetTotal)} off-budget
+              </span>
+            ) : null}
+            {/* Fixed cost gets its OWN line rather than joining the off-budget one, because the two
+                did different things to the figure above: off-budget spend was set aside and left the
+                budget alone, while this was subtracted FROM the budget — it is the whole reason the
+                "of ฿48,280" reads lower than the limit on /budgets. Naming it here is also the only
+                place this money surfaces on a budget surface, since /budgets drops these rows from
+                its per-category meters. */}
+            {fixedPosted > 0 ? (
+              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                + {formatBahtWhole(fixedPosted)} fixed — deducted from the budget
               </span>
             ) : null}
             {totalStatus ? <BudgetMeter status={totalStatus} pacePct={pacePct} /> : null}

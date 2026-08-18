@@ -7,6 +7,7 @@ function row(
   category: string,
   offBudget: number | null,
   currency: string | null = null,
+  source = 'manual',
 ): EntryRow {
   return {
     id: 1,
@@ -18,7 +19,7 @@ function row(
     currency,
     originalAmount: null,
     note: null,
-    source: 'manual',
+    source,
     offBudget,
     category,
     account: 'Cash',
@@ -39,6 +40,7 @@ describe('off-budget rules', () => {
     expect(splitBudgetSpend(entries, cats, noTravel)).toEqual({
       discretionary: 600,
       offBudget: 12050,
+      fixed: 0,
     });
   });
   it('discretionaryByCategory sums only non-off-budget entries, by category', () => {
@@ -52,6 +54,7 @@ describe('off-budget rules', () => {
     expect(splitBudgetSpend(entries, cats, noTravel)).toEqual({
       discretionary: 1500,
       offBudget: 0,
+      fixed: 0,
     });
   });
   it('splitBudgetSpend keeps a refund on the same side as the spend it refunds', () => {
@@ -60,11 +63,71 @@ describe('off-budget rules', () => {
     expect(splitBudgetSpend(entries, cats, noTravel)).toEqual({
       discretionary: 0,
       offBudget: 10000,
+      fixed: 0,
     });
   });
   it('discretionaryByCategory nets a refund within its category', () => {
     const entries = [row(-600, 'Food', null), row(100, 'Food', null)];
     expect(discretionaryByCategory(entries, cats, noTravel)).toEqual(new Map([['Food', 500]]));
+  });
+});
+
+// A self-posted recurring bill is a FIXED cost: not a choice made this cycle, so it leaves the
+// discretionary side — but unlike off-budget it is still real money that must come out of the
+// ceiling (use-home folds it in), which is why it needs its own bucket rather than joining offBudget.
+describe('fixed (recurring-sourced) spend', () => {
+  const cats = new Set(['Insurance']);
+  const noTravel = new Set<string>();
+
+  it('splitBudgetSpend routes a recurring entry to fixed, not discretionary', () => {
+    const entries = [row(-600, 'Food', null), row(-1720, 'Bills', null, null, 'recurring')];
+    expect(splitBudgetSpend(entries, cats, noTravel)).toEqual({
+      discretionary: 600,
+      offBudget: 0,
+      fixed: 1720,
+    });
+  });
+
+  it('off-budget wins over fixed — an already-excluded bill must not also shrink the ceiling', () => {
+    // Both tiers claim this row. off-budget is the stronger statement ("ignore this entirely"), and
+    // letting fixed win would newly deduct from the ceiling a bill the user had already excluded.
+    const entries = [
+      row(-12000, 'Insurance', null, null, 'recurring'), // off-budget CATEGORY
+      row(-900, 'Bills', 1, null, 'recurring'), // per-entry force-exclude
+    ];
+    expect(splitBudgetSpend(entries, cats, noTravel)).toEqual({
+      discretionary: 0,
+      offBudget: 12900,
+      fixed: 0,
+    });
+  });
+
+  it('a travel-currency recurring bill stays off-budget', () => {
+    const travel = new Set(['JPY']);
+    const entries = [row(-5000, 'Bills', null, 'JPY', 'recurring')];
+    expect(splitBudgetSpend(entries, new Set<string>(), travel)).toEqual({
+      discretionary: 0,
+      offBudget: 5000,
+      fixed: 0,
+    });
+  });
+
+  it('a hand-entered refund of a fixed bill lands discretionary, and still nets right', () => {
+    // The bucket is chosen by `source`, and a refund is always typed by hand — so it goes to the
+    // discretionary side as a negative rather than reducing `fixed`. The arithmetic still works out:
+    // ceiling 50000 − 1720 = 48280, less discretionary −220 → 48500 remaining, exactly the 1500 the
+    // bill really cost. The split is cosmetic; the remainder is what the user acts on.
+    const entries = [row(-1720, 'Bills', null, null, 'recurring'), row(220, 'Bills', null)];
+    expect(splitBudgetSpend(entries, cats, noTravel)).toEqual({
+      discretionary: -220,
+      offBudget: 0,
+      fixed: 1720,
+    });
+  });
+
+  it('discretionaryByCategory drops recurring rows so per-category meters match the total', () => {
+    const entries = [row(-300, 'Bills', null), row(-1720, 'Bills', null, null, 'recurring')];
+    expect(discretionaryByCategory(entries, cats, noTravel)).toEqual(new Map([['Bills', 300]]));
   });
 });
 
@@ -112,6 +175,7 @@ describe('travel currencies', () => {
     expect(splitBudgetSpend(entries, noCategories, travel)).toEqual({
       discretionary: 100,
       offBudget: 500,
+      fixed: 0,
     });
   });
 });
