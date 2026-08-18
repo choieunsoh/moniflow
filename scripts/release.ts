@@ -516,7 +516,12 @@ export function deployToVercel(version: string): void {
 
   const args = vercelDeployArgs(scope);
   try {
-    runCommand('npx', args, { stdio: 'inherit' });
+    // Through runNpm, never a bare `npx`: on Windows the binary is npx.cmd and execFileSync does no
+    // PATHEXT resolution, so spawning 'npx' dies with ENOENT before the deploy is even attempted.
+    // runNpm already resolves this (npm_execpath, else npm.cmd), so `npm exec` inherits the fix for
+    // free rather than growing a second copy of it. --yes so a missing local vercel installs rather
+    // than stopping on a prompt no one is watching.
+    runNpm(['exec', '--yes', '--', ...args], { stdio: 'inherit' });
   } catch (cause) {
     // A non-zero exit here is NOT proof the deploy failed — the CLI has been seen taking a SIGTERM
     // (exit 143) mid-build while the deployment went on to finish READY. So this reports rather than
@@ -525,7 +530,7 @@ export function deployToVercel(version: string): void {
     error(`\n⚠ Deploy did not report success. v${version} is tagged and released either way.`);
     error('  A non-zero exit is not proof of failure — check the real state before retrying:');
     error(`    npx vercel inspect <deployment-url> --scope ${scope}`);
-    error(`  Retry with:\n    npx ${args.join(' ')}`);
+    error(`  Retry with:\n    npm exec --yes -- ${args.join(' ')}`);
     if (cause instanceof Error && cause.message) error(`  CLI said: ${cause.message}`);
     return;
   }
