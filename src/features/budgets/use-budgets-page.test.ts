@@ -132,6 +132,28 @@ describe('useBudgetsPage', () => {
     expect(data.rows.find((r) => r.category === 'Bills')?.spent).toBe(0);
   });
 
+  // The limit the user TYPED, kept apart from the ceiling the meter measures against. The edit field
+  // has to render this one: feeding it the ceiling puts a number nobody set into an input that saves
+  // on blur, so every visit to the page would bank the deduction and deduct again — 5000 → 4000 →
+  // 3000, a budget that shrinks by its own bills each time you look at it.
+  it('keeps the raw typed limit separate from the reduced ceiling', async () => {
+    const db = await getBrowserDb();
+    await setBudget(db, null, 5000);
+    await addEntries(db, [
+      { date: cycle.start, account: 'Cash', category: 'Bills', amount: -1000, source: 'recurring' },
+    ]);
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useBudgetsPage());
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — checked above');
+    expect(data.totalLimit).toBe(5000); // what the field must show
+    expect(data.total.limit).toBe(4000); // what the meter measures against
+    expect(data.fixedReserve).toBe(1000); // what explains the gap between them
+  });
+
   it('keeps the total spend and the category rows summing to each other', async () => {
     const db = await getBrowserDb();
     await setBudget(db, null, 5000);

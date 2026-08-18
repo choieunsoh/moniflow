@@ -22,6 +22,12 @@ export type BudgetsData = {
   iconSet: IconSet;
   rows: BudgetRow[];
   total: BudgetTotal;
+  // The limit as the user TYPED it, alongside `total` whose limit is the ceiling net of fixed cost.
+  // The two must stay separate: the edit field saves on blur, so rendering the ceiling in it would
+  // bank the deduction as the new limit and deduct again on the next visit.
+  totalLimit: number | null;
+  // This cycle's fixed cost — the gap between the two figures above, so the page can say why.
+  fixedReserve: number;
   active: BudgetRow[];
   dormant: BudgetRow[];
 };
@@ -75,7 +81,8 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
         travelCurrencies,
       );
       const upcoming = committedThisCycle(await listRules(db), todayIso(), cycle.end);
-      const ceiling = totalLimit === null ? null : totalLimit - fixedPosted - upcoming.total;
+      const fixedReserve = fixedPosted + upcoming.total;
+      const ceiling = totalLimit === null ? null : totalLimit - fixedReserve;
 
       const [emojis, hues, iconSet, distinctCategories] = await Promise.all([
         getEmojiMap(db),
@@ -93,7 +100,18 @@ export function useBudgetsPage(): { ready: boolean; data: BudgetsData | null } {
       const active = rows.filter((r) => r.spent !== 0 || r.limit !== null);
       const dormant = rows.filter((r) => r.spent === 0 && r.limit === null);
 
-      setData({ cycleLabel: cycle.label, emojis, hues, iconSet, rows, total, active, dormant });
+      setData({
+        cycleLabel: cycle.label,
+        emojis,
+        hues,
+        iconSet,
+        rows,
+        total,
+        totalLimit,
+        fixedReserve,
+        active,
+        dormant,
+      });
       setReady(true);
     });
   }, [version]);

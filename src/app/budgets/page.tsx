@@ -61,7 +61,18 @@ export default function BudgetsPage() {
     );
   }
 
-  const { cycleLabel, emojis, hues, iconSet, rows, total, active, dormant } = data;
+  const {
+    cycleLabel,
+    emojis,
+    hues,
+    iconSet,
+    rows,
+    total,
+    totalLimit,
+    fixedReserve,
+    active,
+    dormant,
+  } = data;
   const rowProps = { emojis, hues, iconSet };
 
   return (
@@ -87,8 +98,20 @@ export default function BudgetsPage() {
           >
             Limit for the whole cycle
           </span>
-          <BudgetField {...fieldProps('', total.limit, total.spent)} />
+          {/* totalLimit, NOT total.limit: this input saves on blur, and total.limit is the ceiling
+              net of fixed cost. Rendering the ceiling here would show a number nobody set and then
+              bank it as the new limit on the next blur, shrinking the budget by its own bills on
+              every visit. The ceiling belongs in the caption below, where it is read-only. */}
+          <BudgetField {...fieldProps('', totalLimit, total.spent)} />
         </div>
+        {/* Why the meter measures against less than the number in the field. Only shown when there
+            is fixed cost to explain — with none, the two figures are the same and a caption saying
+            so would be noise. */}
+        {fixedReserve > 0 && totalLimit !== null && (
+          <p className="tnum text-xs" style={{ color: 'var(--color-faint)' }}>
+            −{formatBaht(fixedReserve)} fixed costs · {formatBaht(total.limit ?? 0)} left to budget
+          </p>
+        )}
         {/* Row 2: this cycle's spend · progress bar */}
         {(total.limit !== null || total.spent !== 0) && (
           <div className="flex items-center gap-3">
