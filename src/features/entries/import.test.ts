@@ -112,6 +112,7 @@ describe('parseMonefyCsv', () => {
         originalAmount: -2000,
         note: null,
         offBudget: null,
+        source: 'manual',
       },
       {
         date: '2026-08-14',
@@ -122,6 +123,7 @@ describe('parseMonefyCsv', () => {
         originalAmount: 500,
         note: null,
         offBudget: null,
+        source: 'manual',
       },
     ];
     const back = parseMonefyCsv(serializeMonefyCsv(rows), { keepInflows: true }).entries;
@@ -130,10 +132,10 @@ describe('parseMonefyCsv', () => {
 });
 
 describe('serializeMonefyCsv', () => {
-  it('emits the eight Monefy columns plus the off_budget column moniflow appends', () => {
+  it('emits the eight Monefy columns plus the off_budget and source columns moniflow appends', () => {
     expect(serializeMonefyCsv([])).toBe(MONEFY_HEADER);
     expect(MONEFY_HEADER).toBe(
-      'date,account,category,amount,currency,converted amount,currency,description,off_budget',
+      'date,account,category,amount,currency,converted amount,currency,description,off_budget,source',
     );
   });
 
@@ -148,9 +150,12 @@ describe('serializeMonefyCsv', () => {
         originalAmount: -637,
         note: 'lotus',
         offBudget: null,
+        source: 'manual',
       },
     ]);
-    expect(csv.split('\n')[1]).toBe('15/01/2016,#KTC X VISA,shopping,-637,THB,-637,THB,lotus,');
+    expect(csv.split('\n')[1]).toBe(
+      '15/01/2016,#KTC X VISA,shopping,-637,THB,-637,THB,lotus,,manual',
+    );
   });
 
   it('keeps the original currency + amount for a non-THB row (converted stays THB)', () => {
@@ -164,9 +169,10 @@ describe('serializeMonefyCsv', () => {
         originalAmount: -1000,
         note: null,
         offBudget: null,
+        source: 'manual',
       },
     ]);
-    expect(csv.split('\n')[1]).toBe('20/03/2019,yen,food,-1000,JPY,-230,THB,,');
+    expect(csv.split('\n')[1]).toBe('20/03/2019,yen,food,-1000,JPY,-230,THB,,,manual');
   });
 
   it('quotes a field that contains a comma and doubles embedded quotes', () => {
@@ -180,10 +186,11 @@ describe('serializeMonefyCsv', () => {
         originalAmount: -50,
         note: 'lunch, with "friends"',
         offBudget: null,
+        source: 'manual',
       },
     ]);
     expect(csv.split('\n')[1]).toBe(
-      '01/07/2026,cash,food,-50,THB,-50,THB,"lunch, with ""friends""",',
+      '01/07/2026,cash,food,-50,THB,-50,THB,"lunch, with ""friends""",,manual',
     );
   });
 
@@ -198,9 +205,10 @@ describe('serializeMonefyCsv', () => {
         originalAmount: null,
         note: null,
         offBudget: null,
+        source: 'manual',
       },
     ]);
-    expect(csv.split('\n')[1]).toBe('02/07/2026,cash,food,-12,THB,-12,THB,,');
+    expect(csv.split('\n')[1]).toBe('02/07/2026,cash,food,-12,THB,-12,THB,,,manual');
   });
 });
 
@@ -216,6 +224,7 @@ describe('serialize ↔ parse round-trip', () => {
         originalAmount: -637,
         note: 'lotus',
         offBudget: 1,
+        source: 'monefy',
       },
       {
         date: '2019-03-20',
@@ -226,6 +235,7 @@ describe('serialize ↔ parse round-trip', () => {
         originalAmount: -1000,
         note: null,
         offBudget: null,
+        source: 'manual',
       },
     ];
     const { entries } = parseMonefyCsv(serializeMonefyCsv(rows));
@@ -249,7 +259,7 @@ describe('serialize ↔ parse round-trip', () => {
         currency: 'JPY',
         originalAmount: -1000,
         note: null,
-        source: 'monefy',
+        source: 'manual',
         offBudget: null,
       },
     ]);
@@ -266,11 +276,12 @@ describe('off_budget survives the CSV round-trip', () => {
     originalAmount: -500,
     note: 'yearly',
     offBudget,
+    source: 'manual',
   });
 
   it('emits off_budget as the 9th column: empty for null, 0 and 1 for the forced states', () => {
     expect(MONEFY_HEADER).toBe(
-      'date,account,category,amount,currency,converted amount,currency,description,off_budget',
+      'date,account,category,amount,currency,converted amount,currency,description,off_budget,source',
     );
     const cols = (offBudget: number | null) =>
       serializeMonefyCsv([row(offBudget)])
@@ -295,5 +306,64 @@ describe('off_budget survives the CSV round-trip', () => {
       'date,account,category,amount,currency,converted amount,currency,description\n' +
       '15/01/2016,cash,shopping,-637,THB,-637,THB,lotus';
     expect(parseMonefyCsv(csv).entries[0].offBudget).toBeNull();
+  });
+});
+
+// `source` used to be deliberately left out of the format ("no column in Monefy's format"). Once a
+// fixed cost became a source='recurring' row that comes off the BUDGET, dropping it stopped being a
+// fidelity footnote and became data loss: restore onto a fresh device — the exact case a backup
+// exists for — and every bill silently reverts to discretionary spend, snapping the ceiling back up.
+// Same failure the off_budget column above was added to close.
+describe('source survives the CSV round-trip', () => {
+  const row = (source: string) => ({
+    date: '2026-07-27',
+    account: 'cash',
+    category: 'บิลรายเดือน',
+    amount: -1720,
+    currency: 'THB',
+    originalAmount: -1720,
+    note: 'ค่าไฟ',
+    offBudget: null,
+    source,
+  });
+
+  it('emits source as the 10th column', () => {
+    expect(MONEFY_HEADER).toBe(
+      'date,account,category,amount,currency,converted amount,currency,description,off_budget,source',
+    );
+    const cols = (source: string) =>
+      serializeMonefyCsv([row(source)])
+        .split('\n')[1]
+        .split(',');
+    expect(cols('recurring')[9]).toBe('recurring');
+    expect(cols('manual')[9]).toBe('manual');
+  });
+
+  it('parses the 10th column back, keeping a fixed bill fixed', () => {
+    for (const source of ['manual', 'monefy', 'recurring']) {
+      const { entries } = parseMonefyCsv(serializeMonefyCsv([row(source)]));
+      expect(entries[0].source).toBe(source);
+    }
+  });
+
+  // A genuine Monefy export stops at 8 columns and knows nothing of either extension. It is an
+  // IMPORT, so its rows are 'monefy' — the same default the parser always applied.
+  it('reads a genuine 8-column Monefy CSV as source monefy', () => {
+    const csv =
+      'date,account,category,amount,currency,converted amount,currency,description\n' +
+      '15/01/2016,cash,shopping,-637,THB,-637,THB,lotus';
+    expect(parseMonefyCsv(csv).entries[0].source).toBe('monefy');
+  });
+
+  // A moniflow backup written before this column existed: 9 columns, no source. Those rows predate
+  // the fixed-cost feature, so 'monefy' is as good a guess as any — what matters is that a missing
+  // column never reads as 'recurring' and starts silently shrinking someone's budget.
+  it('reads a 9-column moniflow backup without inventing a fixed cost', () => {
+    const csv =
+      'date,account,category,amount,currency,converted amount,currency,description,off_budget\n' +
+      '15/01/2016,cash,shopping,-637,THB,-637,THB,lotus,1';
+    const entry = parseMonefyCsv(csv).entries[0];
+    expect(entry.source).not.toBe('recurring');
+    expect(entry.offBudget).toBe(1); // the 9th column still reads correctly beside the new one
   });
 });

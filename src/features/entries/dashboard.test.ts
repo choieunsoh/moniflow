@@ -8,25 +8,30 @@ import {
 } from './dashboard';
 
 describe('safeToSpendPerDay', () => {
-  it('spreads budget minus spent minus committed over the days left', () => {
-    // 3000 budget − 180 spent − 400 committed = 2420 remaining, over 29 days
-    expect(safeToSpendPerDay(3000, 180, 400, 29)).toBeCloseTo(2420 / 29);
-  });
-
-  it('committed 0 leaves the old behaviour intact', () => {
-    expect(safeToSpendPerDay(3000, 180, 0, 29)).toBeCloseTo(2820 / 29);
+  // `ceiling` arrives already net of the cycle's fixed cost — both the part that has posted and the
+  // part still to come (use-home's fixedReserve). This fn no longer takes a `committed` argument of
+  // its own: the same reservation reaching it by two routes is how you double-subtract it.
+  it('spreads the ceiling minus spent over the days left', () => {
+    // 2600 ceiling (3000 budget − 400 of fixed cost) − 180 spent = 2420, over 29 days
+    expect(safeToSpendPerDay(2600, 180, 29)).toBeCloseTo(2420 / 29);
   });
 
   it('returns null when no total budget is set (caller shows the average instead)', () => {
-    expect(safeToSpendPerDay(null, 180, 400, 29)).toBeNull();
+    expect(safeToSpendPerDay(null, 180, 29)).toBeNull();
   });
 
-  it('floors at 0 when spent plus committed exceeds the budget', () => {
-    expect(safeToSpendPerDay(100, 60, 60, 10)).toBe(0);
+  it('floors at 0 when spend has eaten the whole ceiling', () => {
+    expect(safeToSpendPerDay(40, 60, 10)).toBe(0);
+  });
+
+  it('floors at 0 when fixed cost alone exceeds the budget', () => {
+    // A ceiling can go NEGATIVE now — bills bigger than the budget — and must not hand back a
+    // negative daily allowance.
+    expect(safeToSpendPerDay(-500, 0, 10)).toBe(0);
   });
 
   it('never divides by zero on the last day', () => {
-    expect(safeToSpendPerDay(300, 100, 0, 0)).toBe(200);
+    expect(safeToSpendPerDay(300, 100, 0)).toBe(200);
   });
 });
 

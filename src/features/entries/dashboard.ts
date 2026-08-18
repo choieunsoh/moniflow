@@ -6,18 +6,21 @@
 // projection stays null until this many days have elapsed. Tunable in one place.
 export const MIN_PROJECT_DAYS = 3;
 
-// Remaining budget spread over the days left in the cycle (today inclusive). Remaining now nets out
-// `committed` — recurring bills known to post before cycle end (see recurring/committedThisCycle) —
-// so the figure reserves them instead of letting you "safely" spend money that's already promised.
-// null when no total budget is set — the caller shows the actual average instead. Floors at 0.
+// Remaining ceiling spread over the days left in the cycle (today inclusive). `ceiling` is the total
+// budget ALREADY net of this cycle's whole fixed cost — recurring bills that have posted plus those
+// still to come (use-home builds it; see off-budget/isFixed and recurring/committedThisCycle). It
+// used to take those still-to-come bills as a separate `committed` argument, but once posted bills
+// also came out of the budget the two had to be one figure: reserving the same bill through two
+// arguments subtracts it twice on every day before it posts.
+// null when no total budget is set — the caller shows the actual average instead. Floors at 0, which
+// also covers a ceiling driven negative by fixed costs larger than the budget.
 export function safeToSpendPerDay(
-  totalBudget: number | null,
+  ceiling: number | null,
   spent: number,
-  committed: number,
   daysLeft: number,
 ): number | null {
-  if (totalBudget === null) return null;
-  const remaining = totalBudget - spent - committed;
+  if (ceiling === null) return null;
+  const remaining = ceiling - spent;
   if (remaining <= 0) return 0;
   return remaining / Math.max(1, daysLeft);
 }

@@ -8,6 +8,7 @@ import { ensureBudgetsTable } from '@features/budgets/schema';
 import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { ensureSettingsTable } from './schema';
 import { getEntries, restoreEntries } from '@features/entries/queries';
+import { serializeMonefyCsv } from '@features/entries/import';
 import { getBudgets, setBudget } from '@features/budgets/queries';
 import { getTravelCurrencies } from '@features/currencies/queries';
 import { recurrences } from '@features/recurring/schema';
@@ -167,5 +168,46 @@ describe('restoreBackupAction', () => {
 
     expect(summary).toEqual({ entries: null, categories: 1, accounts: 0, budgets: 0 });
     expect(await getEntries(db)).toHaveLength(1); // ledger not touched
+  });
+});
+
+// The whole point of the 10th CSV column: a fixed cost must still be a fixed cost after a restore.
+// This is the fresh-device path — the exact case a backup exists for — and losing `source` there
+// would silently revert every self-posted bill to discretionary spend and snap the ceiling back up.
+describe('a fixed cost survives export → restore', () => {
+  beforeEach(async () => {
+    const db = makeNodeProxyDb();
+    await ensureEntriesTable(db);
+    await ensureCategoriesTable(db);
+    await ensureAccountsTable(db);
+    await ensureRecurrencesTable(db);
+    await ensureBudgetsTable(db);
+    await ensureCurrenciesTable(db);
+    await ensureSettingsTable(db);
+    vi.mocked(getBrowserDb).mockResolvedValue(db);
+  });
+
+  it('round-trips a recurring row through serialize and restore with its source intact', async () => {
+    const db = await getBrowserDb();
+    await restoreEntries(db, [
+      {
+        date: '2026-07-10',
+        account: 'Cash',
+        category: 'บิลรายเดือน',
+        amount: -1720,
+        source: 'recurring',
+      },
+      { date: '2026-07-11', account: 'Cash', category: 'อาหาร', amount: -300 },
+    ]);
+
+    // Export exactly as Settings → Backup does, wipe, then restore onto the empty ledger.
+    const exported = serializeMonefyCsv(await getEntries(db));
+    await restoreBackupAction(combined({ entriesCsv: exported }));
+
+    const back = await getEntries(db);
+    const bill = back.find((e) => e.amount === -1720);
+    const lunch = back.find((e) => e.amount === -300);
+    expect(bill?.source).toBe('recurring');
+    expect(lunch?.source).toBe('manual');
   });
 });

@@ -9,6 +9,7 @@ import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addEntries } from './queries';
 import { bumpDataVersion } from '@shared/data-version';
 import { setBudget } from '@features/budgets/queries';
+import { addRule, updateRule } from '@features/recurring/queries';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 // The pace gate depends on how far into the cycle "today" is, so the clock has to be pinned or the
@@ -402,5 +403,139 @@ describe('useHome', () => {
       // Seeded cycle 2026-06: Food -100, Food -50, Transport -20.
       expect(top.map((e) => e.amount)).toEqual([-100, -50, -20]);
     });
+  });
+});
+
+// The fixed-cost ceiling. A bill a standing rule posts itself is money that was never available to
+// spend, so it comes out of the BUDGET rather than counting as spend against it.
+describe('useHome — fixed-cost ceiling', () => {
+  beforeEach(async () => {
+    const db = makeNodeProxyDb();
+    await ensureEntriesTable(db);
+    await ensureSettingsTable(db);
+    await ensureBudgetsTable(db);
+    await ensureRecurrencesTable(db);
+    await ensureCurrenciesTable(db);
+    await setBudget(db, null, 50000);
+    // Cutoff 18 and a clock pinned to 2026-07-05 put us mid-cycle in '2026-06' (18 Jun – 17 Jul).
+    await addEntries(db, [
+      { date: '2026-07-01', account: 'Cash', category: 'Food', amount: -8000 },
+    ]);
+    vi.mocked(getBrowserDb).mockResolvedValue(db);
+  });
+
+  it('takes a posted bill out of the limit, leaving spend discretionary-only', async () => {
+    const db = await getBrowserDb();
+    await addEntries(db, [
+      {
+        date: '2026-07-02',
+        account: 'Cash',
+        category: 'Bills',
+        amount: -1720,
+        source: 'recurring',
+      },
+    ]);
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useHome('2026-06'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — checked above');
+
+    expect(data.totalStatus?.limit).toBe(48280); // 50000 − 1720
+    expect(data.totalStatus?.spent).toBe(8000); // the bill is NOT spend
+    expect(data.fixedPosted).toBe(1720);
+    expect(data.total).toBe(9720); // the donut stays all-in
+  });
+
+  // THE invariant this whole feature exists for. Reserving only the bills still to come — which is
+  // what the app did before — made the ceiling snap down the morning a bill landed.
+  it('holds the ceiling still across the day a bill posts', async () => {
+    const db = await getBrowserDb();
+    // A ฿1,720 bill due the 10th: still to come as of the pinned 5th, never posted.
+    await addRule(db, {
+      name: 'ค่าไฟ',
+      day: 10,
+      intervalMonths: 1,
+      amount: 1720,
+      startDate: '2026-07-10',
+      lastPosted: null,
+    });
+    act(() => bumpDataVersion());
+
+    const before = renderHook(() => useHome('2026-06'));
+    await waitFor(() => expect(before.result.current.ready).toBe(true));
+    const ceilingBefore = before.result.current.data?.totalStatus?.limit;
+    expect(ceilingBefore).toBe(48280); // reserved while it is still upcoming
+
+    // Now the sweep has run: the entry exists and the rule's pointer has advanced past it, so the
+    // bill has moved from the still-to-come half of the reserve into the posted half.
+    await addEntries(db, [
+      {
+        date: '2026-07-10',
+        account: 'Cash',
+        category: 'Bills',
+        amount: -1720,
+        source: 'recurring',
+      },
+    ]);
+    await updateRule(db, 1, { lastPosted: '2026-07-10' });
+    act(() => bumpDataVersion());
+
+    const after = renderHook(() => useHome('2026-06'));
+    await waitFor(() => expect(after.result.current.ready).toBe(true));
+    const { data } = after.result.current;
+    if (data === null) throw new Error('unreachable — checked above');
+
+    expect(data.totalStatus?.limit).toBe(ceilingBefore); // the sum did not budge
+    expect(data.fixedPosted).toBe(1720); // it just changed which half holds it
+    expect(data.forward?.upcoming.total).toBe(0);
+  });
+
+  it('leaves the ceiling whole for a bill the user already marked off-budget', async () => {
+    const db = await getBrowserDb();
+    await addEntries(db, [
+      {
+        date: '2026-07-02',
+        account: 'Cash',
+        category: 'Bills',
+        amount: -1720,
+        source: 'recurring',
+        offBudget: 1,
+      },
+    ]);
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useHome('2026-06'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — checked above');
+
+    expect(data.totalStatus?.limit).toBe(50000); // off-budget wins; the ceiling is untouched
+    expect(data.offBudgetTotal).toBe(1720);
+    expect(data.fixedPosted).toBe(0);
+  });
+
+  it('spreads the reduced ceiling over the days left, not the raw budget', async () => {
+    const db = await getBrowserDb();
+    await addEntries(db, [
+      {
+        date: '2026-07-02',
+        account: 'Cash',
+        category: 'Bills',
+        amount: -1720,
+        source: 'recurring',
+      },
+    ]);
+    act(() => bumpDataVersion());
+
+    const { result } = renderHook(() => useHome('2026-06'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const { data } = result.current;
+    if (data === null) throw new Error('unreachable — checked above');
+
+    // 48280 ceiling − 8000 discretionary = 40280, over the days left (5 Jul → 17 Jul inclusive = 13).
+    expect(data.forward?.daysLeft).toBe(13);
+    expect(data.forward?.safePerDay).toBeCloseTo(40280 / 13);
   });
 });
