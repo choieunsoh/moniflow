@@ -6,7 +6,9 @@ import {
   insertChangelogEntry,
   parseConventionalCommit,
   parseReleaseArgs,
+  parseVercelScope,
   QUALITY_GATES,
+  vercelDeployArgs,
 } from './release';
 
 describe('QUALITY_GATES', () => {
@@ -110,5 +112,38 @@ describe('insertChangelogEntry', () => {
 
     expect(result.indexOf('# Changelog')).toBeLessThan(result.indexOf('## [1.2.3]'));
     expect(result.indexOf('## [1.2.3]')).toBeLessThan(result.indexOf('## [1.2.2]'));
+  });
+});
+
+describe('parseVercelScope', () => {
+  it('reads the linked org from .vercel/project.json', () => {
+    const json = JSON.stringify({
+      projectId: 'prj_abc',
+      orgId: 'team_c7zRNNDl3J1fSEz9bMrXNfVR',
+      projectName: 'moniflow',
+    });
+    expect(parseVercelScope(json)).toBe('team_c7zRNNDl3J1fSEz9bMrXNfVR');
+  });
+
+  // Deploying without --scope is the failure this exists to prevent: `vercel whoami` reports the
+  // personal account while the project lives under a team, and the CLI answers "Not authorized"
+  // with no hint that a scope was what it wanted.
+  it('returns null rather than guessing when the link is unusable', () => {
+    expect(parseVercelScope('{}')).toBeNull();
+    expect(parseVercelScope('{"orgId": 42}')).toBeNull();
+    expect(parseVercelScope('not json at all')).toBeNull();
+  });
+});
+
+describe('vercelDeployArgs', () => {
+  it('deploys to production non-interactively, scoped to the linked org', () => {
+    expect(vercelDeployArgs('team_x')).toEqual([
+      'vercel',
+      'deploy',
+      '--prod',
+      '--yes',
+      '--scope',
+      'team_x',
+    ]);
   });
 });

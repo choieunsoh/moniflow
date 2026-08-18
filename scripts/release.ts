@@ -469,6 +469,70 @@ export function publishToNpm(pkg: PackageInfo): void {
   log(`✓ Published ${pkg.name}@${pkg.version}`);
 }
 
+// The Vercel org this repo is linked to, from `.vercel/project.json` (written by `vercel link`).
+// It has to be passed as --scope on every deploy: `vercel whoami` answers with the personal account
+// while the project lives under a team, so the bare command fails with a flat "Not authorized" that
+// names neither the problem nor the fix. Reading the linked file beats hardcoding a slug — a re-link
+// to another org keeps working with no edit here.
+// Returns null when the repo isn't linked yet (a fresh clone), which the caller treats as "skip the
+// deploy", not as a failed release.
+export function parseVercelScope(projectJson: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(projectJson);
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    if (!('orgId' in parsed) || typeof parsed.orgId !== 'string') return null;
+    return parsed.orgId;
+  } catch {
+    return null;
+  }
+}
+
+export function vercelDeployArgs(scope: string): string[] {
+  return ['vercel', 'deploy', '--prod', '--yes', '--scope', scope];
+}
+
+// A missing or unreadable link file is the same answer as an unusable one: not linked.
+function readLinkedVercelScope(): string | null {
+  try {
+    return parseVercelScope(readFileSync(resolve(rootDir, '.vercel/project.json'), 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+// Ship the tagged version to production. Runs LAST, after the tag and GitHub release are pushed, so
+// the git side of a release is never left half-done by a deploy problem — and so the tree Vercel
+// uploads is the bumped one. (The CLI uploads the working tree and rebuilds remotely; the local
+// out/ that the build:web gate produced before the bump never reaches production.)
+export function deployToVercel(version: string): void {
+  log('\n▶ Deploying to production...');
+
+  const scope = readLinkedVercelScope();
+  if (scope === null) {
+    warn('⚠ Skipped deploy: this repo is not linked to a Vercel project.');
+    warn('  Run `vercel link` once, then deploy with `npx vercel --prod`.');
+    return;
+  }
+
+  const args = vercelDeployArgs(scope);
+  try {
+    runCommand('npx', args, { stdio: 'inherit' });
+  } catch (cause) {
+    // A non-zero exit here is NOT proof the deploy failed — the CLI has been seen taking a SIGTERM
+    // (exit 143) mid-build while the deployment went on to finish READY. So this reports rather than
+    // throws: v${version} is already tagged and released, and turning a possibly-successful deploy
+    // into a failed release would send someone re-running an irreversible npm publish.
+    error(`\n⚠ Deploy did not report success. v${version} is tagged and released either way.`);
+    error('  A non-zero exit is not proof of failure — check the real state before retrying:');
+    error(`    npx vercel inspect <deployment-url> --scope ${scope}`);
+    error(`  Retry with:\n    npx ${args.join(' ')}`);
+    if (cause instanceof Error && cause.message) error(`  CLI said: ${cause.message}`);
+    return;
+  }
+
+  log(`✓ Deployed v${version} to production`);
+}
+
 export function showInstallInstructions(pkg: PackageInfo): void {
   const registry = pkg.registry ?? 'https://registry.npmjs.org';
   const isGitHubPackages = registry.includes('npm.pkg.github.com');
@@ -540,6 +604,10 @@ async function main(): Promise<void> {
   }
 
   log(`\n✅ Released v${newVersion}`);
+
+  // Deploy last, so a release is never left with a pushed tag but no attempt to ship it — and so
+  // everything irreversible has already succeeded before we touch production.
+  deployToVercel(newVersion);
 }
 
 const currentModulePath = fileURLToPath(import.meta.url);
