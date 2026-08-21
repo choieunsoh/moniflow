@@ -132,6 +132,20 @@ export function SafeToSpendCard({
       <span className="tnum text-4xl font-semibold">{formatBahtWhole(safePerDay)}</span>
       <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
         over {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
+        {/* What the same remaining budget becomes tomorrow if nothing more is spent today: one
+            fewer day to spread it over. safePerDay is remaining/daysLeft, so remaining/(daysLeft-1)
+            is just this rescale — no second source of truth, and exact because the guard keeps
+            daysLeft ≥ 2 (safeToSpendPerDay's Math.max(1, …) never bites in that range). On the
+            cycle's last day there is no tomorrow to show. */}
+        {daysLeft > 1 && (
+          <>
+            {' · '}
+            <span className="tnum">
+              {formatBahtWhole((safePerDay * daysLeft) / (daysLeft - 1))}
+            </span>{' '}
+            tomorrow
+          </>
+        )}
       </span>
       <UpcomingLine upcoming={upcoming} />
     </CardShell>
