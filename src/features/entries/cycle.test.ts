@@ -205,3 +205,10 @@ describe('formatIsoRange', () => {
     expect(formatIsoRange('2025-12-18', '2026-01-17')).toBe('18 Dec 2025 – 17 Jan 2026');
   });
 });
+
+describe('September in cycle labels', () => {
+  // en-GB abbreviates September to "Sept" since CLDR 42; the app's month labels are three letters.
+  it('labels the September cycle with a three-letter Sep', () => {
+    expect(cycleOf('2025-09-20').label).toBe('18 Sep – 17 Oct 2025');
+  });
+});

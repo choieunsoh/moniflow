@@ -2,6 +2,14 @@
 // 'YYYY-MM-DD'; parse as UTC midnight so the displayed day is stable regardless of the reader's
 // zone, then format for Asia/Bangkok.
 
+// CLDR 42 gave en-GB a four-letter abbreviated September ("Sept") while every other month stays at
+// three, so a month label's width jumps once a year. Narrow it back — no other English month name
+// contains "Sept", so this only ever touches September. Exported because every short-month
+// formatter in the app (cycle labels, trend axis, trip headings) needs the same trim.
+export function toThreeLetterMonth(formatted: string): string {
+  return formatted.replace('Sept', 'Sep');
+}
+
 // Day label for record group headers, e.g. "Thu 4 Jul".
 const dayHeadingFmt = new Intl.DateTimeFormat('en-GB', {
   weekday: 'short',
@@ -11,7 +19,7 @@ const dayHeadingFmt = new Intl.DateTimeFormat('en-GB', {
 });
 
 export function formatDayHeading(isoDate: string): string {
-  return dayHeadingFmt.format(new Date(`${isoDate}T00:00:00Z`));
+  return toThreeLetterMonth(dayHeadingFmt.format(new Date(`${isoDate}T00:00:00Z`)));
 }
 
 // Same heading with the year, e.g. "Thu 4 Jul 2026". Used by cross-cycle search results, where a
@@ -29,10 +37,12 @@ export function formatDayHeadingWithYear(isoDate: string): string {
   // en-GB inserts a comma after the weekday when a year is present ("Thu, 9 Jul 2026"). Drop it from
   // the literal parts so this matches the comma-less "Thu 9 Jul" of the yearless heading — same
   // house style, one year longer. (Operating on Intl parts, not string surgery on the date.)
-  return dayHeadingYearFmt
-    .formatToParts(new Date(`${isoDate}T00:00:00Z`))
-    .map((part) => (part.type === 'literal' ? part.value.replace(',', '') : part.value))
-    .join('');
+  return toThreeLetterMonth(
+    dayHeadingYearFmt
+      .formatToParts(new Date(`${isoDate}T00:00:00Z`))
+      .map((part) => (part.type === 'literal' ? part.value.replace(',', '') : part.value))
+      .join(''),
+  );
 }
 
 // Today as a 'YYYY-MM-DD' key in Bangkok — the zone the ledger's cycles are reckoned in. Used by

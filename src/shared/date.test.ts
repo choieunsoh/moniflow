@@ -14,3 +14,12 @@ describe('day headings', () => {
     expect(formatDayHeadingWithYear('2019-03-01')).toBe('Fri 1 Mar 2019');
   });
 });
+
+describe('September abbreviation', () => {
+  // CLDR 42 made en-GB's abbreviated September four letters ("Sept"). Every month label in the app
+  // is three letters, so September must be too.
+  it('renders September as a three-letter Sep', () => {
+    expect(formatDayHeading('2025-09-04')).toBe('Thu 4 Sep');
+    expect(formatDayHeadingWithYear('2025-09-04')).toBe('Thu 4 Sep 2025');
+  });
+});

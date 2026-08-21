@@ -1,3 +1,4 @@
+import { toThreeLetterMonth } from '@shared/date';
 import type { Entry } from './schema';
 
 export type Trip = {
@@ -91,17 +92,21 @@ export function formatForeign(amount: number, currency: string): string {
   }).format(amount);
 }
 
-const dmUtc = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
-const myUtc = new Intl.DateTimeFormat('en-GB', {
+const dmFmt = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+const myFmt = new Intl.DateTimeFormat('en-GB', {
   month: 'short',
   year: 'numeric',
   timeZone: 'UTC',
 });
 
+function dm(d: Date): string {
+  return toThreeLetterMonth(dmFmt.format(d));
+}
+
 // A trip's default heading when it hasn't been named: the month + year of its first day, e.g.
 // "Feb 2024". Distinct per card (unlike a fixed "Name this trip" prompt) and a natural starting name.
 export function formatMonthYear(iso: string): string {
-  return myUtc.format(new Date(`${iso}T00:00:00Z`));
+  return toThreeLetterMonth(myFmt.format(new Date(`${iso}T00:00:00Z`)));
 }
 
 // Trip date-range label, e.g. "01 Mar – 05 Mar 2019" (same year) or "28 Dec 2019 – 03 Jan 2020"
@@ -112,8 +117,8 @@ export function formatDateRange(startIso: string, endIso: string): string {
   const end = new Date(`${endIso}T00:00:00Z`);
   const sy = start.getUTCFullYear();
   const ey = end.getUTCFullYear();
-  const startStr = sy === ey ? dmUtc.format(start) : `${dmUtc.format(start)} ${sy}`;
-  return `${startStr} – ${dmUtc.format(end)} ${ey}`;
+  const startStr = sy === ey ? dm(start) : `${dm(start)} ${sy}`;
+  return `${startStr} – ${dm(end)} ${ey}`;
 }
 
 export function formatTripRange(trip: Trip): string {
