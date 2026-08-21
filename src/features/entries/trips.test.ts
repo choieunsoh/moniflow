@@ -195,3 +195,9 @@ describe('formatTripRange', () => {
     expect(formatTripRange(trip)).toBe('28 Dec 2019 – 03 Jan 2020');
   });
 });
+
+describe('September in trip headings', () => {
+  it('names a September trip with a three-letter Sep', () => {
+    expect(formatMonthYear('2025-09-04')).toBe('Sep 2025');
+  });
+});

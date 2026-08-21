@@ -1,12 +1,18 @@
 // Billing-cycle math for the money-flow dashboard. Pure, no DB. The user's credit card cuts off
 // on the 18th, so a "cycle" runs the 18th → the 17th of the next month and is anchored (keyed) to
 // its START month. One global cutoff for now; per-card cutoffs are a later slice.
+import { toThreeLetterMonth } from '@shared/date';
+
 export const CUTOFF = 18;
 
 export type Cycle = { key: string; start: string; end: string; label: string };
 
-const dmUtc = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+const dmFmt = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
 const isoUtc = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' });
+
+function dm(d: Date): string {
+  return toThreeLetterMonth(dmFmt.format(d));
+}
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
@@ -15,8 +21,8 @@ function pad2(n: number): string {
 function formatRange(start: Date, end: Date): string {
   const sy = start.getUTCFullYear();
   const ey = end.getUTCFullYear();
-  const startStr = sy === ey ? dmUtc.format(start) : `${dmUtc.format(start)} ${sy}`;
-  return `${startStr} – ${dmUtc.format(end)} ${ey}`;
+  const startStr = sy === ey ? dm(start) : `${dm(start)} ${sy}`;
+  return `${startStr} – ${dm(end)} ${ey}`;
 }
 
 // startY/startM (1-based month) → the full cycle beginning on the cutoff of that month.

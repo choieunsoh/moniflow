@@ -1,4 +1,5 @@
 import { formatBahtWhole } from '@shared/money';
+import { toThreeLetterMonth } from '@shared/date';
 import type { Cycle } from './cycle';
 
 // The analytics window: six cycles fit at 412px with readable month labels, and six is enough to
@@ -11,7 +12,7 @@ const monthFmt = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'U
 // name. Six-cycle windows never repeat a month, so the year is left off to keep the axis light.
 export function monthLabel(key: string): string {
   const [y, m] = key.split('-').map(Number);
-  return monthFmt.format(new Date(Date.UTC(y, m - 1, 1)));
+  return toThreeLetterMonth(monthFmt.format(new Date(Date.UTC(y, m - 1, 1))));
 }
 
 // /month's axis: every cycle in that window shares one month, so the month name would repeat all

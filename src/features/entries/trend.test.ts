@@ -300,3 +300,9 @@ describe('trendSummary', () => {
     expect(trendSummary(bars, 'x', null)).not.toContain('Budget');
   });
 });
+
+describe('September on the trend axis', () => {
+  it('labels September with three letters', () => {
+    expect(monthLabel('2025-09')).toBe('Sep');
+  });
+});
