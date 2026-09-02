@@ -415,32 +415,44 @@ export function Keypad({
           })}
         </div>
 
-        {/* Refund toggle. Quiet, and here rather than in the top date/currency/account row: this
-            happens a few times a month, while that row is read on every entry and has already been
-            trimmed once to keep "Choose category" above the fold on a 412px frame. */}
-        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-text)' }}>
-          <input
-            type="checkbox"
-            checked={isIncome}
-            onChange={(e) => setIsIncome(e.target.checked)}
-          />
-          Money received (refund)
-        </label>
+        {/* Both toggles on one row. Quiet, and here rather than in the top date/currency/account
+            row: each fires a few times a month, while that row is read on every entry and has
+            already been trimmed once to keep "Choose category" above the fold on a 412px frame —
+            pairing these two buys back another line of that budget. The visible words are the
+            short ones the rest of the app uses ("Off-budget" is OffBudgetToggle's own label); the
+            nuance each drops — which direction the money went, that this overrides the category
+            default just this once — rides on the accessible name, which keeps the visible text as
+            its prefix so speech input still hits it. Refunds: money handed back against spending
+            that already happened, filed under the category it refunds. Off-budget: same tri-state
+            as the categories page, checked by default when the entry's own category (or its
+            currency) is off-budget, or when an edited entry carries its own explicit override. */}
+        <div className="flex items-center gap-6 text-sm" style={{ color: 'var(--color-text)' }}>
+          <label className="flex items-center gap-2" title="Money received back, not spent">
+            <input
+              type="checkbox"
+              checked={isIncome}
+              onChange={(e) => setIsIncome(e.target.checked)}
+              aria-label="Refund — money received back"
+            />
+            Refund
+          </label>
 
-        {/* One-off override — same tri-state as EntryForm's toggle, checked by default when the
-            entry's own category is off-budget by default (or, on edit, when the entry already
-            carries an explicit override). */}
-        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-text)' }}>
-          <input
-            type="checkbox"
-            checked={offBudgetChecked}
-            onChange={(e) => {
-              setOffBudgetTouched(true);
-              setOffBudgetOverride(e.target.checked);
-            }}
-          />
-          Exclude from budget (one-off)
-        </label>
+          <label
+            className="flex items-center gap-2"
+            title="Off-budget: this entry won't count toward budgets or pace"
+          >
+            <input
+              type="checkbox"
+              checked={offBudgetChecked}
+              onChange={(e) => {
+                setOffBudgetTouched(true);
+                setOffBudgetOverride(e.target.checked);
+              }}
+              aria-label="Off-budget — exclude this entry from budget meters and pace (one-off)"
+            />
+            Off-budget
+          </label>
+        </div>
 
         {/* The note sits between the keypad and the category step, following the order you fill them
             in: key the amount, annotate it, then pick the category that saves it. Enter never submits
