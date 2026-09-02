@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEditEntry } from '@features/entries/use-edit-entry';
 import { editEntryAction } from '@features/entries/actions';
-import { EntryForm } from '@features/entries/ui/EntryForm';
 import { Keypad } from '@features/entries/ui/Keypad';
 import { CloseButton } from '@features/entries/ui/CloseButton';
 import { PageContainer } from '@shared/ui/PageContainer';
@@ -63,67 +62,38 @@ function EditEntryInner() {
     router.push('/records');
   }
 
-  if (data.keypadEditable) {
-    const {
-      entry,
-      categories,
-      accounts,
-      currencies,
-      currencyCodes,
-      notes,
-      rates,
-      ratesAsOf,
-      iconSet,
-      keypadLayout,
-      offBudgetCategories,
-      travelCurrencies,
-    } = data;
-    return (
-      <PageContainer size="full">
-        {/* Title + caption dropped and the close moved into the keypad's chip row — see the new-entry
-            route for the reasoning. The two branches below keep their headers: neither renders a
-            Keypad, so there's no chip row for the × to live in. */}
-        <h1 className="sr-only">Edit expense</h1>
-        <Keypad
-          categories={categories}
-          accounts={accounts}
-          currencies={currencies}
-          currencyCodes={currencyCodes}
-          notes={notes}
-          rates={rates}
-          ratesAsOf={ratesAsOf}
-          defaultAccount={entry.account}
-          today={todayIso()}
-          iconSet={iconSet}
-          keypadLayout={keypadLayout}
-          action={handleSubmit}
-          entry={entry}
-          offBudgetCategories={offBudgetCategories}
-          travelCurrencies={travelCurrencies}
-        />
-      </PageContainer>
-    );
-  }
-
-  const { entry, accounts, categories, currencies, notes, offBudgetCategories, travelCurrencies } =
-    data;
+  const {
+    entry,
+    categories,
+    accounts,
+    currencies,
+    currencyCodes,
+    notes,
+    rates,
+    ratesAsOf,
+    iconSet,
+    keypadLayout,
+    offBudgetCategories,
+    travelCurrencies,
+  } = data;
   return (
-    <PageContainer size="form">
-      <header className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">Edit entry</h1>
-          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Update this ledger row.
-          </p>
-        </div>
-        <CloseButton />
-      </header>
-      <EntryForm
-        action={handleSubmit}
-        accounts={accounts}
+    <PageContainer size="full">
+      {/* Title + caption dropped and the close moved into the keypad's chip row — see the new-entry
+          route for the reasoning. */}
+      <h1 className="sr-only">Edit entry</h1>
+      <Keypad
         categories={categories}
+        accounts={accounts}
         currencies={currencies}
+        currencyCodes={currencyCodes}
         notes={notes}
+        rates={rates}
+        ratesAsOf={ratesAsOf}
+        defaultAccount={entry.account}
+        today={todayIso()}
+        iconSet={iconSet}
+        keypadLayout={keypadLayout}
+        action={handleSubmit}
         entry={entry}
         offBudgetCategories={offBudgetCategories}
         travelCurrencies={travelCurrencies}

@@ -41,10 +41,10 @@ describe('Keypad refund toggle', () => {
     if (direction === null) throw new Error('direction field not found');
     expect(direction.value).toBe('expense');
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Money received (refund)' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /^Refund/ }));
     expect(direction.value).toBe('income');
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Money received (refund)' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /^Refund/ }));
     expect(direction.value).toBe('expense');
   });
 
@@ -54,7 +54,7 @@ describe('Keypad refund toggle', () => {
     if (amountSpan === null) throw new Error('amount display not found');
     expect(amountSpan.textContent?.startsWith('+')).toBe(false);
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Money received (refund)' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /^Refund/ }));
     expect(amountSpan.textContent?.startsWith('+')).toBe(true);
   });
 
@@ -95,7 +95,7 @@ describe('Keypad refund toggle', () => {
       />,
     );
 
-    const checkbox = screen.getByRole('checkbox', { name: 'Money received (refund)' });
+    const checkbox = screen.getByRole('checkbox', { name: /^Refund/ });
     expect(checkbox).toBeChecked();
 
     const direction = container.querySelector<HTMLInputElement>('input[name="direction"]');
@@ -140,7 +140,7 @@ describe('Keypad refund toggle', () => {
       />,
     );
 
-    const checkbox = screen.getByRole('checkbox', { name: 'Money received (refund)' });
+    const checkbox = screen.getByRole('checkbox', { name: /^Refund/ });
     expect(checkbox).not.toBeChecked();
 
     const direction = container.querySelector<HTMLInputElement>('input[name="direction"]');

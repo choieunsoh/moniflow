@@ -39,41 +39,40 @@ describe('useEditEntry', () => {
     expect(data).not.toBeNull();
     if (data === null) throw new Error('unreachable — checked above');
 
-    expect(data.keypadEditable).toBe(true);
     expect(data.entry.id).toBe(expense.id);
-    if (!data.keypadEditable) throw new Error('unreachable — checked above');
     expect(data.categories.map((c) => c.name)).toContain('Food');
     expect(data.accounts.map((a) => a.name)).toContain('Cash');
   });
 
-  it('loads an income entry onto the plain form (not the keypad)', async () => {
+  // A refund (positive amount) used to fall through to a separate long form, so the same row opened
+  // in a different editor depending on its sign. The keypad has its own refund toggle — one editor.
+  it('loads a refund (positive amount) onto the keypad, same as an expense', async () => {
     const db = await getBrowserDb();
-    const income = (await getEntries(db)).find((e) => e.amount > 0);
-    if (income === undefined) throw new Error('seed missing an income row');
+    const refund = (await getEntries(db)).find((e) => e.amount > 0);
+    if (refund === undefined) throw new Error('seed missing a positive row');
 
-    const { result } = renderHook(() => useEditEntry(income.id));
+    const { result } = renderHook(() => useEditEntry(refund.id));
     await waitFor(() => expect(result.current.ready).toBe(true));
     const { data } = result.current;
     expect(data).not.toBeNull();
     if (data === null) throw new Error('unreachable — checked above');
 
-    expect(data.keypadEditable).toBe(false);
-    if (data.keypadEditable) throw new Error('unreachable — checked above');
-    expect(data.categories).toContain('Salary');
-    expect(data.accounts).toContain('Cash');
-    expect(data.offBudgetCategories).toBeInstanceOf(Set);
+    expect(data.entry.amount).toBeGreaterThan(0);
+    expect(data.categories.map((c) => c.name)).toContain('Salary');
+    expect(data.accounts.map((a) => a.name)).toContain('Cash');
+    expect(data.keypadLayout).toBeDefined();
   });
 
-  it('carries the off-budget category set for the plain form to default its toggle from', async () => {
+  it('carries the off-budget category set for the keypad to default its toggle from', async () => {
     const db = await getBrowserDb();
     await setCategoryOffBudget(db, 'Salary', true);
-    const income = (await getEntries(db)).find((e) => e.amount > 0);
-    if (income === undefined) throw new Error('seed missing an income row');
+    const refund = (await getEntries(db)).find((e) => e.amount > 0);
+    if (refund === undefined) throw new Error('seed missing a positive row');
 
-    const { result } = renderHook(() => useEditEntry(income.id));
+    const { result } = renderHook(() => useEditEntry(refund.id));
     await waitFor(() => expect(result.current.ready).toBe(true));
     const { data } = result.current;
-    if (data === null || data.keypadEditable) throw new Error('unreachable — checked above');
+    if (data === null) throw new Error('unreachable — checked above');
     expect(data.offBudgetCategories).toEqual(new Set(['Salary']));
   });
 
@@ -103,7 +102,7 @@ describe('useEditEntry', () => {
     const { result } = renderHook(() => useEditEntry(entry.id));
     await waitFor(() => expect(result.current.ready).toBe(true));
     const { data } = result.current;
-    if (data === null || !data.keypadEditable) throw new Error('unreachable — checked above');
+    if (data === null) throw new Error('unreachable — checked above');
 
     expect(data.currencyCodes.has('JPY')).toBe(true);
   });
