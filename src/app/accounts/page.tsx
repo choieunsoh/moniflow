@@ -105,7 +105,7 @@ export default function AccountsPage() {
                 />
                 <AccountNameEditor account={c.account} />
                 <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                  {countFmt.format(c.count)} entries
+                  {countFmt.format(c.count)} {c.count === 1 ? 'entry' : 'entries'}
                 </span>
                 {c.count === 0 ? (
                   <DeleteAccountButton account={c.account} />

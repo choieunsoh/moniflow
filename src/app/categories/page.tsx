@@ -78,7 +78,7 @@ export default function CategoriesPage() {
                     style={{ color: 'var(--color-muted)' }}
                     title={`View ${c.category} records`}
                   >
-                    {countFmt.format(c.count)} entries
+                    {countFmt.format(c.count)} {c.count === 1 ? 'entry' : 'entries'}
                   </Link>
                 )}
                 {c.count === 0 && <DeleteCategoryButton category={c.category} />}
