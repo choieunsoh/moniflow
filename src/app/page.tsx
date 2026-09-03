@@ -4,9 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { ViewToggle } from '@shared/ui/ViewToggle';
 import { useHome } from '@features/entries/use-home';
-import { pacePhrase } from '@features/budgets/budget-status';
-import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
-import { formatBahtWhole } from '@shared/money';
+import { CycleTotals } from '@features/entries/ui/CycleTotals';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { drawnTotal } from '@features/entries/donut';
 import { SafeToSpendCard, TodayAllowanceCard } from '@features/entries/ui/ForwardCards';
@@ -141,53 +139,17 @@ export default function HomePage() {
       {hasSpending ? (
         <>
           {/* The cycle's answer, constant across both views. */}
-          <section className="panel -mt-3 flex flex-col gap-1.5 p-5">
-            {/* flex-wrap, not a fixed row: at 200% zoom / Extra Large text the label and the figure
-                otherwise collide. Wrapping lets the figure drop to its own line instead. */}
-            {/* The label stays "Spent this cycle" whether or not a budget exists. It used to flip to
-                "Total budget" the moment one was set, which named the DENOMINATOR while the figure
-                led with the numerator — "Total budget ฿63,295 / ฿30,000" reads as a ฿63k budget at a
-                glance. The limit is context for the spend, so it trails it in muted text. */}
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <h2 className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
-                Spent this cycle
-              </h2>
-              <span className="tnum text-xl font-semibold">
-                {formatBahtWhole(discretionarySpend)}
-                {totalStatus ? (
-                  <span className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
-                    {' '}
-                    of {formatBahtWhole(totalStatus.limit ?? 0)}
-                  </span>
-                ) : null}
-              </span>
-            </div>
-            {offBudgetTotal > 0 ? (
-              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                + {formatBahtWhole(offBudgetTotal)} off-budget
-              </span>
-            ) : null}
-            {/* Fixed cost gets its OWN line rather than joining the off-budget one, because the two
-                did different things to the figure above: off-budget spend was set aside and left the
-                budget alone, while this was subtracted FROM the budget — it is the whole reason the
-                "of ฿48,280" reads lower than the limit on /budgets. Naming it here is also the only
-                place this money surfaces on a budget surface, since /budgets drops these rows from
-                its per-category meters. */}
-            {fixedPosted > 0 ? (
-              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                + {formatBahtWhole(fixedPosted)} fixed — deducted from the budget
-              </span>
-            ) : null}
-            {totalStatus ? <BudgetMeter status={totalStatus} pacePct={pacePct} /> : null}
-            {/* The pace tick on the meter shows from day 1 — it's geometry. This phrase is a verdict,
-                and on day 1 any spend at all reads as "over pace", so useHome holds it back until
-                enough of the cycle has elapsed to mean something. */}
-            {totalStatus && showPace && pacePct !== undefined && totalStatus.state !== 'over' ? (
-              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                {pacePhrase(totalStatus.pct, pacePct)}
-              </span>
-            ) : null}
-          </section>
+          <CycleTotals
+            grossSpend={grossSpend}
+            refunded={refunded}
+            net={total}
+            offBudgetTotal={offBudgetTotal}
+            fixedPosted={fixedPosted}
+            discretionarySpend={discretionarySpend}
+            totalStatus={totalStatus}
+            pacePct={pacePct}
+            showPace={showPace}
+          />
 
           {forwardCards}
 
