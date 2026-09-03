@@ -169,7 +169,17 @@ git commit -m "fix(features): divide donut shares by what the ring drew" -m "Sli
 
 ---
 
-### Task 2: The donut hole carries the ring's own total
+### Task 2: DROPPED (user decision, 2026-09-03). Do not implement.
+
+**The premise below is false and the task must not be built.** It survives here as a record.
+
+The reasoning was: Task 1 makes the panel's figure a different frame from the ring's, so the ring's total exists nowhere else. That holds only in the window between Task 2 and Task 4, then goes false. Task 4 leads the headline with `formatBahtWhole(grossSpend)` where `grossSpend = drawnTotal(slices)`, which is the identical value, through the identical formatter, that this task would put in the hole. Home would print `฿11,226` twice, roughly 250px apart.
+
+A pre-existing test, `keeps money out of the hole entirely` in `donut.test.ts`, forbids exactly that and documents the regression it guards ("Chart view used to print the cycle total twice"). The Task 2 implementer found it, correctly refused to delete it on its own authority, and reported NEEDS_CONTEXT. The controller's addendum enumerating tests to delete had named only three and missed this fourth one.
+
+Resolution: once Task 4 puts gross in the panel, the ORIGINAL design reasoning is restored intact, and the hole should keep naming the one figure the panel does not carry. The count stays. The regression test stays, unmodified. Task 3's footnote is unaffected and still lands.
+
+Original (obsolete) rationale follows.
 
 The hole shows a transaction count today, on the documented reasoning that the panel above already carries the money. Task 1 breaks that premise: the panel's figure is now a different frame from the ring's, so the ring's total exists nowhere else on the screen.
 
