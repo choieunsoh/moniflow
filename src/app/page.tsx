@@ -18,6 +18,7 @@ import { HomeSkeleton } from '@features/entries/ui/HomeSkeleton';
 import { LegendRow } from '@features/entries/ui/LegendRow';
 import { TopTransactionsList } from '@features/entries/ui/TopTransactionsList';
 import { RingFootnote } from '@features/entries/ui/RingFootnote';
+import { refundedSummary } from '@features/entries/refunded-summary';
 
 // Home = the expense overview for the current cycle. Chart view: a spending donut with a colour-keyed
 // legend; List view: the same categories as ranked bars. A ?view= toggle switches them.
@@ -93,11 +94,11 @@ export default function HomePage() {
   // still carries refunds, while every drawn slice is a positive magnitude, so the two disagree
   // by exactly the refunded amount and the shares overshoot 100%.
   const grossSpend = drawnTotal(slices);
-  // The ring drew gross magnitudes; `total` is the signed net. The gap between them IS the refund,
-  // and these are the categories it came from (a stored amount is negative for an expense, so a
-  // category netting positive is one that handed money back).
-  const refunded = grossSpend - total;
-  const refundedCategories = categoryBreakdown.filter((r) => r.total > 0).map((r) => r.key);
+  // The refunded amount and the categories it came from both derive from the SAME filtered set of
+  // category rows, so they can't disagree. `grossSpend - total` (two independently accumulated
+  // float sums) used to do this and could leave a stray +1.8e-12 residual on a cycle with no
+  // refunds at all, printing "฿0 refunded" with no category to name it. See refundedSummary.
+  const { refunded, categories: refundedCategories } = refundedSummary(categoryBreakdown);
 
   // The current cycle's forward cards (safe-to-spend + projection). Defined once and rendered in BOTH
   // the populated branch (below the headline) and the empty-current-cycle branch (above "Nothing spent"),
