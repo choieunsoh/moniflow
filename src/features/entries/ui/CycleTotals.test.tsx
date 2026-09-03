@@ -31,7 +31,7 @@ describe('CycleTotals', () => {
 
   it('keeps the only denominator on the budget block', () => {
     render(<CycleTotals {...refundCycle} />);
-    const budget = screen.getByText('Left to spend').closest('div');
+    const budget = screen.getByText('Spent from budget').closest('div');
     expect(budget).toHaveTextContent('฿38,375');
     // Gross must never be measured against the ceiling: the ceiling is 50,000 budget minus
     // 11,625 fixed, and this gross IS that fixed cost, so it would read as 29% used when the
@@ -46,7 +46,7 @@ describe('CycleTotals', () => {
 
   it('renders no budget block when no budget is set', () => {
     render(<CycleTotals {...refundCycle} totalStatus={null} />);
-    expect(screen.queryByText('Left to spend')).not.toBeInTheDocument();
+    expect(screen.queryByText('Spent from budget')).not.toBeInTheDocument();
     expect(screen.getByText('Spent this cycle')).toBeInTheDocument();
   });
 });

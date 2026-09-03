@@ -59,7 +59,7 @@ export function CycleTotals({
         <section className="panel -mt-3 flex flex-col gap-1.5 p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h2 className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
-              Left to spend
+              Spent from budget
             </h2>
             <span className="tnum text-xl font-semibold">
               {formatBahtWhole(Math.max(discretionarySpend, 0))}
