@@ -1,10 +1,13 @@
 @import 'tailwindcss';
 
 /* ── Design tokens ───────────────────────────────────────────────────────────
-   Dark-first, calm, trustworthy. Every color is a token; --color-accent is the
-   single swappable anchor — change it and the whole app reskins. Light theme is
-   a future drop-in under :root[data-theme="light"]; all values already indirect
-   through vars, so nothing hard-codes a color. */
+   Dark-first, calm, trustworthy. Every color is a token. The ground is a cool
+   blue-black, the colour of ink on a bank statement, rather than a default
+   neutral grey. The one next action per screen carries no hue: it is simply
+   the maximum-contrast object on the page. That leaves the entire hue budget
+   for category identity, the only place a hue in this app carries data. Light
+   theme is a future drop-in under :root[data-theme="light"]; all values already
+   indirect through vars, so nothing hard-codes a color. */
 @theme {
   /* Type — ONE family app-wide: IBM Plex Sans carries UI, prose and figures alike. There is
      deliberately no mono: a mono face draws a slashed or dotted zero, which this project bans for
@@ -118,7 +121,7 @@ p {
 
 /* One focus treatment, everywhere. Visible, on-brand, keyboard-only. */
 :focus-visible {
-  outline: 2px solid var(--color-accent-ring);
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
@@ -166,17 +169,18 @@ p {
 }
 
 .btn-primary {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--color-action);
+  color: var(--color-on-action);
 }
 .btn-primary:hover {
-  background: var(--color-accent-hover);
+  /* The action is already the lightest thing on the page, so hover dims rather than brightens. */
+  background: var(--color-text);
 }
 
 .btn-ghost {
   background: transparent;
   color: var(--color-text);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
 }
 .btn-ghost:hover {
   background: var(--color-surface-2);
