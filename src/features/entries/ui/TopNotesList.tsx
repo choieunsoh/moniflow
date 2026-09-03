@@ -1,4 +1,4 @@
-import type { NoteRow } from '../by-note';
+import { NO_NOTE, type NoteRow } from '../by-note';
 import { formatBahtWhole } from '@shared/money';
 
 const MAX_ROWS = 12;
@@ -17,16 +17,29 @@ export function TopNotesList({
   label?: string;
 }) {
   if (notes.length === 0) return null;
+  // The bucket earns its place by value like any other row, so selection happens FIRST and only
+  // its position changes. Sorting it last before slicing would push a large residual past
+  // MAX_ROWS and hide the very money that keeping the bucket was meant to account for.
+  const shown = notes.slice(0, MAX_ROWS);
+  const ordered = [
+    ...shown.filter((n) => n.note !== NO_NOTE),
+    ...shown.filter((n) => n.note === NO_NOTE),
+  ];
   return (
     <section className="panel flex flex-col gap-3 p-5" aria-label={label}>
       <h2 className="text-sm font-semibold" style={{ color: 'var(--color-muted)' }}>
         Top notes
       </h2>
       <ul className="flex flex-col gap-2.5">
-        {notes.slice(0, MAX_ROWS).map((n) => (
+        {ordered.map((n) => (
           <li key={n.note} className="flex items-center gap-3 text-sm">
             <span className="flex min-w-0 flex-1 items-baseline gap-1">
-              <span className="truncate">{n.note}</span>
+              <span
+                className="truncate"
+                style={n.note === NO_NOTE ? { color: 'var(--color-muted)' } : undefined}
+              >
+                {n.note === NO_NOTE ? '(no note)' : n.note}
+              </span>
               <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
                 ({n.count})
               </span>

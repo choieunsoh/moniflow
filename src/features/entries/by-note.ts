@@ -2,7 +2,7 @@ import type { EntryRow } from './schema';
 
 export type NoteRow = { note: string; total: number; count: number };
 
-const NO_NOTE = 'No note';
+export const NO_NOTE = 'No note';
 
 // Rank a set of entries by note text — "where did it actually go" at merchant granularity, from the
 // note column the ledger already stores. Net (outflows stored negative, inflows positive; negating
