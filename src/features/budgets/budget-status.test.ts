@@ -98,11 +98,11 @@ describe('toBudgetRows', () => {
 });
 
 describe('meterColorVar', () => {
-  it('maps over → loss, near → warn, under/none → accent', () => {
+  it('maps over → loss, near → warn, under/none → muted', () => {
     expect(meterColorVar('over')).toBe('var(--color-loss)');
     expect(meterColorVar('near')).toBe('var(--color-warn)');
-    expect(meterColorVar('under')).toBe('var(--color-accent)');
-    expect(meterColorVar('none')).toBe('var(--color-accent)');
+    expect(meterColorVar('under')).toBe('var(--color-muted)');
+    expect(meterColorVar('none')).toBe('var(--color-muted)');
   });
 });
 

@@ -40,7 +40,7 @@ export function TrendChart({
         muted: token('--color-muted'),
         border: token('--color-border'),
         surface2: token('--color-surface-2'),
-        accent: token('--color-accent'),
+        accent: token('--color-text'),
         warn: token('--color-warn'),
         font: getComputedStyle(document.body).fontFamily || 'sans-serif',
       },

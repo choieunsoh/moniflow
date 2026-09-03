@@ -127,8 +127,8 @@ export function RuleRow({
         className="absolute inset-y-0 left-0 flex items-center justify-center"
         style={{
           width: ACTION_W,
-          background: 'var(--color-accent)',
-          color: 'var(--color-on-accent)',
+          background: 'var(--color-muted)',
+          color: 'var(--color-on-fill)',
         }}
       >
         <PencilIcon />
@@ -148,7 +148,7 @@ export function RuleRow({
         style={{
           width: ACTION_W,
           background: 'var(--color-loss)',
-          color: 'var(--color-on-accent)',
+          color: 'var(--color-on-fill)',
         }}
       >
         <ArchiveIcon />
@@ -188,7 +188,7 @@ export function RuleRow({
                   rolled-up total and wrong for a price — it would quote this subscription at $10. */}
               <span
                 className="tnum font-medium whitespace-nowrap"
-                style={{ color: 'var(--color-loss)' }}
+                style={{ color: 'var(--color-text)' }}
               >
                 {formatCurrency(rule.amount, rule.currency ?? '')}
               </span>
@@ -209,7 +209,7 @@ export function RuleRow({
           ) : (
             <span
               className="tnum shrink-0 font-medium whitespace-nowrap"
-              style={{ color: 'var(--color-loss)' }}
+              style={{ color: 'var(--color-text)' }}
             >
               {formatBaht(rule.amount)}
             </span>
@@ -237,7 +237,7 @@ export function RuleRow({
 }
 
 // Action icons in the app's chrome-icon house style (inline SVG, stroke=currentColor → inherits the
-// panel's on-accent white), matching SwipeRow rather than importing a second icon library.
+// panel's on-fill white), matching SwipeRow rather than importing a second icon library.
 function PencilIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden>

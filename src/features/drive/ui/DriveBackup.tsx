@@ -102,7 +102,7 @@ export function DriveBackup() {
           </p>
           <button
             type="button"
-            className="btn btn-primary w-fit"
+            className="btn btn-ghost w-fit"
             disabled={busy}
             onClick={() => void run(connectDrive, 'Connected to Google Drive')}
           >

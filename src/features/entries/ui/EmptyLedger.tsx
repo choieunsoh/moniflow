@@ -10,21 +10,21 @@ export function EmptyLedger() {
       <span
         aria-hidden
         className="grid size-12 place-items-center rounded-[var(--radius-md)]"
-        style={{ background: 'var(--color-accent-soft)' }}
+        style={{ background: 'var(--color-surface-2)' }}
       >
         {/* A receipt, not the rising-trend arrow this used to draw: moniflow is expense-only, so
             an up-and-to-the-right growth glyph promised the opposite of what the ledger holds. */}
         <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
           <path
             d="M3.5 1.5h9v13l-1.75-1.25L9 14.5l-1.75-1.25L5.5 14.5 3.5 13.25z"
-            stroke="var(--color-accent-text)"
+            stroke="var(--color-muted)"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <path
             d="M6 5.5h4M6 8.5h4"
-            stroke="var(--color-accent-text)"
+            stroke="var(--color-muted)"
             strokeWidth="1.5"
             strokeLinecap="round"
           />
@@ -34,7 +34,7 @@ export function EmptyLedger() {
         <h2 className="text-lg font-semibold">No entries yet</h2>
         <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
           Tap{' '}
-          <span className="font-medium" style={{ color: 'var(--color-accent-text)' }}>
+          <span className="font-medium" style={{ color: 'var(--color-text)' }}>
             +
           </span>{' '}
           below to key in your first expense. Already tracking elsewhere? Restore a Monefy CSV

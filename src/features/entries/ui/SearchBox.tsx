@@ -173,7 +173,7 @@ export function SearchBox({ suggestions }: { suggestions: string[] }) {
               onMouseEnter={() => setHighlight(i)}
               onClick={() => choose(s)}
               className="flex min-h-11 cursor-pointer items-center px-3 text-sm transition-colors duration-150"
-              style={i === highlight ? { background: 'var(--color-accent-soft)' } : undefined}
+              style={i === highlight ? { background: 'var(--color-selected)' } : undefined}
             >
               {s}
             </li>

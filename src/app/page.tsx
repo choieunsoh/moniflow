@@ -211,8 +211,8 @@ export default function HomePage() {
                 {folded.length > 0 ? (
                   <details>
                     <summary
-                      className="tap flex cursor-pointer items-center text-sm"
-                      style={{ color: 'var(--color-accent-text)' }}
+                      className="tap flex cursor-pointer items-center text-sm underline"
+                      style={{ color: 'var(--color-text)' }}
                     >
                       {folded.length} {folded.length === 1 ? 'category' : 'categories'} in Other
                     </summary>

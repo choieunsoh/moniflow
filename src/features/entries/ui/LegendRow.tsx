@@ -42,7 +42,7 @@ export function LegendRow({
       className="grid size-11 shrink-0 place-items-center rounded-full text-2xl"
       style={{
         background: slice.color,
-        color: 'var(--color-on-accent)',
+        color: 'var(--color-on-fill)',
         opacity: slice.other ? 0.55 : 1,
       }}
     >

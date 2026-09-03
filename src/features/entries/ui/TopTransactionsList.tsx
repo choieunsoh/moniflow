@@ -35,7 +35,7 @@ export function TopTransactionsList({
           href={`/records?cycle=${cycleKey}&sort=amount`}
           prefetch={false}
           className="text-sm font-medium"
-          style={{ color: 'var(--color-accent-text)' }}
+          style={{ color: 'var(--color-text)' }}
         >
           See all →
         </Link>

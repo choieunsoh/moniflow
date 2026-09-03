@@ -3,15 +3,15 @@ import { toCalendarLayout } from '../heatmap';
 import { formatBahtWhole } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
 
-// intensity 0..4 → a background. 0 is the bare surface (an empty day); 1..4 step up the accent via
-// color-mix so the ramp is one hue and theme-aware. Explicit array (not a computed class name) so
-// there's no dynamic Tailwind class the JIT can't see — these are inline styles, not classes.
+// intensity 0..4 → a background. 0 is the bare surface (an empty day); 1..4 step up a neutral ink via
+// color-mix so the ramp is one hue-free scale and theme-aware. Explicit array (not a computed class
+// name) so there's no dynamic Tailwind class the JIT can't see — these are inline styles, not classes.
 const BG = [
   'var(--color-surface-2)',
-  'color-mix(in oklab, var(--color-accent) 25%, var(--color-surface-2))',
-  'color-mix(in oklab, var(--color-accent) 50%, var(--color-surface-2))',
-  'color-mix(in oklab, var(--color-accent) 75%, var(--color-surface-2))',
-  'var(--color-accent)',
+  'color-mix(in oklab, var(--color-text) 25%, var(--color-surface-2))',
+  'color-mix(in oklab, var(--color-text) 50%, var(--color-surface-2))',
+  'color-mix(in oklab, var(--color-text) 75%, var(--color-surface-2))',
+  'var(--color-text)',
 ] as const;
 
 // Sunday-started narrow weekday labels (S M T W T F S), derived via Intl from a known Sunday

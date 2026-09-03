@@ -14,12 +14,12 @@ export function DbUnavailable({ onRetry }: { onRetry: () => void }) {
       <span
         aria-hidden
         className="grid size-12 place-items-center rounded-[var(--radius-md)]"
-        style={{ background: 'var(--color-accent-soft)' }}
+        style={{ background: 'var(--color-surface-2)' }}
       >
         <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden>
           <path
             d="M4 6.5V4.75A2.75 2.75 0 0 1 6.75 2h2.5A2.75 2.75 0 0 1 12 4.75V6.5"
-            stroke="var(--color-accent-text)"
+            stroke="var(--color-muted)"
             strokeWidth="1.5"
             strokeLinecap="round"
           />
@@ -29,7 +29,7 @@ export function DbUnavailable({ onRetry }: { onRetry: () => void }) {
             width="10"
             height="7.5"
             rx="1.5"
-            stroke="var(--color-accent-text)"
+            stroke="var(--color-muted)"
             strokeWidth="1.5"
           />
         </svg>

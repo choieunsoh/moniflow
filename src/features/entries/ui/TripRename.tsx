@@ -94,7 +94,7 @@ export function TripRename({
               type="submit"
               disabled={busy}
               className="btn disabled:pointer-events-none disabled:opacity-40"
-              style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
+              style={{ background: 'var(--color-action)', color: 'var(--color-on-action)' }}
             >
               Save
             </button>

@@ -121,7 +121,7 @@ export default function SettingsPage() {
             for a cutoff of 18). Changing this reinterprets which cycle every existing entry falls
             into — no data is modified or lost.
           </p>
-          <button type="submit" className="btn btn-primary w-fit">
+          <button type="submit" className="btn btn-ghost w-fit">
             Save
           </button>
         </form>
@@ -150,7 +150,7 @@ export default function SettingsPage() {
             the underlying label; the line-icon sets render each category&apos;s emoji as a matching
             icon, falling back to the emoji where no icon exists.
           </p>
-          <button type="submit" className="btn btn-primary w-fit">
+          <button type="submit" className="btn btn-ghost w-fit">
             Save
           </button>
         </form>
@@ -178,7 +178,7 @@ export default function SettingsPage() {
             Scales text across the whole app. The phone frame and tap targets stay the same size —
             only the type grows or shrinks. Applies as soon as you save.
           </p>
-          <button type="submit" className="btn btn-primary w-fit">
+          <button type="submit" className="btn btn-ghost w-fit">
             Save
           </button>
         </form>
@@ -206,7 +206,7 @@ export default function SettingsPage() {
             Digit order on the add-expense keypad. Calculator puts 7-8-9 on top; Phone puts 1-2-3 on
             top. Only the digits move — the operator column stays put.
           </p>
-          <button type="submit" className="btn btn-primary w-fit">
+          <button type="submit" className="btn btn-ghost w-fit">
             Save
           </button>
         </form>
@@ -235,7 +235,7 @@ export default function SettingsPage() {
             bank&apos;s foreign-transaction fee — so a non-THB entry&apos;s stored baht approximates
             your statement. Refresh the rate itself from the add-expense keypad.
           </p>
-          <button type="submit" className="btn btn-primary w-fit">
+          <button type="submit" className="btn btn-ghost w-fit">
             Save
           </button>
         </form>

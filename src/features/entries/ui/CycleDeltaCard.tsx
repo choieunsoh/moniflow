@@ -8,7 +8,7 @@ import { formatBahtWhole } from '@shared/money';
 // "This cycle vs last" — the headline total (moved off /dashboard onto Trends). When `contributors`
 // are supplied (unfiltered only) it also lists the top movers that drove the total: the "what
 // changed" answer the bare number can't give. delta === null → no comparable earlier cycle. up =
-// spending more (loss red), down = less (accent).
+// spending more (loss red), down = less (gain green).
 export function CycleDeltaCard({
   delta,
   contributors = [],
@@ -47,7 +47,7 @@ export function CycleDeltaCard({
     );
   }
   const up = delta.direction === 'up';
-  const color = up ? 'var(--color-loss)' : 'var(--color-accent-text)';
+  const color = up ? 'var(--color-loss)' : 'var(--color-gain)';
   return (
     <section className="panel flex flex-col gap-3 p-5">
       <div className="flex flex-col gap-2">
@@ -79,7 +79,7 @@ export function CycleDeltaCard({
                 <span className="min-w-0 flex-1 truncate">{c.category}</span>
                 <span
                   className="tnum shrink-0"
-                  style={{ color: rose ? 'var(--color-loss)' : 'var(--color-accent-text)' }}
+                  style={{ color: rose ? 'var(--color-loss)' : 'var(--color-gain)' }}
                 >
                   {rose ? '↑' : '↓'} {formatBahtWhole(Math.abs(c.delta))}
                 </span>

@@ -19,8 +19,8 @@ export function CollapseAllButton() {
     <button
       type="button"
       onClick={toggle}
-      className="text-xs font-medium transition-opacity active:opacity-70"
-      style={{ color: 'var(--color-accent-text)' }}
+      className="text-xs font-medium underline transition-opacity active:opacity-70"
+      style={{ color: 'var(--color-text)' }}
     >
       {allOpen ? 'Collapse all' : 'Expand all'}
     </button>

@@ -60,7 +60,7 @@ export function ConfirmDialog({
             className={destructive ? 'btn' : 'btn btn-primary'}
             style={
               destructive
-                ? { background: 'var(--color-loss)', color: 'var(--color-on-accent)' }
+                ? { background: 'var(--color-loss)', color: 'var(--color-on-fill)' }
                 : undefined
             }
             onClick={() => {

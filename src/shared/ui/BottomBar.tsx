@@ -11,7 +11,7 @@ import { useBackupStatus } from '../use-backup-status';
 
 // App-style tab bar, always visible, centered to the app column. Five slots:
 // Home · Records · [＋ expense FAB → /entries/new] · Trends · More.
-// The active tab carries THREE signals — an accent pill behind the icon, accent color, and a heavier
+// The active tab carries THREE signals — a lifted pill behind the icon, brighter text, and a heavier
 // label — so the current section is unmistakable, not color alone (per the bottom-nav a11y guidance).
 // Icons are a consistent 24px outline set; the pill animates and presses for tactile feedback.
 export function BottomBar() {
@@ -78,9 +78,9 @@ export function BottomBar() {
           aria-label="Add expense"
           className="absolute top-0 left-1/2 grid size-16 -translate-x-1/2 -translate-y-1/5 place-items-center rounded-full transition-transform duration-200 active:scale-95"
           style={{
-            background: 'var(--color-accent)',
-            color: 'var(--color-on-accent)',
-            boxShadow: '0 10px 24px -6px color-mix(in oklab, var(--color-accent) 55%, transparent)',
+            background: 'var(--color-action)',
+            color: 'var(--color-on-action)',
+            boxShadow: '0 10px 24px -6px color-mix(in oklab, var(--color-action) 55%, transparent)',
           }}
         >
           <PlusIcon size={28} />
@@ -94,12 +94,12 @@ export function BottomBar() {
 // Color comes from the parent's `color` (icons use stroke=currentColor), so active/inactive lives in
 // one place.
 function tabColor(active: boolean): string {
-  return active ? 'var(--color-accent-text)' : 'var(--color-muted)';
+  return active ? 'var(--color-text)' : 'var(--color-muted)';
 }
 
-// The shared tab visual: icon in a pill (accent-soft when active) over a label. The pill scales down
-// on press for tactile feedback. `alert` rides an accent dot on the icon — the accessible-name change
-// lives on the button, so the signal is never colour-alone.
+// The shared tab visual: icon in a pill (a lifted "where you are" chip when active) over a label.
+// The pill scales down on press for tactile feedback. `alert` rides a dot on the icon — the
+// accessible-name change lives on the button, so the signal is never colour-alone.
 function TabInner({
   active,
   icon,
@@ -115,7 +115,7 @@ function TabInner({
     <>
       <span
         className="relative grid place-items-center rounded-full px-4 py-1 transition-[background-color,transform] duration-200 group-active:scale-90"
-        style={{ background: active ? 'var(--color-accent-soft)' : 'transparent' }}
+        style={{ background: active ? 'var(--color-selected)' : 'transparent' }}
       >
         {icon}
         {alert ? (
@@ -123,7 +123,7 @@ function TabInner({
             aria-hidden
             className="absolute top-0.5 right-2.5 size-2 rounded-full"
             style={{
-              background: 'var(--color-accent)',
+              background: 'var(--color-text)',
               boxShadow: '0 0 0 2px var(--color-bg)',
             }}
           />

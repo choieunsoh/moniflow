@@ -27,7 +27,11 @@ const rateFmt = new Intl.NumberFormat('en-US', {
 
 function chipStyle(selected: boolean): React.CSSProperties {
   return selected
-    ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
+    ? {
+        background: 'var(--color-selected)',
+        color: 'var(--color-text)',
+        border: '1px solid var(--color-text)',
+      }
     : {
         background: 'var(--color-surface-2)',
         color: 'var(--color-text)',
@@ -202,7 +206,7 @@ export function RuleKeypad({
             aria-haspopup="true"
             aria-label={`Account: ${account}`}
             className="tap min-w-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
-            style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
+            style={{ background: 'var(--color-selected)', color: 'var(--color-text)' }}
           >
             <span className="min-w-0 truncate">{account}</span>
             <span aria-hidden className="shrink-0">
@@ -293,8 +297,8 @@ export function RuleKeypad({
                 aria-label={key === '⌫' ? 'Backspace' : key}
                 className="tnum h-14 rounded-[var(--radius-md)] text-xl font-medium transition-colors active:opacity-70"
                 style={{
-                  background: isOp ? 'var(--color-accent-soft)' : 'var(--color-surface-2)',
-                  color: isOp ? 'var(--color-accent-text)' : 'var(--color-text)',
+                  background: 'var(--color-surface-2)',
+                  color: isOp ? 'var(--color-muted)' : 'var(--color-text)',
                 }}
               >
                 {key}
@@ -374,7 +378,7 @@ export function RuleKeypad({
             type="button"
             onClick={() => setView('keypad')}
             className="tap text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            style={{ color: 'var(--color-text)' }}
           >
             ‹ Back
           </button>
@@ -408,10 +412,14 @@ export function RuleKeypad({
                   onClick={() => setMonth(m)}
                   aria-pressed={on}
                   aria-label={monthName(m, true)}
-                  className="tap aspect-square justify-center rounded-[var(--radius-md)] text-xs font-medium transition-colors active:opacity-70"
+                  className="tap aspect-square justify-center rounded-[var(--radius-md)] border text-xs font-medium transition-colors active:opacity-70"
                   style={
                     on
-                      ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
+                      ? {
+                          background: 'var(--color-selected)',
+                          color: 'var(--color-text)',
+                          borderColor: 'var(--color-text)',
+                        }
                       : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
                   }
                 >
@@ -434,10 +442,14 @@ export function RuleKeypad({
                   setView('keypad');
                 }}
                 aria-pressed={on}
-                className="tnum tap aspect-square justify-center rounded-[var(--radius-md)] text-sm font-medium transition-colors active:opacity-70"
+                className="tnum tap aspect-square justify-center rounded-[var(--radius-md)] border text-sm font-medium transition-colors active:opacity-70"
                 style={
                   on
-                    ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
+                    ? {
+                        background: 'var(--color-selected)',
+                        color: 'var(--color-text)',
+                        borderColor: 'var(--color-text)',
+                      }
                     : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
                 }
               >
@@ -455,7 +467,7 @@ export function RuleKeypad({
             type="button"
             onClick={() => setView('keypad')}
             className="tap text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            style={{ color: 'var(--color-text)' }}
           >
             ‹ Back
           </button>
@@ -478,9 +490,9 @@ export function RuleKeypad({
                 style={
                   on
                     ? {
-                        background: 'var(--color-accent)',
-                        color: 'var(--color-on-accent)',
-                        borderColor: 'var(--color-accent)',
+                        background: 'var(--color-selected)',
+                        color: 'var(--color-text)',
+                        borderColor: 'var(--color-text)',
                       }
                     : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
                 }
@@ -505,7 +517,7 @@ export function RuleKeypad({
             type="button"
             onClick={() => setView('keypad')}
             className="tap text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            style={{ color: 'var(--color-text)' }}
           >
             ‹ Back
           </button>
@@ -527,9 +539,9 @@ export function RuleKeypad({
                 style={
                   on
                     ? {
-                        background: 'var(--color-accent)',
-                        color: 'var(--color-on-accent)',
-                        borderColor: 'var(--color-accent)',
+                        background: 'var(--color-selected)',
+                        color: 'var(--color-text)',
+                        borderColor: 'var(--color-text)',
                       }
                     : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
                 }
@@ -550,7 +562,7 @@ export function RuleKeypad({
             type="button"
             onClick={() => setView('keypad')}
             className="tap text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            style={{ color: 'var(--color-text)' }}
           >
             ‹ Back
           </button>
@@ -573,7 +585,7 @@ export function RuleKeypad({
                 className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-colors active:opacity-70"
                 style={
                   on
-                    ? { background: 'var(--color-accent)', borderColor: 'var(--color-accent)' }
+                    ? { background: 'var(--color-selected)', borderColor: 'var(--color-text)' }
                     : undefined
                 }
               >
@@ -586,7 +598,7 @@ export function RuleKeypad({
                 />
                 <span
                   className="w-full truncate text-xs"
-                  style={{ color: on ? 'var(--color-on-accent)' : 'var(--color-muted)' }}
+                  style={{ color: on ? 'var(--color-text)' : 'var(--color-muted)' }}
                 >
                   {c.name}
                 </span>
@@ -617,8 +629,8 @@ function CadenceLink({
       aria-pressed={active}
       className="flex-1 rounded-[var(--radius-md)] py-2 text-center text-sm font-medium transition-colors duration-150"
       style={{
-        background: active ? 'var(--color-accent-soft)' : 'transparent',
-        color: active ? 'var(--color-accent-text)' : 'var(--color-muted)',
+        background: active ? 'var(--color-selected)' : 'transparent',
+        color: active ? 'var(--color-text)' : 'var(--color-muted)',
       }}
     >
       {label}

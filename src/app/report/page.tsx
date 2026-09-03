@@ -233,7 +233,7 @@ export default function ReportPage() {
           prefetch={false}
           href={`/records?all=1&category=${encodeURIComponent(category)}`}
           className="tap flex min-h-11 items-center gap-1 text-sm font-medium"
-          style={{ color: 'var(--color-accent-text)' }}
+          style={{ color: 'var(--color-text)' }}
         >
           {view === 'yearly'
             ? `See all ${rows.reduce((n, r) => n + r.count, 0)} records`
