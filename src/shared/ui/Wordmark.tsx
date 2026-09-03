@@ -1,6 +1,7 @@
-// The mark: a rounded accent tile carrying an 'm' monogram whose last stroke flows off into a
+// The mark: a rounded tile carrying an 'm' monogram whose last stroke flows off into a
 // money-line + arrow — the same mark as the app icon (src/app/icon.svg), kept in sync by hand.
-// Uses the accent tokens so a reskin (swap --color-accent) recolors it for free.
+// A muted tile rather than the action fill: this is branding, not the one next action on the
+// screen, and it renders in AppHeader on every route alongside the real action (the FAB).
 //
 // This is NOT the page <h1>. It renders in AppHeader on every route, and most routes already own a
 // meaningful page-title <h1> (Settings, Budgets, Categories, …); making the wordmark an <h1> too gave
@@ -12,11 +13,11 @@ export function Wordmark({ className = '' }: { className?: string }) {
       <span
         aria-hidden
         className="grid size-7 place-items-center rounded-[var(--radius-sm)]"
-        style={{ background: 'var(--color-accent)' }}
+        style={{ background: 'var(--color-muted)' }}
       >
         <svg width="18" height="18" viewBox="0 0 32 32" fill="none" aria-hidden>
           <g
-            stroke="var(--color-on-accent)"
+            stroke="var(--color-on-fill)"
             strokeWidth="2.8"
             strokeLinecap="round"
             strokeLinejoin="round"

@@ -48,9 +48,9 @@ function EditEntryInner() {
         <Link
           href="/records"
           className="text-sm font-medium"
-          style={{ color: 'var(--color-accent-text)' }}
+          style={{ color: 'var(--color-text)' }}
         >
-          Back to records
+          ‹ Back to records
         </Link>
       </PageContainer>
     );

@@ -68,8 +68,8 @@ function ToastItem({
       {action && (
         <button
           type="button"
-          className="tap shrink-0 px-2 text-sm font-semibold"
-          style={{ color: 'var(--color-accent-text)' }}
+          className="tap shrink-0 px-2 text-sm font-semibold underline"
+          style={{ color: 'var(--color-text)' }}
           onClick={() => {
             action.onClick();
             dismiss(id);

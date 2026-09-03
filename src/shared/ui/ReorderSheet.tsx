@@ -63,8 +63,8 @@ export function ReorderSheet<T>({
               <button
                 type="button"
                 onClick={close}
-                className="tap text-sm font-medium"
-                style={{ color: 'var(--color-accent-text)' }}
+                className="tap text-sm font-medium underline"
+                style={{ color: 'var(--color-text)' }}
               >
                 Done
               </button>

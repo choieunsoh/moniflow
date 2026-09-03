@@ -33,7 +33,7 @@ function formatRate(rate: number): string {
 
 function chipStyle(selected: boolean): React.CSSProperties {
   return selected
-    ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
+    ? { background: 'var(--color-selected)', color: 'var(--color-text)' }
     : {
         background: 'var(--color-surface-2)',
         color: 'var(--color-text)',
@@ -279,7 +279,7 @@ export function Keypad({
             aria-haspopup="true"
             aria-label={`Account: ${effectiveAccount}`}
             className="tap min-w-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
-            style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
+            style={{ background: 'var(--color-selected)', color: 'var(--color-text)' }}
           >
             <span className="min-w-0 truncate">{effectiveAccount}</span>
             <span aria-hidden className="shrink-0">
@@ -373,7 +373,7 @@ export function Keypad({
                     disabled={isRefreshing}
                     aria-label="Refresh FX rates"
                     className="tap justify-center rounded-full px-1 disabled:opacity-40"
-                    style={{ color: 'var(--color-accent-text)' }}
+                    style={{ color: 'var(--color-text)' }}
                   >
                     <span
                       aria-hidden
@@ -405,8 +405,8 @@ export function Keypad({
                 aria-label={key === '⌫' ? 'Backspace' : key}
                 className="tnum h-14 rounded-[var(--radius-md)] text-xl font-medium transition-colors active:opacity-70"
                 style={{
-                  background: isOp ? 'var(--color-accent-soft)' : 'var(--color-surface-2)',
-                  color: isOp ? 'var(--color-accent-text)' : 'var(--color-text)',
+                  background: 'var(--color-surface-2)',
+                  color: isOp ? 'var(--color-muted)' : 'var(--color-text)',
                 }}
               >
                 {key}
@@ -500,7 +500,7 @@ export function Keypad({
             type="button"
             onClick={() => setView('keypad')}
             className="tap text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            style={{ color: 'var(--color-text)' }}
           >
             ‹ Back
           </button>
@@ -523,9 +523,9 @@ export function Keypad({
                 style={
                   on
                     ? {
-                        background: 'var(--color-accent)',
-                        color: 'var(--color-on-accent)',
-                        borderColor: 'var(--color-accent)',
+                        background: 'var(--color-selected)',
+                        color: 'var(--color-text)',
+                        borderColor: 'var(--color-text)',
                       }
                     : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
                 }
@@ -550,7 +550,7 @@ export function Keypad({
             type="button"
             onClick={() => setView('keypad')}
             className="tap text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            style={{ color: 'var(--color-text)' }}
           >
             ‹ Back
           </button>
@@ -572,9 +572,9 @@ export function Keypad({
                 style={
                   on
                     ? {
-                        background: 'var(--color-accent)',
-                        color: 'var(--color-on-accent)',
-                        borderColor: 'var(--color-accent)',
+                        background: 'var(--color-selected)',
+                        color: 'var(--color-text)',
+                        borderColor: 'var(--color-text)',
                       }
                     : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
                 }
@@ -624,7 +624,7 @@ export function Keypad({
             type="button"
             onClick={() => setView('keypad')}
             className="tap text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            style={{ color: 'var(--color-text)' }}
           >
             ‹ Back
           </button>
@@ -651,8 +651,8 @@ export function Keypad({
                 style={
                   on
                     ? {
-                        background: 'var(--color-accent)',
-                        borderColor: 'var(--color-accent)',
+                        background: 'var(--color-selected)',
+                        borderColor: 'var(--color-text)',
                       }
                     : undefined
                 }
@@ -666,7 +666,7 @@ export function Keypad({
                 />
                 <span
                   className="w-full truncate text-xs"
-                  style={{ color: on ? 'var(--color-on-accent)' : 'var(--color-muted)' }}
+                  style={{ color: on ? 'var(--color-text)' : 'var(--color-muted)' }}
                 >
                   {c.name}
                 </span>

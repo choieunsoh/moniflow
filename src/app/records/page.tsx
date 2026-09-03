@@ -152,7 +152,7 @@ export default function RecordsPage() {
           <Link
             href="/trips"
             className="tap inline-flex w-fit items-center gap-1 text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            style={{ color: 'var(--color-text)' }}
           >
             <BackArrow />
             Trips
@@ -326,8 +326,8 @@ export default function RecordsPage() {
           </p>
           <Link
             href="/records"
-            className="text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            className="text-sm font-medium underline"
+            style={{ color: 'var(--color-text)' }}
           >
             Clear search
           </Link>
@@ -340,9 +340,9 @@ export default function RecordsPage() {
           <Link
             href="/trips"
             className="text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            style={{ color: 'var(--color-text)' }}
           >
-            Back to trips
+            ‹ Back to trips
           </Link>
         </div>
       ) : filtered ? (
@@ -352,8 +352,8 @@ export default function RecordsPage() {
           </p>
           <Link
             href={`/records?cycle=${activeKey}`}
-            className="text-sm font-medium"
-            style={{ color: 'var(--color-accent-text)' }}
+            className="text-sm font-medium underline"
+            style={{ color: 'var(--color-text)' }}
           >
             Clear filter
           </Link>
@@ -479,8 +479,8 @@ function ViewLink({ label, active, href }: { label: string; active: boolean; hre
       aria-current={active ? 'page' : undefined}
       className="flex-1 rounded-[var(--radius-md)] py-2 text-center text-sm font-medium transition-colors duration-150"
       style={{
-        background: active ? 'var(--color-accent-soft)' : 'transparent',
-        color: active ? 'var(--color-accent-text)' : 'var(--color-muted)',
+        background: active ? 'var(--color-selected)' : 'transparent',
+        color: active ? 'var(--color-text)' : 'var(--color-muted)',
       }}
     >
       {label}

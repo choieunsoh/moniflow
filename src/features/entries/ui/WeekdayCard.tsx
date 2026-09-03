@@ -36,7 +36,7 @@ export function WeekdayCard({ stats }: { stats: WeekdayStats }) {
             >
               <span
                 className="h-full rounded-full"
-                style={{ width: `${(r.total / max) * 100}%`, background: 'var(--color-accent)' }}
+                style={{ width: `${(r.total / max) * 100}%`, background: 'var(--color-text)' }}
               />
             </span>
             <span className="tnum w-16 shrink-0 text-right" style={{ color: 'var(--color-text)' }}>

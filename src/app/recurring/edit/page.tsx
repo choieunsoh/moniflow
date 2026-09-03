@@ -49,9 +49,9 @@ function EditRuleInner() {
         <Link
           href="/recurring"
           className="text-sm font-medium"
-          style={{ color: 'var(--color-accent-text)' }}
+          style={{ color: 'var(--color-text)' }}
         >
-          Back to recurring
+          ‹ Back to recurring
         </Link>
       </PageContainer>
     );

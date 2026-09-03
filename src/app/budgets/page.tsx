@@ -11,13 +11,13 @@ import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import type { IconSet } from '@features/settings/queries';
 import { formatBaht } from '@shared/money';
 
-// A thin colour-only glance of spend against the limit you set — red over, amber near, accent under.
+// A thin colour-only glance of spend against the limit you set — red over, amber near, muted under.
 // This page is for setting budgets, so the exact "left"/percent figures are intentionally omitted;
 // the bar is a hint, and the spend figure beside the input carries the honest number.
 const METER: Record<BudgetState, string> = {
   over: 'var(--color-loss)',
   near: 'var(--color-warn)',
-  under: 'var(--color-accent)',
+  under: 'var(--color-muted)',
   none: 'var(--color-border-strong)',
 };
 

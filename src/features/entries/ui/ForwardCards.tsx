@@ -106,7 +106,7 @@ export function SafeToSpendCard({
           href="/budgets"
           prefetch={false}
           className="text-sm font-medium"
-          style={{ color: 'var(--color-accent-text)' }}
+          style={{ color: 'var(--color-text)' }}
         >
           Set a total budget for a safe-to-spend figure →
         </Link>

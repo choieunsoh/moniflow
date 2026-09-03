@@ -94,7 +94,7 @@ export function AccountMergeButton({ account, others }: { account: string; other
               }}
               disabled={!target || busy}
               className="btn disabled:pointer-events-none disabled:opacity-40"
-              style={{ background: 'var(--color-loss)', color: 'var(--color-on-accent)' }}
+              style={{ background: 'var(--color-loss)', color: 'var(--color-on-fill)' }}
             >
               Merge &amp; remove
             </button>

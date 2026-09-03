@@ -35,9 +35,7 @@ export function HeaderFilterChip({
       aria-label={active ? `Clear ${label} filter` : `Filter by ${label}`}
       className="chip tap min-w-0 gap-1 transition-opacity active:opacity-70"
       style={
-        active
-          ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent-text)' }
-          : undefined
+        active ? { background: 'var(--color-selected)', color: 'var(--color-text)' } : undefined
       }
     >
       <span className="truncate">{label}</span>

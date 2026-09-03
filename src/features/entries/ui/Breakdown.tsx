@@ -139,7 +139,7 @@ export function Breakdown({
               <span
                 aria-hidden
                 className="grid size-11 shrink-0 place-items-center rounded-full text-2xl"
-                style={{ background: color, color: 'var(--color-on-accent)' }}
+                style={{ background: color, color: 'var(--color-on-fill)' }}
               >
                 <CategoryGlyph emoji={emojiFor(emojis, b.key)} iconSet={iconSet} size={26} />
               </span>
@@ -193,8 +193,8 @@ export function Breakdown({
           {tail.length > 0 ? (
             <details className="mt-3">
               <summary
-                className="tap flex cursor-pointer items-center text-sm"
-                style={{ color: 'var(--color-accent-text)' }}
+                className="tap flex cursor-pointer items-center text-sm underline"
+                style={{ color: 'var(--color-text)' }}
               >
                 {tail.length} more {tail.length === 1 ? 'category' : 'categories'}
               </summary>

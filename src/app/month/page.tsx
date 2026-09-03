@@ -152,7 +152,7 @@ export default function MonthPage() {
             <span
               className="text-sm"
               style={{
-                color: delta.amount > 0 ? 'var(--color-loss)' : 'var(--color-accent-text)',
+                color: delta.amount > 0 ? 'var(--color-loss)' : 'var(--color-gain)',
               }}
             >
               {delta.amount > 0 ? '↑' : '↓'} {formatBahtWhole(Math.abs(delta.amount))}

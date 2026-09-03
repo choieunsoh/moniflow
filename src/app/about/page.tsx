@@ -62,7 +62,7 @@ export default function AboutPage() {
             <Link
               href="/settings"
               className="text-xs font-medium"
-              style={{ color: 'var(--color-accent-text)' }}
+              style={{ color: 'var(--color-text)' }}
             >
               Back up now →
             </Link>

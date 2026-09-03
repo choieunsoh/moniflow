@@ -36,7 +36,7 @@ export function DeleteCategoryButton({ category }: { category: string }) {
         }
         style={
           armed
-            ? { background: 'var(--color-loss)', color: 'var(--color-on-accent)' }
+            ? { background: 'var(--color-loss)', color: 'var(--color-on-fill)' }
             : { color: 'var(--color-faint)' }
         }
       >

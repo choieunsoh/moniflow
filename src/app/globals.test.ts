@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -106,5 +106,26 @@ describe('the accent is gone', () => {
     'color-accent-ring',
   ])('--%s no longer exists', (name) => {
     expect(css).not.toContain(`--${name}:`);
+  });
+});
+
+describe('no component references a removed token', () => {
+  // Removing a custom property breaks nothing at build time: a component references it as an opaque
+  // string, so typecheck, lint, vitest and next build all pass while the colour silently resolves to
+  // nothing. This scan is the only mechanical check that the sweep was complete.
+  const sources = globSync('src/**/*.{ts,tsx,css}', { exclude: ['**/*.test.*'] });
+
+  it.each([
+    'color-accent',
+    'color-accent-hover',
+    'color-accent-text',
+    'color-accent-soft',
+    'color-accent-ring',
+    'color-on-accent',
+  ])('no file still uses var(--%s)', (name) => {
+    const offenders = sources.filter((file) =>
+      readFileSync(file, 'utf-8').includes(`var(--${name})`),
+    );
+    expect(offenders).toEqual([]);
   });
 });

@@ -161,8 +161,8 @@ export function SwipeRow({
         className="absolute inset-y-0 left-0 flex items-center justify-center"
         style={{
           width: ACTION_W,
-          background: 'var(--color-accent)',
-          color: 'var(--color-on-accent)',
+          background: 'var(--color-muted)',
+          color: 'var(--color-on-fill)',
         }}
       >
         <PencilIcon />
@@ -179,7 +179,7 @@ export function SwipeRow({
           type="submit"
           aria-label={`Delete ${entry.category}`}
           className="flex h-full w-full items-center justify-center"
-          style={{ background: 'var(--color-loss)', color: 'var(--color-on-accent)' }}
+          style={{ background: 'var(--color-loss)', color: 'var(--color-on-fill)' }}
         >
           <TrashIcon />
         </button>
@@ -228,10 +228,7 @@ export function SwipeRow({
                   className="chip shrink-0 transition-opacity active:opacity-70"
                   style={
                     categoryActive
-                      ? {
-                          background: 'var(--color-accent-soft)',
-                          color: 'var(--color-accent-text)',
-                        }
+                      ? { background: 'var(--color-selected)', color: 'var(--color-text)' }
                       : undefined
                   }
                 >
@@ -264,8 +261,8 @@ export function SwipeRow({
                 }
                 className="shrink-0 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap transition-opacity active:opacity-70"
                 style={{
-                  borderColor: accountActive ? 'var(--color-accent-text)' : 'var(--color-border)',
-                  color: accountActive ? 'var(--color-accent-text)' : 'var(--color-faint)',
+                  borderColor: accountActive ? 'var(--color-text)' : 'var(--color-border)',
+                  color: accountActive ? 'var(--color-text)' : 'var(--color-faint)',
                 }}
               >
                 {entry.account}
@@ -308,7 +305,7 @@ export function SwipeRow({
   );
 }
 
-// Action icons (stroke=currentColor → inherit the panel's on-accent white). Simple, familiar glyphs.
+// Action icons (stroke=currentColor → inherit the panel's on-fill white). Simple, familiar glyphs.
 function PencilIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden>
