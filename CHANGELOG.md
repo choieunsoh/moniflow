@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-09-03
+
+### Added
+
+- name the money the donut could not draw
+
+### Fixed
+
+- merge the truth-and-trust review slice
+- name refunded categories on the cycle totals card
+- pluralise entry count on accounts and categories
+- stop refunded amount and category list from disagreeing
+- relabel the discretionary budget block Spent from budget
+- render the blank-note bucket as a residual
+- say what the count columns count
+- give the accounts list its own heading
+- say refunded instead of negative spent on budgets
+- split the Home headline into gross and budget blocks
+- stop naming net-zero accounts as refunded on /accounts
+- divide donut shares by what the ring drew
+
+### Other
+
+- drop Task 2, its premise was false
+- retarget the plan's tests at units that exist
+- implementation plan for the truth-and-trust slice
+- design for the truth-and-trust fix slice
+
 ## [1.12.5] - 2026-09-02
 
 ### Fixed
