@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-09-03
+
+### Added
+
+- merge the ledger-ink palette slice
+- reserve red for over budget and errors
+- give every accent reference one meaning
+- move the shared component classes onto the action token
+- derive the palette and pin it with a contrast test
+
+### Fixed
+
+- restore a visible border on selected schedule and chip states
+
+### Other
+
+- fix stale accent-era comments after the selected-state palette move
+- implementation plan for the ledger-ink slice
+- design for the ledger-ink palette slice
+
 ## [1.13.0] - 2026-09-03
 
 ### Added
