@@ -2,6 +2,7 @@
 
 import { useAccountsPage } from '@features/accounts/use-accounts-page';
 import { iconForAccount, hueForAccount } from '@features/accounts/queries';
+import { refundedAccountBars } from '@features/accounts/ring-footnote';
 import { AccountIconPicker } from '@features/accounts/ui/AccountIconPicker';
 import { AccountNameEditor } from '@features/accounts/ui/AccountNameEditor';
 import { AddAccount } from '@features/accounts/ui/AddAccount';
@@ -72,9 +73,12 @@ export default function AccountsPage() {
                 </li>
               ))}
           </ul>
+          {/* A dropped account has total >= 0 (a net-zero account moved no money and would be
+              named for nothing), so the strict total > 0 of refundedAccountBars is what tells a
+              genuine refund apart from a coincidental wash, matching Home's own predicate. */}
           <RingFootnote
-            refunded={bars.filter((b) => b.pct <= 0).reduce((sum, b) => sum + b.total, 0)}
-            categories={bars.filter((b) => b.pct <= 0).map((b) => b.key)}
+            refunded={refundedAccountBars(bars).reduce((sum, b) => sum + b.total, 0)}
+            categories={refundedAccountBars(bars).map((b) => b.key)}
           />
         </section>
       )}
