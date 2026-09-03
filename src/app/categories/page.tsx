@@ -68,7 +68,7 @@ export default function CategoriesPage() {
                 <OffBudgetToggle category={c.category} checked={offBudgetSet.has(c.category)} />
                 {c.count === 0 ? (
                   <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                    0
+                    0 entries
                   </span>
                 ) : (
                   // Tap the count to see those records: filtered to this category, grouped by category.
@@ -78,7 +78,7 @@ export default function CategoriesPage() {
                     style={{ color: 'var(--color-muted)' }}
                     title={`View ${c.category} records`}
                   >
-                    {countFmt.format(c.count)}
+                    {countFmt.format(c.count)} entries
                   </Link>
                 )}
                 {c.count === 0 && <DeleteCategoryButton category={c.category} />}
