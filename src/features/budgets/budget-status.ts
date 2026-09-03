@@ -63,7 +63,7 @@ export function meterColorVar(state: BudgetState): string {
 }
 
 // The meter's right-hand caption. `near` and `under` used to both render a bare `${pct}%`, which left
-// the difference between them carried ENTIRELY by the amber-vs-accent fill — meaning-by-colour-alone
+// the difference between them carried ENTIRELY by the amber-vs-muted fill — meaning-by-colour-alone
 // (WCAG 1.4.1), and against the house rule that state never rides on hue by itself. `near` now names
 // itself in words, so the warning survives grayscale and colour blindness.
 export function meterCaption(status: BudgetTotal): string {

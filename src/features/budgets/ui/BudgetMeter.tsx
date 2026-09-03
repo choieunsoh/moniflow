@@ -13,7 +13,7 @@ import { meterCaption, meterColorVar, type BudgetTotal } from '../budget-status'
 // `pacePct` (0–100, time elapsed in the cycle) draws a "today" tick on the track: fill left of the
 // tick = spending under pace, past it = over pace. Passed only for the current cycle (undefined on a
 // past cycle, where a pace mark is meaningless). White with a surface-colored halo so the mark reads
-// on any fill colour — accent, warn, loss, or the empty track.
+// on any fill colour — muted, warn, loss, or the empty track (see meterColorVar).
 export function BudgetMeter({ status, pacePct }: { status: BudgetTotal; pacePct?: number }) {
   const caption = meterCaption(status);
   const fill = meterColorVar(status.state);

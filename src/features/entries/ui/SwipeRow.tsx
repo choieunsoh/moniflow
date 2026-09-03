@@ -215,7 +215,7 @@ export function SwipeRow({
                     hue={hue}
                   />
                 </span>
-                {/* Tap a chip to filter by it; tap the active (accent) one to clear. Swipe from the
+                {/* Tap a chip to filter by it; tap the active (selected) one to clear. Swipe from the
                     row body still works. */}
                 <Link
                   href={toggleHref('category', entry.category, categoryActive)}
