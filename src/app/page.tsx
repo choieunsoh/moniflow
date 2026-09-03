@@ -19,6 +19,7 @@ import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { HomeSkeleton } from '@features/entries/ui/HomeSkeleton';
 import { LegendRow } from '@features/entries/ui/LegendRow';
 import { TopTransactionsList } from '@features/entries/ui/TopTransactionsList';
+import { RingFootnote } from '@features/entries/ui/RingFootnote';
 
 // Home = the expense overview for the current cycle. Chart view: a spending donut with a colour-keyed
 // legend; List view: the same categories as ranked bars. A ?view= toggle switches them.
@@ -94,6 +95,11 @@ export default function HomePage() {
   // still carries refunds, while every drawn slice is a positive magnitude, so the two disagree
   // by exactly the refunded amount and the shares overshoot 100%.
   const grossSpend = drawnTotal(slices);
+  // The ring drew gross magnitudes; `total` is the signed net. The gap between them IS the refund,
+  // and these are the categories it came from (a stored amount is negative for an expense, so a
+  // category netting positive is one that handed money back).
+  const refunded = grossSpend - total;
+  const refundedCategories = categoryBreakdown.filter((r) => r.total > 0).map((r) => r.key);
 
   // The current cycle's forward cards (safe-to-spend + projection). Defined once and rendered in BOTH
   // the populated branch (below the headline) and the empty-current-cycle branch (above "Nothing spent"),
@@ -230,6 +236,7 @@ export default function HomePage() {
                     />
                   ))}
                 </ul>
+                <RingFootnote refunded={refunded} categories={refundedCategories} />
                 {/* Other's way in. The ring has to fold its tail — fifteen slivers is not a chart —
                     but the fold was a dead end: on a long-tailed cycle that bucket runs to a sixth
                     of the spend and a dozen-plus transactions, inert by design, while List opened

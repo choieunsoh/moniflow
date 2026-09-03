@@ -9,6 +9,7 @@ import { DeleteAccountButton } from '@features/accounts/ui/DeleteAccountButton';
 import { AccountMergeButton } from '@features/accounts/ui/AccountMergeButton';
 import { AccountReorderButton } from '@features/accounts/ui/AccountReorderButton';
 import { DonutChart } from '@features/entries/ui/DonutChart';
+import { RingFootnote } from '@features/entries/ui/RingFootnote';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { formatBaht } from '@shared/money';
 
@@ -71,6 +72,10 @@ export default function AccountsPage() {
                 </li>
               ))}
           </ul>
+          <RingFootnote
+            refunded={bars.filter((b) => b.pct <= 0).reduce((sum, b) => sum + b.total, 0)}
+            categories={bars.filter((b) => b.pct <= 0).map((b) => b.key)}
+          />
         </section>
       )}
 
