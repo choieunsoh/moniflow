@@ -8,6 +8,7 @@ import { pacePhrase } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 import { formatBahtWhole } from '@shared/money';
 import { DonutChart } from '@features/entries/ui/DonutChart';
+import { drawnTotal } from '@features/entries/donut';
 import { SafeToSpendCard, TodayAllowanceCard } from '@features/entries/ui/ForwardCards';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
@@ -89,6 +90,10 @@ export default function HomePage() {
   // The categories the ring folded into Other, carried on the bucket itself (only the fold knows
   // which they were). Empty whenever the cycle fits inside the palette and there is no Other at all.
   const folded = slices.find((s) => s.other)?.folded ?? [];
+  // The ring's own sum. Shares divide by this, never by `total`: `total` is the signed net and
+  // still carries refunds, while every drawn slice is a positive magnitude, so the two disagree
+  // by exactly the refunded amount and the shares overshoot 100%.
+  const grossSpend = drawnTotal(slices);
 
   // The current cycle's forward cards (safe-to-spend + projection). Defined once and rendered in BOTH
   // the populated branch (below the headline) and the empty-current-cycle branch (above "Nothing spent"),
@@ -217,7 +222,7 @@ export default function HomePage() {
                     <LegendRow
                       key={s.name}
                       slice={s}
-                      total={total}
+                      total={grossSpend}
                       cycleKey={activeKey}
                       emojis={emojiMap}
                       hues={hueMap}
@@ -245,7 +250,7 @@ export default function HomePage() {
                         <LegendRow
                           key={s.name}
                           slice={s}
-                          total={total}
+                          total={grossSpend}
                           cycleKey={activeKey}
                           emojis={emojiMap}
                           hues={hueMap}
