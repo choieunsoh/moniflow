@@ -84,6 +84,12 @@ export default function AccountsPage() {
       )}
 
       <section className="panel overflow-hidden">
+        {/* The page heading describes the DONUT above (this cycle's spending). This list is a different
+            dataset: every account ever used, ranked by all-time usage. Without its own heading a reader
+            carries "spending" down from the top of the page onto a number that counts entries. */}
+        <h2 className="px-4 pt-4 text-sm font-semibold" style={{ color: 'var(--color-muted)' }}>
+          All accounts · times used
+        </h2>
         {counts.length === 0 ? (
           <p className="p-5 text-sm" style={{ color: 'var(--color-muted)' }}>
             No accounts yet — add one below, or import some entries.
