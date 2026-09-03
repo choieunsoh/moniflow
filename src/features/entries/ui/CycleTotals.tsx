@@ -5,6 +5,7 @@ import { pacePhrase, type BudgetTotal } from '@features/budgets/budget-status';
 type CycleTotalsProps = {
   grossSpend: number;
   refunded: number;
+  refundedCategories: string[];
   net: number;
   offBudgetTotal: number;
   fixedPosted: number;
@@ -21,6 +22,7 @@ type CycleTotalsProps = {
 export function CycleTotals({
   grossSpend,
   refunded,
+  refundedCategories,
   net,
   offBudgetTotal,
   fixedPosted,
@@ -40,7 +42,16 @@ export function CycleTotals({
         </div>
         {refunded > 0 ? (
           <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            {formatBahtWhole(refunded)} refunded · net {formatBahtWhole(net)}
+            {/* Naming the categories scopes the claim; it does not widen the figure. `refunded` is
+                still refundedSummary's sum over categories whose whole NET flipped positive, so a
+                category that still nets negative is still excluded here, same as in the ring
+                footnote below it — a ฿2,000 spend with a ฿500 refund in it nets -฿1,500 and
+                contributes nothing, named or not. And each category named IS that category's net,
+                not its gross refund total: a category with ฿100 spend and ฿988 refunded nets
+                +฿888 and is the ฿888 named. Without the name this line read as the cycle's total
+                refunds, which it never was. */}
+            {formatBahtWhole(refunded)} refunded in {refundedCategories.join(', ')} · net{' '}
+            {formatBahtWhole(net)}
           </span>
         ) : null}
         {offBudgetTotal > 0 ? (

@@ -8,6 +8,7 @@ import { CycleTotals } from './CycleTotals';
 const refundCycle = {
   grossSpend: 11226,
   refunded: 888,
+  refundedCategories: ['เกมส์'],
   net: 10338,
   offBudgetTotal: 0,
   fixedPosted: 11226,
@@ -26,7 +27,19 @@ describe('CycleTotals', () => {
 
   it('names the refund and the net beneath the gross figure', () => {
     render(<CycleTotals {...refundCycle} />);
-    expect(screen.getByText(/฿888 refunded · net ฿10,338/)).toBeInTheDocument();
+    expect(screen.getByText(/฿888 refunded in เกมส์ · net ฿10,338/)).toBeInTheDocument();
+  });
+
+  it('joins more than one refunded category', () => {
+    render(
+      <CycleTotals
+        {...refundCycle}
+        refunded={1388}
+        refundedCategories={['เกมส์', 'อาหาร']}
+        net={9838}
+      />,
+    );
+    expect(screen.getByText(/฿1,388 refunded in เกมส์, อาหาร · net ฿9,838/)).toBeInTheDocument();
   });
 
   it('keeps the only denominator on the budget block', () => {

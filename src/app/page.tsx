@@ -143,6 +143,7 @@ export default function HomePage() {
           <CycleTotals
             grossSpend={grossSpend}
             refunded={refunded}
+            refundedCategories={refundedCategories}
             net={total}
             offBudgetTotal={offBudgetTotal}
             fixedPosted={fixedPosted}
