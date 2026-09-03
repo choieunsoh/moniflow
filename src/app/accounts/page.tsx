@@ -2,6 +2,7 @@
 
 import { useAccountsPage } from '@features/accounts/use-accounts-page';
 import { iconForAccount, hueForAccount } from '@features/accounts/queries';
+import { refundedAccountBars } from '@features/accounts/ring-footnote';
 import { AccountIconPicker } from '@features/accounts/ui/AccountIconPicker';
 import { AccountNameEditor } from '@features/accounts/ui/AccountNameEditor';
 import { AddAccount } from '@features/accounts/ui/AddAccount';
@@ -9,6 +10,7 @@ import { DeleteAccountButton } from '@features/accounts/ui/DeleteAccountButton';
 import { AccountMergeButton } from '@features/accounts/ui/AccountMergeButton';
 import { AccountReorderButton } from '@features/accounts/ui/AccountReorderButton';
 import { DonutChart } from '@features/entries/ui/DonutChart';
+import { RingFootnote } from '@features/entries/ui/RingFootnote';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { formatBaht } from '@shared/money';
 
@@ -71,10 +73,23 @@ export default function AccountsPage() {
                 </li>
               ))}
           </ul>
+          {/* A dropped account has total >= 0 (a net-zero account moved no money and would be
+              named for nothing), so the strict total > 0 of refundedAccountBars is what tells a
+              genuine refund apart from a coincidental wash, matching Home's own predicate. */}
+          <RingFootnote
+            refunded={refundedAccountBars(bars).reduce((sum, b) => sum + b.total, 0)}
+            categories={refundedAccountBars(bars).map((b) => b.key)}
+          />
         </section>
       )}
 
       <section className="panel overflow-hidden">
+        {/* The page heading describes the DONUT above (this cycle's spending). This list is a different
+            dataset: every account ever used, ranked by all-time usage. Without its own heading a reader
+            carries "spending" down from the top of the page onto a number that counts entries. */}
+        <h2 className="px-4 pt-4 text-sm font-semibold" style={{ color: 'var(--color-muted)' }}>
+          All accounts · times used
+        </h2>
         {counts.length === 0 ? (
           <p className="p-5 text-sm" style={{ color: 'var(--color-muted)' }}>
             No accounts yet — add one below, or import some entries.
@@ -90,7 +105,7 @@ export default function AccountsPage() {
                 />
                 <AccountNameEditor account={c.account} />
                 <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                  {countFmt.format(c.count)}
+                  {countFmt.format(c.count)} {c.count === 1 ? 'entry' : 'entries'}
                 </span>
                 {c.count === 0 ? (
                   <DeleteAccountButton account={c.account} />

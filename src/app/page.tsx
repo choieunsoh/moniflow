@@ -4,10 +4,9 @@ import { useSearchParams } from 'next/navigation';
 import { PageContainer } from '@shared/ui/PageContainer';
 import { ViewToggle } from '@shared/ui/ViewToggle';
 import { useHome } from '@features/entries/use-home';
-import { pacePhrase } from '@features/budgets/budget-status';
-import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
-import { formatBahtWhole } from '@shared/money';
+import { CycleTotals } from '@features/entries/ui/CycleTotals';
 import { DonutChart } from '@features/entries/ui/DonutChart';
+import { drawnTotal } from '@features/entries/donut';
 import { SafeToSpendCard, TodayAllowanceCard } from '@features/entries/ui/ForwardCards';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
@@ -18,6 +17,8 @@ import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { HomeSkeleton } from '@features/entries/ui/HomeSkeleton';
 import { LegendRow } from '@features/entries/ui/LegendRow';
 import { TopTransactionsList } from '@features/entries/ui/TopTransactionsList';
+import { RingFootnote } from '@features/entries/ui/RingFootnote';
+import { refundedSummary } from '@features/entries/refunded-summary';
 
 // Home = the expense overview for the current cycle. Chart view: a spending donut with a colour-keyed
 // legend; List view: the same categories as ranked bars. A ?view= toggle switches them.
@@ -89,6 +90,15 @@ export default function HomePage() {
   // The categories the ring folded into Other, carried on the bucket itself (only the fold knows
   // which they were). Empty whenever the cycle fits inside the palette and there is no Other at all.
   const folded = slices.find((s) => s.other)?.folded ?? [];
+  // The ring's own sum. Shares divide by this, never by `total`: `total` is the signed net and
+  // still carries refunds, while every drawn slice is a positive magnitude, so the two disagree
+  // by exactly the refunded amount and the shares overshoot 100%.
+  const grossSpend = drawnTotal(slices);
+  // The refunded amount and the categories it came from both derive from the SAME filtered set of
+  // category rows, so they can't disagree. `grossSpend - total` (two independently accumulated
+  // float sums) used to do this and could leave a stray +1.8e-12 residual on a cycle with no
+  // refunds at all, printing "฿0 refunded" with no category to name it. See refundedSummary.
+  const { refunded, categories: refundedCategories } = refundedSummary(categoryBreakdown);
 
   // The current cycle's forward cards (safe-to-spend + projection). Defined once and rendered in BOTH
   // the populated branch (below the headline) and the empty-current-cycle branch (above "Nothing spent"),
@@ -130,53 +140,18 @@ export default function HomePage() {
       {hasSpending ? (
         <>
           {/* The cycle's answer, constant across both views. */}
-          <section className="panel -mt-3 flex flex-col gap-1.5 p-5">
-            {/* flex-wrap, not a fixed row: at 200% zoom / Extra Large text the label and the figure
-                otherwise collide. Wrapping lets the figure drop to its own line instead. */}
-            {/* The label stays "Spent this cycle" whether or not a budget exists. It used to flip to
-                "Total budget" the moment one was set, which named the DENOMINATOR while the figure
-                led with the numerator — "Total budget ฿63,295 / ฿30,000" reads as a ฿63k budget at a
-                glance. The limit is context for the spend, so it trails it in muted text. */}
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <h2 className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
-                Spent this cycle
-              </h2>
-              <span className="tnum text-xl font-semibold">
-                {formatBahtWhole(discretionarySpend)}
-                {totalStatus ? (
-                  <span className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
-                    {' '}
-                    of {formatBahtWhole(totalStatus.limit ?? 0)}
-                  </span>
-                ) : null}
-              </span>
-            </div>
-            {offBudgetTotal > 0 ? (
-              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                + {formatBahtWhole(offBudgetTotal)} off-budget
-              </span>
-            ) : null}
-            {/* Fixed cost gets its OWN line rather than joining the off-budget one, because the two
-                did different things to the figure above: off-budget spend was set aside and left the
-                budget alone, while this was subtracted FROM the budget — it is the whole reason the
-                "of ฿48,280" reads lower than the limit on /budgets. Naming it here is also the only
-                place this money surfaces on a budget surface, since /budgets drops these rows from
-                its per-category meters. */}
-            {fixedPosted > 0 ? (
-              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                + {formatBahtWhole(fixedPosted)} fixed — deducted from the budget
-              </span>
-            ) : null}
-            {totalStatus ? <BudgetMeter status={totalStatus} pacePct={pacePct} /> : null}
-            {/* The pace tick on the meter shows from day 1 — it's geometry. This phrase is a verdict,
-                and on day 1 any spend at all reads as "over pace", so useHome holds it back until
-                enough of the cycle has elapsed to mean something. */}
-            {totalStatus && showPace && pacePct !== undefined && totalStatus.state !== 'over' ? (
-              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                {pacePhrase(totalStatus.pct, pacePct)}
-              </span>
-            ) : null}
-          </section>
+          <CycleTotals
+            grossSpend={grossSpend}
+            refunded={refunded}
+            refundedCategories={refundedCategories}
+            net={total}
+            offBudgetTotal={offBudgetTotal}
+            fixedPosted={fixedPosted}
+            discretionarySpend={discretionarySpend}
+            totalStatus={totalStatus}
+            pacePct={pacePct}
+            showPace={showPace}
+          />
 
           {forwardCards}
 
@@ -217,7 +192,7 @@ export default function HomePage() {
                     <LegendRow
                       key={s.name}
                       slice={s}
-                      total={total}
+                      total={grossSpend}
                       cycleKey={activeKey}
                       emojis={emojiMap}
                       hues={hueMap}
@@ -225,6 +200,7 @@ export default function HomePage() {
                     />
                   ))}
                 </ul>
+                <RingFootnote refunded={refunded} categories={refundedCategories} />
                 {/* Other's way in. The ring has to fold its tail — fifteen slivers is not a chart —
                     but the fold was a dead end: on a long-tailed cycle that bucket runs to a sixth
                     of the spend and a dozen-plus transactions, inert by design, while List opened
@@ -245,7 +221,7 @@ export default function HomePage() {
                         <LegendRow
                           key={s.name}
                           slice={s}
-                          total={total}
+                          total={grossSpend}
                           cycleKey={activeKey}
                           emojis={emojiMap}
                           hues={hueMap}

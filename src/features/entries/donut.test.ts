@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { toDonutSlices, buildDonutOption, donutSummaryLabel, SLICE_COLORS } from './donut';
+import {
+  toDonutSlices,
+  buildDonutOption,
+  donutSummaryLabel,
+  drawnTotal,
+  SLICE_COLORS,
+  MAX_SLICES,
+} from './donut';
 
 const row = (key: string, total: number, count = 1) => ({ key, total, count });
 
@@ -207,5 +214,32 @@ describe('toDonutSlices with inflows', () => {
     // Math.abs would have drawn a +400 wedge — spending that never happened.
     const slices = toDonutSlices([row('Rent', -9000, 1), row('Food', 400, 1)]);
     expect(slices.map((s) => s.name)).toEqual(['Rent']);
+  });
+});
+
+describe('drawnTotal', () => {
+  it('sums the values the ring actually drew', () => {
+    const slices = toDonutSlices([row('a', -30, 5), row('b', -20, 2)]);
+    expect(drawnTotal(slices)).toBe(50);
+  });
+
+  it('excludes a category whose refunds outweighed its spend, so shares can total 100', () => {
+    // 'c' netted positive (a refund), so toDonutSlices drops it. The denominator must drop it
+    // too: dividing a drawn magnitude by the signed net is what produced 109% on Home.
+    const slices = toDonutSlices([row('a', -30, 5), row('b', -20, 2), row('c', 8, 1)]);
+    const net = -(-30 + -20 + 8);
+    expect(drawnTotal(slices)).toBe(50);
+    expect(drawnTotal(slices)).not.toBe(net);
+    const shares = slices.map((s) => Math.round((s.value / drawnTotal(slices)) * 100));
+    expect(shares.reduce((sum, s) => sum + s, 0)).toBe(100);
+  });
+
+  it('counts the Other bucket, which is drawn like any other wedge', () => {
+    const rows = Array.from({ length: MAX_SLICES + 2 }, (_, i) => row(`c${i}`, -10, 1));
+    expect(drawnTotal(toDonutSlices(rows))).toBe((MAX_SLICES + 2) * 10);
+  });
+
+  it('is zero for an empty ring', () => {
+    expect(drawnTotal([])).toBe(0);
   });
 });

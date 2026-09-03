@@ -85,6 +85,13 @@ export function toDonutSlices(rows: Breakdown[]): DonutSlice[] {
   return slices;
 }
 
+// What the ring actually drew, and therefore the only honest denominator for a slice's share.
+// The slices are magnitudes filtered to value > 0; the cycle's own total is a SIGNED net that
+// still carries refunds. Dividing one by the other is what printed 52 + 50 + 7 = 109% on Home.
+export function drawnTotal(slices: DonutSlice[]): number {
+  return slices.reduce((sum, s) => sum + s.value, 0);
+}
+
 // Colours + font are injected (read from CSS tokens / computed style by the wrapper) so this stays
 // pure and theme-aware without importing echarts or touching the DOM. `rootPx` is the resolved root
 // font-size: canvas text can't inherit rem, so the hole's sizes are derived from it rather than
@@ -113,7 +120,7 @@ const LABEL_REM = 0.8125;
 export function donutSummaryLabel(rows: Breakdown[], label = 'Spending by category'): string {
   const slices = toDonutSlices(rows);
   if (slices.length === 0) return `${label}: nothing spent this cycle`;
-  const total = slices.reduce((sum, s) => sum + s.value, 0);
+  const total = drawnTotal(slices);
   const count = slices.reduce((sum, s) => sum + s.count, 0);
   const noun = count === 1 ? 'transaction' : 'transactions';
   return `${label}: ${formatBahtWhole(total)} across ${count} ${noun}`;
