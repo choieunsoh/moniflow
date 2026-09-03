@@ -22,6 +22,7 @@
 - Commit format `type(scope): description`, single-word scope from: `db`, `app`, `features`, `shared`.
 - Before each commit run, separately: `npm run format:files <changed files>`, `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test`. All must pass.
 - Run a single test file with `npm test -- <path>`.
+- **There are no route-level test files in this repo.** Every one of the 22 `*.test.tsx` files targets a feature component (`src/features/*/ui/*.test.tsx`), never `src/app/*/page.tsx`. Do not invent a route-test harness for this slice: a `'use client'` route reads `useSearchParams` and its own `use-*` hook against OPFS, so testing one means mocking both, and that is a larger change than anything in this plan. Instead, follow the project's own rule that logic belongs in named components and plain modules: extract the unit, test the unit with the harness that already works, and let Task 9 cover the page-level composition in a real browser.
 
 ## Reference values from the real ledger
 
@@ -415,58 +416,84 @@ git commit -m "feat(features): name the money the donut could not draw" -m "toDo
 
 `Spent this cycle  -฿888 of ฿38,375` puts two frames on one line. `฿38,375` is `฿50,000 budget - ฿11,625 fixed`, a ceiling fixed cost has already left; `-฿888` is discretionary. Leading with gross against that ceiling would double-count, so the two get separate blocks.
 
+The card is currently inline JSX in a 294-line route file. Extract it into a component first: that is the project's own rule (logic belongs in named components, not inline), it gets the change under the render-test harness that already works, and it shrinks the route file. The extraction is what makes this task testable at all, since no route test harness exists.
+
 **Files:**
-- Modify: `src/app/page.tsx` (the `<section className="panel -mt-3 ...">` block)
-- Test: `src/app/page.test.tsx` if it exists; otherwise create it
+- Create: `src/features/entries/ui/CycleTotals.tsx`
+- Create: `src/features/entries/ui/CycleTotals.test.tsx`
+- Modify: `src/app/page.tsx` (replace the inline `<section className="panel -mt-3 ...">` block with the component)
 
 **Interfaces:**
-- Consumes: `grossSpend` and `refunded` from Tasks 1 and 3, `discretionarySpend`, `totalStatus`, `offBudgetTotal`, `fixedPosted`, `pacePct`, `showPace` (all already in scope in this file).
-- Produces: nothing consumed by later tasks.
+- Consumes: `formatBahtWhole` from `@shared/money`, `BudgetMeter` from `@features/budgets/ui/BudgetMeter`, `pacePhrase` from `@features/budgets/budget-status`, and the `totalStatus` type already returned by `useHome`.
+- Produces: `CycleTotals(props)` where props are `{ grossSpend: number; refunded: number; net: number; offBudgetTotal: number; fixedPosted: number; discretionarySpend: number; totalStatus: BudgetStatus | null; pacePct: number | undefined; showPace: boolean }`. Nothing later consumes it.
 
-- [ ] **Step 1: Check whether a Home render test already exists**
+- [ ] **Step 1: Write the failing test**
 
-Run: `ls src/app/page.test.tsx 2>/dev/null || echo "none"`
-If it exists, append the test below to it. If not, create it following the structure of an existing route test, for example `src/features/entries/ui/TopNotesList.test.tsx`.
-
-- [ ] **Step 2: Write the failing test**
+Create `src/features/entries/ui/CycleTotals.test.tsx`, following the structure of `src/features/entries/ui/TopNotesList.test.tsx`:
 
 ```tsx
-describe('Home headline card', () => {
-  it('leads with gross spend, which is never negative, and never prints "spent" before a minus', () => {
-    // The real ledger's shape: 11,226 gross, all fixed cost, one 888 refund, so discretionary
-    // is -888. The old card printed "Spent this cycle -฿888 of ฿38,375".
-    renderHomeWith({ gross: 11226, refunded: 888, net: 10338, discretionary: -888, ceiling: 38375 });
-    expect(screen.getByText('Spent this cycle').parentElement).toHaveTextContent('฿11,226');
-    expect(screen.queryByText(/Spent this cycle\s*-/)).not.toBeInTheDocument();
+import { describe, expect, it } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { CycleTotals } from './CycleTotals';
+
+// The real ledger's shape for cycle 18 Aug to 17 Sep 2026: 11,226 gross, all of it fixed cost,
+// one 888 refund, so discretionary is -888. The old card printed "Spent this cycle -฿888 of
+// ฿38,375", which was two frames on one line.
+const refundCycle = {
+  grossSpend: 11226,
+  refunded: 888,
+  net: 10338,
+  offBudgetTotal: 0,
+  fixedPosted: 11226,
+  discretionarySpend: -888,
+  totalStatus: { limit: 38375, spent: -888, pct: 0, state: 'under' as const },
+  pacePct: 55,
+  showPace: true,
+};
+
+describe('CycleTotals', () => {
+  it('leads with gross spend and never prints "spent" before a minus sign', () => {
+    render(<CycleTotals {...refundCycle} />);
+    expect(screen.getByText('Spent this cycle').closest('div')).toHaveTextContent('฿11,226');
+    expect(screen.queryByText(/-฿888/)).not.toBeInTheDocument();
   });
 
-  it('puts the only denominator on the budget block, against the discretionary figure', () => {
-    renderHomeWith({ gross: 11226, refunded: 888, net: 10338, discretionary: -888, ceiling: 38375 });
-    const budget = screen.getByText('Left to spend').parentElement;
+  it('names the refund and the net beneath the gross figure', () => {
+    render(<CycleTotals {...refundCycle} />);
+    expect(screen.getByText(/฿888 refunded · net ฿10,338/)).toBeInTheDocument();
+  });
+
+  it('keeps the only denominator on the budget block', () => {
+    render(<CycleTotals {...refundCycle} />);
+    const budget = screen.getByText('Left to spend').closest('div');
     expect(budget).toHaveTextContent('฿38,375');
-    // The gross figure must NOT be measured against the ceiling: that ceiling already had this
-    // same fixed cost deducted, so 11,226 of 38,375 would read as 29% used when the true
-    // discretionary figure is zero.
+    // Gross must never be measured against the ceiling: the ceiling is 50,000 budget minus
+    // 11,625 fixed, and this gross IS that fixed cost, so it would read as 29% used when the
+    // true discretionary figure is zero.
     expect(budget).not.toHaveTextContent('฿11,226');
   });
 
-  it('omits the refund line entirely on a cycle with no refunds', () => {
-    renderHomeWith({ gross: 5000, refunded: 0, net: 5000, discretionary: 5000, ceiling: 38375 });
+  it('omits the refund line on a cycle with no refunds', () => {
+    render(<CycleTotals {...refundCycle} refunded={0} net={11226} />);
     expect(screen.queryByText(/refunded/)).not.toBeInTheDocument();
+  });
+
+  it('renders no budget block when no budget is set', () => {
+    render(<CycleTotals {...refundCycle} totalStatus={null} />);
+    expect(screen.queryByText('Left to spend')).not.toBeInTheDocument();
+    expect(screen.getByText('Spent this cycle')).toBeInTheDocument();
   });
 });
 ```
 
-Write `renderHomeWith` as a local helper in that file that mocks `useHome` to return the named figures, following how the existing route tests in this repo mock their `use-*` hook.
+- [ ] **Step 2: Run the test and verify it fails**
 
-- [ ] **Step 3: Run the test and verify it fails**
+Run: `npm test -- src/features/entries/ui/CycleTotals.test.tsx`
+Expected: FAIL, cannot resolve `./CycleTotals`.
 
-Run: `npm test -- src/app/page.test.tsx`
-Expected: FAIL. The card renders one block, the headline shows `-฿888`, and there is no `Left to spend` label.
+- [ ] **Step 3: Write the component**
 
-- [ ] **Step 4: Replace the card with two blocks**
-
-In `src/app/page.tsx`, replace the whole `<section className="panel -mt-3 flex flex-col gap-1.5 p-5">` element with:
+Create `src/features/entries/ui/CycleTotals.tsx`. It takes the props listed in Interfaces above, imports `formatBahtWhole`, `BudgetMeter` and `pacePhrase`, and returns exactly this fragment:
 
 ```tsx
 {/* Two blocks, because the card used to put two frames on one line: gross spend measured
@@ -523,17 +550,43 @@ In `src/app/page.tsx`, replace the whole `<section className="panel -mt-3 flex f
 
 `Math.max(discretionarySpend, 0)` is what keeps "spent" off a negative number: a cycle whose refunds outweigh its discretionary spend has spent nothing discretionary, and the refund is already named in the block above.
 
-- [ ] **Step 5: Run the test and verify it passes**
+- [ ] **Step 4: Run the test and verify it passes**
 
-Run: `npm test -- src/app/page.test.tsx`
+Run: `npm test -- src/features/entries/ui/CycleTotals.test.tsx`
 Expected: PASS.
+
+- [ ] **Step 5: Mount it on Home**
+
+In `src/app/page.tsx`, import the component:
+
+```ts
+import { CycleTotals } from '@features/entries/ui/CycleTotals';
+```
+
+Delete the inline `<section className="panel -mt-3 flex flex-col gap-1.5 p-5">` element entirely and render in its place:
+
+```tsx
+<CycleTotals
+  grossSpend={grossSpend}
+  refunded={refunded}
+  net={total}
+  offBudgetTotal={offBudgetTotal}
+  fixedPosted={fixedPosted}
+  discretionarySpend={discretionarySpend}
+  totalStatus={totalStatus}
+  pacePct={pacePct}
+  showPace={showPace}
+/>
+```
+
+`BudgetMeter` and `pacePhrase` move with the card, so remove their imports from `page.tsx` if nothing else there still uses them. `formatBahtWhole` stays: the empty-cycle branch still uses it.
 
 - [ ] **Step 6: Quality gates and commit**
 
 ```bash
-npm run format:files src/app/page.tsx src/app/page.test.tsx
+npm run format:files src/features/entries/ui/CycleTotals.tsx src/features/entries/ui/CycleTotals.test.tsx src/app/page.tsx
 npm run typecheck && npm run lint && npm run format:check && npm test
-git add src/app/page.tsx src/app/page.test.tsx
+git add src/features/entries/ui/CycleTotals.tsx src/features/entries/ui/CycleTotals.test.tsx src/app/page.tsx
 git commit -m "fix(app): split the Home headline into gross and budget blocks" -m "The card read \"Spent this cycle -฿888 of ฿38,375\". Both halves were wrong together: spend is never negative, and the ceiling is 50,000 budget minus 11,625 fixed, so measuring gross (itself entirely fixed cost) against it double-counts and would read as 29% used when the discretionary figure is zero." -m "Top block is what left the account and agrees with the ring below it. Bottom block is the budget and is the only place a denominator appears."
 ```
 
@@ -541,62 +594,73 @@ git commit -m "fix(app): split the Home headline into gross and budget blocks" -
 
 ### Task 5: /budgets never prints a negative "spent"
 
+The wording rule is the logic, so it goes in a plain module with a co-located test, matching how `cycle.ts`, `off-budget.ts` and `budget-status.ts` are already tested. The page then just calls it.
+
 **Files:**
+- Create: `src/features/budgets/spent-line.ts`
+- Create: `src/features/budgets/spent-line.test.ts`
 - Modify: `src/app/budgets/page.tsx` (two sites: the total row near line 119, the per-category row near line 202)
-- Test: `src/app/budgets/page.test.tsx` if it exists, otherwise create it
 
 **Interfaces:**
-- Consumes: `formatBaht` (already imported in that file).
-- Produces: nothing.
+- Consumes: `formatBaht` from `@shared/money`.
+- Produces: `spentLine(spent: number): string` exported from `src/features/budgets/spent-line.ts`.
 
 - [ ] **Step 1: Write the failing test**
 
-```tsx
-describe('budgets spent line', () => {
-  it('says refunded, not negative spent, when refunds outweigh spend', () => {
-    renderBudgetsWith({ rows: [{ category: 'เกมส์', limit: 2000, spent: -888 }] });
-    expect(screen.getByText(/฿888.00 refunded/)).toBeInTheDocument();
-    expect(screen.queryByText(/-฿888.00 spent/)).not.toBeInTheDocument();
+Create `src/features/budgets/spent-line.test.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { spentLine } from './spent-line';
+
+describe('spentLine', () => {
+  it('says refunded when refunds outweighed spend, rather than a negative spent', () => {
+    expect(spentLine(-888)).toBe('฿888.00 refunded');
   });
 
-  it('is unchanged for an ordinary category', () => {
-    renderBudgetsWith({ rows: [{ category: 'อาหาร', limit: 5000, spent: 1200 }] });
-    expect(screen.getByText(/฿1,200.00 spent/)).toBeInTheDocument();
+  it('says spent for an ordinary category', () => {
+    expect(spentLine(1200)).toBe('฿1,200.00 spent');
+  });
+
+  it('says spent for zero, because nothing was handed back', () => {
+    expect(spentLine(0)).toBe('฿0.00 spent');
   });
 });
 ```
 
 - [ ] **Step 2: Run the test and verify it fails**
 
-Run: `npm test -- src/app/budgets/page.test.tsx`
-Expected: FAIL, the rendered text is `-฿888.00 spent`.
+Run: `npm test -- src/features/budgets/spent-line.test.ts`
+Expected: FAIL, cannot resolve `./spent-line`.
 
-- [ ] **Step 3: Add a helper and use it at both sites**
+- [ ] **Step 3: Write the module and use it at both sites**
 
-Near the existing `fieldProps` helper in `src/app/budgets/page.tsx`, add:
+Create `src/features/budgets/spent-line.ts`:
 
-```tsx
+```ts
+import { formatBaht } from '@shared/money';
+
 // "Spent" cannot precede a minus sign. A category whose refunds outweighed its spend did not
 // spend a negative amount, it handed money back, so the wording changes with the sign rather
-// than the number wearing one.
-function spentLine(spent: number) {
+// than the number wearing one. Zero stays "spent": nothing was handed back.
+export function spentLine(spent: number): string {
   return spent < 0 ? `${formatBaht(-spent)} refunded` : `${formatBaht(spent)} spent`;
 }
 ```
 
-Replace `{formatBaht(total.spent)} spent` with `{spentLine(total.spent)}` and `{formatBaht(row.spent)} spent` with `{spentLine(row.spent)}`.
+In `src/app/budgets/page.tsx`, import it and replace `{formatBaht(total.spent)} spent` with `{spentLine(total.spent)}` and `{formatBaht(row.spent)} spent` with `{spentLine(row.spent)}`.
 
 - [ ] **Step 4: Run the test and verify it passes**
 
-Run: `npm test -- src/app/budgets/page.test.tsx`
+Run: `npm test -- src/features/budgets/spent-line.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Quality gates and commit**
 
 ```bash
-npm run format:files src/app/budgets/page.tsx src/app/budgets/page.test.tsx
+npm run format:files src/features/budgets/spent-line.ts src/features/budgets/spent-line.test.ts src/app/budgets/page.tsx
 npm run typecheck && npm run lint && npm run format:check && npm test
-git add src/app/budgets/page.tsx src/app/budgets/page.test.tsx
+git add src/features/budgets/spent-line.ts src/features/budgets/spent-line.test.ts src/app/budgets/page.tsx
 git commit -m "fix(app): say refunded instead of negative spent on budgets" -m "Both the total row and the per-category rows printed \"-฿888.00 spent\". A category whose refunds outweighed its spend handed money back; it did not spend a negative amount, so the wording changes with the sign rather than the number wearing one."
 ```
 
@@ -608,23 +672,10 @@ The page heading describes the donut ("This cycle's spending per account"). The 
 
 **Files:**
 - Modify: `src/app/accounts/page.tsx`
-- Test: `src/app/accounts/page.test.tsx` if it exists, otherwise create it
 
-- [ ] **Step 1: Write the failing test**
+**No unit test.** This is a static heading inside a route file, with no logic to exercise and no component to mount: a test would assert that a literal string is present in markup that has no branches. Task 9 Step 3 verifies it in the browser, which is the check that actually matters for a label. Do not create a route-test harness for it.
 
-```tsx
-it('gives the all-accounts list its own heading naming its unit', () => {
-  renderAccountsPage();
-  expect(screen.getByRole('heading', { name: /All accounts · times used/ })).toBeInTheDocument();
-});
-```
-
-- [ ] **Step 2: Run the test and verify it fails**
-
-Run: `npm test -- src/app/accounts/page.test.tsx`
-Expected: FAIL, no such heading.
-
-- [ ] **Step 3: Add the heading**
+- [ ] **Step 1: Add the heading**
 
 In `src/app/accounts/page.tsx`, inside the `<section className="panel overflow-hidden">` that renders `counts`, add as its first child, before the `counts.length === 0` conditional:
 
@@ -637,17 +688,12 @@ In `src/app/accounts/page.tsx`, inside the `<section className="panel overflow-h
 </h2>
 ```
 
-- [ ] **Step 4: Run the test and verify it passes**
-
-Run: `npm test -- src/app/accounts/page.test.tsx`
-Expected: PASS.
-
-- [ ] **Step 5: Quality gates and commit**
+- [ ] **Step 2: Quality gates and commit**
 
 ```bash
-npm run format:files src/app/accounts/page.tsx src/app/accounts/page.test.tsx
+npm run format:files src/app/accounts/page.tsx
 npm run typecheck && npm run lint && npm run format:check && npm test
-git add src/app/accounts/page.tsx src/app/accounts/page.test.tsx
+git add src/app/accounts/page.tsx
 git commit -m "fix(app): give the accounts list its own heading" -m "The page heading describes the donut (this cycle's spending per account) but the list below it is all-time usage counts, and nothing marked the change of subject. A reader carries \"spending\" down onto a number that counts entries."
 ```
 
@@ -660,46 +706,14 @@ git commit -m "fix(app): give the accounts list its own heading" -m "The page he
 **Files:**
 - Modify: `src/app/categories/page.tsx` (the `0` span and the `Link`)
 - Modify: `src/app/accounts/page.tsx` (the count span)
-- Test: the two page tests from Tasks 6 and this task
 
 **Interfaces:**
 - Consumes: `countFmt` (already defined in both files).
 - Produces: nothing.
 
-- [ ] **Step 1: Write the failing tests**
+**No unit test**, for the same reason as Task 6: three static label changes in route files, no logic and no component to mount. Task 9 Step 3 checks all three in the browser, including that the categories count is still a working tap target, which is the part a careless edit could actually break.
 
-For `/categories`:
-
-```tsx
-it('says what the number counts, so 2,162 does not read as baht', () => {
-  renderCategoriesWith({ counts: [{ category: 'อาหาร', count: 2162 }] });
-  expect(screen.getByText('2,162 entries')).toBeInTheDocument();
-});
-
-it('keeps the count a tap target into that category records', () => {
-  renderCategoriesWith({ counts: [{ category: 'อาหาร', count: 2162 }] });
-  expect(screen.getByRole('link', { name: /อาหาร/ })).toHaveAttribute(
-    'href',
-    expect.stringContaining('category=%E0%B8%AD%E0%B8%B2%E0%B8%AB%E0%B8%B2%E0%B8%A3'),
-  );
-});
-```
-
-For `/accounts`:
-
-```tsx
-it('says what the account number counts', () => {
-  renderAccountsPage();
-  expect(screen.getByText('1,003 entries')).toBeInTheDocument();
-});
-```
-
-- [ ] **Step 2: Run the tests and verify they fail**
-
-Run: `npm test -- src/app/categories/page.test.tsx src/app/accounts/page.test.tsx`
-Expected: FAIL, the rendered text is `2,162` with no unit.
-
-- [ ] **Step 3: Add the unit at all three sites**
+- [ ] **Step 1: Add the unit at all three sites**
 
 In `src/app/categories/page.tsx`, the zero branch:
 
@@ -721,19 +735,14 @@ In `src/app/accounts/page.tsx`, replace `{countFmt.format(c.count)}` with:
 {countFmt.format(c.count)} entries
 ```
 
-Do not change the `Link`'s `href`, `title`, or `className`: the tap-through affordance is correct as it stands and the test above pins it.
+Do not change the `Link`'s `href`, `title`, or `className`: the tap-through affordance is correct as it stands, and it is the one thing here a careless edit could break, so Task 9 checks it by tapping.
 
-- [ ] **Step 4: Run the tests and verify they pass**
-
-Run: `npm test -- src/app/categories/page.test.tsx src/app/accounts/page.test.tsx`
-Expected: PASS.
-
-- [ ] **Step 5: Quality gates and commit**
+- [ ] **Step 2: Quality gates and commit**
 
 ```bash
-npm run format:files src/app/categories/page.tsx src/app/accounts/page.tsx src/app/categories/page.test.tsx src/app/accounts/page.test.tsx
+npm run format:files src/app/categories/page.tsx src/app/accounts/page.tsx
 npm run typecheck && npm run lint && npm run format:check && npm test
-git add src/app/categories/page.tsx src/app/accounts/page.tsx src/app/categories/page.test.tsx src/app/accounts/page.test.tsx
+git add src/app/categories/page.tsx src/app/accounts/page.tsx
 git commit -m "fix(app): say what the count columns count" -m "Both lists rendered a bare formatted number beside a category or account name. On screens otherwise full of baht a bare 2,162 reads as money, and nothing on the row said otherwise." -m "The categories count stays a tap target into that category's records; a test now pins that affordance so the label change cannot quietly drop it."
 ```
 
@@ -917,4 +926,14 @@ It measured 2.29 before this slice. If it now exceeds 3.0, say so and stop; dens
 
 **Placeholder scan:** no TBD, TODO, "handle edge cases", or "similar to Task N". Every code step carries the code. The one place a task says "if it exists, otherwise create it" (route test files) is followed by a named existing file to copy the structure from.
 
-**Type consistency:** `drawnTotal(slices: DonutSlice[]): number` is defined in Task 1 and called by the same name in Tasks 2 and 3. `RingFootnote({ refunded, categories })` is defined in Task 3 and mounted with those exact prop names on both pages. `NO_NOTE` is exported in Task 8 Step 3 and imported in Step 4. `spentLine(spent: number)` is local to Task 5 and used only there.
+**Type consistency:** `drawnTotal(slices: DonutSlice[]): number` is defined in Task 1 and called by the same name in Tasks 2 and 3. `RingFootnote({ refunded, categories })` is defined in Task 3 and mounted with those exact prop names on both pages. `CycleTotals` props are listed in Task 4 Interfaces and passed with those exact names in Task 4 Step 5. `NO_NOTE` is exported in Task 8 Step 3 and imported in Step 4. `spentLine(spent: number): string` is defined in Task 5 and used only there.
+
+**Amendment, after the first self-review missed it:** the plan originally gave Tasks 4 to 7 route-level tests calling helpers (`renderHomeWith`, `renderBudgetsWith`, `renderCategoriesWith`, `renderAccountsPage`) that do not exist and were never specified. This repo has **no route-level test files at all**: all 22 `*.test.tsx` target feature components. Writing them would have meant building a route-test harness (mocking `useSearchParams` plus each `use-*` hook against OPFS), which is larger than every change in this plan combined.
+
+The fix follows the project's own architecture rule rather than working around it:
+
+- Task 4 now **extracts** the headline card into `CycleTotals.tsx` and tests the component with the harness that already works. The extraction is worth doing anyway: `page.tsx` is 294 lines and the card is a coherent unit.
+- Task 5 now puts the wording rule in a **pure module** `spent-line.ts` with a co-located unit test, matching `cycle.ts` and `budget-status.ts`.
+- Tasks 6 and 7 are **static label changes with no logic**, so they carry no unit test and say so explicitly. Task 9 verifies them in a browser, which is the only check that means anything for a label.
+
+Net effect: test coverage goes up where there is logic to cover, and no phantom harness is invented for markup that has no branches.
