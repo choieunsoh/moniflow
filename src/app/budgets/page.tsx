@@ -5,6 +5,7 @@ import { useBudgetsPage } from '@features/budgets/use-budgets-page';
 import { BudgetField } from '@features/budgets/ui/BudgetField';
 import { suggestBudget, type BudgetState, type BudgetRow } from '@features/budgets/budget-status';
 import { formatBudgetAmount } from '@features/budgets/use-budget-input';
+import { spentLine } from '@features/budgets/spent-line';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import type { IconSet } from '@features/settings/queries';
@@ -116,7 +117,7 @@ export default function BudgetsPage() {
         {(total.limit !== null || total.spent !== 0) && (
           <div className="flex items-center gap-3">
             <span className="tnum shrink-0 text-xs" style={{ color: 'var(--color-faint)' }}>
-              {formatBaht(total.spent)} spent
+              {spentLine(total.spent)}
             </span>
             {total.state !== 'none' && (
               <div className="min-w-0 flex-1">
@@ -199,7 +200,7 @@ function CategoryRow({
       {(row.limit !== null || row.spent !== 0) && (
         <div className="flex items-center gap-3 pl-10">
           <span className="tnum shrink-0 text-xs" style={{ color: 'var(--color-faint)' }}>
-            {formatBaht(row.spent)} spent
+            {spentLine(row.spent)}
           </span>
           {row.state !== 'none' && (
             <div className="min-w-0 flex-1">
