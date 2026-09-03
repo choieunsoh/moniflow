@@ -188,7 +188,7 @@ export function RuleRow({
                   rolled-up total and wrong for a price — it would quote this subscription at $10. */}
               <span
                 className="tnum font-medium whitespace-nowrap"
-                style={{ color: 'var(--color-loss)' }}
+                style={{ color: 'var(--color-text)' }}
               >
                 {formatCurrency(rule.amount, rule.currency ?? '')}
               </span>
@@ -209,7 +209,7 @@ export function RuleRow({
           ) : (
             <span
               className="tnum shrink-0 font-medium whitespace-nowrap"
-              style={{ color: 'var(--color-loss)' }}
+              style={{ color: 'var(--color-text)' }}
             >
               {formatBaht(rule.amount)}
             </span>

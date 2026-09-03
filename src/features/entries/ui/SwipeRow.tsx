@@ -148,7 +148,7 @@ export function SwipeRow({
       ? { amount: Math.abs(entry.originalAmount), currency: entry.currency }
       : null;
   const baht = formatLedgerSpend(entry.amount);
-  const amountColor = entry.amount < 0 ? 'var(--color-loss)' : 'var(--color-gain)';
+  const amountColor = entry.amount < 0 ? 'var(--color-text)' : 'var(--color-gain)';
 
   return (
     <li className="relative overflow-hidden">
