@@ -27,7 +27,11 @@ const rateFmt = new Intl.NumberFormat('en-US', {
 
 function chipStyle(selected: boolean): React.CSSProperties {
   return selected
-    ? { background: 'var(--color-selected)', color: 'var(--color-text)' }
+    ? {
+        background: 'var(--color-selected)',
+        color: 'var(--color-text)',
+        border: '1px solid var(--color-text)',
+      }
     : {
         background: 'var(--color-surface-2)',
         color: 'var(--color-text)',
@@ -408,10 +412,14 @@ export function RuleKeypad({
                   onClick={() => setMonth(m)}
                   aria-pressed={on}
                   aria-label={monthName(m, true)}
-                  className="tap aspect-square justify-center rounded-[var(--radius-md)] text-xs font-medium transition-colors active:opacity-70"
+                  className="tap aspect-square justify-center rounded-[var(--radius-md)] border text-xs font-medium transition-colors active:opacity-70"
                   style={
                     on
-                      ? { background: 'var(--color-selected)', color: 'var(--color-text)' }
+                      ? {
+                          background: 'var(--color-selected)',
+                          color: 'var(--color-text)',
+                          borderColor: 'var(--color-text)',
+                        }
                       : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
                   }
                 >
@@ -434,10 +442,14 @@ export function RuleKeypad({
                   setView('keypad');
                 }}
                 aria-pressed={on}
-                className="tnum tap aspect-square justify-center rounded-[var(--radius-md)] text-sm font-medium transition-colors active:opacity-70"
+                className="tnum tap aspect-square justify-center rounded-[var(--radius-md)] border text-sm font-medium transition-colors active:opacity-70"
                 style={
                   on
-                    ? { background: 'var(--color-selected)', color: 'var(--color-text)' }
+                    ? {
+                        background: 'var(--color-selected)',
+                        color: 'var(--color-text)',
+                        borderColor: 'var(--color-text)',
+                      }
                     : { background: 'var(--color-surface-2)', color: 'var(--color-text)' }
                 }
               >

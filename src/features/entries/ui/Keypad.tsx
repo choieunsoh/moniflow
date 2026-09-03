@@ -33,7 +33,11 @@ function formatRate(rate: number): string {
 
 function chipStyle(selected: boolean): React.CSSProperties {
   return selected
-    ? { background: 'var(--color-selected)', color: 'var(--color-text)' }
+    ? {
+        background: 'var(--color-selected)',
+        color: 'var(--color-text)',
+        border: '1px solid var(--color-text)',
+      }
     : {
         background: 'var(--color-surface-2)',
         color: 'var(--color-text)',
@@ -638,7 +642,9 @@ export function Keypad({
           {categories.map((c) => {
             // Only ever true when editing: this marks the expense's current category, since a tap
             // submits rather than toggles. Filled (not outlined) to match the Account picker above —
-            // the label has to come along, because --color-muted on the accent fill is 2.4:1.
+            // the label switches to full text colour when selected, because --color-selected is only
+            // a 10% overlay and doesn't carry enough contrast on its own; the border above is the
+            // other half of the same fix.
             const on = entry?.category === c.name;
             return (
               <button
