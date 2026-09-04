@@ -13,7 +13,8 @@
 - Spec: `docs/superpowers/specs/2026-09-04-theme-axes-design.md`. Branch: `feat/theme-axes` (already created; do not branch again).
 - **Dark values never change.** Every dark half in this plan is the value shipped in v1.14.0, copied verbatim. A diff that alters a dark hex is a bug.
 - **`--color-gain`, `--color-loss`, `--color-warn` never change with the accent.** They get a light half; no `[data-accent]` block may declare them.
-- **`DONUT_COLORS` and `OTHER_COLOR` in `src/features/entries/donut.ts` are not touched.** Neither are `categoryColor`, `categoryColorBold`, `discForeground` in `src/features/categories/color.ts`.
+- **`SLICE_COLORS` and `OTHER_COLOR` in `src/features/entries/donut.ts` are not touched.** (The spec calls these `DONUT_COLORS`; the real export is `SLICE_COLORS`. Use the real name.) Neither are `categoryColor`, `categoryColorBold`, `discForeground` in `src/features/categories/color.ts`.
+- **`src/app/globals.test.ts` already exists** and already holds `token`, `luminance`, `contrast` and `hue`, plus assertions that read a bare hex out of `globals.css`. All colour testing in this plan EXTENDS that file. Do not create a second contrast test file — duplicating the colour maths is the defect this note exists to prevent.
 - TypeScript rules are enforced as ESLint **errors**: no `any`, no `as` casts, no `!` assertions, no `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck`, `type` over `interface`, `for..of` over `.forEach`. `as const` is allowed.
 - Money/date formatting rules do not apply to this work, but the font rule does: do not introduce any font, and do not touch `--font-sans`.
 - Browser floor: `light-dark()` needs Chrome 123 / Safari 17.5, `color-mix()` needs Chrome 111 / Safari 16.2. The target device is a Galaxy S24 Ultra; this is acceptable and is not gated behind a fallback.
@@ -48,13 +49,14 @@
 | `src/features/settings/ui/ThemePicker.test.tsx` | Render + click coverage. |
 | `src/features/settings/ui/AccentPicker.tsx` | The 3×3 accent radiogroup. |
 | `src/features/settings/ui/AccentPicker.test.tsx` | Render + click coverage. |
-| `src/app/contrast.test.ts` | Parses `globals.css` itself and checks every documented pair in both halves of every `light-dark()`, for `:root` and all nine accent blocks. |
+_(No new test file. All colour assertions extend `src/app/globals.test.ts`, which already exists.)_
 
 **Modified:**
 
 | Path | Change |
 | --- | --- |
 | `src/app/globals.css` | `@theme` gains the `--color-action*` indirection; all colour tokens become `light-dark()` pairs; nine `[data-accent]` blocks are appended after `:root`; the comment banning an accent is rewritten; `.btn-primary:hover` moves to `--color-action-hover`. |
+| `src/app/globals.test.ts` | `token()` becomes theme-aware so it can read a `light-dark()` pair; every existing assertion runs over both themes; the accent walk, the `ink == :root` pin, the no-status-shift rule and the selected-state check are added; the stale "the accent is gone" block is rewritten. |
 | `src/features/settings/queries.ts` | Adds the `theme` and `accent` KV rows beside the existing `font_scale` block. |
 | `src/features/settings/actions.ts` | Adds `setThemeAction` / `setAccentAction`, taking typed values rather than `FormData`. |
 | `src/shared/ui/AppShell.tsx` | Calls `useTheme()` beside `useFontScale()`. |
@@ -255,165 +257,153 @@ git commit -m "feat(features): add the pure value module for both theme axes" -m
 
 ---
 
-## Task 2: The contrast test, against today's palette
+## Task 2: Make the existing colour test theme-aware
 
-Build the checker first and prove it green on the shipped dark palette. That way, when Task 3 doubles every value, a failure means the new light half is wrong — not that the checker is.
+`src/app/globals.test.ts` already exists and already reads token values out of `globals.css`. Its
+`token()` helper is **hex-only** — `--${name}:\s*(#[0-9a-fA-F]{6})` — so the moment Task 3 writes
+`--color-text: light-dark(#101420, #e7ebf4)` the regex finds no hex after the colon and every
+assertion in the file throws.
+
+Teach it about pairs FIRST, with the palette untouched, and prove it still green. Today every token
+is a bare hex, so both themes read the same value and the suite simply doubles. That way a failure in
+Task 3 means the new light half is wrong, not that the checker is.
 
 **Files:**
 
-- Create: `src/app/contrast.test.ts`
+- Modify: `src/app/globals.test.ts:16-20` (the `token` helper) and the four `describe` blocks
 
 **Interfaces:**
 
-- Consumes: nothing (reads `src/app/globals.css` from disk).
-- Produces: nothing importable. Later tasks extend this file's `CHECKS` and add the accent walk.
+- Consumes: nothing new.
+- Produces: `token(name: string, theme: Theme): string` where `type Theme = 'light' | 'dark'`, and
+  `THEMES: readonly Theme[]`. Tasks 3 and 4 call `token` with both arguments.
 
-- [ ] **Step 1: Write the test**
+- [ ] **Step 1: Read the file you are about to change**
 
-Create `src/app/contrast.test.ts`:
+Run: `cat src/app/globals.test.ts`
+
+It is 131 lines. Note four things before editing: `token()` throws when it finds no hex; `contrast()`,
+`luminance()` and `hue()` are already written and must be REUSED, not reimplemented; the assertions
+use `it.each` with tuple rows; and `SLICE_COLORS` is imported from `@features/entries/donut`.
+
+- [ ] **Step 2: Replace the `token` helper**
+
+Replace lines 16–20 (the whole `token` function) with:
 
 ```ts
-import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+// A theme, as this file means it: which half of a light-dark() pair to read. Not the user-facing
+// preference (which has a third state, 'system') — that one lives in features/settings/theme.ts and
+// resolves to one of these two before any colour is chosen.
+type Theme = 'light' | 'dark';
+const THEMES: readonly Theme[] = ['light', 'dark'];
 
-/**
- * Contrast is checked against globals.css ITSELF, not against a TypeScript copy of the palette.
- * A test that reads a second copy of the values proves only that the copy is self-consistent; this
- * one fails when the stylesheet the browser actually loads drops below a floor.
- *
- * Every colour in that file is declared once as `light-dark(<light>, <dark>)`, so each pair below is
- * checked twice — once per theme. A token that is a plain value (not a pair) is checked as the same
- * value in both, which is correct: that is what the browser does with it.
- */
+// Every colour in globals.css is declared once as `light-dark(<light>, <dark>)`, so a token has two
+// values and every assertion below runs twice. A token declared as a bare hex is the same in both
+// themes, which is exactly what the browser does with it, so it is returned for either.
+//
+// `scope` is the CSS text to search: the whole file for the base palette, or a single
+// `[data-accent]` block for a palette. Searching the whole file for an accent-owned token would
+// return whichever declaration appears first rather than the one that wins.
+function token(name: string, theme: Theme, scope: string = css): string {
+  const pair = new RegExp(
+    `--${name}:\\s*light-dark\\(\\s*(#[0-9a-fA-F]{6})\\s*,\\s*(#[0-9a-fA-F]{6})\\s*\\)`,
+  ).exec(scope);
+  if (pair !== null) return theme === 'light' ? pair[1] : pair[2];
 
-const CSS = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8').replace(
-  /\/\*[\s\S]*?\*\//g,
-  '',
-);
+  const single = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(scope);
+  if (single !== null) return single[1];
 
-type Vars = Record<string, string>;
-
-// Each of these blocks is flat — no nested rules — so the first `}` after the opening brace ends it.
-function parseBlock(selector: string): Vars {
-  const start = CSS.indexOf(`${selector} {`);
-  expect(start, `no ${selector} block in globals.css`).toBeGreaterThan(-1);
-  const open = CSS.indexOf('{', start);
-  const close = CSS.indexOf('}', open);
-  const vars: Vars = {};
-  for (const decl of CSS.slice(open + 1, close).split(';')) {
-    const colon = decl.indexOf(':');
-    if (colon === -1) continue;
-    const name = decl.slice(0, colon).trim();
-    if (!name.startsWith('--')) continue;
-    vars[name] = decl.slice(colon + 1).trim().replace(/\s+/g, ' ');
-  }
-  return vars;
+  throw new Error(`token --${name} not found in globals.css as a hex or a light-dark() hex pair`);
 }
+```
 
-// `@theme` holds the Tailwind-facing names, several of which are `var(--raw)` indirections into
-// `:root`. Merging the two and resolving var() gives the value the browser computes.
-const THEME_BLOCK = parseBlock('@theme');
-const ROOT_BLOCK = parseBlock(':root');
+- [ ] **Step 3: Run every existing assertion over both themes**
 
-function resolve(vars: Vars, value: string, depth = 0): string {
-  expect(depth, `var() chain too deep resolving "${value}"`).toBeLessThan(6);
-  const match = /^var\((--[a-z0-9-]+)\)$/i.exec(value);
-  if (match === null) return value;
-  const next = vars[match[1]];
-  expect(next, `globals.css references undefined ${match[1]}`).toBeDefined();
-  return resolve(vars, next ?? '', depth + 1);
-}
+Rewrite the four existing `describe` blocks so each row is checked per theme. Keep every pair, floor
+and comment that is already there — this step changes only how many times each runs.
 
-const HEX = /^#[0-9a-f]{6}$/i;
-
-/** `light-dark(#aaa, #bbb)` -> ['#aaa', '#bbb']. A bare value applies to both themes. */
-function halves(value: string): readonly [string, string] {
-  const match = /^light-dark\(\s*(#[0-9a-f]{6})\s*,\s*(#[0-9a-f]{6})\s*\)$/i.exec(value);
-  if (match !== null) return [match[1], match[2]];
-  expect(HEX.test(value), `expected a hex or a light-dark() hex pair, got "${value}"`).toBe(true);
-  return [value, value];
-}
-
-function token(vars: Vars, name: string): readonly [string, string] {
-  const raw = vars[name];
-  expect(raw, `globals.css is missing ${name}`).toBeDefined();
-  return halves(resolve(vars, raw ?? ''));
-}
-
-// WCAG 2.x relative luminance and contrast ratio.
-function luminance(hex: string): number {
-  const channels = [1, 3, 5].map((i) => {
-    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+```ts
+describe.each(THEMES)('%s theme', (theme) => {
+  describe('text contrast', () => {
+    it.each([
+      ['color-text', 'color-bg', 4.5],
+      ['color-text', 'color-surface', 4.5],
+      ['color-muted', 'color-bg', 4.5],
+      ['color-muted', 'color-surface', 4.5],
+      ['color-faint', 'color-surface-2', 4.5],
+      ['color-on-action', 'color-action', 4.5],
+    ])('%s on %s clears AA', (ink, ground, floor) => {
+      expect(contrast(token(ink, theme), token(ground, theme))).toBeGreaterThanOrEqual(floor);
+    });
   });
-  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-}
 
-function ratio(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
+  describe('non-text contrast', () => {
+    // WCAG 2.2 SC 1.4.11: a UI boundary or indicator that carries meaning needs 3:1.
+    it.each([
+      ['color-focus-ring', 'color-surface'],
+      ['color-focus-ring', 'color-bg'],
+      ['color-border-strong', 'color-surface'],
+      ['color-action', 'color-bg'],
+    ])('%s clears 3:1 on %s', (mark, ground) => {
+      expect(contrast(token(mark, theme), token(ground, theme))).toBeGreaterThanOrEqual(3);
+    });
 
-// [foreground token, background token, floor]. Floors follow the roles ledger-ink documented:
-// body text is held well above AA, secondary text at AA (4.5), and a non-text boundary that means
-// "tap here" at SC 1.4.11's 3:1. `--color-border` is deliberately BELOW 3:1 and has no floor: a
-// panel is already delimited by its own surface lightness, and a blanket 3:1 outlines every card.
-const CHECKS: readonly (readonly [string, string, number])[] = [
-  ['--color-text', '--color-bg', 7],
-  ['--color-text', '--color-surface', 7],
-  ['--color-muted', '--color-surface', 4.5],
-  ['--color-muted', '--color-bg', 4.5],
-  ['--color-faint', '--color-surface-2', 4.5],
-  ['--color-faint', '--color-surface', 4.5],
-  ['--color-faint', '--color-bg', 4.5],
-  ['--color-border-strong', '--color-surface', 3],
-  ['--color-gain', '--color-surface', 4.5],
-  ['--color-loss', '--color-surface', 4.5],
-  ['--color-warn', '--color-surface', 4.5],
-  ['--color-gain', '--color-bg', 4.5],
-  ['--color-loss', '--color-bg', 4.5],
-  ['--color-warn', '--color-bg', 4.5],
-];
+    // The decorative edge is deliberately quieter than 3:1: a panel is already delimited by its own
+    // surface lightness, and a blanket 3:1 outlines every card. It must still be visible, which the
+    // measured 1.29:1 of the previous palette was not.
+    it('the decorative border is visible without outlining every card', () => {
+      const ratio = contrast(token('color-border', theme), token('color-surface', theme));
+      expect(ratio).toBeGreaterThanOrEqual(2);
+      expect(ratio).toBeLessThan(3);
+    });
+  });
 
-const THEMES = [
-  { name: 'light', index: 0 },
-  { name: 'dark', index: 1 },
-] as const;
+  describe('hue separation', () => {
+    const apart = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
 
-describe('globals.css contrast', () => {
-  const vars: Vars = { ...THEME_BLOCK, ...ROOT_BLOCK };
-
-  for (const theme of THEMES) {
-    describe(theme.name, () => {
-      for (const [fg, bg, floor] of CHECKS) {
-        it(`${fg} on ${bg} clears ${floor}:1`, () => {
-          const measured = ratio(token(vars, fg)[theme.index], token(vars, bg)[theme.index]);
-          expect(measured).toBeGreaterThanOrEqual(floor);
-        });
+    it.each(['color-gain', 'color-loss'])('no category colour impersonates --%s', (name) => {
+      const reserved = hue(token(name, theme));
+      for (const slice of SLICE_COLORS) {
+        expect(apart(hue(slice), reserved)).toBeGreaterThan(25);
       }
     });
-  }
+  });
 });
 ```
 
-- [ ] **Step 2: Run it against the shipped palette**
+Leave the two remaining `describe` blocks (`'the accent is gone'` and `'no component references a
+removed token'`) exactly as they are for now — they scan CSS text rather than reading token values,
+so they do not care about themes. Task 4 revisits the first of them.
 
-Run: `npm test -- src/app/contrast.test.ts`
-Expected: PASS, 28 tests. `globals.css` has not been edited yet, so every token is a bare hex and both themes measure the same value. If anything fails here, the checker is wrong — fix it before Task 3, because from Task 3 on a failure will look like a palette problem.
+- [ ] **Step 4: Run it against the untouched palette**
 
-- [ ] **Step 3: Gates and commit**
+Run: `npm test -- src/app/globals.test.ts`
+Expected: PASS. The assertion count roughly doubles (each themed row now runs twice) while
+`globals.css` is unchanged, so both themes read the same hex. **If anything fails here the helper is
+wrong** — fix it now, because from Task 3 on a failure will look like a palette problem.
+
+- [ ] **Step 5: Prove the new branch of `token` is actually reachable**
+
+The `light-dark()` branch cannot have run yet — no token uses it. Verify it works before trusting it:
+temporarily change one line in `globals.css` to
+`--color-text: light-dark(#101420, #e7ebf4);`, run
+`npm test -- src/app/globals.test.ts`, and confirm it still passes (the dark half is the shipped
+value, and the light half is the one Task 3 will use). Then **revert that one line** with
+`git checkout src/app/globals.css` before committing.
+
+Report what you saw. A helper whose new branch was never executed is not a tested helper.
+
+- [ ] **Step 6: Gates and commit**
 
 ```bash
-npm run format:files src/app/contrast.test.ts
+npm run format:files src/app/globals.test.ts
 npm run typecheck
 npm run lint
 npm run format:check
 npm test
-git add src/app/contrast.test.ts
-git commit -m "test(app): check token contrast against globals.css itself" -m "The app had no contrast test, and the next commits multiply the colour surface by two themes and nine accent palettes. Nobody catches a 3.9:1 by eye across that." -m "It parses the stylesheet the browser actually loads rather than a TypeScript copy of the palette: a test against a second copy proves only that the copy is self-consistent. Landing it before the palette changes proves the checker is green on the shipped values, so a later failure means the new colour is wrong and not that the checker is." -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+git add src/app/globals.test.ts
+git commit -m "test(app): read token contrast per theme" -m "The colour assertions read a bare hex straight out of globals.css, so the next commit — which declares every colour as a light-dark() pair — would make the helper find no hex after the colon and throw on every one of them." -m "Teaches the helper about pairs while the palette is still untouched, so it lands green on the shipped values. From here a failure means a new colour is wrong rather than that the checker is, which is the whole reason this is its own commit." -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ```
-
 ---
 
 ## Task 3: Migrate every token to `light-dark()`
@@ -421,31 +411,43 @@ git commit -m "test(app): check token contrast against globals.css itself" -m "T
 **Files:**
 
 - Modify: `src/app/globals.css:11-80` (the `@theme` and `:root` blocks) and `:175-178` (`.btn-primary:hover`)
-- Modify: `src/app/contrast.test.ts` (extend `CHECKS` with the action pairs)
+- Modify: `src/app/globals.test.ts` (add the action-hover and semantic rows to the themed blocks)
 
 **Interfaces:**
 
-- Consumes: `contrast.test.ts` from Task 2.
+- Consumes: the theme-aware `token(name, theme, scope?)` and `THEMES` from Task 2.
 - Produces: CSS custom properties `--action`, `--on-action`, `--action-hover` in `:root`, plus the Tailwind-facing `--color-action`, `--color-on-action`, `--color-action-hover` in `@theme`. Task 4's accent blocks override the three raw names; Task 8's `AccentPicker` reads `var(--action)`.
 
-- [ ] **Step 1: Add the action pairs to the contrast checks, and watch them fail**
+- [ ] **Step 1: Add the missing rows to the themed assertions, and watch them fail**
 
-In `src/app/contrast.test.ts`, append to `CHECKS`:
+In `src/app/globals.test.ts`, inside the `describe.each(THEMES)` block, add to the `'text contrast'`
+rows:
 
 ```ts
-  ['--color-on-action', '--color-action', 4.5],
-  ['--color-action', '--color-bg', 3],
-  ['--color-on-action', '--color-action-hover', 4.5],
+      ['color-on-action', 'color-action-hover', 4.5],
+      ['color-gain', 'color-surface', 4.5],
+      ['color-loss', 'color-surface', 4.5],
+      ['color-warn', 'color-surface', 4.5],
+      ['color-gain', 'color-bg', 4.5],
+      ['color-loss', 'color-bg', 4.5],
+      ['color-warn', 'color-bg', 4.5],
 ```
 
-- [ ] **Step 2: Run to verify the new checks fail**
+The gain/loss/warn rows are new coverage regardless of the theme work: those three have never been
+contrast-checked, and this task is what gives them a light half that could be wrong.
 
-Run: `npm test -- src/app/contrast.test.ts`
-Expected: FAIL — 2 of the 3 new checks error with `globals.css is missing --color-action-hover`. (`--color-on-action` on `--color-action` already passes; that pair exists today.)
+- [ ] **Step 2: Run to verify the new rows fail**
+
+Run: `npm test -- src/app/globals.test.ts`
+Expected: FAIL — the `color-action-hover` rows throw
+`token --color-action-hover not found in globals.css as a hex or a light-dark() hex pair`. The
+gain/loss/warn rows PASS already (those tokens exist today and clear AA on the dark ground); they are
+here to catch a bad light half in Step 3.
 
 - [ ] **Step 3: Rewrite the `@theme` colour block**
 
-In `src/app/globals.css`, replace the comment and colour declarations at the top of `@theme` (currently lines 3–47, from the `/* ── Design tokens ─` banner through `--color-warn`) with:
+In `src/app/globals.css`, replace the comment and colour declarations at the top of `@theme`
+(currently lines 3–47, from the `/* ── Design tokens ─` banner through `--color-warn`) with:
 
 ```css
 /* ── Design tokens ───────────────────────────────────────────────────────────
@@ -464,8 +466,8 @@ In `src/app/globals.css`, replace the comment and colour declarations at the top
    and can silently drift apart. No colour may have its ONLY definition inside a
    media query or an attribute selector.
 
-   Every ratio in the comments below is checked by src/app/contrast.test.ts,
-   which parses THIS FILE. Read it before changing any value here. */
+   Every ratio in the comments below is checked by src/app/globals.test.ts,
+   which parses THIS FILE, in BOTH themes. Read it before changing any value. */
 @theme {
   /* Type — ONE family app-wide: IBM Plex Sans carries UI, prose and figures alike. There is
      deliberately no mono: a mono face draws a slashed or dotted zero, which this project bans for
@@ -475,7 +477,7 @@ In `src/app/globals.css`, replace the comment and colour declarations at the top
 
   /* Surfaces (canvas → raised). Cool blue-black, the colour of ink on a bank statement: the ground
      is derived from the subject rather than defaulted to a neutral grey. The light half inverts the
-     ramp — surface becomes the lightest, not the darkest, of the three. */
+     ramp — surface becomes the lightest of the three, not the darkest. */
   --color-backdrop: light-dark(#e4e7f0, #06080c); /* behind the phone frame on wide viewports */
   --color-bg: light-dark(#f7f8fc, #0c0f16);
   --color-surface: light-dark(#ffffff, #141926);
@@ -494,10 +496,10 @@ In `src/app/globals.css`, replace the comment and colour declarations at the top
   /* The one next action per screen: the MAXIMUM-CONTRAST object on the page — the lightest thing in
      dark, the darkest in light. That property is about LIGHTNESS, not about having no hue, which is
      what lets the accent axis tint it without weakening it. These three are the only tokens a
-     [data-accent] block redeclares, and they indirect through the raw --action/--on-action/
+     [data-accent] block redeclares, and they indirect through the raw --action / --on-action /
      --action-hover in :root so a picker swatch can stamp its own palette and paint itself with it.
-     Hue still belongs to CATEGORY IDENTITY: the accent sits at OKLCH L 86 (dark) or L 30 (light)
-     while the donut band sits at L 62-66, so the two never compete even at the same hue. Do not
+     Hue still belongs to CATEGORY IDENTITY: an accent sits at OKLCH L 86 (dark) or L 30 (light)
+     while the category band sits at L 62-66, so the two never compete even at the same hue. Do not
      saturate these into a mid-lightness fill — that is the version that competes. */
   --color-action: var(--action);
   --color-on-action: var(--on-action);
@@ -509,7 +511,7 @@ In `src/app/globals.css`, replace the comment and colour declarations at the top
 
   /* Semantics — value + status. These NEVER move with the accent, unlike pordee's: red means over
      budget and errors, green means a refund, and a colour that changes with a picker means neither.
-     The dark halves are unusable on a light ground (#19c37d on white is ~2.0:1), so each has a
+     The dark halves are unusable on a light ground (#19c37d on white is ~2.0:1), so each gets a
      darkened light half rather than being shared across themes. */
   --color-gain: light-dark(#0d7a4d, #19c37d); /* 5.37:1 / 7.64:1 on surface */
   --color-loss: light-dark(#c2323f, #f0616d); /* 5.49:1 / 5.54:1 on surface */
@@ -523,7 +525,8 @@ In `src/app/globals.css`, replace the comment and colour declarations at the top
 
 - [ ] **Step 4: Rewrite the `:root` block**
 
-Replace the `:root` block that follows (currently lines 54–80, from `/* Non-Tailwind design vars` through the closing brace) with:
+Replace the `:root` block that follows (currently lines 54–80, from the `/* Non-Tailwind design vars`
+comment through the closing brace) with:
 
 ```css
 /* Non-Tailwind design vars: the raw accent tokens, selection tint, elevation, motion, z-scale. */
@@ -534,20 +537,27 @@ Replace the `:root` block that follows (currently lines 54–80, from `/* Non-Ta
   color-scheme: light dark;
 
   /* The accent axis, default palette. These are the bare :root values, so choosing 'ink' in the
-     picker REMOVES data-accent rather than stamping it and the default cannot drift from the base.
-     [data-accent='ink'] below repeats them verbatim, for the picker's own swatch; contrast.test.ts
+     picker REMOVES data-accent rather than stamping it, and the default cannot drift from the base.
+     [data-accent='ink'] below repeats them verbatim, for the picker's own swatch; globals.test.ts
      pins the two equal. */
   --action: light-dark(#161b2b, #f2f5fc);
   --on-action: light-dark(#f7f8fc, #0c0f16);
   --action-hover: light-dark(#0c0f16, #e7ebf4);
 
   /* "Where you are": a lift of the ground itself. Derived from --action rather than declared per
-     palette, so an accent block stays three lines and a new palette cannot forget it. The alphas
-     differ by theme because a pale tint on a dark ground reads at a lower alpha than a deep tint on
-     a light one. Not contrast-checked: the text drawn on it is --color-text over --color-surface,
-     which is checked, and a 10-12% lift cannot move that pair below its floor. */
+     palette, so an accent block stays three lines and a new palette cannot forget it.
+
+     The two alphas are NOT the same number, and the difference is measured rather than aesthetic: a
+     deep tint on a light ground lifts less than a pale tint on a dark one, so a matched 10/12 split
+     gave 1.20:1 in light against 1.32:1 in dark. 14/12 evens them at roughly 1.30-1.43:1 across all
+     nine palettes and both grounds.
+
+     THAT RATIO IS A FLOOR FOR "MEASURABLE", NOT FOR "ENOUGH ON ITS OWN". A selected state must also
+     carry a border or a tick: this app shipped a selected tile at 1.02:1 that no one could see,
+     precisely because it leaned on this lift alone. globals.test.ts holds the floor; the components
+     hold the border. */
   --color-selected: light-dark(
-    color-mix(in srgb, var(--action) 10%, transparent),
+    color-mix(in srgb, var(--action) 14%, transparent),
     color-mix(in srgb, var(--action) 12%, transparent)
   );
   /* WCAG 2.2 SC 1.4.11 wants 3:1 for a focus indicator. The action colour clears it in both themes
@@ -586,7 +596,7 @@ Replace the `:root` block that follows (currently lines 54–80, from `/* Non-Ta
 
 - [ ] **Step 5: Fix `.btn-primary:hover`**
 
-Replace lines 175–178 (the `.btn-primary:hover` rule and its comment):
+Replace the `.btn-primary:hover` rule and its comment (currently around line 175):
 
 ```css
 .btn-primary:hover {
@@ -598,26 +608,33 @@ Replace lines 175–178 (the `.btn-primary:hover` rule and its comment):
 }
 ```
 
-- [ ] **Step 6: Run the contrast test**
+- [ ] **Step 6: Run the colour test**
 
-Run: `npm test -- src/app/contrast.test.ts`
-Expected: PASS, 34 tests — 17 pairs × 2 themes.
+Run: `npm test -- src/app/globals.test.ts`
+Expected: PASS. Every previously passing assertion still passes, now measured per theme against the
+correct half, and the seven rows added in Step 1 pass too.
+
+If a light-half row fails, the value is wrong — report the measured ratio rather than lowering the
+floor. The floors in this file were chosen deliberately and the dark halves meet them today.
 
 - [ ] **Step 7: Run the whole suite**
 
 Run: `npm test`
-Expected: PASS. No existing test asserts on a raw hex from `globals.css`; if one fails, it is asserting on a computed style and needs `jsdom` to be told a theme — report rather than loosening the assertion.
+Expected: PASS, and the total should be at or above the 1068 baseline. `globals.test.ts` is the only
+file that reads colour values out of `globals.css` — a failure anywhere else means something reads a
+token through `getComputedStyle`, which this branch has not accounted for. Report it rather than
+patching around it.
 
 - [ ] **Step 8: Gates and commit**
 
 ```bash
-npm run format:files src/app/globals.css src/app/contrast.test.ts
+npm run format:files src/app/globals.css src/app/globals.test.ts
 npm run typecheck
 npm run lint
 npm run format:check
 npm test
-git add src/app/globals.css src/app/contrast.test.ts
-git commit -m "feat(app): declare every colour as a light-dark pair" -m "Adds the light half of the palette so the app can carry a light/dark preference. Every dark value is unchanged from v1.14.0, so nothing a current user sees moves; the light halves are new and every ratio in the comments was computed, not estimated." -m "Uses light-dark() against color-scheme rather than the usual three blocks (a :root, a prefers-color-scheme copy, and an attribute copy) in which the dark values appear twice and drift apart unnoticed. The default state stamps no attribute at all, so an OS theme switch while the app is open is followed with no JS." -m "- gain/loss/warn needed light halves, not sharing: #19c37d on white is ~2.0:1, illegible rather than dim\n- --color-action now indirects through a raw --action so a picker swatch can stamp a palette and paint itself with it\n- --color-selected and --color-focus-ring derive from --action, so a palette is three lines and cannot forget them\n- .btn-primary:hover moved off --color-text, whose justification was that the action has no hue" -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+git add src/app/globals.css src/app/globals.test.ts
+git commit -m "feat(app): declare every colour as a light-dark pair" -m "Adds the light half of the palette so the app can carry a light/dark preference. Every dark value is unchanged from v1.14.0, so nothing a current user sees moves; the light halves are new and every ratio in the comments was computed, not estimated." -m "Uses light-dark() against color-scheme rather than the usual three blocks (a :root, a prefers-color-scheme copy, and an attribute copy) in which the dark values appear twice and drift apart unnoticed. The default state stamps no attribute at all, so an OS theme switch while the app is open is followed with no JS." -m "- gain/loss/warn needed light halves, not sharing: #19c37d on white is ~2.0:1, illegible rather than dim. They also had no contrast coverage at all until now\n- --color-action now indirects through a raw --action so a picker swatch can stamp a palette and paint itself with it\n- --color-selected and --color-focus-ring derive from --action, so a palette is three lines and cannot forget them\n- the selected lift uses 14% in light against 12% in dark: a deep tint on a light ground lifts less than a pale tint on a dark one, and a matched pair measured 1.20:1 against 1.32:1\n- .btn-primary:hover moved off --color-text, whose justification was that the action has no hue" -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -627,25 +644,50 @@ git commit -m "feat(app): declare every colour as a light-dark pair" -m "Adds th
 **Files:**
 
 - Modify: `src/app/globals.css` (append the accent blocks immediately after the `:root[data-theme='light']` rule)
-- Modify: `src/app/contrast.test.ts` (walk every accent block; pin `ink` equal to `:root`)
+- Modify: `src/app/globals.test.ts` (walk every accent block; pin `ink` equal to `:root`; forbid a status shift; check the selected lift; rewrite the stale "the accent is gone" block)
 
 **Interfaces:**
 
-- Consumes: `--action`/`--on-action`/`--action-hover` from Task 3; `ACCENTS` from Task 1.
+- Consumes: `--action`/`--on-action`/`--action-hover` and the theme-aware `token(name, theme, scope?)` from Task 3; `ACCENTS` from Task 1.
 - Produces: `[data-accent='<name>']` blocks for all nine names in `ACCENTS`.
 
-- [ ] **Step 1: Extend the contrast test to walk the accent blocks**
+- [ ] **Step 1: Replace the stale "the accent is gone" block**
 
-In `src/app/contrast.test.ts`, add below the existing `describe`:
+That block exists to enforce that one treatment carries one meaning. It still should — but its name
+and comment become false the moment a `data-accent` axis exists, and a comment that is confidently
+wrong is worse than no comment. Replace the whole `describe('the accent is gone', ...)` block with:
 
 ```ts
-// Accent-owned pairs. Everything else is theme-owned and already covered above; re-checking it per
-// palette would only assert nine times that :root did not change.
-const ACCENT_CHECKS: readonly (readonly [string, string, number])[] = [
-  ['--color-on-action', '--color-action', 4.5],
-  ['--color-on-action', '--color-action-hover', 4.5],
-  ['--color-action', '--color-bg', 3],
-];
+describe('the accent axis stays in its lane', () => {
+  // The six-meanings problem this palette was built to fix came from ONE colour meaning action,
+  // location, selection, links, operators and every Save button at once. The user-chosen accent is
+  // allowed to tint the action and the selection — they were already the same colour at different
+  // intensities — but the tokens below are what carried the other four meanings, and their return
+  // is how the problem comes back.
+  it.each([
+    'color-accent',
+    'color-accent-hover',
+    'color-accent-text',
+    'color-accent-soft',
+    'color-accent-ring',
+  ])('--%s stays gone', (name) => {
+    expect(css).not.toContain(`--${name}:`);
+  });
+});
+```
+
+- [ ] **Step 2: Add the accent walk**
+
+Append to `src/app/globals.test.ts`:
+
+```ts
+// Each palette's declarations, isolated. Searching the whole file for an accent-owned token would
+// return :root's copy rather than the block's, so every accent assertion scopes to its own block.
+function accentBlock(name: string): string {
+  const match = new RegExp(`\\[data-accent='${name}'\\]\\s*\\{([^}]*)\\}`).exec(css);
+  if (match === null) throw new Error(`no [data-accent='${name}'] block in globals.css`);
+  return match[1];
+}
 
 const ACCENT_NAMES = [
   'ink',
@@ -659,54 +701,89 @@ const ACCENT_NAMES = [
   'azure',
 ] as const;
 
-describe('accent palettes', () => {
-  for (const accent of ACCENT_NAMES) {
-    describe(accent, () => {
-      // The palette block wins over :root on source order, so layering it last is what the browser
-      // computes for an element carrying the attribute.
-      const vars: Vars = {
-        ...THEME_BLOCK,
-        ...ROOT_BLOCK,
-        ...parseBlock(`[data-accent='${accent}']`),
-      };
+describe.each(ACCENT_NAMES)('accent %s', (accent) => {
+  const block = accentBlock(accent);
 
-      for (const theme of THEMES) {
-        for (const [fg, bg, floor] of ACCENT_CHECKS) {
-          it(`${theme.name}: ${fg} on ${bg} clears ${floor}:1`, () => {
-            const measured = ratio(token(vars, fg)[theme.index], token(vars, bg)[theme.index]);
-            expect(measured).toBeGreaterThanOrEqual(floor);
-          });
-        }
+  describe.each(THEMES)('%s theme', (theme) => {
+    // Only the accent-owned pairs. Everything else is theme-owned and already checked above;
+    // re-checking it per palette would assert nine times that :root did not change.
+    it('ink on the action fill clears AA', () => {
+      expect(
+        contrast(token('on-action', theme, block), token('action', theme, block)),
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('ink on the hover fill clears AA', () => {
+      expect(
+        contrast(token('on-action', theme, block), token('action-hover', theme, block)),
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('the action reads as an object against the ground', () => {
+      expect(contrast(token('action', theme, block), token('color-bg', theme))).toBeGreaterThanOrEqual(3);
+    });
+
+    // The selected state is --action composited over the surface at the alpha :root declares. This
+    // is the check whose absence let a 1.02:1 selected tile ship: the hex-only token() could not
+    // read an rgba() value, so the lift was never measured at all.
+    //
+    // 1.25:1 is a floor for MEASURABLE, not for sufficient. A selected state must also carry a
+    // border or a tick — see the note on --color-selected in globals.css.
+    it('the selected lift is measurable against both surfaces', () => {
+      const alpha = theme === 'light' ? 0.14 : 0.12;
+      for (const ground of ['color-surface', 'color-surface-2']) {
+        const base = token(ground, theme);
+        const lifted = composite(token('action', theme, block), base, alpha);
+        expect(contrast(lifted, base)).toBeGreaterThanOrEqual(1.25);
       }
     });
-  }
+  });
+});
 
+// Simple alpha-over-opaque compositing, which is what the browser does with a color-mix() against
+// `transparent` painted on an opaque ground.
+function composite(fg: string, bg: string, alpha: number): string {
+  const mixed = channels(fg).map((c, i) => Math.round(alpha * c + (1 - alpha) * channels(bg)[i]));
+  return `#${mixed.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
+describe('accent palette structure', () => {
   // 'ink' duplicates :root so the picker can show it while another palette is live. Two copies of a
   // value are two values that drift, so they are pinned equal rather than trusted.
   it('pins [data-accent=ink] equal to the bare :root it duplicates', () => {
-    const ink = parseBlock("[data-accent='ink']");
-    for (const name of ['--action', '--on-action', '--action-hover']) {
-      expect(ink[name], `ink is missing ${name}`).toBe(ROOT_BLOCK[name]);
+    const ink = accentBlock('ink');
+    for (const name of ['action', 'on-action', 'action-hover']) {
+      for (const theme of THEMES) {
+        expect(token(name, theme, ink), `ink's --${name} (${theme})`).toBe(token(name, theme));
+      }
     }
   });
 
-  it('never lets a palette move a status colour, which would make red mean nothing', () => {
-    for (const accent of ACCENT_NAMES) {
-      const vars = parseBlock(`[data-accent='${accent}']`);
-      for (const name of ['--color-gain', '--color-loss', '--color-warn']) {
-        expect(vars[name], `${accent} must not declare ${name}`).toBeUndefined();
-      }
+  // A red that changes when the user picks a colour is a red that means nothing, and giving red a
+  // meaning is what the previous palette slice spent its effort on.
+  it.each(ACCENT_NAMES)('%s does not move a status colour', (accent) => {
+    const block = accentBlock(accent);
+    for (const name of ['--color-gain', '--color-loss', '--color-warn']) {
+      expect(block, `${accent} must not declare ${name}`).not.toContain(`${name}:`);
     }
+  });
+
+  // Every name the picker offers must have a block, or that swatch silently paints the current
+  // accent instead of the one it advertises.
+  it('has a block for every accent the picker offers', () => {
+    for (const name of ACCENT_NAMES) expect(() => accentBlock(name)).not.toThrow();
   });
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+Note `channels` is already defined near the top of this file — reuse it, do not write a second copy.
 
-Run: `npm test -- src/app/contrast.test.ts`
+- [ ] **Step 3: Run to verify it fails**
+
+Run: `npm test -- src/app/globals.test.ts`
 Expected: FAIL — `no [data-accent='ink'] block in globals.css`.
 
-- [ ] **Step 3: Append the accent blocks**
+- [ ] **Step 4: Append the accent blocks**
 
 In `src/app/globals.css`, immediately after the `:root[data-theme='light']` rule:
 
@@ -730,15 +807,15 @@ In `src/app/globals.css`, immediately after the `:root[data-theme='light']` rule
    at all in an app whose hue budget belongs to category identity:
        dark   fill oklch(86% 0.075 H)   hover oklch(78% 0.085 H)   ink = --color-bg
        light  fill oklch(30% 0.09  H)   hover oklch(22% 0.09  H)   ink = light --color-bg
-   The donut band sits at L 62-66, so an accent 3 degrees off a slice is still unmistakable — the
-   separation is lightness, not hue. Do not "fix" a palette by saturating it toward the donut band.
+   The category band sits at L 62-66, so an accent 3 degrees off a slice is still unmistakable — the
+   separation is lightness, not hue. Do not "fix" a palette by saturating it toward that band.
 
    No palette moves --color-gain, --color-loss or --color-warn. pordee shifts its status colours per
-   accent; ours carry more meaning than pordee's do, and contrast.test.ts fails a block that tries.
+   accent; ours carry more meaning than pordee's do, and globals.test.ts fails a block that tries.
    -------------------------------------------------------------------------- */
 
 /* The default, repeated verbatim from :root so a swatch can show it while another palette is live.
-   Held equal to the base by contrast.test.ts — change one of these and the other has to follow. */
+   Held equal to the base by globals.test.ts — change one of these and the other has to follow. */
 [data-accent='ink'] {
   --action: light-dark(#161b2b, #f2f5fc);
   --on-action: light-dark(#f7f8fc, #0c0f16);
@@ -794,21 +871,32 @@ In `src/app/globals.css`, immediately after the `:root[data-theme='light']` rule
 }
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [ ] **Step 5: Run to verify it passes**
 
-Run: `npm test -- src/app/contrast.test.ts`
-Expected: PASS, 90 tests — 34 from Task 3, plus 9 palettes × 2 themes × 3 pairs, plus the two structural assertions.
+Run: `npm test -- src/app/globals.test.ts`
+Expected: PASS. Then run `npm test` for the whole suite.
 
-- [ ] **Step 5: Gates and commit**
+- [ ] **Step 6: Prove the accent assertions can fail**
+
+A test that cannot fail is worse than no test. Temporarily change `[data-accent='teal']`'s dark
+`--on-action` from `#0c0f16` to `#95e1e0` (ink the same colour as its own fill) and run
+`npm test -- src/app/globals.test.ts`. Confirm the teal AA assertion fails with a ratio near 1.0.
+Then temporarily add `--color-loss: light-dark(#c2323f, #f0616d);` to that same block and confirm the
+status-shift assertion fails naming teal.
+
+Revert both with `git checkout src/app/globals.css`, re-run, confirm green, and report both failure
+messages you saw.
+
+- [ ] **Step 7: Gates and commit**
 
 ```bash
-npm run format:files src/app/globals.css src/app/contrast.test.ts
+npm run format:files src/app/globals.css src/app/globals.test.ts
 npm run typecheck
 npm run lint
 npm run format:check
 npm test
-git add src/app/globals.css src/app/contrast.test.ts
-git commit -m "feat(app): add nine accent palettes as fixed-lightness tints" -m "Gives the second theme axis its values. Each palette declares three tokens and nothing else, because --color-selected and --color-focus-ring derive from --action, so adding a tenth palette later is three lines that cannot forget a token." -m "The palettes are OKLCH tints at a fixed lightness per theme (86% dark, 30% light) rather than saturated fills. That is what makes them legal in an app that reserves hue for category identity: the donut band sits at L 62-66, so an accent 3 degrees off a slice is still unmistakable because the separation is lightness. It also lands every ink pair between 11.8:1 and 13.4:1 instead of hovering near the 4.5 floor." -m "No palette moves gain, loss or warn — the test fails a block that tries. A red that changes with a picker is a red that means nothing, and c4a64a6 spent real effort giving it a meaning." -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+git add src/app/globals.css src/app/globals.test.ts
+git commit -m "feat(app): add nine accent palettes as fixed-lightness tints" -m "Gives the second theme axis its values. Each palette declares three tokens and nothing else, because --color-selected and --color-focus-ring derive from --action, so adding a tenth palette later is three lines that cannot forget a token." -m "The palettes are OKLCH tints at a fixed lightness per theme (86% dark, 30% light) rather than saturated fills. That is what makes them legal in an app that reserves hue for category identity: the category band sits at L 62-66, so an accent 3 degrees off a slice is still unmistakable because the separation is lightness. It also lands every ink pair between 11.8:1 and 13.4:1 instead of hovering near the 4.5 floor." -m "- no palette moves gain, loss or warn; a test fails a block that tries, because a red that changes with a picker is a red that means nothing\n- the selected lift is now measured per palette per theme, which is the check whose absence let a 1.02:1 selected tile ship in the previous palette slice\n- the stale 'the accent is gone' block is rewritten rather than deleted: the tokens it names must still stay gone, but its comment described an app that no longer exists" -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -1667,7 +1755,7 @@ viewport. Check each of these and report what you see rather than assuming:
    v1.14.0 appearance: no `data-theme` and no `data-accent` on `<html>`.
 
 Fix what this finds before committing. Colour values moved at this step are expected — the spec says
-so; `contrast.test.ts` must still pass afterwards.
+so; `globals.test.ts` must still pass afterwards.
 
 - [ ] **Step 5: Verify the backup round trip**
 
@@ -1703,21 +1791,45 @@ replacing `.btn-primary:hover`** is Task 3 Step 5 for the same reason.
 
 **Simplifications found while planning, and recorded here so they are not mistaken for omissions.**
 The spec said each accent block would declare five tokens. It declares three: `--color-focus-ring`
-is `var(--action)` in `:root` (the action is the maximum-contrast object by construction, so it
-clears 3:1 in every theme and palette without being restated), and `--color-selected` is a
-`color-mix()` of `--action` (so a new palette cannot forget it). The spec's per-palette 12%/10%
-alphas are preserved in that one derived declaration.
+`--color-selected` is a `color-mix()` of `--action` (so a new palette cannot forget it).
 
-**Deliberately not tested.** `--color-selected` has no contrast assertion. The text drawn on it is
-`--color-text` over `--color-surface`, which is checked, and a 10–12% lift cannot move that pair
-below its floor. A test there would assert arithmetic, not a risk.
+**Amended after a pre-flight check against the codebase — three claims in the first draft were
+wrong.** They are recorded rather than quietly edited, because the same class of error is what the
+previous slice's ledger names as the cause of all eight of its defects: asserting facts about the
+repo from memory instead of tracing them.
+
+1. The plan said "the app currently has no contrast test" and created `src/app/contrast.test.ts`.
+   **`src/app/globals.test.ts` already exists** with `token`, `luminance`, `contrast` and `hue`
+   written. A second file would have duplicated the colour maths verbatim. Tasks 2, 3 and 4 now
+   extend the existing file.
+2. The plan said no existing test reads a raw hex out of `globals.css`, and expected Task 3 to leave
+   the suite passing. **Every assertion in that file reads one**, through a hex-only regex that
+   throws the moment a value becomes `light-dark(...)`. Task 2 now exists to teach the helper about
+   pairs while the palette is still untouched.
+3. The plan called the category palette `DONUT_COLORS`. The export is **`SLICE_COLORS`**.
+
+**And one design decision reversed on evidence.** The first draft declined to contrast-check
+`--color-selected`, on the grounds that a 10-12% lift cannot push text below its floor. That is true
+and answers the wrong question. The previous palette slice shipped a **Critical** — a selected tile
+at ~1.02:1 that no one could see — and its own final review named the root cause as
+`globals.test.ts`'s hex-only helper never being able to measure `--color-selected` at all. Declining
+the same check while making that token accent-derived across nine palettes would have reopened a
+wound this repo already has. Task 4 measures the composited lift per palette per theme.
+
+Measuring it also changed a value: the spec's matched 10% light / 12% dark gives 1.20:1 in light
+against 1.32:1 in dark, because a deep tint on a light ground lifts less than a pale tint on a dark
+one. The plan uses **14% light / 12% dark**, which evens the lift at 1.29-1.43:1 across all nine
+palettes and both grounds.
 
 **Type consistency.** `Theme`/`Accent` are defined in Task 1 and used with those names in 5, 6, 8.
 `applyTheme`/`applyAccent` are exported from `use-theme.ts` in Task 6 and imported under those names
 in Task 8. `setThemeAction`/`setAccentAction` take a typed value in Task 5 and are called that way in
-Task 8. `parseBlock`/`resolve`/`token`/`ratio`/`halves`/`THEMES`/`THEME_BLOCK`/`ROOT_BLOCK` are
-defined in Task 2 and reused by name in Tasks 3 and 4.
+Task 8. In `globals.test.ts`, the theme-aware `token(name, theme, scope?)` and `THEMES` are
+established in Task 2 and reused by name in Tasks 3 and 4, and `channels`/`contrast`/`hue` are the
+file's pre-existing helpers — reuse them rather than writing second copies.
 
-**One naming collision to watch.** `contrast.test.ts` defines a local `THEMES` (`[{name, index}]`)
-which is unrelated to `theme.ts`'s exported `THEMES` (`['system','light','dark']`). The test file
-imports nothing from `theme.ts`, so there is no conflict — but do not "helpfully" wire them together.
+**One naming collision to watch.** `globals.test.ts` defines a local `type Theme = 'light' | 'dark'`
+and a local `THEMES` holding those two. `features/settings/theme.ts` exports a different `Theme`
+(three states, including `'system'`) and a different `THEMES`. The test file imports nothing from
+`theme.ts`, so there is no conflict — but do not "helpfully" wire them together: the test asks which
+half of a pair to read, which is not the same question as what the user picked.
