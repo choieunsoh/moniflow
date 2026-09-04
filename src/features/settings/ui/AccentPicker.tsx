@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ACCENTS, ACCENT_LABELS, ACCENT_STORAGE_KEY, readAccent, type Accent } from '../theme';
+import { ACCENTS, ACCENT_LABELS, readAccent, type Accent } from '../theme';
 import { applyAccent } from '../use-theme';
 import { setAccentAction } from '../actions';
 
 /**
  * The accent axis, alongside ThemePicker's light/dark axis. Same three moves and the same reasons:
- * read the cache in an effect, stamp <html> on click, persist in the background.
+ * read the applied state in an effect, stamp <html> on click, persist in the background.
  *
  * Choosing 'ink' REMOVES the attribute, so the default palette is the bare :root and can never
  * drift from it.
@@ -25,9 +25,21 @@ import { setAccentAction } from '../actions';
 export function AccentPicker() {
   const [accent, setAccent] = useState<Accent>('ink');
 
+  // Read the APPLIED state off <html>, not the localStorage cache of it.
+  //
+  // Both are "correct" on a first load, but only the attribute survives a remount. Saving bumps the
+  // data version, useSettings sets ready=false while it refetches, and this page renders a
+  // placeholder in the meantime — so every pick unmounts this component and mounts a fresh one. A
+  // cache read then loses the race and the picker snaps its highlight back to Ink while the app is
+  // visibly the colour you just chose. The attribute is what the app is actually wearing, set by the
+  // pre-paint script on load and by choose() below on click, so it is right at every mount.
+  //
+  // Deferred through a microtask because this repo lints setState directly in an effect body
+  // (react-hooks/set-state-in-effect); a lazy useState initialiser is not an option, because a
+  // static export prerenders this component in Node where `document` does not exist.
   useEffect(() => {
     void Promise.resolve().then(() => {
-      setAccent(readAccent(localStorage.getItem(ACCENT_STORAGE_KEY)));
+      setAccent(readAccent(document.documentElement.dataset.accent ?? null));
     });
   }, []);
 

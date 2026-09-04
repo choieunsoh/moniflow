@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { THEME_STORAGE_KEY } from '../theme';
 
 vi.mock('../actions', () => ({ setThemeAction: vi.fn().mockResolvedValue(undefined) }));
 
@@ -16,7 +15,7 @@ describe('ThemePicker', () => {
   });
 
   it('offers the three states and starts on the stored one', async () => {
-    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    document.documentElement.dataset.theme = 'dark';
     render(<ThemePicker />);
     expect(screen.getAllByRole('button')).toHaveLength(3);
     expect(await screen.findByRole('button', { name: /dark/i })).toHaveAttribute(

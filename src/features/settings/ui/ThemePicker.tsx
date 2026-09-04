@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { readTheme, THEMES, THEME_STORAGE_KEY, type Theme } from '../theme';
+import { readTheme, THEMES, type Theme } from '../theme';
 import { applyTheme } from '../use-theme';
 import { setThemeAction } from '../actions';
 
@@ -33,9 +33,13 @@ const LABELS: Record<Theme, string> = {
 export function ThemePicker() {
   const [theme, setTheme] = useState<Theme>('system');
 
+  // Read the APPLIED state off <html>, not the localStorage cache of it — see the same note in
+  // AccentPicker. Saving bumps the data version, which makes useSettings drop `ready` and this page
+  // swap in a placeholder, so every pick REMOUNTS this component; only the attribute survives that.
+  // Its absence is meaningful here rather than missing: no data-theme means "system".
   useEffect(() => {
     void Promise.resolve().then(() => {
-      setTheme(readTheme(localStorage.getItem(THEME_STORAGE_KEY)));
+      setTheme(readTheme(document.documentElement.dataset.theme ?? null));
     });
   }, []);
 

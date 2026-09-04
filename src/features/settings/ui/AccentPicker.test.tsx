@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ACCENTS, ACCENT_STORAGE_KEY } from '../theme';
+import { ACCENTS } from '../theme';
 
 vi.mock('../actions', () => ({ setAccentAction: vi.fn().mockResolvedValue(undefined) }));
 
@@ -29,11 +29,28 @@ describe('AccentPicker', () => {
     expect(screen.getByRole('button', { name: /ink/i })).toHaveAttribute('data-accent', 'ink');
   });
 
-  it('starts on the stored palette and marks it beyond colour alone', async () => {
-    localStorage.setItem(ACCENT_STORAGE_KEY, 'plum');
+  it('starts on the applied palette and marks it beyond colour alone', async () => {
+    document.documentElement.dataset.accent = 'plum';
     render(<AccentPicker />);
     const plum = await screen.findByRole('button', { name: /plum/i });
     expect(plum).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  // Regression: the browser pass found the picker snapping back to Ink after a pick. Saving bumps
+  // the data version, useSettings drops `ready`, and the Settings page swaps in a placeholder — so
+  // every pick REMOUNTS this component. Reading the localStorage cache lost that race (the cache is
+  // written asynchronously by useTheme); reading the attribute cannot, because it is what the app is
+  // already wearing. A remount must never contradict the screen.
+  it('survives the remount that every pick causes', async () => {
+    const first = render(<AccentPicker />);
+    await userEvent.click(screen.getByRole('button', { name: /teal/i }));
+    expect(document.documentElement.dataset.accent).toBe('teal');
+    first.unmount();
+
+    render(<AccentPicker />);
+    const teal = await screen.findByRole('button', { name: /teal/i });
+    expect(teal).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /ink/i })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('stamps <html> on click, and removes the attribute for ink', async () => {
