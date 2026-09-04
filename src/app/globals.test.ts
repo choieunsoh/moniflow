@@ -170,16 +170,19 @@ describe('theme direction', () => {
   });
 });
 
-describe('the accent is gone', () => {
-  // The whole point of this slice: one treatment, one meaning. A reintroduced accent token is how
-  // the six-meanings problem comes back.
+describe('the accent axis stays in its lane', () => {
+  // The six-meanings problem this palette was built to fix came from ONE colour meaning action,
+  // location, selection, links, operators and every Save button at once. The user-chosen accent is
+  // allowed to tint the action and the selection — they were already the same colour at different
+  // intensities — but the tokens below are what carried the other four meanings, and their return
+  // is how the problem comes back.
   it.each([
     'color-accent',
     'color-accent-hover',
     'color-accent-text',
     'color-accent-soft',
     'color-accent-ring',
-  ])('--%s no longer exists', (name) => {
+  ])('--%s stays gone', (name) => {
     expect(css).not.toContain(`--${name}:`);
   });
 });
@@ -202,5 +205,101 @@ describe('no component references a removed token', () => {
       readFileSync(file, 'utf-8').includes(`var(--${name})`),
     );
     expect(offenders).toEqual([]);
+  });
+});
+
+// Each palette's declarations, isolated. Searching the whole file for an accent-owned token would
+// return :root's copy rather than the block's, so every accent assertion scopes to its own block.
+function accentBlock(name: string): string {
+  const match = new RegExp(`\\[data-accent='${name}'\\]\\s*\\{([^}]*)\\}`).exec(css);
+  if (match === null) throw new Error(`no [data-accent='${name}'] block in globals.css`);
+  return match[1];
+}
+
+const ACCENT_NAMES = [
+  'ink',
+  'indigo',
+  'violet',
+  'plum',
+  'rose',
+  'clay',
+  'olive',
+  'teal',
+  'azure',
+] as const;
+
+describe.each(ACCENT_NAMES)('accent %s', (accent) => {
+  const block = accentBlock(accent);
+
+  describe.each(THEMES)('%s theme', (theme) => {
+    // Only the accent-owned pairs. Everything else is theme-owned and already checked above;
+    // re-checking it per palette would assert nine times that :root did not change.
+    it('ink on the action fill clears AA', () => {
+      expect(
+        contrast(token('on-action', theme, block), token('action', theme, block)),
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('ink on the hover fill clears AA', () => {
+      expect(
+        contrast(token('on-action', theme, block), token('action-hover', theme, block)),
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('the action reads as an object against the ground', () => {
+      expect(
+        contrast(token('action', theme, block), token('color-bg', theme)),
+      ).toBeGreaterThanOrEqual(3);
+    });
+
+    // The selected state is --action composited over the surface at the alpha :root declares. This
+    // is the check whose absence let a 1.02:1 selected tile ship: the hex-only token() could not
+    // read an rgba() value, so the lift was never measured at all.
+    //
+    // 1.25:1 is a floor for MEASURABLE, not for sufficient. A selected state must also carry a
+    // border or a tick — see the note on --color-selected in globals.css.
+    it('the selected lift is measurable against both surfaces', () => {
+      const alpha = theme === 'light' ? 0.14 : 0.12;
+      for (const ground of ['color-surface', 'color-surface-2']) {
+        const base = token(ground, theme);
+        const lifted = composite(token('action', theme, block), base, alpha);
+        expect(contrast(lifted, base)).toBeGreaterThanOrEqual(1.25);
+      }
+    });
+  });
+});
+
+// Simple alpha-over-opaque compositing, which is what the browser does with a color-mix() against
+// `transparent` painted on an opaque ground.
+function composite(fg: string, bg: string, alpha: number): string {
+  const mixed = channels(fg).map((c, i) => Math.round(alpha * c + (1 - alpha) * channels(bg)[i]));
+  return `#${mixed.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
+describe('accent palette structure', () => {
+  // 'ink' duplicates :root so the picker can show it while another palette is live. Two copies of a
+  // value are two values that drift, so they are pinned equal rather than trusted.
+  it('pins [data-accent=ink] equal to the bare :root it duplicates', () => {
+    const ink = accentBlock('ink');
+    for (const name of ['action', 'on-action', 'action-hover']) {
+      for (const theme of THEMES) {
+        expect(token(name, theme, ink), `ink's --${name} (${theme})`).toBe(token(name, theme));
+      }
+    }
+  });
+
+  // A red that changes when the user picks a colour is a red that means nothing, and giving red a
+  // meaning is what the previous palette slice spent its effort on.
+  it.each(ACCENT_NAMES)('%s does not move a status colour', (accent) => {
+    const block = accentBlock(accent);
+    for (const name of ['--color-gain', '--color-loss', '--color-warn']) {
+      expect(block, `${accent} must not declare ${name}`).not.toContain(`${name}:`);
+    }
+  });
+
+  // Every name the picker offers must have a block, or that swatch silently paints the current
+  // accent instead of the one it advertises.
+  it('has a block for every accent the picker offers', () => {
+    for (const name of ACCENT_NAMES) expect(() => accentBlock(name)).not.toThrow();
   });
 });

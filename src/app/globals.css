@@ -142,6 +142,88 @@
   color-scheme: light;
 }
 
+/* ── Accent palettes ─────────────────────────────────────────────────────────
+   The SECOND theme axis, independent of light/dark.
+
+   These carry the same specificity as the bare `:root` above (0,1,0 either way), so they win on
+   SOURCE ORDER alone. Keep this block below `:root` or every palette silently stops applying.
+
+   Deliberately NOT scoped to `:root`. Custom properties inherit, so an ordinary element carrying
+   `data-accent` gets that palette for its own subtree — which is exactly how AccentPicker draws its
+   swatches: each one is a plain element stamped with the palette it offers, painting itself with
+   `var(--action)`. Scoping these to `:root` would force the picker to hardcode a second copy of
+   every hex, and a second copy is a copy that drifts.
+
+   Each block declares exactly THREE tokens. `--color-selected` and `--color-focus-ring` derive from
+   `--action` in `:root`, so a new palette is three lines and cannot forget them.
+
+   Every hex is a fixed-lightness OKLCH tint of one hue, which is the whole reason these can exist
+   at all in an app whose hue budget belongs to category identity:
+       dark   fill oklch(86% 0.075 H)   hover oklch(78% 0.085 H)   ink = --color-bg
+       light  fill oklch(30% 0.09  H)   hover oklch(22% 0.09  H)   ink = light --color-bg
+   The category band sits at L 62-66, so an accent 3 degrees off a slice is still unmistakable — the
+   separation is lightness, not hue. Do not "fix" a palette by saturating it toward that band.
+
+   No palette moves --color-gain, --color-loss or --color-warn. pordee shifts its status colours per
+   accent; ours carry more meaning than pordee's do, and globals.test.ts fails a block that tries.
+   -------------------------------------------------------------------------- */
+
+/* The default, repeated verbatim from :root so a swatch can show it while another palette is live.
+   Held equal to the base by globals.test.ts — change one of these and the other has to follow. */
+[data-accent='ink'] {
+  --action: light-dark(#161b2b, #f2f5fc);
+  --on-action: light-dark(#f7f8fc, #0c0f16);
+  --action-hover: light-dark(#0c0f16, #e7ebf4);
+}
+
+[data-accent='indigo'] {
+  --action: light-dark(#1f285a, #bfcfff);
+  --on-action: light-dark(#f7f8fc, #0c0f16);
+  --action-hover: light-dark(#0e1343, #a4b5ef);
+}
+
+[data-accent='violet'] {
+  --action: light-dark(#352053, #d8c6fc);
+  --on-action: light-dark(#f7f8fc, #0c0f16);
+  --action-hover: light-dark(#220b3d, #bfabe6);
+}
+
+[data-accent='plum'] {
+  --action: light-dark(#461943, #eec0e9);
+  --on-action: light-dark(#f7f8fc, #0c0f16);
+  --action-hover: light-dark(#30042e, #d7a4d1);
+}
+
+[data-accent='rose'] {
+  --action: light-dark(#511523, #febdc6);
+  --on-action: light-dark(#f7f8fc, #0c0f16);
+  --action-hover: light-dark(#390011, #e8a1ab);
+}
+
+[data-accent='clay'] {
+  --action: light-dark(#501a00, #fcc2a9);
+  --on-action: light-dark(#f7f8fc, #0c0f16);
+  --action-hover: light-dark(#390400, #e6a68a);
+}
+
+[data-accent='olive'] {
+  --action: light-dark(#293300, #cad9a2);
+  --on-action: light-dark(#f7f8fc, #0c0f16);
+  --action-hover: light-dark(#161f00, #b0c082);
+}
+
+[data-accent='teal'] {
+  --action: light-dark(#003a3c, #95e1e0);
+  --on-action: light-dark(#f7f8fc, #0c0f16);
+  --action-hover: light-dark(#002527, #71c9c8);
+}
+
+[data-accent='azure'] {
+  --action: light-dark(#003354, #a1dafc);
+  --on-action: light-dark(#f7f8fc, #0c0f16);
+  --action-hover: light-dark(#001e3d, #80c1e6);
+}
+
 /* ── Base ────────────────────────────────────────────────────────────────── */
 * {
   border-color: var(--color-border);
