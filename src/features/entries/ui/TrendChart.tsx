@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
+import { useResolvedTheme } from '@shared/use-resolved-theme';
 import type { TrendBar } from '../trend';
 import { buildTrendOption, trendSummary } from '../trend';
 
@@ -24,6 +25,10 @@ export function TrendChart({
   label: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Canvas bakes token VALUES, so the chart must rebuild when the resolved theme moves. Under
+  // 'system' an OS switch repaints every CSS colour live and bumps nothing else — without this
+  // dep the chart kept the old theme's ink on a card that had already changed around it.
+  const theme = useResolvedTheme();
 
   useEffect(() => {
     const el = ref.current;
@@ -54,7 +59,7 @@ export function TrendChart({
       window.removeEventListener('resize', onResize);
       chart.dispose();
     };
-  }, [bars, budget]);
+  }, [bars, budget, theme]);
 
   return (
     <div
