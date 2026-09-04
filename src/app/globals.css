@@ -98,7 +98,13 @@
      THAT RATIO IS A FLOOR FOR "MEASURABLE", NOT FOR "ENOUGH ON ITS OWN". A selected state must also
      carry a border or a tick: this app shipped a selected tile at 1.02:1 that no one could see,
      precisely because it leaned on this lift alone. globals.test.ts holds the floor; the components
-     hold the border. */
+     hold the border.
+
+     This is the ONE token whose dark value is not byte-identical to v1.14.0. It was
+     rgba(231,235,244,0.10) — 10% of --color-text — and is now 12% of --action, because the selection
+     tint has to follow the accent. Composited over --color-surface that moves the rendered pixel
+     from #292e3b to #2f3340 (+6/+5/+5 per channel) and the lift from 1.294:1 to 1.394:1: slightly
+     stronger, which is the safe direction. */
   --color-selected: light-dark(
     color-mix(in srgb, var(--action) 14%, transparent),
     color-mix(in srgb, var(--action) 12%, transparent)

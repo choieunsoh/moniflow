@@ -105,7 +105,6 @@ describe.each(THEMES)('%s theme', (theme) => {
     it.each([
       ['color-focus-ring', 'color-surface'],
       ['color-focus-ring', 'color-bg'],
-      ['color-border-strong', 'color-surface'],
       ['color-action', 'color-bg'],
     ])('%s clears 3:1 on %s', (mark, ground) => {
       expect(contrast(token(mark, theme), token(ground, theme))).toBeGreaterThanOrEqual(3);
@@ -118,6 +117,16 @@ describe.each(THEMES)('%s theme', (theme) => {
       const ratio = contrast(token('color-border', theme), token('color-surface', theme));
       expect(ratio).toBeGreaterThanOrEqual(2);
       expect(ratio).toBeLessThan(3);
+    });
+
+    // A ceiling, not just a floor — and the ceiling is what catches a TRANSPOSED pair. This boundary
+    // means "tap here" (inputs, keys, dividers, chrome); it is not meant to be maximal, or it would
+    // simply be text-coloured. Both halves clear 3:1 against either ground, so a floor-only check
+    // passed even with the two halves reversed: 3.26/3.07 when correct, 5.71/5.38 when swapped.
+    it('the strong border is a boundary, not a maximal edge', () => {
+      const ratio = contrast(token('color-border-strong', theme), token('color-surface', theme));
+      expect(ratio).toBeGreaterThanOrEqual(3);
+      expect(ratio).toBeLessThan(4.5);
     });
   });
 
