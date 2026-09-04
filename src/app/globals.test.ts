@@ -13,10 +13,29 @@ import { SLICE_COLORS } from '@features/entries/donut';
 // but tests.
 const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), 'globals.css'), 'utf-8');
 
-function token(name: string): string {
-  const match = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(css);
-  if (match === null) throw new Error(`token --${name} not found in globals.css`);
-  return match[1];
+// A theme, as this file means it: which half of a light-dark() pair to read. Not the user-facing
+// preference (which has a third state, 'system') — that one lives in features/settings/theme.ts and
+// resolves to one of these two before any colour is chosen.
+type Theme = 'light' | 'dark';
+const THEMES: readonly Theme[] = ['light', 'dark'];
+
+// Every colour in globals.css is declared once as `light-dark(<light>, <dark>)`, so a token has two
+// values and every assertion below runs twice. A token declared as a bare hex is the same in both
+// themes, which is exactly what the browser does with it, so it is returned for either.
+//
+// `scope` is the CSS text to search: the whole file for the base palette, or a single
+// `[data-accent]` block for a palette. Searching the whole file for an accent-owned token would
+// return whichever declaration appears first rather than the one that wins.
+function token(name: string, theme: Theme, scope: string = css): string {
+  const pair = new RegExp(
+    `--${name}:\\s*light-dark\\(\\s*(#[0-9a-fA-F]{6})\\s*,\\s*(#[0-9a-fA-F]{6})\\s*\\)`,
+  ).exec(scope);
+  if (pair !== null) return theme === 'light' ? pair[1] : pair[2];
+
+  const single = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(scope);
+  if (single !== null) return single[1];
+
+  throw new Error(`token --${name} not found in globals.css as a hex or a light-dark() hex pair`);
 }
 
 function channels(hex: string): number[] {
@@ -50,48 +69,50 @@ function hue(hex: string): number {
   return ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
 }
 
-describe('text contrast', () => {
-  it.each([
-    ['color-text', 'color-bg', 4.5],
-    ['color-text', 'color-surface', 4.5],
-    ['color-muted', 'color-bg', 4.5],
-    ['color-muted', 'color-surface', 4.5],
-    ['color-faint', 'color-surface-2', 4.5],
-    ['color-on-action', 'color-action', 4.5],
-  ])('%s on %s clears AA', (ink, ground, floor) => {
-    expect(contrast(token(ink), token(ground))).toBeGreaterThanOrEqual(floor);
-  });
-});
-
-describe('non-text contrast', () => {
-  // WCAG 2.2 SC 1.4.11: a UI boundary or indicator that carries meaning needs 3:1.
-  it.each([
-    ['color-focus-ring', 'color-surface'],
-    ['color-focus-ring', 'color-bg'],
-    ['color-border-strong', 'color-surface'],
-    ['color-action', 'color-bg'],
-  ])('%s clears 3:1 on %s', (mark, ground) => {
-    expect(contrast(token(mark), token(ground))).toBeGreaterThanOrEqual(3);
+describe.each(THEMES)('%s theme', (theme) => {
+  describe('text contrast', () => {
+    it.each([
+      ['color-text', 'color-bg', 4.5],
+      ['color-text', 'color-surface', 4.5],
+      ['color-muted', 'color-bg', 4.5],
+      ['color-muted', 'color-surface', 4.5],
+      ['color-faint', 'color-surface-2', 4.5],
+      ['color-on-action', 'color-action', 4.5],
+    ])('%s on %s clears AA', (ink, ground, floor) => {
+      expect(contrast(token(ink, theme), token(ground, theme))).toBeGreaterThanOrEqual(floor);
+    });
   });
 
-  // The decorative edge is deliberately quieter than 3:1: a panel is already delimited by its own
-  // surface lightness, and a blanket 3:1 outlines every card. It must still be visible, which the
-  // measured 1.29:1 of the previous palette was not.
-  it('the decorative border is visible without outlining every card', () => {
-    const ratio = contrast(token('color-border'), token('color-surface'));
-    expect(ratio).toBeGreaterThanOrEqual(2);
-    expect(ratio).toBeLessThan(3);
+  describe('non-text contrast', () => {
+    // WCAG 2.2 SC 1.4.11: a UI boundary or indicator that carries meaning needs 3:1.
+    it.each([
+      ['color-focus-ring', 'color-surface'],
+      ['color-focus-ring', 'color-bg'],
+      ['color-border-strong', 'color-surface'],
+      ['color-action', 'color-bg'],
+    ])('%s clears 3:1 on %s', (mark, ground) => {
+      expect(contrast(token(mark, theme), token(ground, theme))).toBeGreaterThanOrEqual(3);
+    });
+
+    // The decorative edge is deliberately quieter than 3:1: a panel is already delimited by its own
+    // surface lightness, and a blanket 3:1 outlines every card. It must still be visible, which the
+    // measured 1.29:1 of the previous palette was not.
+    it('the decorative border is visible without outlining every card', () => {
+      const ratio = contrast(token('color-border', theme), token('color-surface', theme));
+      expect(ratio).toBeGreaterThanOrEqual(2);
+      expect(ratio).toBeLessThan(3);
+    });
   });
-});
 
-describe('hue separation', () => {
-  const apart = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
+  describe('hue separation', () => {
+    const apart = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
 
-  it.each(['color-gain', 'color-loss'])('no category colour impersonates --%s', (name) => {
-    const reserved = hue(token(name));
-    for (const slice of SLICE_COLORS) {
-      expect(apart(hue(slice), reserved)).toBeGreaterThan(25);
-    }
+    it.each(['color-gain', 'color-loss'])('no category colour impersonates --%s', (name) => {
+      const reserved = hue(token(name, theme));
+      for (const slice of SLICE_COLORS) {
+        expect(apart(hue(slice), reserved)).toBeGreaterThan(25);
+      }
+    });
   });
 });
 
