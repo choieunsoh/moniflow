@@ -17,32 +17,32 @@ describe('AccentPicker', () => {
 
   it('offers every palette, ink first', () => {
     render(<AccentPicker />);
-    expect(screen.getAllByRole('radio')).toHaveLength(ACCENTS.length);
-    expect(screen.getByRole('radio', { name: /ink/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button')).toHaveLength(ACCENTS.length);
+    expect(screen.getByRole('button', { name: /ink/i })).toBeInTheDocument();
   });
 
   it('stamps each swatch with its OWN palette, so a swatch previews what it offers', () => {
     render(<AccentPicker />);
     // The bug this guards against: with the swatch unstamped, every dot inherits :root and paints
     // the CURRENTLY selected accent instead of the one it is offering.
-    expect(screen.getByRole('radio', { name: /teal/i })).toHaveAttribute('data-accent', 'teal');
-    expect(screen.getByRole('radio', { name: /ink/i })).toHaveAttribute('data-accent', 'ink');
+    expect(screen.getByRole('button', { name: /teal/i })).toHaveAttribute('data-accent', 'teal');
+    expect(screen.getByRole('button', { name: /ink/i })).toHaveAttribute('data-accent', 'ink');
   });
 
   it('starts on the stored palette and marks it beyond colour alone', async () => {
     localStorage.setItem(ACCENT_STORAGE_KEY, 'plum');
     render(<AccentPicker />);
-    const plum = await screen.findByRole('radio', { name: /plum/i });
-    expect(plum).toHaveAttribute('aria-checked', 'true');
+    const plum = await screen.findByRole('button', { name: /plum/i });
+    expect(plum).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('stamps <html> on click, and removes the attribute for ink', async () => {
     render(<AccentPicker />);
-    await userEvent.click(screen.getByRole('radio', { name: /azure/i }));
+    await userEvent.click(screen.getByRole('button', { name: /azure/i }));
     expect(document.documentElement.dataset.accent).toBe('azure');
     expect(setAccentAction).toHaveBeenCalledWith('azure');
 
-    await userEvent.click(screen.getByRole('radio', { name: /ink/i }));
+    await userEvent.click(screen.getByRole('button', { name: /ink/i }));
     expect(document.documentElement.dataset.accent).toBeUndefined();
   });
 });

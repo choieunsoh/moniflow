@@ -25,6 +25,10 @@ const LABELS: Record<Theme, string> = {
  * <html> is stamped here, on click, rather than waiting for the write to reach OPFS and the
  * data-version bump to re-run useTheme — a control whose entire job is to be instant cannot afford
  * that round trip. The hook still owns the localStorage cache; this owns only the current frame.
+ *
+ * A `group` of toggle buttons, deliberately NOT a `radiogroup`: that pattern promises one tab stop
+ * and arrow-key cycling, neither of which is implemented here. `aria-pressed` states what is
+ * actually true rather than making a contract the control does not keep.
  */
 export function ThemePicker() {
   const [theme, setTheme] = useState<Theme>('system');
@@ -47,7 +51,7 @@ export function ThemePicker() {
         Theme
       </legend>
       <div
-        role="radiogroup"
+        role="group"
         aria-labelledby="theme-legend"
         className="flex gap-1 rounded-[var(--radius-md)] border p-1"
         style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface-2)' }}
@@ -58,8 +62,7 @@ export function ThemePicker() {
             <button
               key={value}
               type="button"
-              role="radio"
-              aria-checked={active}
+              aria-pressed={active}
               onClick={() => choose(value)}
               className="tap flex-1 rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)]"
               style={

@@ -15,6 +15,12 @@ import { setAccentAction } from '../actions';
  * Nine swatches in a 3x3 grid, not a wrapping flex row: `flex-wrap` with `flex-1` packs as many
  * 44px-minimum targets into the first line as fit and stretches the remainder across the second,
  * which on a 412px column gives an uneven split. A grid sized by COUNT cannot do that.
+ *
+ * A `group` of toggle buttons, deliberately NOT a `radiogroup`. The ARIA radio pattern promises a
+ * single tab stop and arrow-key cycling, and neither is implemented here — a screen reader would
+ * announce "radio button, 1 of 9" and set an expectation the control does not keep. Building roving
+ * tabindex for an accent picker on a phone is not worth it; claiming a contract we do not honour is
+ * worse than not claiming it. `aria-pressed` says what is actually true.
  */
 export function AccentPicker() {
   const [accent, setAccent] = useState<Accent>('ink');
@@ -37,7 +43,7 @@ export function AccentPicker() {
         App colour
       </legend>
       <div
-        role="radiogroup"
+        role="group"
         aria-labelledby="accent-legend"
         className="grid grid-cols-3 gap-1 rounded-[var(--radius-md)] border p-1"
         style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface-2)' }}
@@ -48,8 +54,7 @@ export function AccentPicker() {
             <button
               key={value}
               type="button"
-              role="radio"
-              aria-checked={active}
+              aria-pressed={active}
               // Every swatch stamps its own palette, ink included. Leaving the default unstamped
               // makes it inherit from :root, so the first dot shows whatever is CURRENTLY selected
               // instead of the ink it offers. <html> still goes unstamped for ink — there the
