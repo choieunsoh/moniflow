@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-09-04
+
+### Added
+
+- merge the theme axes slice
+- put the appearance controls in Settings
+- add the theme and accent pickers
+- stamp the saved appearance before first paint
+- apply the stored appearance from a single reconciler hook
+- persist the theme and accent choices
+- add nine accent palettes as fixed-lightness tints
+- declare every colour as a light-dark pair
+- add the pure value module for both theme axes
+
+### Fixed
+
+- rebuild the charts when the resolved theme changes
+- keep the pickers correct across the remount every pick causes
+- stop the pickers promising a keyboard contract they do not keep
+
+### Other
+
+- pin the inline script's lists and cover the ThemePicker remount
+- correct two overstated claims in the accent palette comment
+- give the strong border a ceiling so a transposed pair fails
+- read token contrast per theme
+- correct three plan claims found by a pre-flight codebase check
+- plan the theme-axes implementation in nine tasks
+- spec two theme axes — light mode and a picked accent
+
 ## [1.14.0] - 2026-09-03
 
 ### Added
