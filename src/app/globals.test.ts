@@ -26,11 +26,21 @@ const THEMES: readonly Theme[] = ['light', 'dark'];
 // `scope` is the CSS text to search: the whole file for the base palette, or a single
 // `[data-accent]` block for a palette. Searching the whole file for an accent-owned token would
 // return whichever declaration appears first rather than the one that wins.
-function token(name: string, theme: Theme, scope: string = css): string {
+function token(name: string, theme: Theme, scope: string = css, depth: number = 0): string {
+  if (depth > 4) throw new Error(`--${name} indirects more than four levels; likely a cycle`);
+
   const pair = new RegExp(
     `--${name}:\\s*light-dark\\(\\s*(#[0-9a-fA-F]{6})\\s*,\\s*(#[0-9a-fA-F]{6})\\s*\\)`,
   ).exec(scope);
   if (pair !== null) return theme === 'light' ? pair[1] : pair[2];
+
+  // A Tailwind-facing token may indirect through a raw one: `--color-action: var(--action)`. The
+  // raw name is what a [data-accent] block overrides, and the @theme name is what components
+  // consume, so an assertion should be able to name either and get the same answer. Following the
+  // link here is also what makes a typo'd `var(--acton)` fail loudly: a custom property that
+  // resolves to nothing changes a colour on screen without failing a single test.
+  const indirect = new RegExp(`--${name}:\\s*var\\(--([a-z0-9-]+)\\)`).exec(scope);
+  if (indirect !== null) return token(indirect[1], theme, scope, depth + 1);
 
   const single = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(scope);
   if (single !== null) return single[1];
@@ -78,6 +88,13 @@ describe.each(THEMES)('%s theme', (theme) => {
       ['color-muted', 'color-surface', 4.5],
       ['color-faint', 'color-surface-2', 4.5],
       ['color-on-action', 'color-action', 4.5],
+      ['color-on-action', 'color-action-hover', 4.5],
+      ['color-gain', 'color-surface', 4.5],
+      ['color-loss', 'color-surface', 4.5],
+      ['color-warn', 'color-surface', 4.5],
+      ['color-gain', 'color-bg', 4.5],
+      ['color-loss', 'color-bg', 4.5],
+      ['color-warn', 'color-bg', 4.5],
     ])('%s on %s clears AA', (ink, ground, floor) => {
       expect(contrast(token(ink, theme), token(ground, theme))).toBeGreaterThanOrEqual(floor);
     });
@@ -113,6 +130,34 @@ describe.each(THEMES)('%s theme', (theme) => {
         expect(apart(hue(slice), reserved)).toBeGreaterThan(25);
       }
     });
+  });
+});
+
+// Every assertion above measures a contrast RATIO, and a ratio is symmetric. So if token() returned
+// the wrong half of every pair, or a single pair were typed light-dark(<dark>, <light>) by mistake,
+// every floor would still be met and the suite would stay green while the app rendered inverted.
+// These are the only assertions that say WHICH half is which.
+describe('theme direction', () => {
+  it.each(['color-backdrop', 'color-bg', 'color-surface', 'color-surface-2'])(
+    '--%s is lighter in the light theme',
+    (name) => {
+      expect(luminance(token(name, 'light'))).toBeGreaterThan(luminance(token(name, 'dark')));
+    },
+  );
+
+  it.each(['color-text', 'color-muted', 'color-faint'])(
+    '--%s is darker in the light theme',
+    (name) => {
+      expect(luminance(token(name, 'light'))).toBeLessThan(luminance(token(name, 'dark')));
+    },
+  );
+
+  // The action is the maximum-contrast object on the page, so it inverts with the ground rather
+  // than following it: near-black on a light page, near-white on a dark one.
+  it('the action inverts against the ground', () => {
+    expect(luminance(token('color-action', 'light'))).toBeLessThan(
+      luminance(token('color-action', 'dark')),
+    );
   });
 });
 
