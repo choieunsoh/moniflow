@@ -92,7 +92,7 @@
 
      The two alphas are NOT the same number, and the difference is measured rather than aesthetic: a
      deep tint on a light ground lifts less than a pale tint on a dark one, so a matched 10/12 split
-     gave 1.20:1 in light against 1.32:1 in dark. 14/12 evens them at roughly 1.30-1.43:1 across all
+     gave 1.20:1 in light against 1.32:1 in dark. 14/12 evens them at 1.29-1.43:1 across all
      nine palettes and both grounds.
 
      THAT RATIO IS A FLOOR FOR "MEASURABLE", NOT FOR "ENOUGH ON ITS OWN". A selected state must also
@@ -157,12 +157,20 @@
    Each block declares exactly THREE tokens. `--color-selected` and `--color-focus-ring` derive from
    `--action` in `:root`, so a new palette is three lines and cannot forget them.
 
-   Every hex is a fixed-lightness OKLCH tint of one hue, which is the whole reason these can exist
-   at all in an app whose hue budget belongs to category identity:
+   Every hex was GENERATED as an OKLCH tint of one hue at a fixed lightness per theme, which is the
+   whole reason these can exist at all in an app whose hue budget belongs to category identity:
        dark   fill oklch(86% 0.075 H)   hover oklch(78% 0.085 H)   ink = --color-bg
        light  fill oklch(30% 0.09  H)   hover oklch(22% 0.09  H)   ink = light --color-bg
    The category band sits at L 62-66, so an accent 3 degrees off a slice is still unmistakable — the
    separation is lightness, not hue. Do not "fix" a palette by saturating it toward that band.
+
+   Those are the TARGETS, not a description of the shipped hexes. Converting back measures the dark
+   halves within 0.1 of L 86 and 0.0002 of C 0.075, but the LIGHT halves of the cooler palettes came
+   out gamut-clipped: at L 30 in sRGB there is no room for C 0.09 in cyan or blue, so teal's light
+   fill lands at L 31.6 C 0.054 and azure's hue drifts 17 degrees between its two halves. That is
+   sRGB running out of colour, not a mistake, and it changes nothing the tests check. But do not read
+   the four lines above as an invariant, and do not "correct" a palette to match them — regenerate
+   from the hue and let the clipping fall where it does.
 
    No palette moves --color-gain, --color-loss or --color-warn. pordee shifts its status colours per
    accent; ours carry more meaning than pordee's do, and globals.test.ts fails a block that tries.
