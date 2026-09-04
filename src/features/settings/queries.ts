@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '@db/client';
 import { settings } from './schema';
 import type { SettingRow } from './catalog';
+import { DEFAULT_ACCENT, DEFAULT_THEME, isAccent, isTheme, type Accent, type Theme } from './theme';
 
 // The whole settings KV table, for a backup — dumped as-is (cutoff, icon set, font scale, card fee,
 // keypad layout, fx-rate cache) so a new setting is captured without touching this function.
@@ -199,5 +200,40 @@ export async function setKeypadLayout(db: Db, value: KeypadLayout): Promise<void
   await db.batch([
     db.delete(settings).where(eq(settings.key, KEYPAD_LAYOUT_KEY)),
     db.insert(settings).values({ key: KEYPAD_LAYOUT_KEY, value }),
+  ]);
+}
+
+// Appearance — two KV rows driving the two theme axes. Same shape as the font-scale block above:
+// short enum keys, no new table, no migration. The DB is the source of truth; use-theme.ts keeps a
+// localStorage copy for the pre-paint script, and is the only writer of it.
+//
+// Both ride in the backup with no catalog change, because catalog.ts carries the settings table as
+// a generic SettingRow[] blob rather than a named list of keys.
+const THEME_KEY = 'theme';
+const ACCENT_KEY = 'accent';
+
+/** Falls back to 'system' for a fresh DB, one that predates this setting, or a corrupted value. */
+export async function getTheme(db: Db): Promise<Theme> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, THEME_KEY)).all();
+  return row !== undefined && isTheme(row.value) ? row.value : DEFAULT_THEME;
+}
+
+export async function setTheme(db: Db, value: Theme): Promise<void> {
+  await db.batch([
+    db.delete(settings).where(eq(settings.key, THEME_KEY)),
+    db.insert(settings).values({ key: THEME_KEY, value }),
+  ]);
+}
+
+/** Falls back to 'ink' — the palette the bare :root declares — on the same three cases. */
+export async function getAccent(db: Db): Promise<Accent> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, ACCENT_KEY)).all();
+  return row !== undefined && isAccent(row.value) ? row.value : DEFAULT_ACCENT;
+}
+
+export async function setAccent(db: Db, value: Accent): Promise<void> {
+  await db.batch([
+    db.delete(settings).where(eq(settings.key, ACCENT_KEY)),
+    db.insert(settings).values({ key: ACCENT_KEY, value }),
   ]);
 }
