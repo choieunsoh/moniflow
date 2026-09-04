@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { makeNodeProxyDb } from '@db/client';
-import { ensureSettingsTable } from './schema';
+import { ensureSettingsTable, settings } from './schema';
 import {
   getCutoff,
   setCutoff,
@@ -21,6 +21,10 @@ import {
   getKeypadLayout,
   setKeypadLayout,
   isKeypadLayout,
+  getTheme,
+  setTheme,
+  getAccent,
+  setAccent,
 } from './queries';
 
 describe('getCutoff / setCutoff', () => {
@@ -232,5 +236,42 @@ describe('FONT_SCALE_PCT', () => {
       lg: '112.5%',
       xl: '125%',
     });
+  });
+});
+
+describe('theme and accent settings', () => {
+  it('falls back to the defaults on a db that predates the setting', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    expect(await getTheme(db)).toBe('system');
+    expect(await getAccent(db)).toBe('ink');
+  });
+
+  it('round-trips a stored choice on each axis independently', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await setTheme(db, 'light');
+    await setAccent(db, 'teal');
+    expect(await getTheme(db)).toBe('light');
+    expect(await getAccent(db)).toBe('teal');
+
+    await setTheme(db, 'dark');
+    expect(await getTheme(db)).toBe('dark');
+    expect(await getAccent(db)).toBe('teal');
+  });
+
+  it('replaces rather than accumulating rows, so a re-pick cannot leave two values', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await setAccent(db, 'rose');
+    await setAccent(db, 'azure');
+    expect(await getAccent(db)).toBe('azure');
+  });
+
+  it('reads a corrupted stored value as the default rather than propagating it into CSS', async () => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await db.insert(settings).values({ key: 'accent', value: 'chartreuse' }).run();
+    expect(await getAccent(db)).toBe('ink');
   });
 });

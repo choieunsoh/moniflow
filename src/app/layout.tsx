@@ -24,9 +24,16 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Moniflow' },
 };
 
-// themeColor lives on viewport, not metadata (Next 16). Matches the app's --color-bg so the
-// standalone chrome (status bar / task switcher) blends into the phone frame.
-export const viewport: Viewport = { themeColor: '#101114' };
+// themeColor lives on viewport, not metadata (Next 16). One entry per theme, each matching that
+// theme's --color-bg, so the standalone chrome (status bar / task switcher) blends into the phone
+// frame instead of sitting in the opposite theme. The dark value also corrects a stale one: it read
+// #101114 while --color-bg has been #0c0f16 since the ledger-ink palette landed.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f7f8fc' },
+    { media: '(prefers-color-scheme: dark)', color: '#0c0f16' },
+  ],
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -39,20 +46,38 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           AppShell is a client component: the header search-suggestion pool + icon set are
           DB-derived and now read via the browser OPFS db, which only exists client-side. */}
       <body className="min-h-dvh">
-        {/* No-FOUC: apply the saved text scale before the app paints. Reads the localStorage cache
-            (written by useFontScale) and sets the root font-size, so the rem-based UI never flashes
-            from default → preferred size on load. Missing/invalid → browser default (md). This is a
-            pre-hydration inline script (standard next-themes pattern), so it CANNOT import a module —
-            the percent map and key are inlined here and mirror FONT_SCALE_PCT / FONT_SCALE_STORAGE_KEY
-            in features/settings/queries.ts (keep the two in sync if the presets ever change).
-            dangerouslySetInnerHTML is safe here: the string is a hardcoded compile-time constant with
-            no interpolation — no user/DB value reaches it. */}
+        {/* No-FOUC: apply the saved appearance before the app paints. Reads the localStorage cache
+            (written by useFontScale and useTheme) and sets the root font-size and the two theme
+            attributes, so the app never flashes default → preferred. Most visible on the installed
+            PWA, where the splash hands straight over to a painted page.
+
+            A missing or invalid value stamps NOTHING, which is the correct default in all three
+            cases: no font-size override, `color-scheme: light dark` left to follow the OS, and the
+            bare :root accent palette.
+
+            This is a pre-hydration inline script, so it CANNOT import a module — the percent map,
+            the accent list and both storage keys are inlined here and mirror FONT_SCALE_PCT /
+            FONT_SCALE_STORAGE_KEY in features/settings/queries.ts and ACCENTS / THEME_STORAGE_KEY /
+            ACCENT_STORAGE_KEY in features/settings/theme.ts. theme.test.ts pins the keys on that
+            side; keep the lists in sync if the presets ever change.
+
+            The accent is validated against a literal list rather than trusted, because it is
+            interpolated into an attribute that CSS then selects on — a junk key would otherwise
+            stamp junk onto <html>. dangerouslySetInnerHTML is safe here: the string is a hardcoded
+            compile-time constant with no interpolation, so no user or DB value reaches it. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var m={sm:'87.5%',md:'100%',lg:'112.5%',xl:'125%'};" +
+              'try{var d=document.documentElement;' +
+              "var m={sm:'87.5%',md:'100%',lg:'112.5%',xl:'125%'};" +
               "var s=m[localStorage.getItem('moniflow_font_scale')];" +
-              'if(s)document.documentElement.style.fontSize=s;}catch(e){}',
+              'if(s)d.style.fontSize=s;' +
+              "var t=localStorage.getItem('moniflow_theme');" +
+              "if(t==='light'||t==='dark')d.dataset.theme=t;" +
+              "var a=localStorage.getItem('moniflow_accent');" +
+              "if(a&&a!=='ink'&&['indigo','violet','plum','rose','clay','olive','teal','azure'].indexOf(a)>-1)" +
+              'd.dataset.accent=a;' +
+              '}catch(e){}',
           }}
         />
         <AppShell>{children}</AppShell>

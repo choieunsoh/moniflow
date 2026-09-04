@@ -11,6 +11,8 @@ import {
   setFontScaleAction,
   setKeypadLayoutAction,
 } from '@features/settings/actions';
+import { ThemePicker } from '@features/settings/ui/ThemePicker';
+import { AccentPicker } from '@features/settings/ui/AccentPicker';
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
 import { DriveBackup } from '@features/drive/ui/DriveBackup';
@@ -125,6 +127,20 @@ export default function SettingsPage() {
             Save
           </button>
         </form>
+      </section>
+
+      {/* Not a form, and deliberately so: both controls apply on click, so neither uses this page's
+          withSaveToast submit pattern — the confirmation is the screen changing colour. The two axes
+          are independent: light/dark decides which half of every light-dark() pair resolves, the
+          accent decides which set of pairs is in play. */}
+      <section className="panel flex flex-col gap-4 p-5">
+        <h2 className="text-sm font-semibold">Appearance</h2>
+        <ThemePicker />
+        <AccentPicker />
+        <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
+          Stored with your ledger, so a restored backup brings your appearance with it.
+          &ldquo;System&rdquo; follows your phone&apos;s own light/dark setting as it changes.
+        </p>
       </section>
 
       <section className="panel flex flex-col gap-4 p-5">

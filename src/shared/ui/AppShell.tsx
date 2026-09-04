@@ -2,6 +2,7 @@
 
 import { type ReactNode, Suspense, useEffect } from 'react';
 import { useFontScale } from '@features/settings/use-font-scale';
+import { useTheme } from '@features/settings/use-theme';
 import { requestPersistence } from '../backup-safety';
 import { useSearchSuggestions } from '@features/entries/use-search-suggestions';
 import { useRecurringSweep } from '@features/recurring/use-recurring-sweep';
@@ -22,6 +23,9 @@ import { useDbHealth } from '../use-db-health';
 // icon set — first paint is never blank, the search pool just fills in a tick later.
 export function AppShell({ children }: { children: ReactNode }) {
   useFontScale();
+  // Appearance, same shape and for the same reason: the preference lives in OPFS, which only exists
+  // client-side, so the shell is where it gets applied.
+  useTheme();
   // Fire-and-forget on first mount: ask the browser to keep this origin's OPFS out of the evictable
   // bucket. Never blocks first paint — a denied request is a weaker guarantee, not an error.
   useEffect(() => {

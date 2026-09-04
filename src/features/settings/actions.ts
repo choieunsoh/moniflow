@@ -8,9 +8,12 @@ import {
   isFontScale,
   setKeypadLayout,
   isKeypadLayout,
+  setTheme,
+  setAccent,
 } from './queries';
 import { setCardFeePct, isValidCardFeePct, getFxRates, setFxRates } from './queries';
 import type { FxRates } from './queries';
+import { isTheme, isAccent, type Theme, type Accent } from './theme';
 import { listCurrencies } from '@features/currencies/queries';
 import { frankfurterUrl, parseEcbResponse } from '@features/entries/fx';
 import { wipeAllData } from './data';
@@ -105,6 +108,27 @@ export async function refreshFxRatesAction(): Promise<void> {
     // Keep the existing cache — offline-tolerant.
   }
   await setFxRates(db, next);
+  bumpDataVersion();
+}
+
+// Backing the two appearance pickers. These take a typed value rather than FormData, unlike the
+// other settings actions: a picker applies on click and has no form to submit. The pickers stamp
+// <html> themselves for the current frame; this persists the choice and bumps the data version,
+// which re-runs useTheme to reconcile the localStorage paint cache for the NEXT load.
+//
+// Like setFontScaleAction, these deliberately do not write localStorage or touch <html>: the single
+// writer of both is the reconciler hook.
+export async function setThemeAction(value: Theme): Promise<void> {
+  if (!isTheme(value)) throw new Error(`Unknown theme: ${String(value)}`);
+  const db = await getBrowserDb();
+  await setTheme(db, value);
+  bumpDataVersion();
+}
+
+export async function setAccentAction(value: Accent): Promise<void> {
+  if (!isAccent(value)) throw new Error(`Unknown accent: ${String(value)}`);
+  const db = await getBrowserDb();
+  await setAccent(db, value);
   bumpDataVersion();
 }
 
