@@ -24,6 +24,37 @@ describe('ThemePicker', () => {
     );
   });
 
+  // The same regression AccentPicker guards against, and it needs its own test rather than trusting
+  // that the two components stay identical. Saving bumps the data version, useSettings drops `ready`
+  // while it refetches, and the Settings page renders a placeholder — so every pick REMOUNTS this
+  // component. Reading a localStorage cache lost that race; reading the attribute cannot.
+  //
+  // Note the default is the interesting case here, and it is the one AccentPicker's test cannot
+  // cover: "system" is an ABSENT attribute, so a remount has to read absence as a value rather than
+  // as missing data.
+  it('survives the remount that every pick causes, including for the absent default', async () => {
+    const first = render(<ThemePicker />);
+    await userEvent.click(screen.getByRole('button', { name: /light/i }));
+    expect(document.documentElement.dataset.theme).toBe('light');
+    first.unmount();
+
+    const second = render(<ThemePicker />);
+    expect(await screen.findByRole('button', { name: /light/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /system/i }));
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    second.unmount();
+
+    render(<ThemePicker />);
+    expect(await screen.findByRole('button', { name: /system/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
   it('stamps <html> on click without waiting for the write to come back', async () => {
     render(<ThemePicker />);
     await userEvent.click(screen.getByRole('button', { name: /light/i }));
