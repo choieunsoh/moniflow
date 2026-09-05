@@ -132,6 +132,29 @@ function barItemStyle(bar: TrendBar, anchorKey: string, p: TrendPalette) {
   };
 }
 
+// Shared chrome for a reference line's label. A markLine label is drawn INSIDE the plot, so
+// whatever bar happens to be under it is its background — and `barItemStyle` above paints every
+// non-anchor bar in `p.muted`, the exact ink the average label is written in. The average sits
+// inside the data's range by construction and labels at insideStartTop, i.e. over the leftmost
+// bar, which is never the anchor: muted text on a muted bar, every time the first bar clears the
+// mean. The budget label has the same exposure whenever it clamps to the bar peak.
+//
+// Recolouring is the wrong fix — muted IS the right weight for a reference, and the accent is
+// reserved for "now". So the label brings its own ground instead: the same surface the tooltip
+// uses, which globals.test.ts already holds to a contrast ratio against this text in both themes.
+// A canvas has no z-index to hide behind; an opaque chip is what a canvas has instead.
+function labelGround(p: TrendPalette) {
+  return {
+    fontFamily: p.font,
+    fontSize: 11,
+    backgroundColor: p.surface2,
+    // Vertical inset is deliberately tighter: an 11px label near the plot's top edge, and the
+    // dashed line it names sits directly under it.
+    padding: [2, 5],
+    borderRadius: 3,
+  } as const;
+}
+
 // Returns a plain ECharts option: one bar per cycle, oldest → newest. The y axis is hidden — the
 // tooltip and the list below carry the figures, and an axis of baht labels would crowd a 412px
 // column for no gain.
@@ -163,8 +186,7 @@ export function buildTrendOption(bars: TrendBar[], p: TrendPalette, budget: numb
         formatter: `Average ${formatBahtWhole(average)}`,
         position: 'insideStartTop',
         color: p.muted,
-        fontFamily: p.font,
-        fontSize: 11,
+        ...labelGround(p),
       },
     });
   }
@@ -177,8 +199,7 @@ export function buildTrendOption(bars: TrendBar[], p: TrendPalette, budget: numb
         formatter: `Budget ${formatBahtWhole(budget)}${overTop ? ' ↑' : ''}`,
         position: 'insideEndTop',
         color: p.warn,
-        fontFamily: p.font,
-        fontSize: 11,
+        ...labelGround(p),
       },
     });
   }

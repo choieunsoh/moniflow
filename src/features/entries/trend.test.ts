@@ -150,6 +150,29 @@ describe('buildTrendOption reference lines', () => {
     expect(buildTrendOption(thin, PALETTE).series[0].markLine).toBeUndefined();
   });
 
+  // The collision this guards against, stated as a fact about the option rather than a hope: the
+  // average label's ink IS the non-anchor bar ink. Not a coincidence to be fixed by recolouring —
+  // muted is the right weight for a reference label, and the anchor accent is reserved for "now".
+  it('draws non-anchor bars in the very ink the average label is written in', () => {
+    const option = buildTrendOption(bars, PALETTE);
+    expect(option.series[0].data[0].itemStyle.color).toBe(PALETTE.muted);
+    expect(named(option, 'Average')?.label.color).toBe(PALETTE.muted);
+  });
+
+  // ...which is why each label needs a ground of its own. The average sits INSIDE the data range
+  // by construction and its label is drawn insideStartTop — over the leftmost bar, which is never
+  // the anchor. So it was muted text on a muted bar. The budget label has the same exposure: when
+  // it clamps, it pins to the tallest bar and its label lands on top of one.
+  it('gives each reference label an opaque ground, so a bar behind it cannot swallow it', () => {
+    const option = buildTrendOption(bars, PALETTE, 250);
+    for (const line of [named(option, 'Average'), named(option, 'Budget')]) {
+      expect(line?.label.backgroundColor).toBe(PALETTE.surface2);
+      // Ground with no inset is a ground that still touches the glyphs.
+      expect(line?.label.padding).toBeDefined();
+      expect(line?.label.borderRadius).toBeDefined();
+    }
+  });
+
   it('draws the budget in warn ink at its value when it sits within the bars', () => {
     const b = named(buildTrendOption(bars, PALETTE, 250), 'Budget');
     expect(b?.yAxis).toBe(250);
