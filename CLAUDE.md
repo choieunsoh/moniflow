@@ -19,7 +19,7 @@ drops inflows (`parseMonefyCsv`, whose `keepInflows` flag exists for moniflow's 
 `hasAnyExpense` and `getFirstExpenseDate` still filter `amount < 0`.
 Scaffolded from the `portfolio-dashboard` stack.
 
-- **Stack — data layer:** Node 24 (nvm) · TypeScript 5.9 strict (ESM; `module: esnext` +
+- **Stack — data layer:** Node 24 (nvm; pinned by `.nvmrc` + `engines`) · TypeScript 5.9 strict (ESM; `module: esnext` +
   `moduleResolution: bundler`, extensionless relative imports) · `@sqlite.org/sqlite-wasm` (the
   shipping engine, in a worker over OPFS) · better-sqlite3 (**tests only**) · drizzle-orm
   (storage/ORM) · Vitest.
@@ -186,7 +186,7 @@ not inline. Do this by default.
 
 - **TDD.** Failing-test-first → implement → verify green → commit. Charts = pure, tested
   option-builders + thin React wrappers.
-- **Verify in a browser.** The suite runs under jsdom against the Node shim: ~114 `*.test.ts` prove
+- **Verify in a browser.** The suite runs under jsdom against the Node shim: ~115 `*.test.ts` prove
   the queries, hooks and pure logic, ~29 `*.test.tsx` (Testing Library) prove component render and
   interaction. None of them prove the WASM worker, OPFS, the service worker, or real layout. A UI or
   data-layer change isn't done until it's been driven in a real browser at 412px.
