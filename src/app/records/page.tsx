@@ -8,7 +8,7 @@ import { formatDateRange, formatForeign } from '@features/entries/trips';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { iconForAccount, hueForAccount } from '@features/accounts/queries';
 import { formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
-import { formatBaht, formatSignedBaht } from '@shared/money';
+import { formatLedgerSpend } from '@shared/money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { CollapseAllButton } from '@features/entries/ui/CollapseAllButton';
 import { SwipeRow } from '@features/entries/ui/SwipeRow';
@@ -213,9 +213,9 @@ export default function RecordsPage() {
                   {formatForeign(c.total, c.currency)}
                 </span>
               ))}
-              <span className="tnum text-sm font-semibold">
-                {total > 0 ? formatSignedBaht(-total) : formatBaht(-total)}
-              </span>
+              {/* Same formatter as the rows it sums — a net refund reads +฿888 here and +฿888 down
+                  there, rather than the header negating first and printing the opposite sign. */}
+              <span className="tnum text-sm font-semibold">{formatLedgerSpend(total)}</span>
             </span>
           </div>
           {sections.map((section) => (
@@ -278,11 +278,7 @@ export default function RecordsPage() {
                       {formatForeign(c.total, c.currency)}
                     </span>
                   ))}
-                  <span>
-                    {section.total > 0
-                      ? formatSignedBaht(-section.total)
-                      : formatBaht(-section.total)}
-                  </span>
+                  <span>{formatLedgerSpend(section.total)}</span>
                 </span>
               </summary>
               <ul className="panel flex flex-col divide-y overflow-hidden">
