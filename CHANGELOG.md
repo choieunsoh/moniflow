@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.2] - 2026-09-05
+
+### Fixed
+
+- merge the /records refund-sign fix with its render test and the doc truing round
+- stop /records printing a refund's own total with the opposite sign
+
+### Other
+
+- render /records and pin the refund sign the source scan cannot see
+- fail the suite when a doc contradicts the ledger convention
+- stop the README saying amounts are integer satang
+- true PRODUCT.md up to refunds, the real More sheet, and the OS theme default
+- pin Node 24 in .nvmrc and package.json engines
+- cover useEditRule, the one hook the repo left untested
+- true CLAUDE.md up to withDb, the OPFS tab lock, and the real dependency rule
+- correct the CLAUDE.md rule the refund-sign fix inverted
+- retire the ghost accent hex and pin what replaced it
+- true DESIGN.md up to the two theme axes
+- true CLAUDE.md up to the current codebase
+
 ## [1.15.1] - 2026-09-05
 
 ### Fixed
