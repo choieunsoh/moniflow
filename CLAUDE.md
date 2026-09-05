@@ -162,7 +162,7 @@ not inline. Do this by default.
 
 - **TDD.** Failing-test-first → implement → verify green → commit. Charts = pure, tested
   option-builders + thin React wrappers.
-- **Verify in a browser.** The suite runs under jsdom against the Node shim: ~116 `*.test.ts` prove
+- **Verify in a browser.** The suite runs under jsdom against the Node shim: ~114 `*.test.ts` prove
   the queries, hooks and pure logic, ~29 `*.test.tsx` (Testing Library) prove component render and
   interaction. None of them prove the WASM worker, OPFS, the service worker, or real layout. A UI or
   data-layer change isn't done until it's been driven in a real browser at 412px.
@@ -179,15 +179,19 @@ not inline. Do this by default.
 - **Signed money has two more formatters, and they are not interchangeable:** `formatSignedBaht`
   always prints an explicit `+`/`−` (U+2212), for figures where direction is the point;
   `formatLedgerSpend` prints a _row_ — plain for an ordinary (negative) spend, signed only for the
-  exceptional refund. Never hand `formatLedgerSpend` a summed/net total: a net-positive sum renders
-  `+฿888` while the refund row beneath it renders the same money as a cost, and the two read as
-  opposites.
+  exceptional refund. A section total is a plain sum of stored amounts — the SAME frame as the rows
+  it sums — so it takes the SAME formatter: hand `formatLedgerSpend` the total, never
+  `formatSignedBaht(-total)`. Negating first is the opposite reading, and printed `−฿405` on a
+  /records header directly above the `+฿405` refund row it summed. `money.test.ts` scans `src/**`
+  for `formatSignedBaht(-` so the two frames cannot diverge again.
 - **Theme is two independent axes, both driven by `color-scheme`:** `[data-theme]` (light/dark/OS)
   and `[data-accent]` (9 palettes, which redeclare only `--action`/`--on-action`/`--action-hover`).
   An accent is legal because it separates by LIGHTNESS (OKLCH L 86 dark / L 30 light) from the
   category band at L 62–66 — hue stays category identity. Every colour is declared ONCE as
   `light-dark(<light>, <dark>)`; no colour may have its only definition inside a media query or an
-  attribute selector. `globals.test.ts` parses the stylesheet and checks the ratios in both themes.
+  attribute selector. `globals.test.ts` parses the stylesheet, checks the ratios in both themes, and
+  greps `src/**` for `var(--<removed token>)` — deleting a custom property breaks nothing at build
+  time.
   ECharts draws to a canvas and BAKES token values at render, so a chart option-builder needs the
   resolved theme as an explicit dependency (`useResolvedTheme`) or it keeps the old palette.
 - Typed reads use the drizzle query builder (column selections infer the row type — no `as`).
