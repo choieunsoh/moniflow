@@ -85,19 +85,39 @@ export function AccentPicker() {
                   never consulted, and every swatch paints the CURRENT accent instead of its own.
                   Reading the raw token resolves here, where the override actually lives.
 
+                  But `--action` RAW is unusable as a swatch. It is a button fill that must clear
+                  4.5:1 against ink, which pins it to OKLCH L 30 (light) or L 86 (dark), and sRGB
+                  allows almost no chroma at either end: all nine landed at C 0.07-0.09, so the dots
+                  differed by ΔEok 0.04 — nine near-black blobs in light mode, nine chalk pastels in
+                  dark. The picker was showing the CONSTRAINT, not the palette.
+
+                  So the dot re-lights the same hue at mid lightness, where the chroma actually fits:
+                  L 0.62 doubles chroma to ~0.15-0.18 and roughly doubles the separation. Relative
+                  colour syntax reads `h` off `--action` itself, so a new palette stays three lines
+                  in globals.css and no swatch token can drift from the accent it names. `calc(c * 2)`
+                  rather than a fixed chroma because Ink is deliberately near-neutral (C 0.01) and a
+                  flat 0.16 would repaint it as a blue — doubling keeps a grey grey.
+
+                  The tick re-lights the same hue DOWN instead (L 0.18), because `--on-action` is
+                  contrast-matched to the L 30/86 fill, not to this one.
+
                   Not colour alone: the chosen palette carries a tick and a ring, so the selection
                   survives greyscale and colour blindness. */}
               <span
                 aria-hidden="true"
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
                 style={{
-                  background: 'var(--action)',
+                  background: 'oklch(from var(--action) 0.62 calc(c * 2) h)',
                   outline: active ? '2px solid var(--color-text)' : 'none',
                   outlineOffset: '2px',
                 }}
               >
                 {active ? (
-                  <svg viewBox="0 0 16 16" className="h-4 w-4" style={{ fill: 'var(--on-action)' }}>
+                  <svg
+                    viewBox="0 0 16 16"
+                    className="h-4 w-4"
+                    style={{ fill: 'oklch(from var(--action) 0.18 calc(c * 2) h)' }}
+                  >
                     <path d="M6.2 11.8 2.9 8.5l1.1-1.1 2.2 2.2 5.8-5.8 1.1 1.1z" />
                   </svg>
                 ) : null}
