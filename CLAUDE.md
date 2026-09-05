@@ -24,11 +24,12 @@ Scaffolded from the `portfolio-dashboard` stack.
   shipping engine, in a worker over OPFS) · better-sqlite3 (**tests only**) · drizzle-orm
   (storage/ORM) · Vitest.
 - **Stack — web layer:** Next.js 16 App Router, **`output: 'export'`** · React 19 · Tailwind CSS v4 ·
-  ECharts 6 · Phosphor / Lucide (switchable category icon sets). **There is no server.** Every page is
-  `'use client'` and loads its own data after mount through a `use-*.ts` hook against the browser db;
-  writes go through the feature's `actions.ts` — plain async functions, **not** Server Actions — which
-  call `bumpDataVersion()` so every live read-hook refetches. Interactivity (cycle, filters, search,
-  view) rides on **URL search params**, read via `useSearchParams`.
+  ECharts 6 · @dnd-kit (drag reorder) · Phosphor / Lucide (switchable category icon sets).
+  **There is no server.** Every page is `'use client'` and loads its own data after mount through
+  a `use-*.ts` hook against the browser db; writes go through the feature's `actions.ts` — plain
+  async functions, **not** Server Actions — which call `bumpDataVersion()` so every live read-hook
+  refetches. Interactivity (cycle, filters, search, view) rides on **URL search params**, read via
+  `useSearchParams`.
 
 **The browser is the system of record.** Nothing server-side reads or writes the ledger, and no
 `.db` file on disk is live: `data/moniflow.db` is an orphaned pre-migration snapshot. To get data in
@@ -46,6 +47,7 @@ npm run lint            # eslint . (flat config, type-aware)
 npm run format          # prettier --write .
 npm test                # vitest run
 npm test -- <file>      # single test file
+npm run release <bump>  # gates → bump → CHANGELOG → tag → push → gh release → deploy to Vercel
 ```
 
 Before committing, **format the files you changed, then run the check gates separately** so
@@ -69,19 +71,25 @@ All must pass before committing.
   global CLAUDE.md TS bans (no `any`/`as`/`!`/ts-comments, `type` over `interface`) are enforced
   as **errors**; `as const` stays allowed. Prettier owns formatting (single quotes, 100 cols,
   Tailwind class sorting).
-- **The SQLite WASM assets are copied, not bundled** — `scripts/copy-sqlite3.mjs` mirrors the
-  sqlite-wasm dist into `public/sqlite3/` and runs from `predev:web` / `prebuild:web`. The worker
-  fetches them at runtime, so they must exist before either command.
-- **Schema lives in TWO places and they must stay in lockstep.** Each feature's `schema.ts` is its
-  drizzle table + `ensure<Table>Table(db)` (used by the Node shim in tests), but the shipping
-  bootstrap is `BOOTSTRAP_SQL` in `src/db/worker.ts` — the eight-table DDL is duplicated there so `db/`
-  imports no feature (see the dependency rule). **A new column or table means editing both.**
-  `src/db/schema-lockstep.test.ts` is what catches a drift: it bootstraps one db each way and diffs
-  sqlite's own `PRAGMA` output, so a new table is covered automatically — but add it to that test's
-  `TABLES` list, or the two definitions are only compared for the tables already named there.
+- **Two artefacts are generated into `public/` before dev/build, and both are gitignored.**
+  `scripts/copy-sqlite3.mjs` mirrors the sqlite-wasm dist into `public/sqlite3/` (the worker fetches
+  it at runtime); `scripts/stamp-sw.ts` writes a version-stamped `public/sw.js` from
+  `scripts/sw.template.js`. Both run from `predev:web` / `prebuild:web`. The stamp **must** stay
+  pre-build: Vercel collects the static output _during_ `next build`, so a postbuild stamp works
+  locally and silently never ships — that is how an installed PWA ran a bundle several releases old.
+- **Schema lives in THREE places and they must stay in lockstep.** Each feature's `schema.ts` is its
+  drizzle table + `ensure<Table>Table(db)` (used by the Node shim in tests); the shipping bootstrap is
+  `BOOTSTRAP_SQL` in `src/db/worker.ts` — the eight-table DDL is duplicated there so `db/` imports no
+  feature (see the dependency rule); and `src/db/column-migrations.ts` holds the append-only
+  `ALTER TABLE` list. **A new table = `schema.ts` + `worker.ts`. A new column = those two PLUS a
+  `COLUMN_MIGRATIONS` entry** — `CREATE TABLE IF NOT EXISTS` never alters an existing OPFS db, so a
+  missing migration crashes every existing user on their next open.
+  `src/db/schema-lockstep.test.ts` catches drift by bootstrapping one db each way and diffing sqlite's
+  own `PRAGMA` output, so a new **column** is covered the day it lands. A new **table** is not: add it
+  to that test's `TABLES` list _and_ to its `featureDb()`, or it is simply never compared.
 - **`drizzle-kit` is effectively vestigial.** `drizzle.config.ts` has no `dbCredentials` and there is
   no `drizzle/migrations` output — there is no reachable database for it to touch, since the only
-  live one is in a browser. Schema changes go through `schema.ts` + `worker.ts` (above), not a
+  live one is in a browser. Schema changes go through the three places above, not a
   migration.
 
 ## Architecture — feature-based
@@ -92,17 +100,20 @@ components; `db/` and `shared/` hold only cross-cutting infrastructure.
 ```
 src/
 ├── app/                    # Next 16 App Router — thin 'use client' routes that delegate to features
-│   ├── layout.tsx          # the 412px phone-frame shell (.app-frame) + AppHeader + BottomBar
-│   ├── globals.css         # Tailwind v4 @theme tokens + component classes
-│   ├── manifest.ts         # PWA manifest (icons + public/sw.js make it installable)
+│   ├── layout.tsx          # next/font + the pre-paint no-FOUC script + <AppShell>
+│   ├── globals.css         # Tailwind v4 @theme tokens (every colour ONE light-dark() pair) + components
+│   ├── globals.test.ts     # parses globals.css and asserts every contrast ratio, in BOTH themes
+│   ├── manifest.ts         # PWA manifest (icons + the generated public/sw.js make it installable)
 │   ├── page.tsx            # / — cycle spending donut + category breakdown (chart/list)
-│   ├── records/, budgets/, categories/, accounts/, currency/, …  # routes (see src/app for the full list)
+│   ├── analytics/, month/, year/, report/, trips/          # the "over time" surfaces
+│   ├── records/, budgets/, categories/, accounts/, currency/, recurring/, settings/, about/
 │   └── entries/{new,edit}/ # edit is ?id=-parameterised — a static export can't prerender [id]
 ├── db/                     # the sqlite-proxy seam: features never touch a concrete engine
 │   ├── client.ts           # (@db) the public `Db` type + makeNodeProxyDb re-export
 │   ├── browser.ts          # getBrowserDb() — THE shipping backend (worker + OPFS), memoized
 │   ├── worker.ts           # the WASM/OPFS worker + BOOTSTRAP_SQL (the eight-table DDL)
 │   ├── rpc.ts              # DbWorkerRpc — request/response plumbing to the worker
+│   ├── column-migrations.ts # append-only ALTER TABLE list — what BOOTSTRAP_SQL can't do to an old db
 │   └── node-proxy.ts       # in-memory better-sqlite3 backend — TESTS ONLY, never ships
 ├── features/               # organised by domain; each owns schema + queries + actions + ui
 │   ├── entries/            # the ledger: entries table, cycle math, donut/breakdown, records, keypad
@@ -110,11 +121,15 @@ src/
 │   ├── categories/         # category display meta (emoji + hue) and the icon-set system
 │   ├── accounts/           # accounts + their icon/hue/order
 │   ├── currencies/         # the currency catalog: codes, per-currency off-budget flag, /currency page
-│   └── settings/           # key-value store: billing cutoff day, icon set, font scale, card FX fee
+│   ├── recurring/          # self-posting rules (subs/bills/installments) + the app-open sweep
+│   ├── drive/              # one-way Google Drive backup: GIS token flow, drive.file REST, sync-on-open
+│   └── settings/           # key-value store: cutoff day, icon set, font scale, card FX fee, theme+accent
 └── shared/
-    ├── ui/                 # cross-feature shell: PageContainer, AppHeader, BottomBar, MoreSheet…
+    ├── ui/                 # cross-feature shell: AppShell (the 412px .app-frame), PageContainer,
+    │                       #   AppHeader, BottomBar, MoreSheet, ConfirmDialog, ToastRegion…
     ├── data-version.ts     # bumpDataVersion()/useDataVersion() — the write→refetch signal
-    └── money.ts, date.ts   # (@shared) THB Intl formatter, Bangkok-tz date helpers
+    ├── backup-safety.ts    # OPFS persist request + the "last backed up N days ago" nudge
+    └── money.ts, date.ts   # (@shared) THB Intl formatters, Bangkok-tz date helpers
 ```
 
 Each feature's `schema.ts` is its drizzle table + `ensure<Table>Table(db)` bootstrap; `queries.ts`
@@ -147,8 +162,10 @@ not inline. Do this by default.
 
 - **TDD.** Failing-test-first → implement → verify green → commit. Charts = pure, tested
   option-builders + thin React wrappers.
-- **Verify in a browser.** Tests run against the Node shim, so they prove the queries and never the
-  worker, OPFS, or layout. A UI or data-layer change isn't done until it's been driven at 412px.
+- **Verify in a browser.** The suite runs under jsdom against the Node shim: ~116 `*.test.ts` prove
+  the queries, hooks and pure logic, ~29 `*.test.tsx` (Testing Library) prove component render and
+  interaction. None of them prove the WASM worker, OPFS, the service worker, or real layout. A UI or
+  data-layer change isn't done until it's been driven in a real browser at 412px.
 - **Commit per topic.** Scopes: `db`, `app`, `features`, `shared`. _(Commit format + branching rules
   live in the global CLAUDE.md.)_
 
@@ -159,6 +176,20 @@ not inline. Do this by default.
 - **Pick the money formatter by provenance:** `formatBaht` for any figure the app computed or stored
   (states satang — `฿228.00`), `formatBahtKeyed` ONLY for echoing a figure the user is typing (`฿123`
   stays `฿123`), `formatBahtWhole` for glance figures that would rather be short than exact.
+- **Signed money has two more formatters, and they are not interchangeable:** `formatSignedBaht`
+  always prints an explicit `+`/`−` (U+2212), for figures where direction is the point;
+  `formatLedgerSpend` prints a _row_ — plain for an ordinary (negative) spend, signed only for the
+  exceptional refund. Never hand `formatLedgerSpend` a summed/net total: a net-positive sum renders
+  `+฿888` while the refund row beneath it renders the same money as a cost, and the two read as
+  opposites.
+- **Theme is two independent axes, both driven by `color-scheme`:** `[data-theme]` (light/dark/OS)
+  and `[data-accent]` (9 palettes, which redeclare only `--action`/`--on-action`/`--action-hover`).
+  An accent is legal because it separates by LIGHTNESS (OKLCH L 86 dark / L 30 light) from the
+  category band at L 62–66 — hue stays category identity. Every colour is declared ONCE as
+  `light-dark(<light>, <dark>)`; no colour may have its only definition inside a media query or an
+  attribute selector. `globals.test.ts` parses the stylesheet and checks the ratios in both themes.
+  ECharts draws to a canvas and BAKES token values at render, so a chart option-builder needs the
+  resolved theme as an explicit dependency (`useResolvedTheme`) or it keeps the old palette.
 - Typed reads use the drizzle query builder (column selections infer the row type — no `as`).
 - _General TS/style rules — no `any`/`as`/`!`, `for..of`, `satisfies`+`as const`, `type` over
   `interface`, `Intl` formatting — live in the global CLAUDE.md._
