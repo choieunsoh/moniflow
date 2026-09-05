@@ -9,10 +9,10 @@ import { AddAccount } from '@features/accounts/ui/AddAccount';
 import { DeleteAccountButton } from '@features/accounts/ui/DeleteAccountButton';
 import { AccountMergeButton } from '@features/accounts/ui/AccountMergeButton';
 import { AccountReorderButton } from '@features/accounts/ui/AccountReorderButton';
+import { AccountLegend } from '@features/accounts/ui/AccountLegend';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { RingFootnote } from '@features/entries/ui/RingFootnote';
 import { PageContainer } from '@shared/ui/PageContainer';
-import { formatBaht } from '@shared/money';
 
 const countFmt = new Intl.NumberFormat('en-US');
 
@@ -57,22 +57,9 @@ export default function AccountsPage() {
       {breakdown.length > 0 && (
         <section className="panel flex flex-col gap-3 p-4">
           <DonutChart rows={breakdown} label="Spending by account" />
-          <ul className="flex flex-col gap-2">
-            {/* An account whose refunds exceed its spend has nothing to show — the donut above
-                already drops it (toDonutSlices filters value > 0), so the list must fold at the
-                same point or the two disagree about which accounts had spending. */}
-            {bars
-              .filter((b) => b.pct > 0)
-              .map((b) => (
-                <li key={b.key} className="flex items-center gap-3">
-                  <span className="min-w-0 flex-1 truncate text-sm">{b.key}</span>
-                  <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                    {/* Same filter logic as Breakdown.tsx: pct > 0 ensures total < 0, so -b.total is always positive. */}
-                    {formatBaht(-b.total)}
-                  </span>
-                </li>
-              ))}
-          </ul>
+          {/* Folds at the ring's own MAX_SLICES, with the tail behind a disclosure rather than
+              dropped — the list used to name every account under a ring naming seven and "Other". */}
+          <AccountLegend bars={bars} />
           {/* A dropped account has total >= 0 (a net-zero account moved no money and would be
               named for nothing), so the strict total > 0 of refundedAccountBars is what tells a
               genuine refund apart from a coincidental wash, matching Home's own predicate. */}
@@ -96,8 +83,14 @@ export default function AccountsPage() {
           </p>
         ) : (
           <ul className="flex flex-col divide-y">
+            {/* py-2, not py-3: this list is every account ever used and must stay complete (it is the
+                surface you rename and merge on, so a fold would hide the row you came for), which
+                makes its height O(accounts) and the row padding the only lever left. The row still
+                clears the 44px floor without help from that padding — the icon picker inside it is a
+                50px button and the name editor carries min-h-11 — so trimming here costs no tap
+                target. */}
             {counts.map((c) => (
-              <li key={c.account} className="flex items-center gap-3 px-4 py-3">
+              <li key={c.account} className="flex items-center gap-3 px-4 py-2">
                 <AccountIconPicker
                   account={c.account}
                   current={iconForAccount(iconMap, c.account)}

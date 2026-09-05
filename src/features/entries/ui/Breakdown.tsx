@@ -9,6 +9,7 @@ import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
 import type { IconSet } from '@features/settings/queries';
 import { toBudgetTotal } from '@features/budgets/budget-status';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
+import { TailDisclosure } from '@shared/ui/TailDisclosure';
 
 // A ranked bar list — outflow-heavy categories/accounts read at a glance. Magnitudes only (spending
 // is negative); the bar width is relative to the biggest row in the set. Pass `emojis` to lead each
@@ -186,21 +187,11 @@ export function Breakdown({
       ) : (
         <>
           <ul className="flex flex-col gap-3">{lead.map(row)}</ul>
-          {/* Native <details>: a disclosure is exactly what this is, and the element brings its own
-              keyboard operability, AT semantics and open/close state for free. The tail is the long
-              quiet end of the ranking — 12 near-identical 2px stubs if shown by default, which is
-              what the page used to end on. */}
-          {tail.length > 0 ? (
-            <details className="mt-3">
-              <summary
-                className="tap flex cursor-pointer items-center text-sm underline"
-                style={{ color: 'var(--color-text)' }}
-              >
-                {tail.length} more {tail.length === 1 ? 'category' : 'categories'}
-              </summary>
-              <ul className="mt-3 flex flex-col gap-3">{tail.map(row)}</ul>
-            </details>
-          ) : null}
+          {/* The tail is the long quiet end of the ranking — 12 near-identical 2px stubs if shown by
+              default, which is what the page used to end on. */}
+          <TailDisclosure count={tail.length} singular="category" plural="categories">
+            <ul className="mt-3 flex flex-col gap-3">{tail.map(row)}</ul>
+          </TailDisclosure>
         </>
       )}
     </section>
