@@ -4,7 +4,9 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { RowChevron } from '@shared/ui/Chevron';
 import { PageContainer } from '@shared/ui/PageContainer';
+import { TailDisclosure } from '@shared/ui/TailDisclosure';
 import { ViewToggle } from '@shared/ui/ViewToggle';
+import { MAX_SLICES } from '@features/entries/donut';
 import { useAnalytics } from '@features/entries/use-analytics';
 import { TrendChart } from '@features/entries/ui/TrendChart';
 import { SpendHeatmap } from '@features/entries/ui/SpendHeatmap';
@@ -94,6 +96,54 @@ export default function AnalyticsPage() {
       ? 'Come back next cycle to see whether this is typical'
       : `${bars[0].label} – ${last.label} ${last.key.split('-')[0]}`;
 
+  // The window's ranked breakdown still holds EVERY category (or account) — there is still no
+  // "Other" rollup here, because that cap exists to keep the home donut RING readable and there is
+  // no ring on this page. What changed is only how much of it the page opens on: the top MAX_SLICES
+  // lead, the long quiet tail folds behind one tap. Folding is not capping — every row stays in the
+  // document, tappable and findable by in-page search — so the list still decomposes the header
+  // total completely, which is the invariant the filtered view depends on.
+  const leadRows = categories.slice(0, MAX_SLICES);
+  const tailRows = categories.slice(MAX_SLICES);
+  const rankedRow = (c: (typeof categories)[number]) => (
+    <li key={c.name} className="flex items-center text-sm">
+      <Link
+        prefetch={false}
+        href={
+          isAccountView
+            ? `/records?cycle=${activeKey}&account=${encodeURIComponent(c.name)}`
+            : `${base}&category=${encodeURIComponent(c.name)}`
+        }
+        aria-label={isAccountView ? `${c.name} records` : `${c.name} trend`}
+        className="flex min-w-0 flex-1 items-center gap-3"
+      >
+        {isAccountView ? (
+          <AccountIcon
+            icon={iconForAccount(accountIconMap, c.name)}
+            name={c.name}
+            hue={hueForAccount(accountHueMap, c.name)}
+          />
+        ) : (
+          <CategoryIcon
+            emoji={emojiFor(emojiMap, c.name)}
+            name={c.name}
+            hue={hueFor(hueMap, c.name)}
+            iconSet={iconSet}
+          />
+        )}
+        <span className="flex min-w-0 flex-1 items-baseline gap-1">
+          <span className="truncate">{c.name}</span>
+          <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
+            ({c.count})
+          </span>
+        </span>
+        <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
+          {formatBahtWhole(c.value)}
+        </span>
+        <RowChevron />
+      </Link>
+    </li>
+  );
+
   return (
     <PageContainer size="full">
       {/* sr-only heading root — Analytics' visible top heading is the <h2> panel title ("All
@@ -166,52 +216,19 @@ export default function AnalyticsPage() {
                 { label: 'By account', active: isAccountView, href: `${base}&by=account` },
               ]}
             />
-            {/* The window's full breakdown — every category (or account), biggest first, no "Other"
-                rollup (that cap only exists to keep the home donut RING readable; there is no ring
-                here). Each marker takes its own hue. A category row taps through to filter the
-                trend; an account row taps through to that account's Records instead, since there is
-                no per-account trend view to filter into. */}
-            <ul className="flex flex-col gap-2.5">
-              {categories.map((c) => (
-                <li key={c.name} className="flex items-center text-sm">
-                  <Link
-                    prefetch={false}
-                    href={
-                      isAccountView
-                        ? `/records?cycle=${activeKey}&account=${encodeURIComponent(c.name)}`
-                        : `${base}&category=${encodeURIComponent(c.name)}`
-                    }
-                    aria-label={isAccountView ? `${c.name} records` : `${c.name} trend`}
-                    className="flex min-w-0 flex-1 items-center gap-3"
-                  >
-                    {isAccountView ? (
-                      <AccountIcon
-                        icon={iconForAccount(accountIconMap, c.name)}
-                        name={c.name}
-                        hue={hueForAccount(accountHueMap, c.name)}
-                      />
-                    ) : (
-                      <CategoryIcon
-                        emoji={emojiFor(emojiMap, c.name)}
-                        name={c.name}
-                        hue={hueFor(hueMap, c.name)}
-                        iconSet={iconSet}
-                      />
-                    )}
-                    <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                      <span className="truncate">{c.name}</span>
-                      <span className="tnum shrink-0" style={{ color: 'var(--color-muted)' }}>
-                        ({c.count})
-                      </span>
-                    </span>
-                    <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-                      {formatBahtWhole(c.value)}
-                    </span>
-                    <RowChevron />
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            {/* The window's full breakdown — every category (or account), biggest first, still with
+                no "Other" rollup. Each marker takes its own hue. A category row taps through to
+                filter the trend; an account row taps through to that account's Records instead,
+                since there is no per-account trend view to filter into. The tail folds (see
+                leadRows/tailRows above) but is never dropped. */}
+            <ul className="flex flex-col gap-2.5">{leadRows.map(rankedRow)}</ul>
+            <TailDisclosure
+              count={tailRows.length}
+              singular={isAccountView ? 'account' : 'category'}
+              plural={isAccountView ? 'accounts' : 'categories'}
+            >
+              <ul className="mt-3 flex flex-col gap-2.5">{tailRows.map(rankedRow)}</ul>
+            </TailDisclosure>
           </>
         )}
       </section>
