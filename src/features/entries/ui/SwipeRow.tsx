@@ -225,7 +225,7 @@ export function SwipeRow({
                       ? `Clear ${entry.category} filter`
                       : `Filter by ${entry.category}`
                   }
-                  className="chip shrink-0 transition-opacity active:opacity-70"
+                  className="chip min-w-0 truncate transition-opacity active:opacity-70"
                   style={
                     categoryActive
                       ? { background: 'var(--color-selected)', color: 'var(--color-text)' }
@@ -251,7 +251,13 @@ export function SwipeRow({
                 </span>
               )
             ) : null}
-            {/* Account as a lighter outline badge so it reads as secondary to the category. */}
+            {/* Account as a lighter outline badge so it reads as secondary to the category — and
+                secondary is also the order they give up width in. Every child of this group used to
+                be shrink-0 with nowrap: min-w-0 on the group let the GROUP shrink, but nothing
+                inside it would, so a long category beside a long account (อาหาร + Grab Food) simply
+                overflowed and painted straight over the amount. The amount is the one thing in the
+                row that must never move, so it keeps shrink-0 and the two badges absorb the squeeze:
+                the account first (shrink-[3]), the category only once that has given what it can. */}
             {hideAccount ? null : (
               <Link
                 href={toggleHref('account', entry.account, accountActive)}
@@ -259,7 +265,7 @@ export function SwipeRow({
                 aria-label={
                   accountActive ? `Clear ${entry.account} filter` : `Filter by ${entry.account}`
                 }
-                className="shrink-0 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap transition-opacity active:opacity-70"
+                className="min-w-0 shrink-[3] truncate rounded-full border px-2 py-0.5 text-xs transition-opacity active:opacity-70"
                 style={{
                   borderColor: accountActive ? 'var(--color-text)' : 'var(--color-border)',
                   color: accountActive ? 'var(--color-text)' : 'var(--color-faint)',
