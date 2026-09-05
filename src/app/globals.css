@@ -355,6 +355,21 @@ p {
   font-weight: 500;
 }
 
+/* Checkboxes, app-wide. Four of them ship (Refund and Off-budget on the keypad, the per-category
+   flag, the currency list) and every one was drawing the browser's OWN control: system blue on a
+   ledger whose every other colour is a light-dark() token and whose accent the user picks from nine
+   palettes. accent-color hands the native widget one of ours, which keeps the platform's checkmark,
+   focus ring and switch affordances instead of rebuilding them out of divs.
+   Sized in rem, not px, so the font-scale setting carries them: the default control renders ~13px,
+   under a fingertip on a 412px frame — and a checkbox is the one control with no text of its own to
+   grow. The 44px floor is the LABEL's job (.tap), since the label is what the thumb actually hits. */
+input[type='checkbox'] {
+  accent-color: var(--color-action);
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+
 /* 44px tap target for link-style controls (nav items, table-row actions) that aren't .btn.
    (min-height needs a non-inline display to take effect — hence inline-flex.) */
 .tap {
