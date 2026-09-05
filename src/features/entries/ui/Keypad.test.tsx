@@ -148,3 +148,59 @@ describe('Keypad refund toggle', () => {
     expect(direction.value).toBe('expense');
   });
 });
+
+// The chip row holds four controls in ~339px on a 390px phone, and the account chip is the only one
+// that may shrink — so it absorbed every pixel of the shortfall and rendered "KTC X VISA" as "KT…".
+// The width that bought back is the currency chip's, which was spending it on saying one thing twice.
+describe('Keypad currency chip', () => {
+  it('shows the bare symbol for the home currency, where the code repeats it', () => {
+    renderKeypad();
+    const chip = screen.getByRole('button', { name: 'Currency: THB' });
+    expect(chip.textContent).toContain('฿');
+    // "฿ THB" is the symbol and its own name side by side. The chip is inactive in this state and
+    // it is the state nearly every entry is keyed in, so this is the row's cheapest 36px.
+    expect(chip.textContent).not.toContain('THB');
+  });
+
+  it('keeps the code for a foreign currency, where the symbol alone is not the point', () => {
+    render(
+      <Keypad
+        categories={[]}
+        accounts={[]}
+        currencies={[
+          { code: 'THB', symbol: '฿' },
+          { code: 'JPY', symbol: '¥' },
+        ]}
+        currencyCodes={new Set(['THB', 'JPY'])}
+        notes={[]}
+        rates={{ JPY: 0.24 }}
+        ratesAsOf={{}}
+        defaultAccount="Cash"
+        today="2026-08-14"
+        iconSet="emoji"
+        keypadLayout="calc"
+        action={async () => {}}
+        offBudgetCategories={new Set()}
+        travelCurrencies={new Set()}
+        entry={{
+          id: 7,
+          date: '2026-08-14',
+          time: null,
+          accountId: 1,
+          categoryId: 1,
+          amount: -240,
+          currency: 'JPY',
+          originalAmount: -1000,
+          note: null,
+          // NOT null: `source` is notNull with a 'manual' default, so $inferSelect types it string.
+          source: 'manual',
+          offBudget: null,
+          category: 'Food',
+          account: 'Cash',
+        }}
+      />,
+    );
+    const chip = screen.getByRole('button', { name: 'Currency: JPY' });
+    expect(chip.textContent).toContain('JPY');
+  });
+});

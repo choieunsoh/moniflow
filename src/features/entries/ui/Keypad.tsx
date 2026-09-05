@@ -270,9 +270,14 @@ export function Keypad({
             className="tap ml-auto shrink-0 justify-center gap-1.5 rounded-full px-3 text-sm font-medium active:opacity-70"
             style={chipStyle(!isThb)}
           >
-            <span className="tnum">
-              {symbol} {currency}
-            </span>
+            {/* Home currency: the symbol alone. "฿ THB" is the app's own money glyph next to its
+                name — one fact, twice, in the state nearly every entry is keyed in, on the row that
+                could least afford it. Four controls genuinely do not fit a 390px phone at natural
+                width, and the account chip (the only shrinkable one) was paying the whole 35px
+                shortfall by itself, rendering "KTC X VISA" as "KT…". A foreign currency keeps its
+                code: that is exactly when the chip is carrying information, and it lights up to say
+                so. */}
+            <span className="tnum">{isThb ? symbol : `${symbol} ${currency}`}</span>
             <span aria-hidden>▾</span>
           </button>
 
@@ -431,7 +436,7 @@ export function Keypad({
             as the categories page, checked by default when the entry's own category (or its
             currency) is off-budget, or when an edited entry carries its own explicit override. */}
         <div className="flex items-center gap-6 text-sm" style={{ color: 'var(--color-text)' }}>
-          <label className="flex items-center gap-2" title="Money received back, not spent">
+          <label className="tap flex items-center gap-2" title="Money received back, not spent">
             <input
               type="checkbox"
               checked={isIncome}
@@ -442,7 +447,7 @@ export function Keypad({
           </label>
 
           <label
-            className="flex items-center gap-2"
+            className="tap flex items-center gap-2"
             title="Off-budget: this entry won't count toward budgets or pace"
           >
             <input
