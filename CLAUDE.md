@@ -35,7 +35,11 @@ Scaffolded from the `portfolio-dashboard` stack.
 `.db` file on disk is live: `data/moniflow.db` is an orphaned pre-migration snapshot. To get data in
 or out, use Settings → Backup (Monefy CSV export/restore). OPFS is scoped **per origin**, so dev
 (`127.0.0.1:4010`) and any deployed host hold separate ledgers — and `localhost:4010` is a _different_
-origin from `127.0.0.1:4010`, with its own database.
+origin from `127.0.0.1:4010`, with its own database. OPFS also hands its access handle to **one
+holder at a time**, so a second tab on the same origin cannot open the db at all. `useDbHealth`
+(mounted once in `AppShell`, because the db is app-wide) turns that into the `DbUnavailable` panel,
+which REPLACES the page rather than sitting above it — a blank-looking second tab during browser
+verification is this, not a bug.
 
 ## Commands
 
@@ -85,8 +89,11 @@ All must pass before committing.
   `COLUMN_MIGRATIONS` entry** — `CREATE TABLE IF NOT EXISTS` never alters an existing OPFS db, so a
   missing migration crashes every existing user on their next open.
   `src/db/schema-lockstep.test.ts` catches drift by bootstrapping one db each way and diffing sqlite's
-  own `PRAGMA` output, so a new **column** is covered the day it lands. A new **table** is not: add it
-  to that test's `TABLES` list _and_ to its `featureDb()`, or it is simply never compared.
+  own `PRAGMA` output, so a new **column** is covered the day it lands. A new **table** is covered
+  too, but through a hand-written list: the test reads `worker.ts` as TEXT and asserts its
+  `CREATE TABLE` names equal its `TABLES` array exactly. A table added to `worker.ts` without a
+  `TABLES` entry fails that assertion; one added to `TABLES` without a matching `featureDb()` line
+  fails on an empty column fingerprint. Both are red — neither is silent.
 - **`drizzle-kit` is effectively vestigial.** `drizzle.config.ts` has no `dbCredentials` and there is
   no `drizzle/migrations` output — there is no reachable database for it to touch, since the only
   live one is in a browser. Schema changes go through the three places above, not a
@@ -106,8 +113,9 @@ src/
 │   ├── manifest.ts         # PWA manifest (icons + the generated public/sw.js make it installable)
 │   ├── page.tsx            # / — cycle spending donut + category breakdown (chart/list)
 │   ├── analytics/, month/, year/, report/, trips/          # the "over time" surfaces
-│   ├── records/, budgets/, categories/, accounts/, currency/, recurring/, settings/, about/
-│   └── entries/{new,edit}/ # edit is ?id=-parameterised — a static export can't prerender [id]
+│   ├── records/, budgets/, categories/, accounts/, currency/, settings/, about/
+│   ├── entries/{new,edit}/ # edit is ?id=-parameterised — a static export can't prerender [id]
+│   └── recurring/{,new,edit}/ # same ?id= shape, same reason
 ├── db/                     # the sqlite-proxy seam: features never touch a concrete engine
 │   ├── client.ts           # (@db) the public `Db` type + makeNodeProxyDb re-export
 │   ├── browser.ts          # getBrowserDb() — THE shipping backend (worker + OPFS), memoized
@@ -128,7 +136,11 @@ src/
     ├── ui/                 # cross-feature shell: AppShell (the 412px .app-frame), PageContainer,
     │                       #   AppHeader, BottomBar, MoreSheet, ConfirmDialog, ToastRegion…
     ├── data-version.ts     # bumpDataVersion()/useDataVersion() — the write→refetch signal
+    ├── db-effect.ts        # withDb() — THE wrapper every read hook's effect goes through
+    ├── use-db-health.ts    # "can the db open at all?" — one check, app-wide, behind DbUnavailable
+    ├── use-resolved-theme.ts # the light/dark a chart must be rebuilt against
     ├── backup-safety.ts    # OPFS persist request + the "last backed up N days ago" nudge
+    ├── save-file.ts, reorder.ts
     └── money.ts, date.ts   # (@shared) THB Intl formatters, Bangkok-tz date helpers
 ```
 
@@ -144,15 +156,27 @@ an engine. That is what lets tests run the SAME async driver and row shaping the
 Row shaping must stay identical across the two: sqlite-proxy maps rows **positionally**, so each row
 comes back as an ARRAY of column values, not an object.
 
-**Dependency rule:** the arrow points **features → db/shared**, never back. `db/` must not import any
-feature (that's why it dropped drizzle's schema generic — we use the query builder, not the
-`db.query.*` relational API — and why `worker.ts` duplicates the DDL). Features may use `@shared/*`;
-shared code stays feature-agnostic. Cross-feature reuse graduates a module from `features/x/` to
-`shared/`.
+**Dependency rule:** the arrow points **features → db/shared**, never back — but the two halves are
+not equally strict. `db/` must not import any feature: that one is absolute (it's why `db/` dropped
+drizzle's schema generic — we use the query builder, not the `db.query.*` relational API — and why
+`worker.ts` duplicates the DDL), and it holds today with zero exceptions. `shared/` is the softer
+half: it stays feature-agnostic apart from exactly TWO deliberate leaks — `shared/ui/AppShell.tsx`
+is the composition root, so it imports seven feature modules by design (theme, font scale, search
+suggestions, the recurring sweep, Drive sync, the category picker), and `shared/use-backup-status.ts`
+asks `hasAnyExpense` whether there is anything worth nagging about yet. Don't grow that list without
+a reason as good. Features may use `@shared/*` freely; cross-feature reuse graduates a module from
+`features/x/` to `shared/`.
 
 **Reads are async and post-mount.** There is no server render, so a page's first paint is a loading
 state; every read hook returns `{ ready, data }` and the route renders a `…` placeholder until
 `ready`. Don't reintroduce a synchronous read — there isn't one to reintroduce.
+Every read hook runs its effect through **`withDb`** (`@shared/db-effect`), never a bare
+`void (async () => { const db = await getBrowserDb(); … })()` — that shape turns ONE failed OPFS boot
+into an unhandled rejection per mounted hook (seventeen of them, all describing what `useDbHealth`
+already says once). `withDb` splits the two cases deliberately: **db won't open → resolve quietly**
+(the shell owns that message), **effect throws → propagate** (a broken query stays as loud as it is
+today). A blanket `.catch` would swallow both and strand the page on its skeleton forever. Writes in
+`actions.ts` call `getBrowserDb()` directly — a failed write must be loud.
 
 **Custom hooks are first-class.** Stateful/business logic in client components belongs in named
 custom hooks at `src/features/<domain>/use-*.ts` (kebab-case), each with a `renderHook` test —
@@ -193,7 +217,9 @@ not inline. Do this by default.
   greps `src/**` for `var(--<removed token>)` — deleting a custom property breaks nothing at build
   time.
   ECharts draws to a canvas and BAKES token values at render, so a chart option-builder needs the
-  resolved theme as an explicit dependency (`useResolvedTheme`) or it keeps the old palette.
+  resolved theme as an explicit dependency (`useResolvedTheme`, in `@shared`) or it keeps the old
+  palette. **`DESIGN.md` is the long form of this** — the full token table, both axes, the accent
+  derivation, and the derived chart palette. It and `globals.css` must move together.
 - Typed reads use the drizzle query builder (column selections infer the row type — no `as`).
 - _General TS/style rules — no `any`/`as`/`!`, `for..of`, `satisfies`+`as const`, `type` over
   `interface`, `Intl` formatting — live in the global CLAUDE.md._
