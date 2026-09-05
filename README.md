@@ -19,12 +19,13 @@ Live demo: **[mymoniflow.vercel.app](https://mymoniflow.vercel.app)**
 
 ## Features
 
-- **Keypad entry** — a Monefy-style calculator keypad for fast expense entry, with per-entry currency conversion.
+- **Keypad entry** — a Monefy-style calculator keypad for fast expense entry, with per-entry currency conversion and a refund toggle for money coming back.
 - **Home** — the current billing cycle's spending as a by-category donut plus a ranked breakdown (chart / list toggle), with the cycle's safe-to-spend per day and upcoming bills folded in. Irregular one-offs can be marked off-budget so they don't distort the budget meter or pace.
 - **Records** — the cycle's expenses grouped by day, swipe to edit or delete, with live cross-cycle search.
 - **Budgets** — standing per-category monthly limits, surfaced on the home view.
-- **Trends** — multi-cycle spending trends, with your own average line and a this-cycle-vs-last comparison.
+- **Trends** — multi-cycle spending trends, with your own average line, a this-cycle-vs-last comparison, and a by-category / by-account breakdown.
 - **Categories & Accounts** — first-class, with switchable icon sets (emoji / Phosphor / Lucide) and colors.
+- **Themes** — light and dark (following your OS by default) across nine accent palettes.
 - **Trips** — foreign-currency spending grouped into trips (non-THB entries surface here).
 - **Recurring records** — self-posting rules for subscriptions, bills, and installments, swept on app open.
 - **Backup & restore** — Monefy CSV export/restore, plus optional automatic Google Drive backup.
@@ -74,7 +75,7 @@ You'll need a Google Cloud OAuth **Web** client with the Drive API enabled, the 
 
 ## Data & privacy
 
-Moniflow holds **outflows only** — it's a spending tracker, so income is dropped at import and the keypad only enters expenses. Amounts are stored in the smallest unit (satang), with THB as the home currency; user-facing dates render in the Bangkok timezone.
+Moniflow is a **spending tracker with refunds**. The ledger is overwhelmingly outflows; the one inflow it models is a refund — money handed back against spending that already happened (a friend repaying their share of a bill your card covered), filed under the category it refunds so every total nets. Standalone income like a salary is deliberately unmodellable, and inflows are still dropped when importing a Monefy CSV. Amounts are stored as a signed THB `REAL` in **baht**, not as integer minor units: the FX conversion path rounds to satang, but the column itself holds whatever precision it is given. THB is the home currency; user-facing dates render in the Bangkok timezone.
 
 Your data lives in your browser's OPFS storage and is never transmitted anywhere by the app itself. Backups go **only** where you send them: a file you download, or your own Google Drive.
 

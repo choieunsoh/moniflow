@@ -13,8 +13,8 @@ const row = (key: string, total: number, count = 1) => ({ key, total, count });
 // The palette's job is to be non-semantic, and the failure mode is a NEAR miss, not an exact one:
 // the first version shipped #7c5cff against an accent of #7132f5 — different hex, same purple to the
 // eye — so the biggest category every cycle wore the colour reserved for actions and selection.
-// Comparing hex strings would not have caught that, so this measures hue distance in OKLCH.
-function hueOf(hex: string): number {
+// Comparing hex strings would not have caught that, so this measures OKLCH.
+function oklch(hex: string): { L: number; H: number } {
   const n = parseInt(hex.slice(1), 16);
   const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
     const c = v / 255;
@@ -25,19 +25,48 @@ function hueOf(hex: string): number {
   const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
   const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
   const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
-  return ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
+  return {
+    L: (0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s) * 100,
+    H: ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360,
+  };
 }
-describe('SLICE_COLORS', () => {
-  // Kept in step with globals.css @theme by hand — these are the tokens a slice must never imitate.
-  const RESERVED = { accent: '#7132f5', gain: '#19c37d', loss: '#f0616d' };
 
-  it.each(Object.entries(RESERVED))('never impersonates --color-%s', (_name, token) => {
-    const reserved = hueOf(token);
+describe('SLICE_COLORS', () => {
+  // Kept in step with globals.css @theme by hand — the tokens a slice must never imitate. BOTH
+  // halves of each light-dark() pair: the light half is a separately darkened value, not a shade of
+  // the dark one, so its hue drifts (loss is 21.0° light against 18.1° dark).
+  //
+  // --color-accent is deliberately absent, and its absence is the point. It was reserved when there
+  // was one purple accent; the accent axis now ships nine palettes and `teal` sits 0.5° from the
+  // slice #03999d. A hue clearance would be both impossible and beside the point — they separate by
+  // LIGHTNESS instead, which the next test pins. See DESIGN.md.
+  const RESERVED = {
+    'gain (light)': '#0d7a4d',
+    'gain (dark)': '#19c37d',
+    'loss (light)': '#c2323f',
+    'loss (dark)': '#f0616d',
+  };
+
+  it.each(Object.entries(RESERVED))('never impersonates %s', (_name, token) => {
+    const reserved = oklch(token).H;
     for (const slice of SLICE_COLORS) {
-      const d = Math.abs(hueOf(slice) - reserved) % 360;
+      const d = Math.abs(oklch(slice).H - reserved) % 360;
       expect(Math.min(d, 360 - d)).toBeGreaterThan(25);
     }
   });
+
+  // The ONE property keeping nine accents out of a seven-hue ramp: hue is category identity,
+  // lightness is action. An accent is generated at L 86 (dark) or L 30 (light); every slice lives in
+  // a narrow band well inside that gap, so a slice half a degree off an accent is still
+  // unmistakable. Widen this band and the separation is gone with no other test noticing.
+  it.each(SLICE_COLORS)(
+    '%s sits in the category lightness band, clear of both accent poles',
+    (c) => {
+      const { L } = oklch(c);
+      expect(L).toBeGreaterThan(55);
+      expect(L).toBeLessThan(75);
+    },
+  );
 });
 
 describe('toDonutSlices', () => {

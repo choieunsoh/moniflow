@@ -15,12 +15,14 @@ point — so the design must read as a confident, finished default, not a placeh
 
 ## Product Purpose
 
-A local-first, **mobile-first spending tracker**. Signed (always-negative) expense entries live in a
-SQLite database inside the browser (OPFS, via SQLite WASM) — the browser is the system of record,
-not a server. Every page is `'use client'` and loads its own data after mount; writes go through
-each feature's `actions.ts`, plain async functions rather than Server Actions. The app is scoped to
-a monthly **billing cycle** (a configurable cutoff day) and organised as a phone-sized column with a
-bottom tab bar — **Home · Records · ＋ · Trends · More**:
+A local-first, **mobile-first spending tracker**. Signed entries live in a SQLite database inside
+the browser (OPFS, via SQLite WASM) — the browser is the system of record, not a server. The ledger
+is overwhelmingly outflows; a POSITIVE `amount` is a **refund** — money handed back against spending
+that already happened, filed under the category it refunds, so every summed figure nets. Every page
+is `'use client'` and loads its own data after mount; writes go through each feature's `actions.ts`,
+plain async functions rather than Server Actions. The app is scoped to a monthly **billing cycle**
+(a configurable cutoff day) and organised as a phone-sized column with a bottom tab bar —
+**Home · Records · ＋ · Trends · More**:
 
 - **Home** — the cycle's total spend and (where set) its budget meter, over a by-category donut with
   the cycle's transaction count annotating the hole, plus a ranked category breakdown (chart / list
@@ -34,16 +36,21 @@ bottom tab bar — **Home · Records · ＋ · Trends · More**:
 - **Records** — the cycle's expenses grouped by day, each a swipe-to-edit/delete row, with live
   cross-cycle search.
 - **Trends** — the six-cycle spending trend, with a dashed line marking your own average across
-  the window, a this-cycle-vs-last comparison, and a category breakdown below it that narrows to
-  that category's own per-cycle breakdown when filtered.
-- **More** — **Budgets** (standing per-category monthly limits), **Categories** (add/rename/merge/
-  delete, pick each category's icon + colour, and tap a category's count to jump to all its
-  records), and **Trips** (foreign-currency spending grouped into trips).
+  the window, a this-cycle-vs-last comparison, and a breakdown below it — **By category** or **By
+  account** — that narrows to that category's own per-cycle breakdown when filtered. Anomalies stay
+  category-based either way.
+- **More** — a sheet of three captioned groups rather than a flat list: **Review** (Year, Month,
+  Report, Trips), **Plan** (Budgets, Recurring), and **Set up** (Categories, Accounts, Currency,
+  Settings, About). Budgets carries the selected cycle in its href; the rest key off windows of
+  their own.
 - Entries are added on a Monefy-style calculator keypad or bulk-imported from a **Monefy CSV**
   (THB home currency; non-THB rows surface in Trips).
 
-It is a **spending tracker**: the ledger holds expenses only — income (inflows) is dropped on CSV
-import and the keypad enters expenses, so every UI surface shows spending. Success is a UI a user
+It is a **spending tracker with refunds**: near-everything is an outflow, and the one inflow it
+models is a refund against spending already recorded — the keypad has a Refund toggle, and consumers
+negate a stored amount rather than taking `Math.abs`, so an expense adds and a refund subtracts.
+Standalone income (salary) is deliberately unmodellable: it would drive its category net-positive
+and simply drop out of the donut. Bulk Monefy CSV import still drops inflows. Success is a UI a user
 fluent in Linear/Stripe/Notion would trust at a glance and a
 developer would be happy to inherit and rebrand. It ships as the reference implementation for the
 `create-sqlite-next-app` scaffold.
@@ -60,7 +67,8 @@ The voice is a competent tool that disappears into the task.
 - **The hero-metric SaaS dashboard template** — one giant gradient number over three supporting
   stats. The saturated dashboard cliché; explicitly banned.
 - **Navy-and-gold "fintech trust"** — the second-order reflex for anything money-related. Avoid.
-- **SaaS-cream / warm near-white landing** — the 2026 AI default. We're dark by identity.
+- **SaaS-cream / warm near-white landing** — the 2026 AI default. Light shipped as a real theme,
+  but ours is a COOL near-white derived from ink on a bank statement, never a warm cream.
 - **Crypto-dashboard neon overload** — glowing everything, animated tickers, urgency theatre.
   Wrong emotional register; this is calm ownership, not FOMO.
 - **Identical icon-card grids** — repeated same-size cards with icon + heading + text.
@@ -84,5 +92,6 @@ The voice is a competent tool that disappears into the task.
 WCAG 2.1 AA. Body text ≥4.5:1 (the muted token is already lightened to clear AA on dark);
 large/bold text ≥3:1. Full keyboard operability with a visible `:focus-visible` ring on every
 interactive element. Gain/loss never conveyed by color alone — always a sign (`+`/`−`) or icon.
-Every animation has a `prefers-reduced-motion: reduce` alternative (crossfade or instant). Both
-dark (default) and light themes must clear contrast.
+Every animation has a `prefers-reduced-motion: reduce` alternative (crossfade or instant). The app
+follows the OS theme by default, so neither half is a second-class path: BOTH must clear contrast,
+and `globals.test.ts` checks every ratio in both.

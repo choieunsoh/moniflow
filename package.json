@@ -3,6 +3,9 @@
   "version": "1.15.1",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "copy:sqlite3": "node scripts/copy-sqlite3.mjs",
     "predev:web": "npm run copy:sqlite3 && npm run gen:sw",
