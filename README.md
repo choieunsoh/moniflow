@@ -75,7 +75,7 @@ You'll need a Google Cloud OAuth **Web** client with the Drive API enabled, the 
 
 ## Data & privacy
 
-Moniflow is a **spending tracker with refunds**. The ledger is overwhelmingly outflows; the one inflow it models is a refund — money handed back against spending that already happened (a friend repaying their share of a bill your card covered), filed under the category it refunds so every total nets. Standalone income like a salary is deliberately unmodellable, and inflows are still dropped when importing a Monefy CSV. Amounts are stored as a signed THB `REAL` — baht, rounded to satang, not integer minor units — with THB as the home currency; user-facing dates render in the Bangkok timezone.
+Moniflow is a **spending tracker with refunds**. The ledger is overwhelmingly outflows; the one inflow it models is a refund — money handed back against spending that already happened (a friend repaying their share of a bill your card covered), filed under the category it refunds so every total nets. Standalone income like a salary is deliberately unmodellable, and inflows are still dropped when importing a Monefy CSV. Amounts are stored as a signed THB `REAL` in **baht**, not as integer minor units: the FX conversion path rounds to satang, but the column itself holds whatever precision it is given. THB is the home currency; user-facing dates render in the Bangkok timezone.
 
 Your data lives in your browser's OPFS storage and is never transmitted anywhere by the app itself. Backups go **only** where you send them: a file you download, or your own Google Drive.
 

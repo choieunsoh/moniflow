@@ -96,6 +96,43 @@ describe('nothing re-implements the ledger sign', () => {
   });
 });
 
+// The same two facts have now gone stale in prose three times, and prose has no type checker: the
+// ledger is signed (a POSITIVE amount is a refund, not an impossibility), and `amount` is a REAL
+// column holding BAHT — not an integer count of satang. README.md and PRODUCT.md both still said
+// "outflows only" and "the keypad only enters expenses" long after the refund toggle shipped, and
+// README.md additionally said amounts are "stored in the smallest unit (satang)", which is the
+// convention this ledger deliberately does not use. That last one is the expensive kind of wrong:
+// it reads as plausible, and anyone who trusts it scales every figure by 100.
+//
+// ponytail: a phrase blacklist, so it catches these sentences and close restatements of them, not
+// every possible way to be wrong. Upgrade path if it ever misses one: assert the positive instead
+// (that a doc discussing storage names REAL/baht) rather than lengthening the list.
+describe('the docs state the ledger convention the code actually implements', () => {
+  const DOCS = ['README.md', 'PRODUCT.md', 'CLAUDE.md', 'DESIGN.md'];
+
+  // Each entry is the CLAIM, not merely the words: a doc may say "not as integer minor units", and
+  // should still pass.
+  const CONTRADICTIONS = [
+    {
+      claim: 'the ledger is always negative (it is signed — a positive amount is a refund)',
+      pattern: /always[-\s]negative/i,
+    },
+    {
+      claim: 'the ledger holds outflows/expenses only (the keypad has a refund toggle)',
+      pattern: /\b(outflows|expenses)\s+only\b/i,
+    },
+    {
+      claim: 'amounts are stored in minor units (they are baht in a REAL column)',
+      pattern: /stored\s+(?:as\s+|in\s+)?(?:the\s+)?(?:smallest|minor)\s+unit/i,
+    },
+  ];
+
+  it.each(CONTRADICTIONS)('no doc claims $claim', ({ pattern }) => {
+    const offenders = DOCS.filter((doc) => pattern.test(readFileSync(doc, 'utf-8')));
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('formatCurrency', () => {
   it('renders a 0-decimal currency (JPY) with its narrow symbol and no fraction', () => {
     expect(formatCurrency(3000, 'JPY')).toBe('¥3,000');
