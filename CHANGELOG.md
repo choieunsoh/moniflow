@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.1] - 2026-09-05
+
+### Fixed
+
+- merge the layout-and-polish slice
+- stop the keypad's account chip truncating to two letters
+- give every checkbox the app's own accent and a legible size
+- withhold the expense FAB inside the entry flow
+- give the chart's reference labels a ground of their own
+- stop a /records row painting its chips over its own amount
+
 ## [1.16.0] - 2026-09-05
 
 ### Added
