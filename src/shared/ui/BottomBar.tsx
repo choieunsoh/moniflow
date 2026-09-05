@@ -20,6 +20,8 @@ export function BottomBar() {
   // ↔ Records ↔ Analytics). The FAB doesn't read a cycle, so it stays bare; Budgets moved into the
   // More sheet but still reads a cycle — see MoreSheet's `cycle: true` flag.
   const cycle = useSearchParams().get('cycle');
+  // /entries/new and /entries/edit are one modal-shaped flow, and the FAB is the way INTO it.
+  const inEntryFlow = isActivePath(pathname, '/entries');
   const [moreOpen, setMoreOpen] = useState(false);
   // Settings (and its Backup screen) lives in the More sheet, so an overdue backup rides a dot on the
   // More tab — discoverable without opening the sheet, silent while backups are current.
@@ -71,20 +73,28 @@ export function BottomBar() {
         </ul>
 
         {/* Expense FAB — a large circle centered ON the bar's top edge so it clearly overhangs above
-            the bar (half above / half over it), the single primary action. */}
-        <Link
-          href="/entries/new"
-          prefetch={false}
-          aria-label="Add expense"
-          className="absolute top-0 left-1/2 grid size-16 -translate-x-1/2 -translate-y-1/5 place-items-center rounded-full transition-transform duration-200 active:scale-95"
-          style={{
-            background: 'var(--color-action)',
-            color: 'var(--color-on-action)',
-            boxShadow: '0 10px 24px -6px color-mix(in oklab, var(--color-action) 55%, transparent)',
-          }}
-        >
-          <PlusIcon size={28} />
-        </Link>
+            the bar (half above / half over it), the single primary action.
+            Withheld inside the entry flow itself, where the app's largest control had nothing to do:
+            on /entries/new it linked to the page already open, and on /entries/edit it silently
+            abandoned a half-typed edit. Leaving deliberately is CloseButton's job, and it knows
+            where you came from. The spacer column above stays either way, so the four tabs keep
+            their positions and the bar doesn't restructure as the keypad opens. */}
+        {inEntryFlow ? null : (
+          <Link
+            href="/entries/new"
+            prefetch={false}
+            aria-label="Add expense"
+            className="absolute top-0 left-1/2 grid size-16 -translate-x-1/2 -translate-y-1/5 place-items-center rounded-full transition-transform duration-200 active:scale-95"
+            style={{
+              background: 'var(--color-action)',
+              color: 'var(--color-on-action)',
+              boxShadow:
+                '0 10px 24px -6px color-mix(in oklab, var(--color-action) 55%, transparent)',
+            }}
+          >
+            <PlusIcon size={28} />
+          </Link>
+        )}
       </nav>
       <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
     </>
