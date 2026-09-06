@@ -20,6 +20,7 @@ import { TopTransactionsList } from '@features/entries/ui/TopTransactionsList';
 import { RingFootnote } from '@features/entries/ui/RingFootnote';
 import { refundedSummary } from '@features/entries/refunded-summary';
 import { ShareCardButton } from '@features/entries/ui/ShareCardButton';
+import { HeaderAction } from '@shared/ui/HeaderAction';
 
 // Home = the expense overview for the current cycle. Chart view: a spending donut with a colour-keyed
 // legend; List view: the same categories as ranked bars. A ?view= toggle switches them.
@@ -157,17 +158,11 @@ export default function HomePage() {
 
           {forwardCards}
 
-          {/* The view switch and the one action that acts on this cycle as a whole, on one line —
-              the share card is a rendering of the same figures the toggle is switching between, so
-              it belongs beside the toggle rather than in a row of its own. */}
-          <div className="-mt-3 flex items-center gap-3">
-            <ViewToggle
-              className="flex-1"
-              options={[
-                { label: 'Chart', active: !showList, href: `/?cycle=${activeKey}&view=chart` },
-                { label: 'List', active: showList, href: `/?cycle=${activeKey}&view=category` },
-              ]}
-            />
+          {/* Posted up into the header beside the search control — it is an action on the whole
+              cycle, like search is an action on the whole ledger, and both belong in the app bar
+              rather than in the reading column. Rendered here because THIS is where the cycle's
+              figures already are; see HEADER_ACTIONS_ID. */}
+          <HeaderAction>
             <ShareCardButton
               label={cycle.label}
               grossSpend={grossSpend}
@@ -176,7 +171,15 @@ export default function HomePage() {
               totalStatus={totalStatus}
               forward={forward}
             />
-          </div>
+          </HeaderAction>
+
+          <ViewToggle
+            className="-mt-3"
+            options={[
+              { label: 'Chart', active: !showList, href: `/?cycle=${activeKey}&view=chart` },
+              { label: 'List', active: showList, href: `/?cycle=${activeKey}&view=category` },
+            ]}
+          />
 
           <SwipeNav prevHref={swipeHref(-1)} nextHref={canGoNext ? swipeHref(1) : null}>
             {showList ? (

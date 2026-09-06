@@ -133,28 +133,42 @@ function pngBlob(dataUrl: string): Blob {
 
 export function ShareCardButton(props: ShareCardInput) {
   const onClick = () => {
+    let png: Blob;
+    let name: string;
     try {
       const card = buildShareCard(props);
       const canvas = document.createElement('canvas');
       canvas.width = W;
       canvas.height = cardHeight(card);
       render(canvas, card);
-      const name = `moniflow-${props.label.replace(/\s+/g, '-').toLowerCase()}.png`;
-      void saveFile(name, 'image/png', pngBlob(canvas.toDataURL('image/png')));
+      png = pngBlob(canvas.toDataURL('image/png'));
+      name = `moniflow-${props.label.replace(/\s+/g, '-').toLowerCase()}.png`;
     } catch {
       toast.error('Couldn’t make the card — try again');
+      return;
     }
+    // Called synchronously (nothing awaited above) so navigator.share still has the tap's transient
+    // activation, then followed up rather than discarded. `void saveFile(...)` was the first cut and
+    // it failed in BOTH directions: a share-sheet rejection surfaced nothing, and a successful
+    // download surfaced nothing either — Chrome files it away in a toolbar bubble, so from inside the
+    // page the whole feature looked inert. /settings' export already carries this lesson in a comment:
+    // a silent success is indistinguishable from a swallowed failure.
+    saveFile(name, 'image/png', png).then(
+      () => toast('Card saved'),
+      () => toast.error('Couldn’t share the card — try again'),
+    );
   };
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="tap flex items-center gap-1.5 text-sm"
-      style={{ color: 'var(--color-muted)' }}
+      // Same shape as the collapsed search control it sits beside — a 44px grid cell with an 18px
+      // glyph — so the two read as one row of header actions rather than two unrelated controls.
+      aria-label="Share this cycle as an image"
+      className="tap grid size-11 place-items-center rounded-[var(--radius-md)] text-[var(--color-muted)] transition-colors duration-150 hover:text-[var(--color-text)]"
     >
-      <Share2 aria-hidden size={16} />
-      Share
+      <Share2 aria-hidden size={18} />
     </button>
   );
 }
