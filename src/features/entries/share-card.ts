@@ -24,6 +24,10 @@ export type ShareRow = {
 
 export type ShareCard = {
   title: string;
+  // When the card was made, for the footer. A shared image outlives the screen it came from — six
+  // weeks later "Left per day ฿440" is a claim about a cycle nobody can date any more, and the title
+  // gives the cycle, not the moment inside it that these forward figures were true.
+  generatedAt: string;
   headlineLabel: string;
   headline: string;
   kpis: ShareKpi[];
@@ -37,11 +41,48 @@ export type ShareCardInput = {
   slices: DonutSlice[];
   totalStatus: BudgetTotal | null;
   // Current-cycle-only figures; null on a past cycle, exactly as useHome hands them over.
-  forward: { safePerDay: number | null; daysLeft: number } | null;
+  forward: {
+    safePerDay: number | null;
+    daysLeft: number;
+    // Today's allowance frozen at the start of the day, and what has been spent against it — the
+    // pair Home's TodayAllowanceCard renders. Both are needed: the tile states the REMAINDER.
+    todayAllowance: number | null;
+    spentToday: number;
+  } | null;
+  // Passed in rather than read from the clock here, so the stamp is assertable.
+  now: Date;
 };
 
+// Bangkok, like every other user-facing date in the app — the zone its cycles are reckoned in.
+// hourCycle 'h23' rather than hour12:false: the two are not synonyms, and en-GB resolves the latter
+// to h24, which prints midnight as 24:00 on the wrong date's card.
+const stampFmt = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: 'Asia/Bangkok',
+});
+
+// dd/MM/yyyy HH:mm. en-GB separates the date from the time with ", " and the house format wants a
+// bare space, so the comma comes out of the literal PARTS — the same way formatDayHeadingWithYear
+// drops its own, and never by string surgery on an already-formatted date.
+function formatStamp(now: Date): string {
+  return stampFmt
+    .formatToParts(now)
+    .map((part) => (part.type === 'literal' ? part.value.replace(',', '') : part.value))
+    .join('');
+}
+
+// Four tiles is what the card's width takes before the figures start shrinking to fit; the renderer
+// measures and steps the type down rather than overflowing, but a fifth would leave every value at
+// its smallest size on the widest cycle.
+const MAX_KPIS = 4;
+
 export function buildShareCard(input: ShareCardInput): ShareCard {
-  const { label, grossSpend, count, slices, totalStatus, forward } = input;
+  const { label, grossSpend, count, slices, totalStatus, forward, now } = input;
   // The ring's own sum, never `grossSpend`: every drawn slice is a positive magnitude while the
   // headline is the signed net, so on a cycle with refunds the two differ by exactly the refunded
   // amount and shares divided by the headline overshoot 100%.
@@ -50,6 +91,12 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
     forward === null || forward.safePerDay === null
       ? null
       : tomorrowAllowance(forward.safePerDay, forward.daysLeft);
+  // The same subtraction TodayAllowanceCard does, so the card and the screen it came from state one
+  // figure between them rather than two that nearly agree.
+  const leftToday =
+    forward === null || forward.todayAllowance === null
+      ? null
+      : forward.todayAllowance - forward.spentToday;
 
   // EVERY wedge gets a caption — there is no separate cap here on purpose. The ring already folded
   // its tail into Other at MAX_SLICES, so the list is at most eight rows and the shares sum to 100%;
@@ -75,12 +122,19 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
       : totalStatus.remaining < 0
         ? { label: 'Over budget by', value: formatBahtWhole(-totalStatus.remaining) }
         : { label: 'Left of budget', value: formatBahtWhole(totalStatus.remaining) },
-    forward === null || forward.safePerDay === null
+    leftToday === null
       ? null
-      : { label: 'Left per day', value: formatBahtWhole(forward.safePerDay) },
+      : leftToday < 0
+        ? // Flipped rather than signed, for the reason TodayAllowanceCard flips its own title: a
+          // label reading "Left today" over a negative figure argues with itself.
+          { label: 'Over today by', value: formatBahtWhole(-leftToday) }
+        : { label: 'Left today', value: formatBahtWhole(leftToday) },
     // Tomorrow's figure if nothing more is spent today, from the same helper the Home card prints —
     // it drops out on the cycle's last day, when there is no tomorrow left to spread anything over.
     tomorrow === null ? null : { label: 'Tomorrow', value: formatBahtWhole(tomorrow) },
+    // Days, not money, so it survives a cycle with no budget at all — the one forward figure that
+    // does not need a ceiling to divide.
+    forward === null ? null : { label: 'Days left', value: String(forward.daysLeft) },
     { label: 'Transactions', value: String(count) },
     { label: 'Categories', value: String(slices.length) },
   ];
@@ -89,9 +143,10 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
     // The cycle label IS its date range ("18 Aug – 17 Sep 2026"), so there is no second line to put
     // under it. A first draft printed formatIsoRange as a subtitle and rendered the same string twice.
     title: label,
+    generatedAt: formatStamp(now),
     headlineLabel: 'Spent this cycle',
     headline: formatBahtWhole(grossSpend),
-    kpis: candidates.filter((k) => k !== null).slice(0, 3),
+    kpis: candidates.filter((k) => k !== null).slice(0, MAX_KPIS),
     rows,
   };
 }
