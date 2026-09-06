@@ -25,6 +25,17 @@ export function safeToSpendPerDay(
   return remaining / Math.max(1, daysLeft);
 }
 
+// What the SAME remaining budget becomes tomorrow if nothing more is spent today: one fewer day to
+// spread it over. A pure rescale of safeToSpendPerDay (which is remaining/daysLeft), so it stays
+// exact and adds no second source of truth — it lived inline in ForwardCards until the share card
+// needed the same figure, and two copies of a formula is how the two surfaces start disagreeing.
+// null on the cycle's last day: there is no tomorrow left to spread anything over. The daysLeft >= 2
+// guard also keeps this out of the range where safeToSpendPerDay's own Math.max(1, …) would bite.
+export function tomorrowAllowance(safePerDay: number, daysLeft: number): number | null {
+  if (daysLeft < 2) return null;
+  return (safePerDay * daysLeft) / (daysLeft - 1);
+}
+
 // Actual spend per elapsed day — the fallback figure shown when no total budget exists.
 export function averagePerDay(spent: number, daysElapsed: number): number {
   return spent / Math.max(1, daysElapsed);

@@ -65,6 +65,8 @@ describe('buildShareCard', () => {
       forward: { safePerDay: 500, daysLeft: 16 },
     });
     expect(full.kpis).toHaveLength(3);
+    // Budget, rate, tomorrow — the counts fall off the end of a cycle that has all three.
+    expect(full.kpis.map((k) => k.label)).toEqual(['Left of budget', 'Left per day', 'Tomorrow']);
   });
 
   it('leads with the budget remainder when a budget exists', () => {
@@ -83,6 +85,16 @@ describe('buildShareCard', () => {
       totalStatus: { limit: 9000, spent: 12000, pct: 100, remaining: -3000, state: 'over' },
     });
     expect(card.kpis[0]).toEqual({ label: 'Over budget by', value: '฿3,000' });
+  });
+
+  it('carries tomorrow’s allowance, rescaled off the same helper the Home card uses', () => {
+    const card = buildShareCard({ ...base, forward: { safePerDay: 440, daysLeft: 12 } });
+    expect(card.kpis).toContainEqual({ label: 'Tomorrow', value: '฿480' });
+  });
+
+  it('has no Tomorrow tile on the cycle last day', () => {
+    const card = buildShareCard({ ...base, forward: { safePerDay: 440, daysLeft: 1 } });
+    expect(card.kpis.map((k) => k.label)).not.toContain('Tomorrow');
   });
 
   it('drops the per-day KPI when there is no budget to divide', () => {

@@ -1,6 +1,7 @@
 import { formatBahtWhole } from '@shared/money';
 import type { BudgetTotal } from '@features/budgets/budget-status';
 import { drawnTotal, type DonutSlice } from './donut';
+import { tomorrowAllowance } from './dashboard';
 
 // The cycle summary, reduced to the handful of strings a shareable image can hold. Pure and
 // formatted here so the renderer (ui/ShareCardButton) only positions text on a canvas — the same
@@ -45,6 +46,10 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
   // headline is the signed net, so on a cycle with refunds the two differ by exactly the refunded
   // amount and shares divided by the headline overshoot 100%.
   const ringTotal = drawnTotal(slices);
+  const tomorrow =
+    forward === null || forward.safePerDay === null
+      ? null
+      : tomorrowAllowance(forward.safePerDay, forward.daysLeft);
 
   // EVERY wedge gets a caption — there is no separate cap here on purpose. The ring already folded
   // its tail into Other at MAX_SLICES, so the list is at most eight rows and the shares sum to 100%;
@@ -73,6 +78,9 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
     forward === null || forward.safePerDay === null
       ? null
       : { label: 'Left per day', value: formatBahtWhole(forward.safePerDay) },
+    // Tomorrow's figure if nothing more is spent today, from the same helper the Home card prints —
+    // it drops out on the cycle's last day, when there is no tomorrow left to spread anything over.
+    tomorrow === null ? null : { label: 'Tomorrow', value: formatBahtWhole(tomorrow) },
     { label: 'Transactions', value: String(count) },
     { label: 'Categories', value: String(slices.length) },
   ];

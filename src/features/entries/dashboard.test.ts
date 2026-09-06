@@ -5,6 +5,7 @@ import {
   averagePerDay,
   projectCycleTotal,
   cycleDelta,
+  tomorrowAllowance,
 } from './dashboard';
 
 describe('safeToSpendPerDay', () => {
@@ -65,5 +66,21 @@ describe('cycleDelta', () => {
 
   it('returns null when there is no comparable earlier cycle', () => {
     expect(cycleDelta(180, null)).toBeNull();
+  });
+});
+
+describe('tomorrowAllowance', () => {
+  it('spreads the same remaining budget over one fewer day', () => {
+    // ฿440/day over 12 days is ฿5,280 remaining; with 11 days left that is ฿480.
+    expect(tomorrowAllowance(440, 12)).toBeCloseTo(480, 6);
+  });
+
+  it('has no tomorrow on the cycle last day', () => {
+    expect(tomorrowAllowance(440, 1)).toBeNull();
+    expect(tomorrowAllowance(440, 0)).toBeNull();
+  });
+
+  it('stays at zero when there is nothing left to spread', () => {
+    expect(tomorrowAllowance(0, 5)).toBe(0);
   });
 });
