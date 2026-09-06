@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0] - 2026-09-06
+
+### Added
+
+- share a cycle as a rendered card, and unblock Drive reconnects
+- put tomorrow's allowance on the share card
+- share the cycle as a rendered card, not a screenshot
+
+### Fixed
+
+- stop the service worker touching cross-origin requests
+- drop a Drive token the moment Drive rejects it
+- spend the tap's one popup on the prompt that can succeed
+- give the share card a visible outcome, and put it in the app bar
+
 ## [1.16.1] - 2026-09-05
 
 ### Fixed
