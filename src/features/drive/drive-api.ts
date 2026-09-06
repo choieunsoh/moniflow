@@ -9,6 +9,34 @@ const API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
+// Google explains every failure in the response body, and this wrapper used to drop it on the floor
+// and keep the bare status. "Drive request failed: 401" is not a diagnosis — 401 with a token minted
+// seconds earlier means something quite different from 401 with a stale one, and only the body says
+// which. Endpoint included: knowing whether it was the file list, the folder create or the upload
+// that was refused narrows it further.
+async function detail(res: Response): Promise<string> {
+  let body = '';
+  try {
+    body = await res.text();
+  } catch {
+    // a body that cannot be read is not worth failing over — the status still travels
+  }
+  let message = body.slice(0, 300);
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (typeof parsed === 'object' && parsed !== null && 'error' in parsed) {
+      const e = parsed.error;
+      if (typeof e === 'object' && e !== null && 'message' in e && typeof e.message === 'string') {
+        message = e.message;
+      }
+    }
+  } catch {
+    // not JSON — the raw text above is what there is
+  }
+  const path = new URL(res.url === '' ? 'https://x/unknown' : res.url).pathname;
+  return message === '' ? ` (${path})` : ` ${message} (${path})`;
+}
+
 async function driveFetch(token: string, url: string, init: RequestInit): Promise<Response> {
   const res = await fetch(url, {
     ...init,
@@ -22,7 +50,7 @@ async function driveFetch(token: string, url: string, init: RequestInit): Promis
   // makes the next attempt an actual token request. Only 401: a 403 or a 500 says nothing about the
   // token, and discarding it there would buy a needless consent prompt.
   if (res.status === 401) clearToken();
-  if (!res.ok) throw new Error(`Drive request failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Drive request failed: ${res.status}${await detail(res)}`);
   return res;
 }
 

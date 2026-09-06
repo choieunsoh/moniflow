@@ -29,6 +29,13 @@ self.addEventListener('activate', (event) =>
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  // SAME-ORIGIN ONLY. This worker exists to keep the app SHELL openable offline; a cross-origin GET
+  // is somebody's API call and none of its business. Handling one was actively harmful in two ways:
+  // it re-issued an authenticated request through the worker, and it put the RESPONSE in the shared
+  // app cache — Drive's file listing, fetched with the user's OAuth token, written to a cache keyed
+  // by URL alone and kept until the next release. Returning without respondWith leaves the request
+  // entirely to the browser, which is what it always should have been.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(
     fetch(event.request)
       .then((response) => {
