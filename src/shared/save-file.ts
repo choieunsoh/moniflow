@@ -13,8 +13,10 @@
 // i.e. a phone. ponytail: pointer:coarse stands in for "phone"; a touch laptop would get the sheet
 // too (its primary pointer is still fine, so in practice it doesn't). Revisit if desktop share
 // sheets ever grow real cloud targets.
-export async function saveFile(name: string, type: string, text: string): Promise<void> {
-  const file = new File([text], name, { type });
+// `body` is a string for the CSV backups and a Blob for the PNG share card — both are valid File
+// parts, so one function covers them and the share-sheet/download logic stays in one place.
+export async function saveFile(name: string, type: string, body: string | Blob): Promise<void> {
+  const file = new File([body], name, { type });
   const isPhone = window.matchMedia('(pointer: coarse)').matches;
 
   if (isPhone && navigator.canShare?.({ files: [file] })) {
