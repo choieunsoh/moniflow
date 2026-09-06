@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { HomeForward } from '../use-home';
 import { formatBahtWhole, formatCurrencyWhole } from '@shared/money';
+import { tomorrowAllowance } from '../dashboard';
 
 // The current-cycle forward cards, moved out of the former DashboardCards so Home can render them
 // under its headline. All the null/0/number decisions are made upstream in the pure dashboard math
@@ -127,23 +128,18 @@ export function SafeToSpendCard({
       </CardShell>
     );
   }
+  const tomorrow = tomorrowAllowance(safePerDay, daysLeft);
   return (
     <CardShell title="Safe to spend / day">
       <span className="tnum text-4xl font-semibold">{formatBahtWhole(safePerDay)}</span>
       <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
         over {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
-        {/* What the same remaining budget becomes tomorrow if nothing more is spent today: one
-            fewer day to spread it over. safePerDay is remaining/daysLeft, so remaining/(daysLeft-1)
-            is just this rescale — no second source of truth, and exact because the guard keeps
-            daysLeft ≥ 2 (safeToSpendPerDay's Math.max(1, …) never bites in that range). On the
-            cycle's last day there is no tomorrow to show. */}
-        {daysLeft > 1 && (
+        {/* Tomorrow's figure if nothing more is spent today — the same rescale the share card
+            prints, from the one helper both read. Null on the cycle's last day. */}
+        {tomorrow !== null && (
           <>
             {' · '}
-            <span className="tnum">
-              {formatBahtWhole((safePerDay * daysLeft) / (daysLeft - 1))}
-            </span>{' '}
-            tomorrow
+            <span className="tnum">{formatBahtWhole(tomorrow)}</span> tomorrow
           </>
         )}
       </span>

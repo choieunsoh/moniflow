@@ -19,6 +19,8 @@ import { LegendRow } from '@features/entries/ui/LegendRow';
 import { TopTransactionsList } from '@features/entries/ui/TopTransactionsList';
 import { RingFootnote } from '@features/entries/ui/RingFootnote';
 import { refundedSummary } from '@features/entries/refunded-summary';
+import { ShareCardButton } from '@features/entries/ui/ShareCardButton';
+import { HeaderAction } from '@shared/ui/HeaderAction';
 
 // Home = the expense overview for the current cycle. Chart view: a spending donut with a colour-keyed
 // legend; List view: the same categories as ranked bars. A ?view= toggle switches them.
@@ -47,6 +49,7 @@ export default function HomePage() {
   const {
     cutoff,
     activeKey,
+    cycle,
     canGoNext,
     isCurrentCycle,
     summary,
@@ -154,6 +157,21 @@ export default function HomePage() {
           />
 
           {forwardCards}
+
+          {/* Posted up into the header beside the search control — it is an action on the whole
+              cycle, like search is an action on the whole ledger, and both belong in the app bar
+              rather than in the reading column. Rendered here because THIS is where the cycle's
+              figures already are; see HEADER_ACTIONS_ID. */}
+          <HeaderAction>
+            <ShareCardButton
+              label={cycle.label}
+              grossSpend={grossSpend}
+              count={summary.count}
+              slices={slices}
+              totalStatus={totalStatus}
+              forward={forward}
+            />
+          </HeaderAction>
 
           <ViewToggle
             className="-mt-3"

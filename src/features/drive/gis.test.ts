@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { requestToken, clearToken, revokeAccess } from './gis';
+import { writeConnection, clearConnection } from './connection';
+
+// A healthy, connected device — the state in which a tap should reuse the grant silently.
+function connected(needsReconnect = false): void {
+  writeConnection({ connected: true, folderId: 'f1', lastSyncedAt: 1, needsReconnect });
+}
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
@@ -23,6 +29,7 @@ describe('requestToken', () => {
   beforeEach(() => {
     clearToken(); // cached token is module state — a leak across tests would hide a real GIS call
     localStorage.clear();
+    clearConnection();
     for (const el of Array.from(document.querySelectorAll('script'))) el.remove();
     const s = document.createElement('script');
     s.src = GIS_SRC;
@@ -42,30 +49,66 @@ describe('requestToken', () => {
   });
 
   it('a tap reuses an existing grant SILENTLY — no consent dialog when the session is alive', async () => {
+    connected();
     const prompts = stubGoogle({ '': { access_token: 'tok-reused' } });
     await expect(requestToken({ interactive: true })).resolves.toBe('tok-reused');
     expect(prompts).toEqual(['']); // the nag fix: interactive did NOT force consent
   });
 
-  it('a tap falls back to consent only when the silent path fails', async () => {
+  // THE POPUP BUDGET. Every requestAccessToken call — silent included, it runs display=popup — spends
+  // the tap's transient activation, and a browser grants exactly one popup per activation. So a tap
+  // that tried silent AND THEN consent had its consent window blocked by Chrome and the connect flow
+  // died with "Drive request failed". These assertions are the fix's whole point, and nothing in
+  // jsdom can enforce them on its own: it has no popup blocker, so the two-call version passed here
+  // for as long as it existed.
+  it('a tap spends only ONE popup — a healthy connection never retries with consent', async () => {
+    connected();
     const prompts = stubGoogle({
       '': { error: 'no_session' },
       consent: { access_token: 'tok-granted' },
     });
-    await expect(requestToken({ interactive: true })).resolves.toBe('tok-granted');
-    expect(prompts).toEqual(['', 'consent']); // silent first, then the consent flow
+    await expect(requestToken({ interactive: true })).rejects.toThrow('no_session');
+    expect(prompts).toEqual(['']);
   });
 
-  it('a tap rejects when both the silent and the consent attempts fail', async () => {
-    const prompts = stubGoogle({
-      '': { error: 'no_session' },
-      consent: { error: 'access_denied' },
-    });
+  it('ignores a cached token when there is no connection to use it for', async () => {
+    // The 401 trap from the other side. A token cached under a connection that has since broken is
+    // still "valid" by the clock, so Connect handed it to Drive, got 401, and never opened a window.
+    connected();
+    stubGoogle({ '': { access_token: 'tok-stale', expires_in: '3600' } });
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-stale'); // cached now
+    clearConnection(); // …and the connection it belonged to is gone
+
+    const prompts = stubGoogle({ consent: { access_token: 'tok-fresh' } });
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-fresh');
+    expect(prompts).toEqual(['consent']);
+  });
+
+  it('a tap with nothing connected yet goes STRAIGHT to consent', async () => {
+    // The Connect button: there is no grant to reuse, so spending the one popup on a silent attempt
+    // that cannot succeed is spending it on nothing.
+    const prompts = stubGoogle({ consent: { access_token: 'tok-granted' } });
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-granted');
+    expect(prompts).toEqual(['consent']);
+  });
+
+  it('a tap goes straight to consent once the connection is flagged needsReconnect', async () => {
+    // The lapsed grant that auto-sync already discovered. Without this the first tap after a lapse
+    // burns its popup on the silent call that just failed in the background.
+    connected(true);
+    const prompts = stubGoogle({ consent: { access_token: 'tok-granted' } });
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-granted');
+    expect(prompts).toEqual(['consent']);
+  });
+
+  it('a tap rejects when its single attempt fails', async () => {
+    const prompts = stubGoogle({ consent: { error: 'access_denied' } });
     await expect(requestToken({ interactive: true })).rejects.toThrow('access_denied');
-    expect(prompts).toEqual(['', 'consent']);
+    expect(prompts).toEqual(['consent']);
   });
 
   it('reuses a still-valid cached token WITHOUT calling GIS again (no second popup)', async () => {
+    connected(); // the silent prompt below is what a healthy connection gets
     const prompts = stubGoogle({ '': { access_token: 'tok-cached', expires_in: '3600' } });
     await expect(requestToken({ interactive: true })).resolves.toBe('tok-cached');
     await expect(requestToken({ interactive: true })).resolves.toBe('tok-cached');
@@ -73,6 +116,7 @@ describe('requestToken', () => {
   });
 
   it('does not reuse an expired token — re-fetches from GIS', async () => {
+    connected(); // the silent prompt below is what a healthy connection gets
     // expires_in below the 5-min safety margin lands the expiry in the past → the cache is stale.
     const prompts = stubGoogle({ '': { access_token: 'tok-short', expires_in: '100' } });
     await expect(requestToken({ interactive: true })).resolves.toBe('tok-short');
@@ -81,6 +125,7 @@ describe('requestToken', () => {
   });
 
   it('a token cached in localStorage survives a reload (fresh module) — no popup', async () => {
+    connected(); // the silent prompt below is what a healthy connection gets
     stubGoogle({ '': { access_token: 'tok-persisted', expires_in: '3600' } });
     await requestToken({ interactive: true }); // writes the cache to localStorage
     vi.resetModules();
@@ -91,6 +136,7 @@ describe('requestToken', () => {
   });
 
   it('clearToken drops the cache so the next call re-fetches', async () => {
+    connected(); // the silent prompt below is what a healthy connection gets
     const prompts = stubGoogle({ '': { access_token: 'tok-x', expires_in: '3600' } });
     await requestToken({ interactive: true });
     clearToken();
