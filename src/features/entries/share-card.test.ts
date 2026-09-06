@@ -16,6 +16,7 @@ const base = {
   slices: [slice('Food', 6000), slice('Transport', 4000), slice('Coffee', 2000)],
   totalStatus: null,
   forward: null,
+  dayPace: null,
   now: new Date('2026-09-06T11:42:00Z'),
 };
 
@@ -174,5 +175,33 @@ describe('buildShareCard', () => {
     const card = buildShareCard({ ...base, grossSpend: 0, count: 0, slices: [] });
     expect(card.headline).toBe('฿0');
     expect(card.rows).toEqual([]);
+  });
+});
+
+describe('buildShareCard day-pace KPI', () => {
+  const pace = { noSpend: 6, under: 15, over: 5, days: 26 };
+  it('states the days that stayed inside their allowance, out of the days finished', () => {
+    const card = buildShareCard({ ...base, dayPace: pace });
+    expect(card.kpis).toContainEqual({ label: 'Days on target', value: '21 of 26' });
+  });
+
+  it('outranks Days left when all four slots are contested', () => {
+    const card = buildShareCard({
+      ...base,
+      totalStatus: { limit: 50000, spent: 26298, remaining: 23702, pct: 53, state: 'under' },
+      forward: { safePerDay: 1900, daysLeft: 12, todayAllowance: 1942, spentToday: 400 },
+      dayPace: pace,
+    });
+    expect(card.kpis.map((k) => k.label)).toEqual([
+      'Left of budget',
+      'Left today',
+      'Tomorrow',
+      'Days on target',
+    ]);
+  });
+
+  it('drops out entirely without a budget to grade against', () => {
+    const card = buildShareCard({ ...base, dayPace: null });
+    expect(card.kpis.some((k) => k.label === 'Days on target')).toBe(false);
   });
 });

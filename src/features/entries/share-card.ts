@@ -2,6 +2,7 @@ import { formatBahtWhole } from '@shared/money';
 import type { BudgetTotal } from '@features/budgets/budget-status';
 import { drawnTotal, type DonutSlice } from './donut';
 import { tomorrowAllowance } from './dashboard';
+import type { DayPace } from './day-pace';
 
 // The cycle summary, reduced to the handful of strings a shareable image can hold. Pure and
 // formatted here so the renderer (ui/ShareCardButton) only positions text on a canvas — the same
@@ -49,6 +50,9 @@ export type ShareCardInput = {
     todayAllowance: number | null;
     spentToday: number;
   } | null;
+  // How the cycle's finished days landed against their allowance. null without a total budget, and
+  // on a cycle's first day. Unlike `forward` this survives on a past cycle — see day-pace.ts.
+  dayPace: DayPace | null;
   // Passed in rather than read from the clock here, so the stamp is assertable.
   now: Date;
 };
@@ -82,7 +86,7 @@ function formatStamp(now: Date): string {
 const MAX_KPIS = 4;
 
 export function buildShareCard(input: ShareCardInput): ShareCard {
-  const { label, grossSpend, count, slices, totalStatus, forward, now } = input;
+  const { label, grossSpend, count, slices, totalStatus, forward, dayPace, now } = input;
   // The ring's own sum, never `grossSpend`: every drawn slice is a positive magnitude while the
   // headline is the signed net, so on a cycle with refunds the two differ by exactly the refunded
   // amount and shares divided by the headline overshoot 100%.
@@ -132,6 +136,13 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
     // Tomorrow's figure if nothing more is spent today, from the same helper the Home card prints —
     // it drops out on the cycle's last day, when there is no tomorrow left to spread anything over.
     tomorrow === null ? null : { label: 'Tomorrow', value: formatBahtWhole(tomorrow) },
+    // The cycle's discipline in one figure — the days that stayed inside their allowance, out of
+    // the days that have finished. Ranked ABOVE 'Days left' because it is the only backward-looking
+    // figure on the card and 'Days left' is already implied by the cycle range in the title; with
+    // four slots, one of them had to go.
+    dayPace === null
+      ? null
+      : { label: 'Days on target', value: `${dayPace.noSpend + dayPace.under} of ${dayPace.days}` },
     // Days, not money, so it survives a cycle with no budget at all — the one forward figure that
     // does not need a ceiling to divide.
     forward === null ? null : { label: 'Days left', value: String(forward.daysLeft) },

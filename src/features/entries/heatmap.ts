@@ -5,9 +5,9 @@ export type HeatmapCell = { date: string; total: number; intensity: number };
 
 const dateKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' });
 
-// Every YYYY-MM-DD from start through end inclusive. UTC arithmetic — the date keys are UTC (see the
+// Every YYYY-MM-DD from start through end inclusive. Exported: dayPace walks the same cycle days. UTC arithmetic — the date keys are UTC (see the
 // project's date policy), so stepping a UTC day count never trips DST.
-function eachDay(start: string, end: string): string[] {
+export function eachDay(start: string, end: string): string[] {
   const [sy, sm, sd] = start.split('-').map(Number);
   const [ey, em, ed] = end.split('-').map(Number);
   const out: string[] = [];

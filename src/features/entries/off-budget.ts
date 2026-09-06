@@ -72,3 +72,21 @@ export function discretionaryByCategory(
   }
   return byCat;
 }
+
+// Per-DAY discretionary spend (off-budget AND fixed entries dropped), keyed 'YYYY-MM-DD'. Same two
+// exclusions as discretionaryByCategory above and for the same reason: dayPace grades each day
+// against the ceiling the total meter uses, so it has to be counting the same money the meter does.
+// A day whose refunds outweigh its spend comes back negative — a true figure, and dayPace reads it
+// as "nothing left the wallet".
+export function discretionaryByDate(
+  entries: EntryRow[],
+  offBudgetCategories: Set<string>,
+  travelCurrencies: Set<string>,
+): Map<string, number> {
+  const byDate = new Map<string, number>();
+  for (const e of entries) {
+    if (isOffBudget(e, offBudgetCategories, travelCurrencies) || isFixed(e)) continue;
+    byDate.set(e.date, (byDate.get(e.date) ?? 0) + -e.amount);
+  }
+  return byDate;
+}
