@@ -2,6 +2,7 @@
 
 import { GOOGLE_CLIENT_ID } from './client-id';
 import { DRIVE_SCOPE } from './sync-decision';
+import { readConnection } from './connection';
 
 // Lazy bridge to Google Identity Services. The GIS script is injected on first use only — never on
 // the app's critical path. requestToken wraps the callback-based token client in a promise.
@@ -140,20 +141,29 @@ async function requestTokenRaw(prompt: '' | 'consent'): Promise<string> {
   });
 }
 
-// Silent first: prompt:'' reuses an existing grant with NO account chooser or consent dialog (the
-// documented re-auth path — see the token-model migration guide). The auto/background path stops here.
-// A user-initiated call (a tap) falls back to the full consent flow ONLY when silent fails — a lapsed
-// session or the first-ever grant — so tapping "Back up now" never re-prompts while the Google session
-// is alive. Passing prompt:'consent' unconditionally (the old behavior) forced consent on every tap.
-// ponytail: assumes GIS surfaces a silent-prompt failure via callback/error_callback (it does — both
-// are wired above). If a silent request is ever seen to hang, wrap the first await in a timeout.
+// ONE popup per call, and the prompt is CHOSEN rather than retried.
+//
+// prompt:'' reuses an existing grant with no account chooser or consent dialog (the documented
+// re-auth path), and that is still what a healthy connection gets — tapping "Back up now" must not
+// re-prompt while the Google session is alive, which is why passing 'consent' unconditionally was
+// wrong. But `prompt:''` is NOT a quiet side channel: GIS opens a real popup for it (display=popup),
+// and a browser grants exactly ONE popup per transient user activation. So the previous shape —
+// await silent, then fall back to consent — spent the tap's single popup on the attempt that had
+// just failed, and Chrome blocked the consent window that mattered. Connecting a fresh device was
+// impossible: every tap ended in "Drive request failed — reconnect and try again".
+//
+// The connection state already knows which prompt can succeed, so ask it instead of guessing and
+// retrying: a grant we believe in gets the silent path, and no grant (a first connect, a disconnect,
+// or a lapse auto-sync already flagged) goes straight to consent. A silent attempt that fails no
+// longer retries here — backupNow records needsReconnect on the way out, so the NEXT tap is a
+// consent tap.
+//
+// Note this cannot be caught below jsdom: it has no popup blocker, so the two-call version passed
+// its tests for as long as it existed. See the popup-budget cases in gis.test.ts.
 export async function requestToken(opts: { interactive: boolean }): Promise<string> {
   const cached = validCachedToken();
   if (cached !== null) return cached; // no GIS call, no popup — the whole point
-  try {
-    return await requestTokenRaw('');
-  } catch (err) {
-    if (!opts.interactive) throw err;
-    return requestTokenRaw('consent');
-  }
+  if (!opts.interactive) return requestTokenRaw('');
+  const conn = readConnection();
+  return requestTokenRaw(conn.connected && !conn.needsReconnect ? '' : 'consent');
 }
