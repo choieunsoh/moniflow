@@ -9,7 +9,7 @@ describe('DayPaceCard', () => {
     expect(section).toHaveTextContent('6No spend');
     expect(section).toHaveTextContent('15Under target');
     expect(section).toHaveTextContent('5Over target');
-    expect(section).toHaveTextContent('of 26 days finished');
+    expect(section).toHaveTextContent('26 days finished');
   });
 
   it('renders nothing without a target to grade against', () => {
@@ -19,7 +19,7 @@ describe('DayPaceCard', () => {
 
   it('singularises a one-day cycle', () => {
     render(<DayPaceCard pace={{ noSpend: 1, under: 0, over: 0, days: 1 }} />);
-    expect(screen.getByRole('region')).toHaveTextContent('of 1 day finished');
+    expect(screen.getByRole('region')).toHaveTextContent('1 day finished');
   });
 
   it('does not paint a zero in an alarm colour', () => {

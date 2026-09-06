@@ -19,9 +19,18 @@ export function DayPaceCard({ pace }: { pace: DayPace | null }) {
   ];
   return (
     <section className="panel flex flex-col gap-3 p-5" aria-label="Days against target">
-      <h2 className="text-sm font-semibold" style={{ color: 'var(--color-muted)' }}>
-        Days against target
-      </h2>
+      {/* The denominator rides on the heading row rather than a line of its own under the tiles.
+          It has to be stated somewhere — three counts with nothing to divide by is a rhythm you
+          can't read — but it is the least important thing on the card, and the heading row was
+          already half empty. */}
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--color-muted)' }}>
+          Days against target
+        </h2>
+        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+          <span className="tnum">{pace.days}</span> {pace.days === 1 ? 'day' : 'days'} finished
+        </span>
+      </div>
       <div className="grid grid-cols-3 gap-3">
         {tiles.map((t) => (
           <div key={t.label} className="flex flex-col gap-0.5">
@@ -39,11 +48,6 @@ export function DayPaceCard({ pace }: { pace: DayPace | null }) {
           </div>
         ))}
       </div>
-      <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-        {/* The denominator, stated once rather than three times. "so far" only on a live cycle —
-            a closed cycle's days are all the days it will ever have. */}
-        of <span className="tnum">{pace.days}</span> {pace.days === 1 ? 'day' : 'days'} finished
-      </span>
     </section>
   );
 }
