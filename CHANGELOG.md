@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-09-06
+
+### Added
+
+- grade each finished day against its allowance
+- grade each finished day against the allowance it had
+
+### Other
+
+- put the day count on the heading row, not its own line
+
 ## [1.18.0] - 2026-09-06
 
 ### Added
