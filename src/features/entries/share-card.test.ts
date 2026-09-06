@@ -16,6 +16,7 @@ const base = {
   slices: [slice('Food', 6000), slice('Transport', 4000), slice('Coffee', 2000)],
   totalStatus: null,
   forward: null,
+  now: new Date('2026-09-06T11:42:00Z'),
 };
 
 describe('buildShareCard', () => {
@@ -23,6 +24,20 @@ describe('buildShareCard', () => {
     const card = buildShareCard(base);
     expect(card.title).toBe('18 Aug – 17 Sep 2026');
     expect(card.headline).toBe('฿12,000');
+  });
+
+  it('stamps when the card was made, in Bangkok', () => {
+    // 11:42 UTC is 18:42 in Bangkok — the zone every user-facing date in the app renders in, and the
+    // one its cycles are reckoned in. A card read weeks later has no other way to date its figures.
+    expect(buildShareCard(base).generatedAt).toBe('06/09/2026 18:42');
+  });
+
+  it('prints midnight as 00:xx, not 24:xx', () => {
+    // hour12:false resolves to h24 in en-GB, which renders Bangkok midnight as "24:00" — and on the
+    // PREVIOUS day's date, so the stamp would disagree with itself for one minute a day. hourCycle
+    // 'h23' is what actually pins it.
+    const card = buildShareCard({ ...base, now: new Date('2026-09-06T17:00:00Z') }); // 00:00 Bangkok
+    expect(card.generatedAt).toBe('07/09/2026 00:00');
   });
 
   it('ranks rows with their share of the drawn total, not the headline', () => {
@@ -54,7 +69,43 @@ describe('buildShareCard', () => {
     expect(card.rows.map((r) => r.name)).toEqual(['Food', 'Other', 'Coffee']);
   });
 
-  it('always offers at least two KPIs and never more than three', () => {
+  it('shows what is left to spend TODAY, matching Home’s own card', () => {
+    // Home's TodayAllowanceCard is `allowance - spentToday`; the tile states the same figure so the
+    // card and the screen it came from cannot disagree.
+    const card = buildShareCard({
+      ...base,
+      forward: { safePerDay: 440, daysLeft: 12, todayAllowance: 440, spentToday: 115 },
+    });
+    expect(card.kpis).toContainEqual({ label: 'Left today', value: '฿325' });
+  });
+
+  it('flips the label instead of printing a negative allowance', () => {
+    // Same reason TodayAllowanceCard flips its title: "Left today −฿60" is a heading arguing with
+    // its own figure.
+    const card = buildShareCard({
+      ...base,
+      forward: { safePerDay: 440, daysLeft: 12, todayAllowance: 440, spentToday: 500 },
+    });
+    expect(card.kpis).toContainEqual({ label: 'Over today by', value: '฿60' });
+  });
+
+  it('counts the days left in the cycle', () => {
+    const card = buildShareCard({
+      ...base,
+      forward: { safePerDay: 440, daysLeft: 12, todayAllowance: 440, spentToday: 0 },
+    });
+    expect(card.kpis).toContainEqual({ label: 'Days left', value: '12' });
+  });
+
+  it('has no forward tiles at all on a past cycle', () => {
+    // daysLeft, tomorrow and today's allowance are all statements about a cycle still running.
+    const labels = buildShareCard(base).kpis.map((k) => k.label);
+    expect(labels).not.toContain('Days left');
+    expect(labels).not.toContain('Left today');
+    expect(labels).not.toContain('Tomorrow');
+  });
+
+  it('always offers at least two KPIs and never more than four', () => {
     const bare = buildShareCard(base);
     expect(bare.kpis).toHaveLength(2);
     expect(bare.kpis.map((k) => k.label)).toEqual(['Transactions', 'Categories']);
@@ -62,11 +113,16 @@ describe('buildShareCard', () => {
     const full = buildShareCard({
       ...base,
       totalStatus: { limit: 20000, spent: 12000, pct: 60, remaining: 8000, state: 'under' },
-      forward: { safePerDay: 500, daysLeft: 16 },
+      forward: { safePerDay: 500, daysLeft: 16, todayAllowance: 500, spentToday: 0 },
     });
-    expect(full.kpis).toHaveLength(3);
-    // Budget, rate, tomorrow — the counts fall off the end of a cycle that has all three.
-    expect(full.kpis.map((k) => k.label)).toEqual(['Left of budget', 'Left per day', 'Tomorrow']);
+    expect(full.kpis).toHaveLength(4);
+    // The counts fall off the end of a cycle that has every forward figure.
+    expect(full.kpis.map((k) => k.label)).toEqual([
+      'Left of budget',
+      'Left today',
+      'Tomorrow',
+      'Days left',
+    ]);
   });
 
   it('leads with the budget remainder when a budget exists', () => {
@@ -88,18 +144,30 @@ describe('buildShareCard', () => {
   });
 
   it('carries tomorrow’s allowance, rescaled off the same helper the Home card uses', () => {
-    const card = buildShareCard({ ...base, forward: { safePerDay: 440, daysLeft: 12 } });
+    const card = buildShareCard({
+      ...base,
+      forward: { safePerDay: 440, daysLeft: 12, todayAllowance: 440, spentToday: 0 },
+    });
     expect(card.kpis).toContainEqual({ label: 'Tomorrow', value: '฿480' });
   });
 
   it('has no Tomorrow tile on the cycle last day', () => {
-    const card = buildShareCard({ ...base, forward: { safePerDay: 440, daysLeft: 1 } });
+    const card = buildShareCard({
+      ...base,
+      forward: { safePerDay: 440, daysLeft: 1, todayAllowance: 440, spentToday: 0 },
+    });
     expect(card.kpis.map((k) => k.label)).not.toContain('Tomorrow');
   });
 
-  it('drops the per-day KPI when there is no budget to divide', () => {
-    const card = buildShareCard({ ...base, forward: { safePerDay: null, daysLeft: 16 } });
-    expect(card.kpis.map((k) => k.label)).not.toContain('Left per day');
+  it('drops the allowance tiles when there is no budget to divide, but keeps the days', () => {
+    const card = buildShareCard({
+      ...base,
+      forward: { safePerDay: null, daysLeft: 16, todayAllowance: null, spentToday: 0 },
+    });
+    const labels = card.kpis.map((k) => k.label);
+    expect(labels).not.toContain('Left today');
+    expect(labels).not.toContain('Tomorrow');
+    expect(labels).toContain('Days left'); // the cycle is still running, budget or not
   });
 
   it('survives an empty cycle without dividing by zero', () => {

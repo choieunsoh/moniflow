@@ -44,9 +44,32 @@ type Ctx = CanvasRenderingContext2D;
 
 // Canvas takes a full CSS font shorthand and has no notion of inheritance, so every fillText has to
 // restate family and weight. Resolved once per render and closed over.
+//
+// `max` shrinks the type until the string fits, because a canvas does not wrap, ellipsise or complain
+// — it just draws past the edge and into whatever is beside it. The KPI row is where that bites: four
+// tiles leave ~190px of usable width each, which a five-digit baht figure fills and a seven-digit one
+// (or a longer label under a different locale) does not. Stepping down beats picking a size that is
+// too small for every ordinary cycle in order to survive the rare wide one.
 function textPainter(ctx: Ctx, family: string) {
-  return (s: string, x: number, y: number, px: number, color: string, weight = '400') => {
-    ctx.font = `${weight} ${px}px ${family}`;
+  const fit = (s: string, px: number, weight: string, max: number) => {
+    let size = px;
+    ctx.font = `${weight} ${size}px ${family}`;
+    while (size > 12 && ctx.measureText(s).width > max) {
+      size -= 2;
+      ctx.font = `${weight} ${size}px ${family}`;
+    }
+  };
+  return (
+    s: string,
+    x: number,
+    y: number,
+    px: number,
+    color: string,
+    weight = '400',
+    max = Infinity,
+  ) => {
+    if (max === Infinity) ctx.font = `${weight} ${px}px ${family}`;
+    else fit(s, px, weight, max);
     ctx.fillStyle = color;
     ctx.fillText(s, x, y);
   };
@@ -68,6 +91,45 @@ function ring(ctx: Ctx, card: ShareCard, cx: number, cy: number, r: number) {
     ctx.stroke();
     start = end;
   }
+}
+
+// The app mark, redrawn rather than fetched. It lives in shared/ui/Wordmark as three stroked paths
+// on a 32-viewBox inside a muted rounded tile, and Path2D takes those exact `d` strings — so the card
+// gets the real logo SYNCHRONOUSLY. An <img> of icon.svg would have meant awaiting onload before the
+// share sheet, which is how this feature already lost a tap's transient activation once.
+//
+// ponytail: the paths are copied from Wordmark.tsx, which is itself hand-synced with app/icon.svg —
+// a third copy of the same nine numbers. Worth extracting to one exported constant only if the mark
+// is ever redrawn; until then three hand-synced copies beat a shared module nothing else imports.
+const MARK_PATHS = [
+  'M7.5 22 V15 A3 3 0 0 1 13.5 15 V22 M13.5 15 A3 3 0 0 1 19.5 15 V18.5',
+  'M19.5 18.5 C20 21.5 22.8 22.4 25.2 20.4 L28 18',
+  'M25.6 16.7 L28.2 17.8 L27 20.4',
+] as const;
+
+// Tile 44px with the glyph at 18/28 of it, the same ratio Wordmark renders at (an 18px svg in a
+// size-7 tile), so the lockup keeps its proportions at card scale.
+const MARK_TILE = 44;
+const MARK_GLYPH = (MARK_TILE * 18) / 28;
+
+function mark(ctx: Ctx, x: number, y: number, tile: string, glyph: string) {
+  ctx.save();
+  ctx.fillStyle = tile;
+  ctx.beginPath();
+  // Proportional corner, not --radius-sm: the token is a rem length and the card is not laid out in
+  // rem. Matched by eye against the header's rounded tile.
+  ctx.roundRect(x, y, MARK_TILE, MARK_TILE, MARK_TILE * 0.28);
+  ctx.fill();
+
+  const scale = MARK_GLYPH / 32;
+  ctx.translate(x + (MARK_TILE - MARK_GLYPH) / 2, y + (MARK_TILE - MARK_GLYPH) / 2);
+  ctx.scale(scale, scale);
+  ctx.strokeStyle = glyph;
+  ctx.lineWidth = 2.8; // in viewBox units — the scale above brings it to size, as SVG would
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const d of MARK_PATHS) ctx.stroke(new Path2D(d));
+  ctx.restore();
 }
 
 function render(canvas: HTMLCanvasElement, card: ShareCard) {
@@ -99,8 +161,9 @@ function render(canvas: HTMLCanvasElement, card: ShareCard) {
     ctx.beginPath();
     ctx.roundRect(x, KPI_Y, kpiW, KPI_H, 24);
     ctx.fill();
-    draw(kpi.label, x + 28, KPI_Y + 54, 26, muted);
-    draw(kpi.value, x + 28, KPI_Y + 112, 44, ink, '600');
+    const inner = kpiW - 56; // the tile's 28px padding on both sides
+    draw(kpi.label, x + 28, KPI_Y + 54, 26, muted, '400', inner);
+    draw(kpi.value, x + 28, KPI_Y + 112, 44, ink, '600', inner);
   }
 
   // Ranked categories. The amount is right-aligned against the card edge and the share sits left of
@@ -119,7 +182,14 @@ function render(canvas: HTMLCanvasElement, card: ShareCard) {
     y += ROW_STEP;
   }
 
-  draw('moniflow', PAD, H - PAD, 28, muted, '600');
+  // Footer: the mark + wordmark as one lockup on the left, the stamp opposite it on the right. Both
+  // sit on the wordmark's baseline so the row reads as a line rather than two floating items.
+  const footBase = H - PAD;
+  mark(ctx, PAD, footBase - MARK_TILE + 8, muted, token('--color-on-fill'));
+  draw('moniflow', PAD + MARK_TILE + 16, footBase, 30, muted, '600');
+  ctx.textAlign = 'right';
+  draw(card.generatedAt, W - PAD, footBase, 26, muted);
+  ctx.textAlign = 'left';
 }
 
 // data: URL → Blob without a round trip through fetch(). navigator.share() needs the tap's transient
@@ -131,12 +201,15 @@ function pngBlob(dataUrl: string): Blob {
   return new Blob([bytes], { type: 'image/png' });
 }
 
-export function ShareCardButton(props: ShareCardInput) {
+// `now` is the one input the caller does not hold: the card is stamped with the moment it was MADE,
+// not the moment Home rendered, so it is read here at the tap rather than passed down as a prop that
+// would go stale on a page left open.
+export function ShareCardButton(props: Omit<ShareCardInput, 'now'>) {
   const onClick = () => {
     let png: Blob;
     let name: string;
     try {
-      const card = buildShareCard(props);
+      const card = buildShareCard({ ...props, now: new Date() });
       const canvas = document.createElement('canvas');
       canvas.width = W;
       canvas.height = cardHeight(card);

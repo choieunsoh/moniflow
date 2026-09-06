@@ -30,7 +30,10 @@ function stubCanvas() {
   const ctx: unknown = new Proxy(
     {},
     {
-      get: () => () => undefined,
+      // measureText is the one call whose RETURN the renderer reads — it steps the KPI type down
+      // until the string fits. Zero width means "always fits", which keeps the shrink loop out of
+      // these tests; the fitting itself is geometry, and geometry is the browser's to prove.
+      get: (_target, key) => (key === 'measureText' ? () => ({ width: 0 }) : () => undefined),
       set: () => true,
     },
   );
@@ -40,6 +43,15 @@ function stubCanvas() {
     toDataURL: () =>
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==',
   };
+  // The card strokes the app mark through Path2D, which jsdom has no constructor for at all — an
+  // unstubbed `new Path2D(d)` throws ReferenceError and the component reports "couldn't make the
+  // card", turning the success cases red for a reason that has nothing to do with them.
+  vi.stubGlobal(
+    'Path2D',
+    class {
+      constructor(readonly d?: string) {}
+    },
+  );
   for (const key of CANVAS_STUBS) {
     originals.set(key, Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, key));
     Object.defineProperty(HTMLCanvasElement.prototype, key, {
@@ -70,7 +82,10 @@ const props = {
 };
 
 describe('ShareCardButton', () => {
-  afterEach(() => restoreCanvas());
+  afterEach(() => {
+    restoreCanvas();
+    vi.unstubAllGlobals();
+  });
 
   beforeEach(() => {
     saveFile.mockReset();
