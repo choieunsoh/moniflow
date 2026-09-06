@@ -8,6 +8,7 @@ import { CycleTotals } from '@features/entries/ui/CycleTotals';
 import { DonutChart } from '@features/entries/ui/DonutChart';
 import { drawnTotal } from '@features/entries/donut';
 import { SafeToSpendCard, TodayAllowanceCard } from '@features/entries/ui/ForwardCards';
+import { DayPaceCard } from '@features/entries/ui/DayPaceCard';
 import { Breakdown } from '@features/entries/ui/Breakdown';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { stepKey } from '@features/entries/cycle';
@@ -68,6 +69,7 @@ export default function HomePage() {
     pacePct,
     showPace,
     forward,
+    dayPace,
     ledgerEmpty,
     topTransactions,
   } = data;
@@ -124,6 +126,10 @@ export default function HomePage() {
       </div>
     ) : null;
 
+  // Backward-looking, so it is NOT inside forwardCards and does not need `forward` — a past cycle
+  // shows it too, which is where "how did that month actually go?" is most often asked.
+  const paceCard = <DayPaceCard pace={dayPace} />;
+
   return (
     <PageContainer size="full">
       {/* The page's heading root. Visually redundant with the wordmark + cycle selector, so sr-only —
@@ -157,6 +163,7 @@ export default function HomePage() {
           />
 
           {forwardCards}
+          {paceCard}
 
           {/* Posted up into the header beside the search control — it is an action on the whole
               cycle, like search is an action on the whole ledger, and both belong in the app bar
@@ -170,6 +177,7 @@ export default function HomePage() {
               slices={slices}
               totalStatus={totalStatus}
               forward={forward}
+              dayPace={dayPace}
             />
           </HeaderAction>
 
@@ -273,6 +281,7 @@ export default function HomePage() {
           ) : (
             <>
               {forwardCards}
+              {paceCard}
               <section className="panel px-6 py-16 text-center">
                 <h2 className="text-base font-semibold">Nothing spent in this cycle</h2>
                 <p className="mt-2 text-sm" style={{ color: 'var(--color-muted)' }}>

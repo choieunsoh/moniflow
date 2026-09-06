@@ -79,6 +79,7 @@ const props = {
   slices,
   totalStatus: null,
   forward: null,
+  dayPace: null,
 };
 
 describe('ShareCardButton', () => {

@@ -20,7 +20,8 @@ import { getEmojiMap, getHueMap, getOffBudgetCategories } from '@features/catego
 import { getTravelCurrencies } from '@features/currencies/queries';
 import { toDonutSlices, type DonutSlice } from './donut';
 import { safeToSpendPerDay, averagePerDay, MIN_PROJECT_DAYS } from './dashboard';
-import { splitBudgetSpend } from './off-budget';
+import { dayPace, type DayPace } from './day-pace';
+import { splitBudgetSpend, discretionaryByDate } from './off-budget';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 import { listRules } from '@features/recurring/queries';
@@ -72,6 +73,9 @@ export type HomeData = {
   pacePct: number | undefined;
   showPace: boolean;
   forward: HomeForward | null;
+  // How the cycle's COMPLETED days landed against the allowance each of them had. null without a
+  // total budget (no target to grade against) and on a cycle's first day (nothing finished yet).
+  dayPace: DayPace | null;
   // True only when the ledger is empty EVERYWHERE, not just in the cycle on screen. Home shows
   // first-run onboarding on the former and a quiet "nothing this cycle" on the latter.
   ledgerEmpty: boolean;
@@ -229,6 +233,16 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
         };
       }
 
+      // How the finished days went. Available on a PAST cycle too, unlike `forward` — grading days
+      // that are over needs no forward look, and the ceiling a closed cycle carries is stable (its
+      // still-to-come bill half is 0 by definition).
+      const pace = dayPace(
+        discretionaryByDate(cycleEntries, offBudgetCategories, travelCurrencies),
+        cycle,
+        todayIso(),
+        ceiling,
+      );
+
       // Only asked when this cycle came back empty — a populated cycle is already proof the ledger
       // has something in it, so the common path never pays for the extra round trip.
       const ledgerEmpty = summary.count === 0 ? !(await hasAnyExpense(db)) : false;
@@ -257,6 +271,7 @@ export function useHome(cycleKey: string | null): { ready: boolean; data: HomeDa
         pacePct,
         showPace,
         forward,
+        dayPace: pace,
         ledgerEmpty,
       });
       setReady(true);

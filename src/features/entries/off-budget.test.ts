@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { isOffBudget, splitBudgetSpend, discretionaryByCategory } from './off-budget';
+import {
+  isOffBudget,
+  splitBudgetSpend,
+  discretionaryByCategory,
+  discretionaryByDate,
+} from './off-budget';
 import type { EntryRow } from './schema';
 
 function row(
@@ -177,5 +182,46 @@ describe('travel currencies', () => {
       offBudget: 500,
       fixed: 0,
     });
+  });
+});
+
+describe('discretionaryByDate', () => {
+  const cats = new Set(['Insurance']);
+  const noTravel = new Set<string>();
+  function dated(date: string, amount: number, category = 'Food', source = 'manual'): EntryRow {
+    return {
+      id: 1,
+      date,
+      time: null,
+      accountId: 1,
+      categoryId: 1,
+      amount,
+      currency: null,
+      originalAmount: null,
+      note: null,
+      source,
+      offBudget: null,
+      category,
+      account: 'Cash',
+    };
+  }
+  it('sums magnitudes per day, dropping off-budget and fixed rows', () => {
+    const entries = [
+      dated('2026-07-18', -100),
+      dated('2026-07-18', -50),
+      dated('2026-07-18', -9000, 'Insurance'), // off-budget category
+      dated('2026-07-19', -1720, 'Bills', 'recurring'), // fixed
+      dated('2026-07-20', -300),
+    ];
+    expect(discretionaryByDate(entries, cats, noTravel)).toEqual(
+      new Map([
+        ['2026-07-18', 150],
+        ['2026-07-20', 300],
+      ]),
+    );
+  });
+  it('nets a refund against the same day', () => {
+    const entries = [dated('2026-07-18', -100), dated('2026-07-18', 40)];
+    expect(discretionaryByDate(entries, cats, noTravel).get('2026-07-18')).toBe(60);
   });
 });
