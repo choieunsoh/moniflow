@@ -3,6 +3,7 @@
 // (no `as`, no `any`). `uploadBackup` upserts by name so a same-day re-backup replaces the day's file.
 
 import type { DriveFile } from './sync-decision';
+import { clearToken } from './gis';
 
 const API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
@@ -13,6 +14,14 @@ async function driveFetch(token: string, url: string, init: RequestInit): Promis
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...(init.headers ?? {}) },
   });
+  // 401 is Google saying this token is dead — revoked, or the grant re-consented somewhere else.
+  // Our cache cannot know that on its own: validCachedToken only compares expiresAt to the clock, so
+  // it keeps handing the same corpse back, WITHOUT calling GIS, for as long as the recorded expiry
+  // says it is fine. That is a trap with no exit — no popup ever opens, nothing re-mints, and every
+  // retry fails identically while the UI advises "reconnect and try again". Dropping it here is what
+  // makes the next attempt an actual token request. Only 401: a 403 or a 500 says nothing about the
+  // token, and discarding it there would buy a needless consent prompt.
+  if (res.status === 401) clearToken();
   if (!res.ok) throw new Error(`Drive request failed: ${res.status}`);
   return res;
 }

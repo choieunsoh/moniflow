@@ -71,6 +71,19 @@ describe('requestToken', () => {
     expect(prompts).toEqual(['']);
   });
 
+  it('ignores a cached token when there is no connection to use it for', async () => {
+    // The 401 trap from the other side. A token cached under a connection that has since broken is
+    // still "valid" by the clock, so Connect handed it to Drive, got 401, and never opened a window.
+    connected();
+    stubGoogle({ '': { access_token: 'tok-stale', expires_in: '3600' } });
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-stale'); // cached now
+    clearConnection(); // …and the connection it belonged to is gone
+
+    const prompts = stubGoogle({ consent: { access_token: 'tok-fresh' } });
+    await expect(requestToken({ interactive: true })).resolves.toBe('tok-fresh');
+    expect(prompts).toEqual(['consent']);
+  });
+
   it('a tap with nothing connected yet goes STRAIGHT to consent', async () => {
     // The Connect button: there is no grant to reuse, so spending the one popup on a silent attempt
     // that cannot succeed is spending it on nothing.

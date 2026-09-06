@@ -120,6 +120,17 @@ function loadGis(): Promise<void> {
   return loading;
 }
 
+// Every path out of a token request is a rejection with a one-word reason from Google, and the only
+// consumer is a catch that swallows it behind a generic toast. That made a real failure — a blocked
+// popup, then whatever came after it — undiagnosable from outside the browser: the toast said
+// "reconnect and try again" whether the popup was blocked, the window was closed, or the grant was
+// refused. GIS logs its own troubles to the console; this puts OURS beside them, prompt included,
+// because which prompt was attempted is half the answer.
+function fail(prompt: string, reason: string): Error {
+  console.error(`[drive] token request failed (prompt=${prompt || 'silent'}): ${reason}`);
+  return new Error(reason);
+}
+
 async function requestTokenRaw(prompt: '' | 'consent'): Promise<string> {
   await loadGis();
   if (typeof google === 'undefined' || google.accounts?.oauth2 === undefined) {
@@ -133,9 +144,9 @@ async function requestTokenRaw(prompt: '' | 'consent'): Promise<string> {
         if (resp.access_token !== undefined && resp.access_token !== '') {
           storeCachedToken(resp.access_token, resp.expires_in);
           resolve(resp.access_token);
-        } else reject(new Error(resp.error ?? 'no access token'));
+        } else reject(fail(prompt, resp.error ?? 'no access token'));
       },
-      error_callback: (err) => reject(new Error(err.type)),
+      error_callback: (err) => reject(fail(prompt, err.type)),
     });
     client.requestAccessToken({ prompt });
   });
@@ -161,9 +172,15 @@ async function requestTokenRaw(prompt: '' | 'consent'): Promise<string> {
 // Note this cannot be caught below jsdom: it has no popup blocker, so the two-call version passed
 // its tests for as long as it existed. See the popup-budget cases in gis.test.ts.
 export async function requestToken(opts: { interactive: boolean }): Promise<string> {
-  const cached = validCachedToken();
-  if (cached !== null) return cached; // no GIS call, no popup — the whole point
-  if (!opts.interactive) return requestTokenRaw('');
   const conn = readConnection();
-  return requestTokenRaw(conn.connected && !conn.needsReconnect ? '' : 'consent');
+  const healthy = conn.connected && !conn.needsReconnect;
+  // The cache is only evidence while the connection it was minted for still stands. Tapping Connect
+  // means the app has no working connection — reusing a token left over from the one that broke is
+  // how a dead token gets a second life and answers 401 instead of opening a consent window.
+  if (healthy) {
+    const cached = validCachedToken();
+    if (cached !== null) return cached; // no GIS call, no popup — the whole point
+  }
+  if (!opts.interactive) return requestTokenRaw('');
+  return requestTokenRaw(healthy ? '' : 'consent');
 }

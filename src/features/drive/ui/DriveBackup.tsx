@@ -24,6 +24,18 @@ function agoLabel(at: number): string {
   return rel.format(Math.round(hours / 24), 'day');
 }
 
+// What actually went wrong, in the toast. "Drive request failed — reconnect and try again" was the
+// same sentence for a blocked popup, a closed window, a refused grant and a 403 from the Drive REST
+// call — four unrelated causes, one message, and "try again" is useless advice for three of them.
+// It cost two debugging rounds to find out which one was happening, so the reason now travels with
+// the message. Also logged, because a status code is for whoever is reading the console, not the
+// person holding the phone.
+function driveError(err: unknown, what: string): void {
+  const reason = err instanceof Error ? err.message : String(err);
+  console.error(`[drive] ${what}: ${reason}`);
+  toast.error(`${what} — ${reason}`);
+}
+
 export function DriveBackup() {
   const status = useDriveStatus();
   const [busy, setBusy] = useState(false);
@@ -37,8 +49,8 @@ export function DriveBackup() {
     try {
       await fn();
       if (okToast !== undefined) toast(okToast);
-    } catch {
-      toast.error('Drive request failed — reconnect and try again');
+    } catch (err) {
+      driveError(err, 'Drive request failed');
     } finally {
       setBusy(false);
     }
@@ -51,8 +63,8 @@ export function DriveBackup() {
     try {
       const uploaded = await backupNow({ interactive: true });
       toast(uploaded ? 'Backed up to Drive' : 'Nothing to back up yet — add an expense first');
-    } catch {
-      toast.error('Drive request failed — reconnect and try again');
+    } catch (err) {
+      driveError(err, 'Drive request failed');
     } finally {
       setBusy(false);
     }
@@ -62,8 +74,8 @@ export function DriveBackup() {
     setBusy(true);
     try {
       setPicking(await listDriveBackups());
-    } catch {
-      toast.error('Could not list Drive backups — reconnect and try again');
+    } catch (err) {
+      driveError(err, 'Could not list Drive backups');
     } finally {
       setBusy(false);
     }
