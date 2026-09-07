@@ -258,16 +258,47 @@ describe.each(ACCENT_NAMES)('accent %s', (accent) => {
     //
     // 1.25:1 is a floor for MEASURABLE, not for sufficient. A selected state must also carry a
     // border or a tick — see the note on --color-selected in globals.css.
-    it('the selected lift is measurable against both surfaces', () => {
-      const alpha = theme === 'light' ? 0.14 : 0.12;
+    // The selected state is --action composited over the surface at the alpha :root declares, and
+    // that alpha is READ FROM THE STYLESHEET rather than restated here. It used to be a literal
+    // 0.14/0.12 in this file, which meant the assertion described the stylesheet as it stood the day
+    // it was written: raising the tint in globals.css left this test measuring a colour that no
+    // longer shipped, and passing.
+    //
+    // Both ends are asserted because the tint is bounded from BOTH directions. Too little and the
+    // selected tile disappears (this app shipped one at 1.02:1 that no one could see); too much and
+    // the ground climbs towards --action until --color-text on top of it stops clearing AA. The
+    // window is roughly 25-36% — see the note on --color-selected in globals.css.
+    it('the selected lift is visible against both surfaces', () => {
+      const alpha = selectedAlpha(theme);
       for (const ground of ['color-surface', 'color-surface-2']) {
         const base = token(ground, theme);
         const lifted = composite(token('action', theme, block), base, alpha);
-        expect(contrast(lifted, base)).toBeGreaterThanOrEqual(1.25);
+        expect(contrast(lifted, base)).toBeGreaterThanOrEqual(1.9);
+      }
+    });
+
+    it('body text still clears AA on a selected surface', () => {
+      const alpha = selectedAlpha(theme);
+      for (const ground of ['color-surface', 'color-surface-2']) {
+        const lifted = composite(token('action', theme, block), token(ground, theme), alpha);
+        expect(contrast(token('color-text', theme), lifted)).toBeGreaterThanOrEqual(4.5);
       }
     });
   });
 });
+
+// The two alphas out of the --color-selected declaration itself: light first, dark second, matching
+// every other light-dark() pair in the file. Parsed rather than hardcoded so the tests above measure
+// the colour that actually ships.
+function selectedAlpha(theme: Theme): number {
+  const decl = /--color-selected:\s*light-dark\(([^;]*)\)/.exec(css);
+  if (decl === null) throw new Error('--color-selected is no longer a light-dark() pair');
+  const percents = decl[1].match(/(\d+)%/g);
+  if (percents === null || percents.length !== 2) {
+    throw new Error(`--color-selected should mix two percentages, found ${String(percents)}`);
+  }
+  return parseInt(percents[theme === 'light' ? 0 : 1], 10) / 100;
+}
 
 // Simple alpha-over-opaque compositing, which is what the browser does with a color-mix() against
 // `transparent` painted on an opaque ground.
