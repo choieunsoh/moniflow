@@ -80,14 +80,14 @@ describe('buildShareCard', () => {
     expect(card.kpis).toContainEqual({ label: 'Left today', value: '฿325' });
   });
 
-  it('flips the label instead of printing a negative allowance', () => {
-    // Same reason TodayAllowanceCard flips its title: "Left today −฿60" is a heading arguing with
-    // its own figure.
+  it('keeps the label and signs the overspend instead of flipping the wording', () => {
+    // A canvas tile is a fixed width, so "Over today by" shrinks the figure beside it to fit — and
+    // a row of four tiles whose captions move is harder to read than one whose numbers do.
     const card = buildShareCard({
       ...base,
       forward: { safePerDay: 440, daysLeft: 12, todayAllowance: 440, spentToday: 500 },
     });
-    expect(card.kpis).toContainEqual({ label: 'Over today by', value: '฿60' });
+    expect(card.kpis).toContainEqual({ label: 'Left today', value: '−฿60', over: true });
   });
 
   it('counts the days left in the cycle', () => {
@@ -134,14 +134,14 @@ describe('buildShareCard', () => {
     expect(card.kpis[0]).toEqual({ label: 'Left of budget', value: '฿8,000' });
   });
 
-  it('states an overspend as an overspend rather than a negative remainder', () => {
-    // formatBahtWhole(-3000) renders "-฿3,000" — a minus sign next to "Left of budget" reads as a
-    // typo, not as being over. Name the state instead.
+  it('signs an overspent budget in a true minus, and flags it for the renderer to colour', () => {
+    // formatBahtWhole(-3000) renders an ASCII "-฿3,000"; the house sign is U+2212, and `over` is
+    // what turns the figure --color-loss on the card. Sign AND colour — never colour alone.
     const card = buildShareCard({
       ...base,
       totalStatus: { limit: 9000, spent: 12000, pct: 100, remaining: -3000, state: 'over' },
     });
-    expect(card.kpis[0]).toEqual({ label: 'Over budget by', value: '฿3,000' });
+    expect(card.kpis[0]).toEqual({ label: 'Left of budget', value: '−฿3,000', over: true });
   });
 
   it('carries tomorrow’s allowance, rescaled off the same helper the Home card uses', () => {
