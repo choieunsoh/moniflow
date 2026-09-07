@@ -91,23 +91,27 @@
      palette, so an accent block stays three lines and a new palette cannot forget it.
 
      The two alphas are NOT the same number, and the difference is measured rather than aesthetic: a
-     deep tint on a light ground lifts less than a pale tint on a dark one, so a matched 10/12 split
-     gave 1.20:1 in light against 1.32:1 in dark. 14/12 evens them at 1.29-1.43:1 across all
-     nine palettes and both grounds.
+     deep tint on a light ground lifts less than a pale tint on a dark one, so a matched pair always
+     comes out lopsided. 34/30 evens them at 1.94-2.30:1 across all nine palettes and both grounds.
 
-     THAT RATIO IS A FLOOR FOR "MEASURABLE", NOT FOR "ENOUGH ON ITS OWN". A selected state must also
-     carry a border or a tick: this app shipped a selected tile at 1.02:1 that no one could see,
-     precisely because it leaned on this lift alone. globals.test.ts holds the floor; the components
-     hold the border.
+     The alphas were 14/12 (a 1.24-1.37:1 lift) through v1.20.0, on the theory that the lift only had
+     to be MEASURABLE because a border or a tick carried the rest. On the keypad's three pickers -
+     category, account, currency - that turned out to be a theory about a 1px line: the tiles are a
+     3-column grid of near-identical cards, and picking the selected one out of eight meant reading
+     edges rather than seeing a filled cell. The fill does the work now; the border is the second
+     signal, which is the way round it should always have been.
 
-     This is the ONE token whose dark value is not byte-identical to v1.14.0. It was
-     rgba(231,235,244,0.10) — 10% of --color-text — and is now 12% of --action, because the selection
-     tint has to follow the accent. Composited over --color-surface that moves the rendered pixel
-     from #292e3b to #2f3340 (+6/+5/+5 per channel) and the lift from 1.294:1 to 1.394:1: slightly
-     stronger, which is the safe direction. */
+     30-34% IS THE CEILING, and it is bounded from ABOVE, not below: the tint moves the ground
+     TOWARDS --action, so raising it drops --color-text against that ground. At 34/30 the pair still
+     clears AA at 7.74:1 / 5.11:1; at 38% the dark side falls to 3.98:1 and body text on a selected
+     tile stops being legible. globals.test.ts reads both alphas straight out of this declaration and
+     asserts both ends, so the next nudge fails a test rather than a user's eyes.
+
+     The corollary the components own: --color-muted and --color-faint DO NOT SURVIVE this ground
+     (2.37:1 and 1.89:1 at worst). Text on a selected surface is --color-text, always. */
   --color-selected: light-dark(
-    color-mix(in srgb, var(--action) 14%, transparent),
-    color-mix(in srgb, var(--action) 12%, transparent)
+    color-mix(in srgb, var(--action) 34%, transparent),
+    color-mix(in srgb, var(--action) 30%, transparent)
   );
   /* WCAG 2.2 SC 1.4.11 wants 3:1 for a focus indicator. The action colour clears it in both themes
      for every palette by construction — it is the maximum-contrast object on the page — so this is

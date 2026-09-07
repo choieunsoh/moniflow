@@ -500,7 +500,12 @@ export function RuleKeypad({
                 <span className="text-2xl">{c.symbol}</span>
                 <span>{c.code}</span>
                 {ratesAsOf[c.code] !== undefined ? (
-                  <span className="text-[10px]" style={{ color: 'var(--color-faint)' }}>
+                  // Full text colour once the tile is selected: --color-faint reads 1.89:1 on the
+                  // selected ground, which is the trade the stronger tint makes (see globals.css).
+                  <span
+                    className="text-[10px]"
+                    style={{ color: on ? 'var(--color-text)' : 'var(--color-faint)' }}
+                  >
                     {ratesAsOf[c.code]}
                   </span>
                 ) : null}
