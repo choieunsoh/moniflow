@@ -140,6 +140,7 @@ function render(canvas: HTMLCanvasElement, card: ShareCard) {
   const ink = token('--color-text');
   const muted = token('--color-muted');
   const surface = token('--color-surface');
+  const loss = token('--color-loss');
   const draw = textPainter(ctx, getComputedStyle(document.body).fontFamily || 'sans-serif');
   const H = canvas.height;
 
@@ -163,7 +164,10 @@ function render(canvas: HTMLCanvasElement, card: ShareCard) {
     ctx.fill();
     const inner = kpiW - 56; // the tile's 28px padding on both sides
     draw(kpi.label, x + 28, KPI_Y + 54, 26, muted, '400', inner);
-    draw(kpi.value, x + 28, KPI_Y + 112, 44, ink, '600', inner);
+    // The figure carries the state, not the caption: a remainder that has gone negative is drawn in
+    // --color-loss (5.5:1 on surface in both themes) under the label it belongs to, with the minus
+    // sign the builder already put in the string doing the work colour alone must never do.
+    draw(kpi.value, x + 28, KPI_Y + 112, 44, kpi.over === true ? loss : ink, '600', inner);
   }
 
   // Ranked categories. The amount is right-aligned against the card edge and the share sits left of

@@ -11,7 +11,9 @@ import type { DayPace } from './day-pace';
 // A share card is not the Home page shrunk: a phone screenshot already does that, badly (browser
 // chrome, bottom bar, whatever was mid-scroll). This states the cycle's answer and nothing else.
 
-export type ShareKpi = { label: string; value: string };
+// `over` marks a remainder that has gone negative. The value already carries a true minus, so the
+// renderer's colour is the SECOND signal, never the only one — the sign survives grayscale.
+export type ShareKpi = { label: string; value: string; over?: boolean };
 
 // One list, carrying both the wedge (value, color) and its caption (amount, share). They were two
 // lists for one draft, and that is exactly how a ring and its legend drift apart.
@@ -85,6 +87,16 @@ function formatStamp(now: Date): string {
 // its smallest size on the widest cycle.
 const MAX_KPIS = 4;
 
+// A remainder tile: the label stays put and the figure changes sign. Home's cards flip their titles
+// instead ("Over today's allowance"), and that is right for a full-width card with room for a
+// sentence — but a KPI tile is a quarter of a canvas row with no wrapping, so a longer caption only
+// shrinks the number it captions. Here the constant label is the axis and the sign is the news.
+function remainder(label: string, amount: number): ShareKpi {
+  return amount < 0
+    ? { label, value: `−${formatBahtWhole(-amount)}`, over: true }
+    : { label, value: formatBahtWhole(amount) };
+}
+
 export function buildShareCard(input: ShareCardInput): ShareCard {
   const { label, grossSpend, count, slices, totalStatus, forward, dayPace, now } = input;
   // The ring's own sum, never `grossSpend`: every drawn slice is a positive magnitude while the
@@ -123,16 +135,8 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
   const candidates: (ShareKpi | null)[] = [
     totalStatus === null || totalStatus.limit === null
       ? null
-      : totalStatus.remaining < 0
-        ? { label: 'Over budget by', value: formatBahtWhole(-totalStatus.remaining) }
-        : { label: 'Left of budget', value: formatBahtWhole(totalStatus.remaining) },
-    leftToday === null
-      ? null
-      : leftToday < 0
-        ? // Flipped rather than signed, for the reason TodayAllowanceCard flips its own title: a
-          // label reading "Left today" over a negative figure argues with itself.
-          { label: 'Over today by', value: formatBahtWhole(-leftToday) }
-        : { label: 'Left today', value: formatBahtWhole(leftToday) },
+      : remainder('Left of budget', totalStatus.remaining),
+    leftToday === null ? null : remainder('Left today', leftToday),
     // Tomorrow's figure if nothing more is spent today, from the same helper the Home card prints —
     // it drops out on the cycle's last day, when there is no tomorrow left to spread anything over.
     tomorrow === null ? null : { label: 'Tomorrow', value: formatBahtWhole(tomorrow) },
