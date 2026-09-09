@@ -10,10 +10,11 @@ import {
   isKeypadLayout,
   setTheme,
   setAccent,
+  setPrivacy,
 } from './queries';
 import { setCardFeePct, isValidCardFeePct, getFxRates, setFxRates } from './queries';
 import type { FxRates } from './queries';
-import { isTheme, isAccent, type Theme, type Accent } from './theme';
+import { isTheme, isAccent, isPrivacy, type Theme, type Accent, type Privacy } from './theme';
 import { listCurrencies } from '@features/currencies/queries';
 import { frankfurterUrl, parseEcbResponse } from '@features/entries/fx';
 import { wipeAllData } from './data';
@@ -129,6 +130,15 @@ export async function setAccentAction(value: Accent): Promise<void> {
   if (!isAccent(value)) throw new Error(`Unknown accent: ${String(value)}`);
   const db = await getBrowserDb();
   await setAccent(db, value);
+  bumpDataVersion();
+}
+
+// Backing the privacy toggle. Bumps the data version so useSettings re-reads and usePrivacy
+// re-stamps, which is also what refreshes the localStorage cache the pre-paint script reads.
+export async function setPrivacyAction(value: Privacy): Promise<void> {
+  if (!isPrivacy(value)) throw new Error(`Unknown privacy mode: ${String(value)}`);
+  const db = await getBrowserDb();
+  await setPrivacy(db, value);
   bumpDataVersion();
 }
 

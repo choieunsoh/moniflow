@@ -9,6 +9,7 @@ import { emojiFor, hueFor } from '@features/categories/queries';
 import { iconForAccount, hueForAccount } from '@features/accounts/queries';
 import { formatDayHeading, formatDayHeadingWithYear } from '@shared/date';
 import { formatLedgerSpend } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 import { CycleSelector } from '@features/entries/ui/CycleSelector';
 import { CollapseAllButton } from '@features/entries/ui/CollapseAllButton';
 import { SwipeRow } from '@features/entries/ui/SwipeRow';
@@ -210,12 +211,14 @@ export default function RecordsPage() {
                   className="tnum text-sm"
                   style={{ color: 'var(--color-muted)' }}
                 >
-                  {formatForeign(c.total, c.currency)}
+                  <Money>{formatForeign(c.total, c.currency)}</Money>
                 </span>
               ))}
               {/* Same formatter as the rows it sums — a net refund reads +฿888 here and +฿888 down
                   there, rather than the header negating first and printing the opposite sign. */}
-              <span className="tnum text-sm font-semibold">{formatLedgerSpend(total)}</span>
+              <span className="tnum text-sm font-semibold">
+                <Money>{formatLedgerSpend(total)}</Money>
+              </span>
             </span>
           </div>
           {sections.map((section) => (
@@ -275,10 +278,12 @@ export default function RecordsPage() {
                 <span className="tnum flex shrink-0 items-baseline gap-2 text-sm">
                   {section.foreign.map((c) => (
                     <span key={c.currency} style={{ color: 'var(--color-muted)' }}>
-                      {formatForeign(c.total, c.currency)}
+                      <Money>{formatForeign(c.total, c.currency)}</Money>
                     </span>
                   ))}
-                  <span>{formatLedgerSpend(section.total)}</span>
+                  <span>
+                    <Money>{formatLedgerSpend(section.total)}</Money>
+                  </span>
                 </span>
               </summary>
               <ul className="panel flex flex-col divide-y overflow-hidden">

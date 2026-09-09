@@ -1,5 +1,6 @@
 import { formatBaht } from '@shared/money';
 import { TailDisclosure } from '@shared/ui/TailDisclosure';
+import { Money } from '@shared/ui/Money';
 import { MAX_SLICES } from '@features/entries/donut';
 import type { Bar } from '@features/entries/breakdown';
 
@@ -22,7 +23,7 @@ export function AccountLegend({ bars }: { bars: Bar[] }) {
       <span className="min-w-0 flex-1 truncate text-sm">{b.key}</span>
       <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
         {/* Same filter logic as Breakdown.tsx: pct > 0 ensures total < 0, so -b.total is always positive. */}
-        {formatBaht(-b.total)}
+        <Money>{formatBaht(-b.total)}</Money>
       </span>
     </li>
   );

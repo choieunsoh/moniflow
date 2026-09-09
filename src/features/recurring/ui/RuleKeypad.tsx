@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { formatBaht, formatBahtKeyed, formatCurrency } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 import { evaluate, nextExpr, OPS, KEYPAD_KEYS } from '@features/entries/calc';
 import { toThb } from '@features/entries/fx';
 import { isCurrency, type Currency } from '@features/entries/entry-form';
@@ -225,6 +226,10 @@ export function RuleKeypad({
             className="tnum text-4xl font-semibold"
             style={{ color: validAmount ? 'var(--color-text)' : 'var(--color-faint)' }}
           >
+            {/* Exempt from privacy by owner decision: this is the amount you are keying RIGHT NOW,
+                not history — the one figure on screen you already know, so blurring it would mean
+                entering a rule blind. formatBahtKeyed already means "a figure the user is typing"
+                (see money.ts). Do not re-wrap in <Money>. */}
             {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
           </span>
 
@@ -242,7 +247,7 @@ export function RuleKeypad({
                     color: thbPreview !== null ? 'var(--color-text)' : 'var(--color-faint)',
                   }}
                 >
-                  {thbPreview !== null ? formatBaht(thbPreview) : 'no rate'}
+                  {thbPreview !== null ? <Money>{formatBaht(thbPreview)}</Money> : 'no rate'}
                 </span>
               </div>
 
@@ -571,6 +576,13 @@ export function RuleKeypad({
           >
             ‹ Back
           </button>
+          {/* Exempt from privacy, both branches — same reasoning as the hero above, this echoes the
+              amount you just keyed, not a computed figure. THB uses the keyed formatter directly;
+              foreign currency shows the keyed figure in ITS OWN currency (never converted to THB
+              here), so it's your keystrokes either way. String-built rather than JSX so the
+              formatter calls don't land in JSX text position — <Money>'s scan can't see behind a
+              ternary, but a bare `<>{format...}` fragment WOULD trip it (the fragment's own closing
+              `>` reads the same as any element's). */}
           <span className="tnum text-sm font-semibold">
             {isThb
               ? formatBahtKeyed(amount ?? 0)

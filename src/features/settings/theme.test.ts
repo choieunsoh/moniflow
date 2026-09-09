@@ -7,7 +7,9 @@ import {
   DEFAULT_THEME,
   isAccent,
   isTheme,
+  PRIVACY_STORAGE_KEY,
   readAccent,
+  readPrivacy,
   readTheme,
   THEMES,
   THEME_STORAGE_KEY,
@@ -53,5 +55,17 @@ describe('theme values', () => {
   it('pins the storage keys the pre-paint inline script duplicates', () => {
     expect(THEME_STORAGE_KEY).toBe('moniflow_theme');
     expect(ACCENT_STORAGE_KEY).toBe('moniflow_accent');
+  });
+});
+
+describe('privacy', () => {
+  it('pins the storage key the inline script also hardcodes', () => {
+    expect(PRIVACY_STORAGE_KEY).toBe('moniflow_privacy');
+  });
+
+  it('reads a missing or unknown attribute as the default', () => {
+    expect(readPrivacy(null)).toBe('off');
+    expect(readPrivacy('yes')).toBe('off');
+    expect(readPrivacy('on')).toBe('on');
   });
 });

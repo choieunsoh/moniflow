@@ -1,5 +1,6 @@
 import { NO_NOTE, type NoteRow } from '../by-note';
 import { formatBahtWhole } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 
 const MAX_ROWS = 12;
 
@@ -45,7 +46,7 @@ export function TopNotesList({
               </span>
             </span>
             <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-              {formatBahtWhole(n.total)}
+              <Money>{formatBahtWhole(n.total)}</Money>
             </span>
           </li>
         ))}

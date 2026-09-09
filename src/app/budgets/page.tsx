@@ -10,6 +10,7 @@ import { emojiFor, hueFor } from '@features/categories/queries';
 import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
 import type { IconSet } from '@features/settings/queries';
 import { formatBaht } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 
 // A thin colour-only glance of spend against the limit you set — red over, amber near, muted under.
 // This page is for setting budgets, so the exact "left"/percent figures are intentionally omitted;
@@ -110,14 +111,15 @@ export default function BudgetsPage() {
             so would be noise. */}
         {fixedReserve > 0 && totalLimit !== null && (
           <p className="tnum text-xs" style={{ color: 'var(--color-faint)' }}>
-            −{formatBaht(fixedReserve)} fixed costs · {formatBaht(total.limit ?? 0)} left to budget
+            −<Money>{formatBaht(fixedReserve)}</Money> fixed costs ·{' '}
+            <Money>{formatBaht(total.limit ?? 0)}</Money> left to budget
           </p>
         )}
         {/* Row 2: this cycle's spend · progress bar */}
         {(total.limit !== null || total.spent !== 0) && (
           <div className="flex items-center gap-3">
             <span className="tnum shrink-0 text-xs" style={{ color: 'var(--color-faint)' }}>
-              {spentLine(total.spent)}
+              <Money>{spentLine(total.spent)}</Money>
             </span>
             {total.state !== 'none' && (
               <div className="min-w-0 flex-1">
@@ -200,7 +202,7 @@ function CategoryRow({
       {(row.limit !== null || row.spent !== 0) && (
         <div className="flex items-center gap-3 pl-10">
           <span className="tnum shrink-0 text-xs" style={{ color: 'var(--color-faint)' }}>
-            {spentLine(row.spent)}
+            <Money>{spentLine(row.spent)}</Money>
           </span>
           {row.state !== 'none' && (
             <div className="min-w-0 flex-1">

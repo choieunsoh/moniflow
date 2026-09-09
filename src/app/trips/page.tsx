@@ -11,6 +11,7 @@ import {
 } from '@features/entries/trips';
 import { formatBaht } from '@shared/money';
 import { PageContainer } from '@shared/ui/PageContainer';
+import { Money } from '@shared/ui/Money';
 import { TripRename } from '@features/entries/ui/TripRename';
 
 // Trips page's data loads client-side via useTrips against the browser OPFS db.
@@ -80,10 +81,10 @@ export default function TripsPage() {
                     </span>
                     <div className="flex items-baseline gap-3">
                       <span className="tnum text-lg font-semibold">
-                        {formatForeign(trip.originalTotal, trip.currency)}
+                        <Money>{formatForeign(trip.originalTotal, trip.currency)}</Money>
                       </span>
                       <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
-                        {formatBaht(trip.thbTotal)}
+                        <Money>{formatBaht(trip.thbTotal)}</Money>
                       </span>
                     </div>
                   </div>

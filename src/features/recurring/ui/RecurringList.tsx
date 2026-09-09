@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { IconSet } from '@features/settings/queries';
 import { formatBahtWhole } from '@shared/money';
 import { ConfirmDialog } from '@shared/ui/ConfirmDialog';
+import { Money } from '@shared/ui/Money';
 import { withSaveToast } from '@shared/ui/with-save-toast';
 import { archiveRuleAction } from '../actions';
 import type { RuleMeta } from '../queries';
@@ -79,7 +80,9 @@ export function RecurringList({ rules, monthlyTotal, metaById, iconSet }: Recurr
           {rules.length} {rules.length === 1 ? 'rule' : 'rules'}
         </span>
         <span className="flex items-baseline gap-1.5">
-          <span className="tnum text-sm font-semibold">{formatBahtWhole(monthlyTotal)}</span>
+          <span className="tnum text-sm font-semibold">
+            <Money>{formatBahtWhole(monthlyTotal)}</Money>
+          </span>
           <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
             / month
           </span>
@@ -99,7 +102,9 @@ export function RecurringList({ rules, monthlyTotal, metaById, iconSet }: Recurr
               </span>
             </div>
             <span className="flex shrink-0 items-baseline gap-1">
-              <span className="tnum text-sm">{formatBahtWhole(section.total)}</span>
+              <span className="tnum text-sm">
+                <Money>{formatBahtWhole(section.total)}</Money>
+              </span>
               <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
                 {section.unit}
               </span>

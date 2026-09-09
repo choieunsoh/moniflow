@@ -3,6 +3,7 @@
 import { type ReactNode, Suspense, useEffect } from 'react';
 import { useFontScale } from '@features/settings/use-font-scale';
 import { useTheme } from '@features/settings/use-theme';
+import { usePrivacy } from '@features/settings/use-privacy';
 import { requestPersistence } from '../backup-safety';
 import { useSearchSuggestions } from '@features/entries/use-search-suggestions';
 import { useRecurringSweep } from '@features/recurring/use-recurring-sweep';
@@ -26,6 +27,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Appearance, same shape and for the same reason: the preference lives in OPFS, which only exists
   // client-side, so the shell is where it gets applied.
   useTheme();
+  // Third appearance axis, called beside useTheme for the same reason: OPFS is client-only, so the
+  // shell is where the preference gets applied and where the global press-and-hold peek listener lives.
+  usePrivacy();
   // Fire-and-forget on first mount: ask the browser to keep this origin's OPFS out of the evictable
   // bucket. Never blocks first paint — a denied request is a weaker guarantee, not an error.
   useEffect(() => {

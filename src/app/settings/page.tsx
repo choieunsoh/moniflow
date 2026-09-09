@@ -13,9 +13,11 @@ import {
 } from '@features/settings/actions';
 import { ThemePicker } from '@features/settings/ui/ThemePicker';
 import { AccentPicker } from '@features/settings/ui/AccentPicker';
+import { PrivacyToggle } from '@features/settings/ui/PrivacyToggle';
 import { WipeAllData } from '@features/settings/ui/WipeAllData';
 import { ImportBackup } from '@features/settings/ui/ImportBackup';
 import { DriveBackup } from '@features/drive/ui/DriveBackup';
+import { DuplicateScan } from '@features/entries/ui/DuplicateScan';
 import { saveFile } from '@shared/save-file';
 import { bumpDataVersion } from '@shared/data-version';
 import { useBackupStatus } from '@shared/use-backup-status';
@@ -137,6 +139,7 @@ export default function SettingsPage() {
         <h2 className="text-sm font-semibold">Appearance</h2>
         <ThemePicker />
         <AccentPicker />
+        <PrivacyToggle />
         <p className="text-xs" style={{ color: 'var(--color-faint)' }}>
           Stored with your ledger, so a restored backup brings your appearance with it.
           &ldquo;System&rdquo; follows your phone&apos;s own light/dark setting as it changes.
@@ -296,6 +299,15 @@ export default function SettingsPage() {
         </button>
         <ImportBackup />
         <DriveBackup />
+      </section>
+
+      <section className="panel flex flex-col gap-3 p-5">
+        <h2 className="text-sm font-semibold">Duplicates</h2>
+        <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+          Rows sharing a date, an amount and a category. Three things write to the ledger and none
+          of them checks the others.
+        </p>
+        <DuplicateScan />
       </section>
 
       <section

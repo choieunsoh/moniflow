@@ -41,6 +41,7 @@ function NewEntryInner() {
     currencies,
     currencyCodes,
     notes,
+    noteSuggestions,
     rates,
     ratesAsOf,
     defaultAccount,
@@ -71,6 +72,7 @@ function NewEntryInner() {
         currencies={currencies}
         currencyCodes={currencyCodes}
         notes={notes}
+        noteSuggestions={noteSuggestions}
         rates={rates}
         ratesAsOf={ratesAsOf}
         defaultAccount={defaultAccount}

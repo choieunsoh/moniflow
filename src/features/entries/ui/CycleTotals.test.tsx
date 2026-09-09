@@ -27,7 +27,12 @@ describe('CycleTotals', () => {
 
   it('names the refund and the net beneath the gross figure', () => {
     render(<CycleTotals {...refundCycle} />);
-    expect(screen.getByText(/฿888 refunded in เกมส์ · net ฿10,338/)).toBeInTheDocument();
+    // Both figures are now nested inside their own <Money>, splitting this sentence across
+    // elements — getByText only reads an element's own direct text nodes, so check the shared
+    // parent's full text instead.
+    expect(screen.getByText('฿888').parentElement).toHaveTextContent(
+      '฿888 refunded in เกมส์ · net ฿10,338',
+    );
   });
 
   it('joins more than one refunded category', () => {
@@ -39,7 +44,9 @@ describe('CycleTotals', () => {
         net={9838}
       />,
     );
-    expect(screen.getByText(/฿1,388 refunded in เกมส์, อาหาร · net ฿9,838/)).toBeInTheDocument();
+    expect(screen.getByText('฿1,388').parentElement).toHaveTextContent(
+      '฿1,388 refunded in เกมส์, อาหาร · net ฿9,838',
+    );
   });
 
   it('keeps the only denominator on the budget block', () => {

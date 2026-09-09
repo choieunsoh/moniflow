@@ -17,9 +17,12 @@ describe('CycleDeltaCard contributors', () => {
       />,
     );
     expect(screen.getByText('Food')).toBeInTheDocument();
-    expect(screen.getByText(/↑.*420/)).toBeInTheDocument();
+    // The figure is now nested inside <Money>, so the arrow-plus-figure text is split across two
+    // elements — getByText only reads an element's own direct text nodes. toHaveTextContent reads
+    // the whole subtree, which is what this assertion actually means to check.
+    expect(screen.getByText('฿420').parentElement).toHaveTextContent(/↑.*420/);
     expect(screen.getByText('Transport')).toBeInTheDocument();
-    expect(screen.getByText(/↓.*200/)).toBeInTheDocument();
+    expect(screen.getByText('฿200').parentElement).toHaveTextContent(/↓.*200/);
   });
 
   it('renders no contributor list when none are given (backward compatible)', () => {

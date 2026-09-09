@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
-import { getLatestAccount, getDistinctNotes, getEntryById } from './queries';
+import { getLatestAccount, getDistinctNotes, getNoteSuggestions, getEntryById } from './queries';
 import type { EntryRow } from './schema';
+import type { NoteSuggestionRow } from './queries';
 import { getKeypadCategories, getKeypadAccounts, getKeypadCurrencies } from './keypad-lists';
 import type { KeypadCategory, KeypadAccount, KeypadCurrency } from './ui/Keypad';
 import {
@@ -25,6 +26,7 @@ export type NewEntryData = {
   currencies: KeypadCurrency[];
   currencyCodes: Set<string>; // the catalog's valid codes, for isCurrency
   notes: string[]; // the note field's autocomplete pool
+  noteSuggestions: NoteSuggestionRow[]; // note → its usual category/account, for the keypad's save chip
   rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
   ratesAsOf: Record<string, string>;
   defaultAccount: string;
@@ -64,6 +66,7 @@ export function useNewEntry(copyId?: number): { ready: boolean; data: NewEntryDa
         currencies,
         currencyCodes,
         notes,
+        noteSuggestions,
         cardFeePct,
         fxRates,
         latestAccount,
@@ -77,6 +80,7 @@ export function useNewEntry(copyId?: number): { ready: boolean; data: NewEntryDa
         getKeypadCurrencies(db),
         getCurrencyCodes(db),
         getDistinctNotes(db),
+        getNoteSuggestions(db),
         getCardFeePct(db),
         getFxRates(db),
         getLatestAccount(db),
@@ -100,6 +104,7 @@ export function useNewEntry(copyId?: number): { ready: boolean; data: NewEntryDa
         currencies,
         currencyCodes,
         notes,
+        noteSuggestions,
         rates,
         ratesAsOf,
         defaultAccount,

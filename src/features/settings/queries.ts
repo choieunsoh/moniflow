@@ -2,7 +2,17 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '@db/client';
 import { settings } from './schema';
 import type { SettingRow } from './catalog';
-import { DEFAULT_ACCENT, DEFAULT_THEME, isAccent, isTheme, type Accent, type Theme } from './theme';
+import {
+  DEFAULT_ACCENT,
+  DEFAULT_PRIVACY,
+  DEFAULT_THEME,
+  isAccent,
+  isPrivacy,
+  isTheme,
+  type Accent,
+  type Privacy,
+  type Theme,
+} from './theme';
 
 // The whole settings KV table, for a backup — dumped as-is (cutoff, icon set, font scale, card fee,
 // keypad layout, fx-rate cache) so a new setting is captured without touching this function.
@@ -235,5 +245,20 @@ export async function setAccent(db: Db, value: Accent): Promise<void> {
   await db.batch([
     db.delete(settings).where(eq(settings.key, ACCENT_KEY)),
     db.insert(settings).values({ key: ACCENT_KEY, value }),
+  ]);
+}
+
+const PRIVACY_KEY = 'privacy';
+
+/** Falls back to 'off' for a fresh DB, one that predates this setting, or a corrupted value. */
+export async function getPrivacy(db: Db): Promise<Privacy> {
+  const [row] = await db.select().from(settings).where(eq(settings.key, PRIVACY_KEY)).all();
+  return row !== undefined && isPrivacy(row.value) ? row.value : DEFAULT_PRIVACY;
+}
+
+export async function setPrivacy(db: Db, value: Privacy): Promise<void> {
+  await db.batch([
+    db.delete(settings).where(eq(settings.key, PRIVACY_KEY)),
+    db.insert(settings).values({ key: PRIVACY_KEY, value }),
   ]);
 }

@@ -47,19 +47,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           DB-derived and now read via the browser OPFS db, which only exists client-side. */}
       <body className="min-h-dvh">
         {/* No-FOUC: apply the saved appearance before the app paints. Reads the localStorage cache
-            (written by useFontScale and useTheme) and sets the root font-size and the two theme
-            attributes, so the app never flashes default → preferred. Most visible on the installed
-            PWA, where the splash hands straight over to a painted page.
+            (written by useFontScale, useTheme and usePrivacy) and sets the root font-size and the
+            three appearance attributes, so the app never flashes default → preferred. Most visible on
+            the installed PWA, where the splash hands straight over to a painted page.
 
-            A missing or invalid value stamps NOTHING, which is the correct default in all three
-            cases: no font-size override, `color-scheme: light dark` left to follow the OS, and the
-            bare :root accent palette.
+            A missing or invalid value stamps NOTHING, which is the correct default in all four cases:
+            no font-size override, `color-scheme: light dark` left to follow the OS, the bare :root
+            accent palette, and figures left unblurred.
 
             This is a pre-hydration inline script, so it CANNOT import a module — the percent map,
-            the accent list and both storage keys are inlined here and mirror FONT_SCALE_PCT /
+            the accent list and all three storage keys are inlined here and mirror FONT_SCALE_PCT /
             FONT_SCALE_STORAGE_KEY in features/settings/queries.ts and ACCENTS / THEME_STORAGE_KEY /
-            ACCENT_STORAGE_KEY in features/settings/theme.ts. theme.test.ts pins the keys on that
-            side; keep the lists in sync if the presets ever change.
+            ACCENT_STORAGE_KEY / PRIVACY_STORAGE_KEY in features/settings/theme.ts. theme.test.ts pins
+            the keys on that side; keep the lists in sync if the presets ever change.
 
             The accent is validated against a literal list rather than trusted, because it is
             interpolated into an attribute that CSS then selects on — a junk key would otherwise
@@ -77,6 +77,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               "var a=localStorage.getItem('moniflow_accent');" +
               "if(a&&a!=='ink'&&['indigo','violet','plum','rose','clay','olive','teal','azure'].indexOf(a)>-1)" +
               'd.dataset.accent=a;' +
+              "var v=localStorage.getItem('moniflow_privacy');" +
+              "if(v==='on')d.dataset.privacy='on';" +
               '}catch(e){}',
           }}
         />

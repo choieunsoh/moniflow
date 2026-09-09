@@ -39,6 +39,7 @@ function data(overrides: Partial<NewEntryData>): NewEntryData {
     currencies: [{ code: 'THB', symbol: '฿' }],
     currencyCodes: new Set(['THB']),
     notes: [],
+    noteSuggestions: [],
     rates: {},
     ratesAsOf: {},
     defaultAccount: 'Cash',

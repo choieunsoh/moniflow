@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useId, useState, useTransition } from 'react';
 import { formatBaht, formatBahtKeyed, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
+import { Money } from '@shared/ui/Money';
 import { addEntryAction } from '../actions';
 import { evaluate, nextExpr, OPS, KEYPAD_KEYS } from '../calc';
 import { toThb } from '../fx';
@@ -17,6 +18,8 @@ import { refreshFxRatesAction } from '@features/settings/actions';
 import { seedStarterSetAction } from '@features/categories/actions';
 import type { IconSet, KeypadLayout } from '@features/settings/queries';
 import type { EntryRow } from '../schema';
+import { pickNoteSuggestion } from '../note-suggest';
+import type { NoteSuggestionRow } from '../queries';
 
 export type KeypadCategory = { name: string; emoji: string; hue?: number };
 export type KeypadAccount = { name: string; icon: string; hue?: number };
@@ -91,6 +94,7 @@ export function Keypad({
   currencies,
   currencyCodes,
   notes,
+  noteSuggestions = [],
   rates,
   ratesAsOf,
   defaultAccount,
@@ -108,6 +112,9 @@ export function Keypad({
   currencies: KeypadCurrency[];
   currencyCodes: Set<string>; // the catalog's valid codes, for isCurrency
   notes: string[];
+  // Only the new-entry route supplies these. An edit already carries its own category, so it pays
+  // for no ledger group-by it will never read.
+  noteSuggestions?: NoteSuggestionRow[];
   rates: Record<string, number>; // effective (fee-inclusive) THB per 1 unit, by code
   ratesAsOf: Record<string, string>;
   defaultAccount: string;
@@ -148,7 +155,11 @@ export function Keypad({
   const [expr, setExpr] = useState(initialForeign);
   const [view, setView] = useState<'keypad' | 'account' | 'currency' | 'category'>('keypad');
   const [date, setDate] = useState(isCopy ? today : (entry?.date ?? today));
-  const [account, setAccount] = useState(entry?.account ?? defaultAccount);
+  // '' means "not chosen yet" — see effectiveAccount below. A new entry starts unchosen so a note
+  // suggestion can answer for it; an explicit tap in the account picker makes this non-empty and
+  // wins from then on.
+  const [account, setAccount] = useState(entry?.account ?? '');
+  const [note, setNote] = useState(entry?.note ?? '');
   const [currency, setCurrency] = useState<Currency>(initialCurrency);
   // `null` = follow the cached rate (shown to 4 dp); a string = the value the user typed/edited.
   const [rateOverride, setRateOverride] = useState<string | null>(initialOverride);
@@ -165,20 +176,29 @@ export function Keypad({
   // category it refunds. On edit, follow the row's own sign.
   const [isIncome, setIsIncome] = useState(entry !== undefined && entry.amount > 0);
 
-  // DERIVED, not synced. The keypad deliberately survives a data refetch now (see use-new-entry),
-  // so it also keeps an `account` picked before there WERE any accounts — the empty string. Seeding
-  // the starter set mid-entry hit exactly that: the tiles arrived, the expense submitted with no
-  // account, and the row was silently lost. Reading through the default instead of writing state in
-  // an effect fixes it without a cascading render, and an explicit choice still wins because
-  // setAccount makes `account` non-empty.
-  const effectiveAccount = account === '' ? defaultAccount : account;
-
   // Tri-state backed by a 2-state checkbox — mirrors EntryForm's toggle. Untouched follows the
   // effective default for the entry's own category (there's no "currently selected category" for a
   // NEW entry: the category grid submits on tap, so nothing is picked yet at this point in the
   // flow, and the default correctly falls back to "no category, no default"). Editing an existing
   // entry starts already touched when it carries its own explicit override.
   const category = entry?.category ?? '';
+
+  // The category and account this note has always taken. Recomputed per render over a list that is
+  // one row per combination, not per entry — cheap enough that memoising it would cost more to read
+  // than it saves. Only offered for a brand-new entry: an edit and a duplicate both arrive carrying
+  // their own category, and a second competing answer on the same screen is noise.
+  const suggestion = entry === undefined ? pickNoteSuggestion(noteSuggestions, note) : null;
+  const suggestedCategory =
+    suggestion === null ? undefined : categories.find((c) => c.name === suggestion.category);
+
+  // DERIVED, not synced. The keypad deliberately survives a data refetch now (see use-new-entry),
+  // so it also keeps an `account` picked before there WERE any accounts — the empty string. Seeding
+  // the starter set mid-entry hit exactly that: the tiles arrived, the expense submitted with no
+  // account, and the row was silently lost. Reading through the default instead of writing state in
+  // an effect fixes it without a cascading render, and an explicit choice still wins because
+  // setAccount makes `account` non-empty. A note suggestion answers for the account too, but only
+  // until an explicit tap in the account picker makes `account` non-empty and wins from then on.
+  const effectiveAccount = account !== '' ? account : (suggestion?.account ?? defaultAccount);
   const [offBudgetTouched, setOffBudgetTouched] = useState(
     entry !== undefined && entry.offBudget !== null,
   );
@@ -330,6 +350,10 @@ export function Keypad({
             }}
           >
             {isIncome ? '+' : ''}
+            {/* Exempt from privacy by owner decision: this is the amount you are keying RIGHT NOW,
+                not history — the one figure on screen you already know, so blurring it would mean
+                entering an expense blind. formatBahtKeyed already means "a figure the user is
+                typing" (see money.ts). Do not re-wrap in <Money>. */}
             {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
           </span>
 
@@ -348,7 +372,7 @@ export function Keypad({
                   className="tnum text-[1.75rem] leading-none font-bold"
                   style={{ color: hasRate ? 'var(--color-text)' : 'var(--color-faint)' }}
                 >
-                  {hasRate ? formatBaht(thbValue) : 'no rate'}
+                  {hasRate ? <Money>{formatBaht(thbValue)}</Money> : 'no rate'}
                 </span>
               </div>
 
@@ -484,7 +508,8 @@ export function Keypad({
           name="note"
           list={noteListId}
           placeholder="Note (optional)"
-          defaultValue={entry?.note ?? ''}
+          value={note}
+          onChange={(e) => setNote(e.currentTarget.value)}
           enterKeyHint="next"
           onKeyDown={(e) => {
             if (e.key !== 'Enter') return;
@@ -501,6 +526,33 @@ export function Keypad({
             <option key={n} value={n} />
           ))}
         </datalist>
+
+        {/* Saves in one tap under the category and account this exact note has always taken. It is
+            an ordinary submit button carrying name="category" — the same mechanism as a category
+            tile, so there is no second submit path to keep in step. Absent until the note matches
+            and the amount is real, so it can never be the thing you tap by reflex on a blank form. */}
+        {suggestion !== null && suggestedCategory !== undefined && canSubmit ? (
+          <button
+            type="submit"
+            name="category"
+            value={suggestion.category}
+            onClick={() => buzz(18)}
+            className="tap flex items-center gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-sm"
+            style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
+          >
+            <CategoryIcon
+              emoji={suggestedCategory.emoji}
+              name={suggestedCategory.name}
+              size="md"
+              iconSet={iconSet}
+              hue={suggestedCategory.hue}
+            />
+            <span className="min-w-0 truncate">
+              {suggestion.category} · {suggestion.account}
+            </span>
+            <span className="ml-auto font-medium">Save</span>
+          </button>
+        ) : null}
 
         {/* Duplicate rides BESIDE the primary action, not under it. Stacked, it landed at y=895 on a
             915px frame — underneath the bottom tab bar, invisible to everything except a test that
@@ -676,9 +728,12 @@ export function Keypad({
             ‹ Back
           </button>
           {/* Same figure, either provenance: for THB it IS the keyed amount, for a foreign currency
-              it's the converted one — so it formats by whichever it is. */}
+              it's the converted one — so it formats by whichever it is. Only the THB branch is
+              exempt from privacy (same reasoning as the hero above, this is that same in-progress
+              figure echoed here); the foreign-currency branch is our FX arithmetic, not the user's
+              keystrokes, so it stays behind the blur like any other computed figure. */}
           <span className="tnum text-sm font-semibold">
-            {isThb ? formatBahtKeyed(thbValue) : formatBaht(thbValue)}
+            {isThb ? formatBahtKeyed(thbValue) : <Money>{formatBaht(thbValue)}</Money>}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">

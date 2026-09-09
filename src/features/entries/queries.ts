@@ -224,6 +224,16 @@ export async function getDistinctCategories(db: Db): Promise<string[]> {
   ).map((r) => r.name);
 }
 
+// One row per (note, category, account) combination the ledger has ever seen, with how often and
+// how recently. Feeds pickNoteSuggestion — see note-suggest.ts for the selection rule.
+export type NoteSuggestionRow = {
+  note: string;
+  category: string;
+  account: string;
+  count: number;
+  last: string; // YYYY-MM-DD, the most recent entry in this combination
+};
+
 // Distinct non-blank notes seen in the ledger — the autocomplete pool behind the note field's
 // datalist. Unlike categories/accounts there is no notes table: the ledger's own note column is the
 // only record of what you've typed before, so this reads straight off entries.
@@ -239,6 +249,45 @@ export async function getDistinctNotes(db: Db): Promise<string[]> {
       .orderBy(desc(sql`count(*)`))
       .all()
   ).flatMap((r) => (r.note === null ? [] : [r.note]));
+}
+
+// Every (note, category, account) combination the ledger holds, with its count and latest date —
+// the raw material for the keypad's note suggestion (see note-suggest.ts for the rule).
+//
+// Grouped in SQL and read ONCE per keypad mount, alongside getDistinctNotes; nothing here runs on a
+// keystroke. The result is one row per combination, not per entry, so it stays small next to the
+// ledger it summarises.
+//
+// innerJoin on both name tables: a row with no category or no account cannot answer the question
+// this feeds, and the app enforces non-null on write anyway (the columns are nullable only because
+// SQLite cannot ALTER to NOT NULL).
+//
+// GROUP BY entries.note runs under SQLite's default BINARY collation — case-SENSITIVE — so
+// "Starbucks" and "starbucks" come back as two separate rows with two separate counts, even for the
+// same category/account. pickNoteSuggestion folds case when it MATCHES a typed note against these
+// rows (so both variants are still considered), but it cannot undo the split at the source: it sums
+// nothing, it just picks the best single row. A note typed inconsistently can therefore lose the
+// frequency contest to a smaller, consistently-typed rival — e.g. "Starbucks"×3 + "starbucks"×4
+// under one category (really 7) can each individually lose to a competing "Starbucks"×5 under
+// another. Fixing this means folding case in the SQL (`lower(note)` in the GROUP BY / a COLLATE
+// NOCASE column) — not attempted here.
+export async function getNoteSuggestions(db: Db): Promise<NoteSuggestionRow[]> {
+  return (
+    await db
+      .select({
+        note: entries.note,
+        category: categories.name,
+        account: accounts.name,
+        count: sql<number>`count(*)`,
+        last: sql<string>`max(${entries.date})`,
+      })
+      .from(entries)
+      .innerJoin(categories, eq(entries.categoryId, categories.id))
+      .innerJoin(accounts, eq(entries.accountId, accounts.id))
+      .where(and(isNotNull(entries.note), ne(entries.note, '')))
+      .groupBy(entries.note, entries.categoryId, entries.accountId)
+      .all()
+  ).flatMap((r) => (r.note === null ? [] : [{ ...r, note: r.note }]));
 }
 
 export async function getDistinctAccounts(db: Db): Promise<string[]> {

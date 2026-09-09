@@ -23,6 +23,7 @@ import { emojiFor, hueFor } from '@features/categories/queries';
 import { iconForAccount, hueForAccount } from '@features/accounts/queries';
 import { formatBahtWhole } from '@shared/money';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
+import { Money } from '@shared/ui/Money';
 import { trendAverage } from '@features/entries/trend';
 
 // Ambient "this row navigates" affordance for the tappable breakdown/cycle rows — an unfiltered
@@ -137,7 +138,7 @@ export default function AnalyticsPage() {
           </span>
         </span>
         <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-          {formatBahtWhole(c.value)}
+          <Money>{formatBahtWhole(c.value)}</Money>
         </span>
         <RowChevron />
       </Link>
@@ -158,7 +159,9 @@ export default function AnalyticsPage() {
               {subtitle}
             </span>
           </div>
-          <span className="tnum shrink-0 text-lg font-semibold">{formatBahtWhole(total)}</span>
+          <span className="tnum shrink-0 text-lg font-semibold">
+            <Money>{formatBahtWhole(total)}</Money>
+          </span>
         </header>
 
         {category !== null ? (
@@ -198,7 +201,7 @@ export default function AnalyticsPage() {
                     </span>
                   </span>
                   <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-                    {formatBahtWhole(r.value)}
+                    <Money>{formatBahtWhole(r.value)}</Money>
                   </span>
                   <RowChevron />
                 </Link>
