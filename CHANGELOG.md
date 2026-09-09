@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.0] - 2026-09-09
+
+### Added
+
+- give a swiped-away entry a way back, and the launcher a way in
+- send a home-screen shortcut straight to the keypad
+- put a deleted entry back from its own snapshot
+
 ## [1.21.0] - 2026-09-07
 
 ### Added
