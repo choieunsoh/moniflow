@@ -63,9 +63,7 @@ export function TrendChart({
 
   return (
     // `money` blurs the whole chart under privacy mode: ECharts bakes its labels into a canvas
-    // where <Money> cannot reach, so the figures can only be hidden by hiding the picture. Peek is
-    // global for the same reason — this root is pointer-events-none, so it can never be the element
-    // you press.
+    // where <Money> cannot reach, so the figures can only be hidden by hiding the picture.
     <div
       ref={ref}
       className="money h-56 w-full"

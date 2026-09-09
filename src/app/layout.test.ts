@@ -6,6 +6,7 @@ import {
   ACCENTS,
   DEFAULT_ACCENT,
   ACCENT_STORAGE_KEY,
+  PRIVACY_STORAGE_KEY,
   THEME_STORAGE_KEY,
 } from '@features/settings/theme';
 import { FONT_SCALE_PCT, FONT_SCALE_STORAGE_KEY } from '@features/settings/queries';
@@ -60,5 +61,10 @@ describe('the pre-paint inline script mirrors its modules', () => {
 
   it.each(Object.entries(FONT_SCALE_PCT))('inlines the %s font scale as %s', (key, pct) => {
     expect(script).toContain(`${key}:'${pct}'`);
+  });
+
+  it('inlines the privacy key and only stamps the non-default value', () => {
+    expect(script).toContain(`'${PRIVACY_STORAGE_KEY}'`);
+    expect(script).toContain("dataset.privacy='on'");
   });
 });

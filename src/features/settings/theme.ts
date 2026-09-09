@@ -76,3 +76,23 @@ export function readTheme(raw: string | null): Theme {
 export function readAccent(raw: string | null): Accent {
   return isAccent(raw) ? raw : DEFAULT_ACCENT;
 }
+
+/**
+ * Privacy is a third appearance axis, independent of the other two: it hides figures, and touches
+ * no colour. Like theme and accent, the DEFAULT stamps no attribute at all, so the ordinary app
+ * costs no CSS and cannot drift from the base rules.
+ */
+export const PRIVACY_STORAGE_KEY = 'moniflow_privacy';
+
+export const PRIVACIES = ['off', 'on'] as const;
+export type Privacy = (typeof PRIVACIES)[number];
+export const DEFAULT_PRIVACY: Privacy = 'off';
+
+export function isPrivacy(value: unknown): value is Privacy {
+  return typeof value === 'string' && PRIVACIES.some((p) => p === value);
+}
+
+/** The applied state, read back off <html>. An absent attribute means the default. */
+export function readPrivacy(attr: string | null): Privacy {
+  return isPrivacy(attr) ? attr : DEFAULT_PRIVACY;
+}
