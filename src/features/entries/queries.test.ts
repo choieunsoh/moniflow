@@ -22,6 +22,7 @@ import {
   getEntryById,
   getDistinctCategories,
   getDistinctNotes,
+  getNoteSuggestions,
   getDistinctAccounts,
   getAccountsByUsage,
   getLatestAccount,
@@ -364,6 +365,53 @@ describe('getDistinctNotes feeds the note field datalist', () => {
       { date: '2026-07-03', account: 'cash', category: 'food', amount: -50, note: 'Lunch' },
     ]);
     expect(await getDistinctNotes(d)).toEqual(['Lunch']);
+  });
+});
+
+describe('getNoteSuggestions', () => {
+  it('groups by note, category and account with a count and the latest date', async () => {
+    const d = await db();
+    await addEntries(d, [
+      { date: '2026-01-01', account: 'เงินสด', category: 'อาหาร', amount: -50, note: 'ข้าวเที่ยง' },
+      { date: '2026-02-01', account: 'เงินสด', category: 'อาหาร', amount: -60, note: 'ข้าวเที่ยง' },
+      {
+        date: '2026-03-01',
+        account: 'บัตรเครดิต',
+        category: 'กาแฟ',
+        amount: -90,
+        note: 'ข้าวเที่ยง',
+      },
+    ]);
+
+    const rows = await getNoteSuggestions(d);
+    const lunch = rows.filter((r) => r.note === 'ข้าวเที่ยง');
+
+    expect(lunch).toHaveLength(2);
+    expect(lunch.find((r) => r.category === 'อาหาร')).toEqual({
+      note: 'ข้าวเที่ยง',
+      category: 'อาหาร',
+      account: 'เงินสด',
+      count: 2,
+      last: '2026-02-01',
+    });
+  });
+
+  it('excludes rows with no note and rows with a blank note', async () => {
+    const d = await db();
+    await addEntries(d, [
+      { date: '2026-01-01', account: 'เงินสด', category: 'อาหาร', amount: -50, note: null },
+      { date: '2026-01-02', account: 'เงินสด', category: 'อาหาร', amount: -50, note: '' },
+      { date: '2026-01-03', account: 'เงินสด', category: 'อาหาร', amount: -50, note: 'กาแฟ' },
+    ]);
+
+    expect(await getNoteSuggestions(d)).toEqual([
+      { note: 'กาแฟ', category: 'อาหาร', account: 'เงินสด', count: 1, last: '2026-01-03' },
+    ]);
+  });
+
+  it('returns an empty list for an empty ledger', async () => {
+    const d = await db();
+    expect(await getNoteSuggestions(d)).toEqual([]);
   });
 });
 

@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Keypad } from './Keypad';
 import type { EntryRow } from '../schema';
+import type { NoteSuggestionRow } from '../queries';
 
 // CloseButton (rendered unconditionally on the keypad view) calls useRouter().back() — mock it the
 // same way SearchBox.test.tsx mocks next/navigation, since there is no real router in this render.
@@ -294,5 +296,119 @@ describe('Keypad haptics', () => {
     renderWith({ categories: [{ name: 'Food', emoji: '🍜' }] });
     fireEvent.click(screen.getByRole('button', { name: 'Food' }));
     expect(spy).toHaveBeenCalled();
+  });
+});
+
+// The chip offers the category/account a note has always taken, so a repeat purchase saves in one
+// tap. Only ever offered on a brand-new entry — an edit or a duplicate already carries its own
+// category, and a second competing answer on the same screen would be noise.
+describe('the note suggestion chip', () => {
+  const SUGGESTIONS: NoteSuggestionRow[] = [
+    { note: 'ข้าวเที่ยง', category: 'อาหาร', account: 'บัตรเครดิต', count: 9, last: '2026-08-01' },
+  ];
+  const NOTE_CATEGORIES = [
+    { name: 'อาหาร', emoji: '🍜' },
+    { name: 'กาแฟ', emoji: '☕' },
+  ];
+  const NOTE_ACCOUNTS = [
+    { name: 'เงินสด', icon: '💵' },
+    { name: 'บัตรเครดิต', icon: '💳' },
+  ];
+
+  async function keyAmount(digits: string) {
+    for (const digit of digits) {
+      await userEvent.click(screen.getByRole('button', { name: digit }));
+    }
+  }
+
+  // Views toggle via a CSS `hidden` class, not real unmount (see Keypad.tsx) — jsdom has no
+  // stylesheet loaded, so a hidden view's category grid tile stays in the accessible tree. A bare
+  // /อาหาร/ match would therefore also hit the ordinary "อาหาร" grid tile whenever that category is
+  // in the picker's list, which the chip requires. Matching the chip's own "category · account"
+  // text is what makes these assertions target the chip and nothing else.
+
+  it('is absent before a matching note is typed', async () => {
+    renderWith({ noteSuggestions: SUGGESTIONS, categories: NOTE_CATEGORIES });
+    await keyAmount('100');
+    expect(screen.queryByRole('button', { name: /อาหาร · บัตรเครดิต/ })).toBeNull();
+  });
+
+  it('appears once the note matches and an amount is keyed', async () => {
+    renderWith({ noteSuggestions: SUGGESTIONS, categories: NOTE_CATEGORIES });
+    await keyAmount('100');
+    await userEvent.type(screen.getByPlaceholderText('Note (optional)'), 'ข้าวเที่ยง');
+    expect(screen.getByRole('button', { name: /อาหาร · บัตรเครดิต/ })).toBeVisible();
+  });
+
+  it('stays absent at a zero amount', async () => {
+    renderWith({ noteSuggestions: SUGGESTIONS, categories: NOTE_CATEGORIES });
+    await userEvent.type(screen.getByPlaceholderText('Note (optional)'), 'ข้าวเที่ยง');
+    expect(screen.queryByRole('button', { name: /อาหาร · บัตรเครดิต/ })).toBeNull();
+  });
+
+  it('stays absent when duplicating an existing row', async () => {
+    const copiedEntry: EntryRow = { ...someEntry, note: 'ข้าวเที่ยง' };
+    renderWith({
+      noteSuggestions: SUGGESTIONS,
+      categories: NOTE_CATEGORIES,
+      entry: copiedEntry,
+      isCopy: true,
+    });
+    await keyAmount('100');
+    expect(screen.queryByRole('button', { name: /อาหาร · บัตรเครดิต/ })).toBeNull();
+  });
+
+  it('submits the suggested category and account', async () => {
+    const action = vi.fn<(formData: FormData) => Promise<void>>();
+    renderWith({
+      noteSuggestions: SUGGESTIONS,
+      categories: NOTE_CATEGORIES,
+      accounts: NOTE_ACCOUNTS,
+      action,
+      defaultAccount: 'เงินสด',
+    });
+    await keyAmount('100');
+    await userEvent.type(screen.getByPlaceholderText('Note (optional)'), 'ข้าวเที่ยง');
+    await userEvent.click(screen.getByRole('button', { name: /อาหาร · บัตรเครดิต/ }));
+
+    const [form] = action.mock.calls[0];
+    expect(form.get('category')).toBe('อาหาร');
+    expect(form.get('account')).toBe('บัตรเครดิต');
+  });
+
+  it('an account you picked yourself beats the suggestion', async () => {
+    const action = vi.fn<(formData: FormData) => Promise<void>>();
+    renderWith({
+      noteSuggestions: SUGGESTIONS,
+      categories: NOTE_CATEGORIES,
+      accounts: NOTE_ACCOUNTS,
+      action,
+      defaultAccount: 'เงินสด',
+    });
+    await keyAmount('100');
+    await userEvent.type(screen.getByPlaceholderText('Note (optional)'), 'ข้าวเที่ยง');
+    await userEvent.click(screen.getByRole('button', { name: /^Account:/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'เงินสด' }));
+    await userEvent.click(screen.getByRole('button', { name: /อาหาร · บัตรเครดิต/ }));
+
+    const [form] = action.mock.calls[0];
+    expect(form.get('account')).toBe('เงินสด');
+  });
+
+  it('falls back to the default account when no note matches', async () => {
+    const action = vi.fn<(formData: FormData) => Promise<void>>();
+    renderWith({
+      noteSuggestions: SUGGESTIONS,
+      categories: NOTE_CATEGORIES,
+      accounts: NOTE_ACCOUNTS,
+      action,
+      defaultAccount: 'เงินสด',
+    });
+    await keyAmount('100');
+    await userEvent.click(screen.getByRole('button', { name: 'Choose category' }));
+    await userEvent.click(screen.getByRole('button', { name: /กาแฟ/ }));
+
+    const [form] = action.mock.calls[0];
+    expect(form.get('account')).toBe('เงินสด');
   });
 });
