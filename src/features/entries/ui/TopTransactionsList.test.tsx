@@ -44,8 +44,9 @@ describe('TopTransactionsList refund rendering', () => {
     expect(link).toHaveAttribute('aria-label', 'Dinner refund (Food) +฿500.00 on Fri 10 Jul');
 
     expect(screen.getByText('+฿500.00')).toBeInTheDocument();
+    // getByText now resolves to the nested <Money> span; the colour lives on its direct parent.
     const amountSpan = screen.getByText('+฿500.00');
-    expect(amountSpan.getAttribute('style')).toContain('var(--color-gain)');
+    expect(amountSpan.parentElement?.getAttribute('style')).toContain('var(--color-gain)');
   });
 
   it('still states a real purchase as a plain magnitude, not signed', () => {

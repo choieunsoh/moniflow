@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { formatBaht, formatBahtKeyed, formatCurrency } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 import { evaluate, nextExpr, OPS, KEYPAD_KEYS } from '@features/entries/calc';
 import { toThb } from '@features/entries/fx';
 import { isCurrency, type Currency } from '@features/entries/entry-form';
@@ -225,7 +226,11 @@ export function RuleKeypad({
             className="tnum text-4xl font-semibold"
             style={{ color: validAmount ? 'var(--color-text)' : 'var(--color-faint)' }}
           >
-            {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
+            {isThb ? (
+              <Money>{formatBahtKeyed(amount ?? 0)}</Money>
+            ) : (
+              formatCurrency(amount ?? 0, currency)
+            )}
           </span>
 
           {/* Rate line — non-THB only. Blank pins nothing: each post prices at the live ECB rate for
@@ -242,7 +247,7 @@ export function RuleKeypad({
                     color: thbPreview !== null ? 'var(--color-text)' : 'var(--color-faint)',
                   }}
                 >
-                  {thbPreview !== null ? formatBaht(thbPreview) : 'no rate'}
+                  {thbPreview !== null ? <Money>{formatBaht(thbPreview)}</Money> : 'no rate'}
                 </span>
               </div>
 
@@ -572,9 +577,11 @@ export function RuleKeypad({
             ‹ Back
           </button>
           <span className="tnum text-sm font-semibold">
-            {isThb
-              ? formatBahtKeyed(amount ?? 0)
-              : `${formatCurrency(amount ?? 0, currency)} · ${ordinal(day)}`}
+            {isThb ? (
+              <Money>{formatBahtKeyed(amount ?? 0)}</Money>
+            ) : (
+              `${formatCurrency(amount ?? 0, currency)} · ${ordinal(day)}`
+            )}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">

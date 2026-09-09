@@ -150,3 +150,30 @@ describe('currencySymbol', () => {
     expect(currencySymbol('KRW')).toBe('₩');
   });
 });
+
+// A figure rendered as a bare string and a figure wrapped in <Money> are the same type and render
+// identically, so nothing but a scan can tell them apart. Privacy mode blurs `.money` and only
+// `.money`: an unwrapped call site is a figure that stays legible over your shoulder with the
+// setting on, and it fails no gate on its own.
+//
+// The rule is narrow on purpose — a formatter call in JSX TEXT position, which is what `>{format`
+// identifies. A formatter inside an attribute (`aria-label={...}`) is not visible and is left
+// alone, and so is a formatter assigned to a variable or called inside a .ts option-builder.
+//
+// ponytail: a formatter reached through a template literal in text position (`>{`…${formatBaht(x)}`}`)
+// is not matched. Upgrade path if one ever ships: match the backtick form too, rather than widening
+// this to every occurrence and drowning in attribute hits.
+describe('every figure rendered in JSX goes through <Money>', () => {
+  const components = globSync('src/**/*.tsx', {
+    exclude: (path) => path.includes('.test.') || path.endsWith('Money.tsx'),
+  });
+
+  it('no component renders a formatter result outside <Money>', () => {
+    const offenders = components.filter((file) =>
+      /(?<!<Money)>\{format(Baht|SignedBaht|LedgerSpend)/.test(
+        readFileSync(file, 'utf-8').replace(/\s+/g, ''),
+      ),
+    );
+    expect(offenders).toEqual([]);
+  });
+});

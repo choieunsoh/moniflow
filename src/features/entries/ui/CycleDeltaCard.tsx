@@ -4,6 +4,7 @@ import type { IconSet } from '@features/settings/queries';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { formatBahtWhole } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 
 // "This cycle vs last" — the headline total (moved off /dashboard onto Trends). When `contributors`
 // are supplied (unfiltered only) it also lists the top movers that drove the total: the "what
@@ -55,10 +56,11 @@ export function CycleDeltaCard({
           This cycle vs last
         </h2>
         <span className="tnum text-2xl font-semibold" style={{ color }}>
-          {up ? '↑' : '↓'} {formatBahtWhole(Math.abs(delta.delta))}
+          {up ? '↑' : '↓'} <Money>{formatBahtWhole(Math.abs(delta.delta))}</Money>
         </span>
         <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          {up ? 'more than' : 'less than'} last cycle ({formatBahtWhole(delta.prevTotal)})
+          {up ? 'more than' : 'less than'} last cycle (
+          <Money>{formatBahtWhole(delta.prevTotal)}</Money>)
         </span>
       </div>
       {contributors.length > 0 ? (
@@ -81,7 +83,7 @@ export function CycleDeltaCard({
                   className="tnum shrink-0"
                   style={{ color: rose ? 'var(--color-loss)' : 'var(--color-gain)' }}
                 >
-                  {rose ? '↑' : '↓'} {formatBahtWhole(Math.abs(c.delta))}
+                  {rose ? '↑' : '↓'} <Money>{formatBahtWhole(Math.abs(c.delta))}</Money>
                 </span>
               </li>
             );

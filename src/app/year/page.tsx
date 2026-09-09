@@ -14,6 +14,7 @@ import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { formatBahtWhole, formatLedgerSpend } from '@shared/money';
 import { formatDayHeadingWithYear } from '@shared/date';
+import { Money } from '@shared/ui/Money';
 
 // The /year recap — a calendar-year "where did it go" summary reached from the More sheet, stepped
 // with ?year=. All figures come from useYear (one windowed query, folded by yearSummary). Reuses
@@ -100,7 +101,9 @@ export default function YearPage() {
           {rangeLabel}
         </span>
       </div>
-      <span className="tnum shrink-0 text-lg font-semibold">{formatBahtWhole(total)}</span>
+      <span className="tnum shrink-0 text-lg font-semibold">
+        <Money>{formatBahtWhole(total)}</Money>
+      </span>
     </header>
   );
 
@@ -146,7 +149,7 @@ export default function YearPage() {
             ) : (
               <>
                 <span className="tnum text-lg font-semibold">
-                  {formatBahtWhole(biggestMonth.value)}
+                  <Money>{formatBahtWhole(biggestMonth.value)}</Money>
                 </span>
                 <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
                   {biggestMonth.label}
@@ -159,7 +162,7 @@ export default function YearPage() {
               Average / cycle
             </span>
             <span className="tnum text-lg font-semibold">
-              {avgPerCycle === null ? '—' : formatBahtWhole(avgPerCycle)}
+              {avgPerCycle === null ? '—' : <Money>{formatBahtWhole(avgPerCycle)}</Money>}
             </span>
           </div>
         </div>
@@ -193,7 +196,7 @@ export default function YearPage() {
                 </span>
               </span>
               <span className="tnum shrink-0" style={{ color: biggestAmountColor }}>
-                {biggestAmountText}
+                <Money>{biggestAmountText}</Money>
               </span>
             </Link>
           </section>
@@ -219,7 +222,7 @@ export default function YearPage() {
                   </span>
                 </span>
                 <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-                  {formatBahtWhole(c.value)}
+                  <Money>{formatBahtWhole(c.value)}</Money>
                 </span>
               </li>
             ))}

@@ -6,6 +6,7 @@ import type { PointerEvent } from 'react';
 import { useRef, useState } from 'react';
 import { formatLedgerSpend } from '@shared/money';
 import { formatForeign } from '../trips';
+import { Money } from '@shared/ui/Money';
 import { deleteEntryAction, undoDeleteEntry } from '../actions';
 import { toast } from '@shared/ui/toast';
 import type { EntryRow } from '../schema';
@@ -306,13 +307,21 @@ export function SwipeRow({
             // currency you're paying in; back in the ledger it's the THB the cycle is denominated in.
             <span className="flex shrink-0 flex-col items-end">
               <span className="tnum font-medium whitespace-nowrap" style={{ color: amountColor }}>
-                {foreignLeads ? formatForeign(foreign.amount, foreign.currency) : baht}
+                {foreignLeads ? (
+                  formatForeign(foreign.amount, foreign.currency)
+                ) : (
+                  <Money>{baht}</Money>
+                )}
               </span>
               <span
                 className="tnum text-xs whitespace-nowrap"
                 style={{ color: 'var(--color-muted)' }}
               >
-                {foreignLeads ? baht : formatForeign(foreign.amount, foreign.currency)}
+                {foreignLeads ? (
+                  <Money>{baht}</Money>
+                ) : (
+                  formatForeign(foreign.amount, foreign.currency)
+                )}
               </span>
             </span>
           ) : (
@@ -320,7 +329,7 @@ export function SwipeRow({
               className="tnum shrink-0 font-medium whitespace-nowrap"
               style={{ color: amountColor }}
             >
-              {baht}
+              <Money>{baht}</Money>
             </span>
           )}
         </div>

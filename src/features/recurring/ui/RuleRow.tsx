@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { PointerEvent } from 'react';
 import { useRef, useState } from 'react';
 import { formatBaht, formatCurrency } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 import { resolveSwipe, type SwipeSide } from '@features/entries/swipe';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { FALLBACK_EMOJI } from '@features/categories/queries';
@@ -211,7 +212,7 @@ export function RuleRow({
               className="tnum shrink-0 font-medium whitespace-nowrap"
               style={{ color: 'var(--color-text)' }}
             >
-              {formatBaht(rule.amount)}
+              <Money>{formatBaht(rule.amount)}</Money>
             </span>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { formatBahtWhole } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 
 // A ring cannot draw a negative wedge, so toDonutSlices drops a category whose refunds outweighed
 // its spend. Dropping it is right; dropping it SILENTLY is not, because the difference between the
@@ -9,7 +10,7 @@ export function RingFootnote({ refunded, categories }: { refunded: number; categ
   const named = categories.length > 0 ? ` (${categories.join(', ')})` : '';
   return (
     <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-      {formatBahtWhole(refunded)} refunded{named}, not shown in the ring
+      <Money>{formatBahtWhole(refunded)}</Money> refunded{named}, not shown in the ring
     </p>
   );
 }

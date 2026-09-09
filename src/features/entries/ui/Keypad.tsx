@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useId, useState, useTransition } from 'react';
 import { formatBaht, formatBahtKeyed, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
+import { Money } from '@shared/ui/Money';
 import { addEntryAction } from '../actions';
 import { evaluate, nextExpr, OPS, KEYPAD_KEYS } from '../calc';
 import { toThb } from '../fx';
@@ -349,7 +350,11 @@ export function Keypad({
             }}
           >
             {isIncome ? '+' : ''}
-            {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
+            {isThb ? (
+              <Money>{formatBahtKeyed(amount ?? 0)}</Money>
+            ) : (
+              formatCurrency(amount ?? 0, currency)
+            )}
           </span>
 
           {/* Rate line — only for a non-THB currency. Rate is editable (per-entry override, shown to
@@ -367,7 +372,7 @@ export function Keypad({
                   className="tnum text-[1.75rem] leading-none font-bold"
                   style={{ color: hasRate ? 'var(--color-text)' : 'var(--color-faint)' }}
                 >
-                  {hasRate ? formatBaht(thbValue) : 'no rate'}
+                  {hasRate ? <Money>{formatBaht(thbValue)}</Money> : 'no rate'}
                 </span>
               </div>
 
@@ -725,7 +730,7 @@ export function Keypad({
           {/* Same figure, either provenance: for THB it IS the keyed amount, for a foreign currency
               it's the converted one — so it formats by whichever it is. */}
           <span className="tnum text-sm font-semibold">
-            {isThb ? formatBahtKeyed(thbValue) : formatBaht(thbValue)}
+            <Money>{isThb ? formatBahtKeyed(thbValue) : formatBaht(thbValue)}</Money>
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">

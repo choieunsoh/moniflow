@@ -67,9 +67,13 @@ export function DonutChart({
     // pointer-events-none so a swipe over the donut passes through to the cycle-swipe wrapper
     // (echarts' canvas would otherwise eat the gesture). The legend below carries the same figures,
     // so the hover/tap tooltip isn't missed on this mobile surface.
+    // `money` blurs the whole chart under privacy mode: ECharts bakes its labels into a canvas
+    // where <Money> cannot reach, so the figures can only be hidden by hiding the picture. Peek is
+    // global for the same reason — this root is pointer-events-none, so it can never be the element
+    // you press.
     <div
       ref={ref}
-      className="pointer-events-none mx-auto h-64 w-full"
+      className="money pointer-events-none mx-auto h-64 w-full"
       role="img"
       // The total lives in canvas pixels, so the label has to restate it — otherwise the page's
       // whole answer is simply absent for a screen-reader user.

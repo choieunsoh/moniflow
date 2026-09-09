@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { formatBahtWhole } from '@shared/money';
 import { toBars, type Bar } from '../breakdown';
+import { Money } from '@shared/ui/Money';
 import { MAX_SLICES } from '../donut';
 import type { Breakdown as BreakdownRow } from '../queries';
 import { emojiFor, hueFor } from '@features/categories/queries';
@@ -85,9 +86,11 @@ export function Breakdown({
           </span>
           <span className="flex shrink-0 items-baseline gap-3">
             <span className="tnum" style={{ color: 'var(--color-text)' }}>
-              {status
-                ? `${formatBahtWhole(spent)} / ${formatBahtWhole(status.limit ?? 0)}`
-                : formatBahtWhole(spent)}
+              {status ? (
+                `${formatBahtWhole(spent)} / ${formatBahtWhole(status.limit ?? 0)}`
+              ) : (
+                <Money>{formatBahtWhole(spent)}</Money>
+              )}
             </span>
             <span className="tnum w-9 text-right" style={{ color: 'var(--color-faint)' }}>
               {b.share}%

@@ -1,5 +1,6 @@
 import type { WeekdayStats } from '../by-weekday';
 import { formatBahtWhole } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 
 // Below this many entries a "pattern" is noise — say so rather than crown a peak day off one receipt
 // (the same honesty the trend subtitle applies to thin history).
@@ -40,7 +41,7 @@ export function WeekdayCard({ stats }: { stats: WeekdayStats }) {
               />
             </span>
             <span className="tnum w-16 shrink-0 text-right" style={{ color: 'var(--color-text)' }}>
-              {formatBahtWhole(r.total)}
+              <Money>{formatBahtWhole(r.total)}</Money>
             </span>
           </li>
         ))}

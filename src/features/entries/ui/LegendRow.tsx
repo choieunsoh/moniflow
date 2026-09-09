@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { formatBahtWhole } from '@shared/money';
 import { emojiFor, hueFor } from '@features/categories/queries';
+import { Money } from '@shared/ui/Money';
 import { CategoryGlyph } from '@features/categories/ui/CategoryGlyph';
 import { CategoryEditTrigger } from '@features/categories/ui/CategoryPicker';
 import type { IconSet } from '@features/settings/queries';
@@ -64,7 +65,7 @@ export function LegendRow({
       </span>
       <span className="flex shrink-0 items-baseline gap-3">
         <span className="tnum" style={{ color: 'var(--color-muted)' }}>
-          {formatBahtWhole(slice.value)}
+          <Money>{formatBahtWhole(slice.value)}</Money>
         </span>
         <span className="tnum w-9 text-right" style={{ color: 'var(--color-faint)' }}>
           {share}%

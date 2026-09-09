@@ -1,6 +1,7 @@
 import { formatBahtWhole } from '@shared/money';
 import { BudgetMeter } from '@features/budgets/ui/BudgetMeter';
 import { pacePhrase, type BudgetTotal } from '@features/budgets/budget-status';
+import { Money } from '@shared/ui/Money';
 
 type CycleTotalsProps = {
   grossSpend: number;
@@ -38,7 +39,9 @@ export function CycleTotals({
           <h2 className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
             Spent this cycle
           </h2>
-          <span className="tnum text-xl font-semibold">{formatBahtWhole(grossSpend)}</span>
+          <span className="tnum text-xl font-semibold">
+            <Money>{formatBahtWhole(grossSpend)}</Money>
+          </span>
         </div>
         {refunded > 0 ? (
           <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
@@ -50,18 +53,18 @@ export function CycleTotals({
                 not its gross refund total: a category with ฿100 spend and ฿988 refunded nets
                 +฿888 and is the ฿888 named. Without the name this line read as the cycle's total
                 refunds, which it never was. */}
-            {formatBahtWhole(refunded)} refunded in {refundedCategories.join(', ')} · net{' '}
-            {formatBahtWhole(net)}
+            <Money>{formatBahtWhole(refunded)}</Money> refunded in {refundedCategories.join(', ')} ·
+            net <Money>{formatBahtWhole(net)}</Money>
           </span>
         ) : null}
         {offBudgetTotal > 0 ? (
           <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            {formatBahtWhole(offBudgetTotal)} off-budget
+            <Money>{formatBahtWhole(offBudgetTotal)}</Money> off-budget
           </span>
         ) : null}
         {fixedPosted > 0 ? (
           <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            {formatBahtWhole(fixedPosted)} fixed cost, deducted from the budget
+            <Money>{formatBahtWhole(fixedPosted)}</Money> fixed cost, deducted from the budget
           </span>
         ) : null}
       </section>
@@ -73,10 +76,10 @@ export function CycleTotals({
               Spent from budget
             </h2>
             <span className="tnum text-xl font-semibold">
-              {formatBahtWhole(Math.max(discretionarySpend, 0))}
+              <Money>{formatBahtWhole(Math.max(discretionarySpend, 0))}</Money>
               <span className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>
                 {' '}
-                of {formatBahtWhole(totalStatus.limit ?? 0)}
+                of <Money>{formatBahtWhole(totalStatus.limit ?? 0)}</Money>
               </span>
             </span>
           </div>

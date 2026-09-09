@@ -14,6 +14,7 @@ import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { formatBahtWhole } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 
 // /month — one calendar month seen across every year on record, stepped with ?month=. The question
 // is "what does July look like for me", which neither Home (this cycle) nor Trends (the last six)
@@ -125,7 +126,7 @@ export default function MonthPage() {
               </span>
             </div>
             <span className="tnum shrink-0 text-lg font-semibold">
-              {formatBahtWhole(latest.value)}
+              <Money>{formatBahtWhole(latest.value)}</Money>
             </span>
           </header>
 
@@ -155,7 +156,8 @@ export default function MonthPage() {
                 color: delta.amount > 0 ? 'var(--color-loss)' : 'var(--color-gain)',
               }}
             >
-              {delta.amount > 0 ? '↑' : '↓'} {formatBahtWhole(Math.abs(delta.amount))}
+              {delta.amount > 0 ? '↑' : '↓'}{' '}
+              <Money>{formatBahtWhole(Math.abs(delta.amount))}</Money>
               {delta.pct === null ? '' : ` (${pctFmt.format(Math.abs(delta.pct))})`}{' '}
               {delta.amount > 0 ? 'more than' : 'less than'} {monthName} {delta.againstLabel}
             </span>
@@ -172,7 +174,7 @@ export default function MonthPage() {
             claim this page makes. */}
           {average === null ? null : (
             <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-              Averaging {formatBahtWhole(average)} across {averageBasis}{' '}
+              Averaging <Money>{formatBahtWhole(average)}</Money> across {averageBasis}{' '}
               {averageBasis === 1 ? 'completed year' : 'completed years'}
             </span>
           )}
@@ -202,7 +204,9 @@ export default function MonthPage() {
                     style={{ color: 'var(--color-faint)' }}
                   >
                     <span className="min-w-0 flex-1 truncate">{r.label}</span>
-                    <span className="tnum shrink-0">{formatBahtWhole(r.value)}</span>
+                    <span className="tnum shrink-0">
+                      <Money>{formatBahtWhole(r.value)}</Money>
+                    </span>
                     <span className="flex shrink-0 opacity-40">
                       <RowChevron />
                     </span>
@@ -224,7 +228,7 @@ export default function MonthPage() {
                         </span>
                       </span>
                       <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-                        {formatBahtWhole(r.value)}
+                        <Money>{formatBahtWhole(r.value)}</Money>
                       </span>
                       <RowChevron />
                     </Link>
@@ -263,7 +267,7 @@ export default function MonthPage() {
                       </span>
                     </span>
                     <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-                      {formatBahtWhole(c.value)}
+                      <Money>{formatBahtWhole(c.value)}</Money>
                     </span>
                     <RowChevron />
                   </Link>

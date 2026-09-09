@@ -62,9 +62,13 @@ export function TrendChart({
   }, [bars, budget, theme]);
 
   return (
+    // `money` blurs the whole chart under privacy mode: ECharts bakes its labels into a canvas
+    // where <Money> cannot reach, so the figures can only be hidden by hiding the picture. Peek is
+    // global for the same reason — this root is pointer-events-none, so it can never be the element
+    // you press.
     <div
       ref={ref}
-      className="h-56 w-full"
+      className="money h-56 w-full"
       role="img"
       aria-label={trendSummary(bars, label, budget)}
     />

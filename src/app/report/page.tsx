@@ -16,6 +16,7 @@ import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { formatBahtWhole } from '@shared/money';
+import { Money } from '@shared/ui/Money';
 
 // /report — pick a category, then watch it over time. The question is "what does this one thing cost
 // me", which no other surface answers: Trends can scope a category but only across six cycles, /year
@@ -114,7 +115,9 @@ export default function ReportPage() {
             {rangeLabel}
           </span>
         </div>
-        <span className="tnum shrink-0 text-lg font-semibold">{formatBahtWhole(total)}</span>
+        <span className="tnum shrink-0 text-lg font-semibold">
+          <Money>{formatBahtWhole(total)}</Money>
+        </span>
       </header>
 
       {category !== null ? (
@@ -153,7 +156,7 @@ export default function ReportPage() {
           dashes but not what they average over, and that basis is most of the claim. */}
       {average === null ? null : (
         <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-          Averaging {formatBahtWhole(average)} across {averageBasis} completed{' '}
+          Averaging <Money>{formatBahtWhole(average)}</Money> across {averageBasis} completed{' '}
           {averageBasis === 1 ? unit : `${unit}s`}
         </span>
       )}
@@ -184,7 +187,9 @@ export default function ReportPage() {
                 style={{ color: 'var(--color-faint)' }}
               >
                 <span className="min-w-0 flex-1 truncate">{r.label}</span>
-                <span className="tnum shrink-0">{formatBahtWhole(r.value)}</span>
+                <span className="tnum shrink-0">
+                  <Money>{formatBahtWhole(r.value)}</Money>
+                </span>
                 <span className="flex shrink-0 opacity-40">
                   <RowChevron />
                 </span>
@@ -216,7 +221,7 @@ export default function ReportPage() {
                     </span>
                   </span>
                   <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-                    {formatBahtWhole(r.value)}
+                    <Money>{formatBahtWhole(r.value)}</Money>
                   </span>
                   <RowChevron />
                 </Link>
@@ -276,7 +281,7 @@ export default function ReportPage() {
                   </span>
                 </span>
                 <span className="tnum shrink-0" style={{ color: 'var(--color-text)' }}>
-                  {formatBahtWhole(c.value)}
+                  <Money>{formatBahtWhole(c.value)}</Money>
                 </span>
                 <RowChevron />
               </Link>

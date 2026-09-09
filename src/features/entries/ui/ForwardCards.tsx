@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { HomeForward } from '../use-home';
 import { formatBahtWhole, formatCurrencyWhole } from '@shared/money';
 import { tomorrowAllowance } from '../dashboard';
+import { Money } from '@shared/ui/Money';
 
 // The current-cycle forward cards, moved out of the former DashboardCards so Home can render them
 // under its headline. All the null/0/number decisions are made upstream in the pure dashboard math
@@ -70,15 +71,21 @@ export function TodayAllowanceCard({
         className="tnum text-4xl font-semibold"
         style={alarm ? { color: 'var(--color-loss)' } : undefined}
       >
-        {formatBahtWhole(Math.abs(left))}
+        <Money>{formatBahtWhole(Math.abs(left))}</Money>
       </span>
       <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
         {spentToday === 0 ? (
           'Nothing spent yet today'
         ) : (
           <>
-            <span className="tnum">{formatBahtWhole(spentToday)}</span> of{' '}
-            <span className="tnum">{formatBahtWhole(allowance)}</span> spent today
+            <span className="tnum">
+              <Money>{formatBahtWhole(spentToday)}</Money>
+            </span>{' '}
+            of{' '}
+            <span className="tnum">
+              <Money>{formatBahtWhole(allowance)}</Money>
+            </span>{' '}
+            spent today
           </>
         )}
       </span>
@@ -102,7 +109,9 @@ export function SafeToSpendCard({
   if (safePerDay === null) {
     return (
       <CardShell title="Average / day so far">
-        <span className="tnum text-4xl font-semibold">{formatBahtWhole(avgPerDay)}</span>
+        <span className="tnum text-4xl font-semibold">
+          <Money>{formatBahtWhole(avgPerDay)}</Money>
+        </span>
         <Link
           href="/budgets"
           prefetch={false}
@@ -119,7 +128,7 @@ export function SafeToSpendCard({
     return (
       <CardShell title="Safe to spend / day">
         <span className="tnum text-4xl font-semibold" style={{ color: 'var(--color-loss)' }}>
-          {formatBahtWhole(0)}
+          <Money>{formatBahtWhole(0)}</Money>
         </span>
         <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
           Nothing left in this cycle's budget
@@ -131,7 +140,9 @@ export function SafeToSpendCard({
   const tomorrow = tomorrowAllowance(safePerDay, daysLeft);
   return (
     <CardShell title="Safe to spend / day">
-      <span className="tnum text-4xl font-semibold">{formatBahtWhole(safePerDay)}</span>
+      <span className="tnum text-4xl font-semibold">
+        <Money>{formatBahtWhole(safePerDay)}</Money>
+      </span>
       <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
         over {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
         {/* Tomorrow's figure if nothing more is spent today — the same rescale the share card
@@ -139,7 +150,10 @@ export function SafeToSpendCard({
         {tomorrow !== null && (
           <>
             {' · '}
-            <span className="tnum">{formatBahtWhole(tomorrow)}</span> tomorrow
+            <span className="tnum">
+              <Money>{formatBahtWhole(tomorrow)}</Money>
+            </span>{' '}
+            tomorrow
           </>
         )}
       </span>

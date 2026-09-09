@@ -5,6 +5,7 @@ import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { emojiFor, hueFor } from '@features/categories/queries';
 import { formatLedgerSpend } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
+import { Money } from '@shared/ui/Money';
 
 // The cycle's biggest single purchases (see topTransactions) — the outliers the category donut
 // averages away. A ranked list of individual entries: category disc + the note (or category when
@@ -70,7 +71,7 @@ export function TopTransactionsList({
                   </span>
                 </span>
                 <span className="tnum shrink-0" style={{ color: amountColor }}>
-                  {amountText}
+                  <Money>{amountText}</Money>
                 </span>
               </Link>
             </li>
