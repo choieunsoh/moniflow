@@ -81,7 +81,7 @@ export default function TripsPage() {
                     </span>
                     <div className="flex items-baseline gap-3">
                       <span className="tnum text-lg font-semibold">
-                        {formatForeign(trip.originalTotal, trip.currency)}
+                        <Money>{formatForeign(trip.originalTotal, trip.currency)}</Money>
                       </span>
                       <span className="tnum text-sm" style={{ color: 'var(--color-muted)' }}>
                         <Money>{formatBaht(trip.thbTotal)}</Money>

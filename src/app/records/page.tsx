@@ -211,7 +211,7 @@ export default function RecordsPage() {
                   className="tnum text-sm"
                   style={{ color: 'var(--color-muted)' }}
                 >
-                  {formatForeign(c.total, c.currency)}
+                  <Money>{formatForeign(c.total, c.currency)}</Money>
                 </span>
               ))}
               {/* Same formatter as the rows it sums — a net refund reads +฿888 here and +฿888 down
@@ -278,7 +278,7 @@ export default function RecordsPage() {
                 <span className="tnum flex shrink-0 items-baseline gap-2 text-sm">
                   {section.foreign.map((c) => (
                     <span key={c.currency} style={{ color: 'var(--color-muted)' }}>
-                      {formatForeign(c.total, c.currency)}
+                      <Money>{formatForeign(c.total, c.currency)}</Money>
                     </span>
                   ))}
                   <span>

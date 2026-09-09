@@ -31,7 +31,8 @@ function UpcomingLine({ upcoming }: { upcoming: HomeForward['upcoming'] }) {
     .join(' + ');
   return (
     <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-      Upcoming: {total} · {upcoming.count} {upcoming.count === 1 ? 'bill' : 'bills'} due
+      Upcoming: <Money>{total}</Money> · {upcoming.count} {upcoming.count === 1 ? 'bill' : 'bills'}{' '}
+      due
     </span>
   );
 }

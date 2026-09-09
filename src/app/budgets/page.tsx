@@ -119,7 +119,7 @@ export default function BudgetsPage() {
         {(total.limit !== null || total.spent !== 0) && (
           <div className="flex items-center gap-3">
             <span className="tnum shrink-0 text-xs" style={{ color: 'var(--color-faint)' }}>
-              {spentLine(total.spent)}
+              <Money>{spentLine(total.spent)}</Money>
             </span>
             {total.state !== 'none' && (
               <div className="min-w-0 flex-1">
@@ -202,7 +202,7 @@ function CategoryRow({
       {(row.limit !== null || row.spent !== 0) && (
         <div className="flex items-center gap-3 pl-10">
           <span className="tnum shrink-0 text-xs" style={{ color: 'var(--color-faint)' }}>
-            {spentLine(row.spent)}
+            <Money>{spentLine(row.spent)}</Money>
           </span>
           {row.state !== 'none' && (
             <div className="min-w-0 flex-1">

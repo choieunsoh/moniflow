@@ -191,7 +191,7 @@ export function RuleRow({
                 className="tnum font-medium whitespace-nowrap"
                 style={{ color: 'var(--color-text)' }}
               >
-                {formatCurrency(rule.amount, rule.currency ?? '')}
+                <Money>{formatCurrency(rule.amount, rule.currency ?? '')}</Money>
               </span>
               {/* What it costs in baht. A pinned rule states it flat; a live-rate rule is priced at
                   the cached rate and says so with ≈ — the same hedge the rule keypad shows, and it
@@ -202,9 +202,14 @@ export function RuleRow({
                 className="tnum text-xs whitespace-nowrap"
                 style={{ color: 'var(--color-muted)' }}
               >
-                {rule.monthlyThb === 0
-                  ? 'no rate yet'
-                  : `${rule.rate === null ? '≈ ' : ''}${formatBaht(rule.monthlyThb * rule.intervalMonths)}`}
+                {rule.monthlyThb === 0 ? (
+                  'no rate yet'
+                ) : (
+                  <>
+                    {rule.rate === null ? '≈ ' : ''}
+                    <Money>{formatBaht(rule.monthlyThb * rule.intervalMonths)}</Money>
+                  </>
+                )}
               </span>
             </span>
           ) : (

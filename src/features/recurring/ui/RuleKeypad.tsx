@@ -226,11 +226,9 @@ export function RuleKeypad({
             className="tnum text-4xl font-semibold"
             style={{ color: validAmount ? 'var(--color-text)' : 'var(--color-faint)' }}
           >
-            {isThb ? (
-              <Money>{formatBahtKeyed(amount ?? 0)}</Money>
-            ) : (
-              formatCurrency(amount ?? 0, currency)
-            )}
+            <Money>
+              {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
+            </Money>
           </span>
 
           {/* Rate line — non-THB only. Blank pins nothing: each post prices at the live ECB rate for
@@ -580,7 +578,9 @@ export function RuleKeypad({
             {isThb ? (
               <Money>{formatBahtKeyed(amount ?? 0)}</Money>
             ) : (
-              `${formatCurrency(amount ?? 0, currency)} · ${ordinal(day)}`
+              <>
+                <Money>{formatCurrency(amount ?? 0, currency)}</Money> · {ordinal(day)}
+              </>
             )}
           </span>
         </div>

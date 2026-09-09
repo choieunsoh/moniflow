@@ -307,21 +307,17 @@ export function SwipeRow({
             // currency you're paying in; back in the ledger it's the THB the cycle is denominated in.
             <span className="flex shrink-0 flex-col items-end">
               <span className="tnum font-medium whitespace-nowrap" style={{ color: amountColor }}>
-                {foreignLeads ? (
-                  formatForeign(foreign.amount, foreign.currency)
-                ) : (
-                  <Money>{baht}</Money>
-                )}
+                <Money>
+                  {foreignLeads ? formatForeign(foreign.amount, foreign.currency) : baht}
+                </Money>
               </span>
               <span
                 className="tnum text-xs whitespace-nowrap"
                 style={{ color: 'var(--color-muted)' }}
               >
-                {foreignLeads ? (
-                  <Money>{baht}</Money>
-                ) : (
-                  formatForeign(foreign.amount, foreign.currency)
-                )}
+                <Money>
+                  {foreignLeads ? baht : formatForeign(foreign.amount, foreign.currency)}
+                </Money>
               </span>
             </span>
           ) : (

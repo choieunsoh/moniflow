@@ -87,7 +87,10 @@ export function Breakdown({
           <span className="flex shrink-0 items-baseline gap-3">
             <span className="tnum" style={{ color: 'var(--color-text)' }}>
               {status ? (
-                `${formatBahtWhole(spent)} / ${formatBahtWhole(status.limit ?? 0)}`
+                <>
+                  <Money>{formatBahtWhole(spent)}</Money> /{' '}
+                  <Money>{formatBahtWhole(status.limit ?? 0)}</Money>
+                </>
               ) : (
                 <Money>{formatBahtWhole(spent)}</Money>
               )}

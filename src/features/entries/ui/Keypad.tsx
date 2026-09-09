@@ -350,11 +350,9 @@ export function Keypad({
             }}
           >
             {isIncome ? '+' : ''}
-            {isThb ? (
-              <Money>{formatBahtKeyed(amount ?? 0)}</Money>
-            ) : (
-              formatCurrency(amount ?? 0, currency)
-            )}
+            <Money>
+              {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
+            </Money>
           </span>
 
           {/* Rate line — only for a non-THB currency. Rate is editable (per-entry override, shown to
