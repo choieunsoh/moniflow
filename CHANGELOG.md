@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] - 2026-09-09
+
+### Added
+
+- merge the note chip, the privacy blur and the duplicate scan
+- find the rows that were entered twice
+- hide the money until you hold it
+- route every rendered figure through Money
+- add the one span every figure will pass through
+- let a note answer with the category it always takes
+
+### Fixed
+
+- tell two identical duplicate rows apart by name
+- blur the budget fields, keep the keyed amount, and hold the duplicate list
+- guard the duplicate scan's delete, and name each row's button
+- clear peek when the window goes away, and prove the stamp is removed
+- blur the figures the first pass left sharp
+
+### Other
+
+- plan the note suggestion, privacy blur, and duplicate detector
+- spec the note suggestion, privacy blur, and duplicate detector
+
 ## [1.23.0] - 2026-09-09
 
 ### Added
