@@ -9,7 +9,7 @@ import { setCurrencyArchived } from '@features/currencies/queries';
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 
 import { getBrowserDb } from '@db/browser';
-import { editEntryAction } from './actions';
+import { editEntryAction, deleteEntryAction, undoDeleteEntry } from './actions';
 
 let db: Db;
 
@@ -73,5 +73,29 @@ describe('editEntryAction — archived currencies', () => {
     fd.set('thb', '250');
 
     await expect(editEntryAction(fd)).rejects.toThrow('Choose a valid currency.');
+  });
+});
+
+// The write layer's half of Undo: the delete hands its snapshot back to the caller (SwipeRow, which
+// turns it into an Undo toast), and undoDeleteEntry puts it back. Both bump the data version, so the
+// row leaves and returns on every live read surface without a reload.
+describe('deleteEntryAction → undoDeleteEntry', () => {
+  it('returns a snapshot the undo restores the row from', async () => {
+    await addEntries(db, [
+      { date: '2026-07-03', account: 'cash', category: 'coffee', amount: -80, note: 'latte' },
+    ]);
+    const [before] = await getEntries(db);
+
+    const snapshot = await deleteEntryAction(before.id);
+    expect(await getEntries(db)).toHaveLength(0);
+    expect(snapshot).toBeDefined();
+    if (!snapshot) return;
+
+    await undoDeleteEntry(snapshot);
+    expect(await getEntries(db)).toEqual([before]);
+  });
+
+  it('returns undefined when the id matched nothing', async () => {
+    expect(await deleteEntryAction(999)).toBeUndefined();
   });
 });

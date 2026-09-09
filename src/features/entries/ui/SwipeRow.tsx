@@ -6,8 +6,8 @@ import type { PointerEvent } from 'react';
 import { useRef, useState } from 'react';
 import { formatLedgerSpend } from '@shared/money';
 import { formatForeign } from '../trips';
-import { deleteEntryAction } from '../actions';
-import { withSaveToast } from '@shared/ui/with-save-toast';
+import { deleteEntryAction, undoDeleteEntry } from '../actions';
+import { toast } from '@shared/ui/toast';
 import type { EntryRow } from '../schema';
 import { resolveSwipe, type SwipeSide } from '../swipe';
 import { CategoryIconButton } from '@features/categories/ui/CategoryPicker';
@@ -21,7 +21,7 @@ const DRAG_SLOP = 6;
 // A ledger row. Tap it to edit — a closed row opens the editor, an open row just closes. Drag it left
 // to reveal Delete (red, right); release past half the panel to rest it open, else it snaps back. A
 // vertical drag stays a native scroll and never edits. `touch-action: pan-y` keeps scrolling native.
-// Delete/Edit are real DOM controls (a form button + a link) behind the row, so both stay in the a11y
+// Delete/Edit are real DOM controls (a button + a link) behind the row, so both stay in the a11y
 // tree for keyboard/AT even though editing is now a tap.
 // A row states every field its section header doesn't. One rule, applied per field: whatever the
 // header already says is dropped from the rows beneath it, so nothing is repeated N times down a
@@ -58,6 +58,7 @@ export function SwipeRow({
   const [side, setSide] = useState<SwipeSide>(0); // resting position
   const [offset, setOffset] = useState(0); // live drag offset while dragging
   const [dragging, setDragging] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const gesture = useRef<{
     x: number;
     y: number;
@@ -132,6 +133,32 @@ export function SwipeRow({
     router.push(`/entries/edit?id=${entry.id}`);
   }
 
+  // Delete, then offer the row straight back. This ledger has no server copy — a row swiped away by
+  // a stray thumb is gone for good otherwise — so the snapshot the action returns becomes an Undo on
+  // the confirmation toast. A row already deleted elsewhere returns nothing, and gets a plain toast:
+  // an Undo that silently does nothing would be worse than none.
+  async function remove(): Promise<void> {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      const snapshot = await deleteEntryAction(entry.id);
+      if (!snapshot) {
+        toast('Entry deleted');
+        return;
+      }
+      toast.action('Entry deleted', {
+        label: 'Undo',
+        onClick: () => {
+          undoDeleteEntry(snapshot).catch(() => toast.error('Failed to undo — try again'));
+        },
+      });
+    } catch {
+      toast.error('Couldn’t delete — try again');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function onPointerCancel() {
     // The browser took the gesture over (native scroll) — never treat it as a tap; settle in place.
     gesture.current = null;
@@ -168,22 +195,18 @@ export function SwipeRow({
         <PencilIcon />
       </Link>
 
-      {/* Delete — revealed on a left swipe (row slides left). */}
-      <form
-        action={withSaveToast(deleteEntryAction, 'Entry deleted')}
-        className="absolute inset-y-0 right-0"
-        style={{ width: ACTION_W }}
+      {/* Delete — revealed on a left swipe (row slides left). A plain button, not a form: the action
+          hands back the row it deleted so the toast can put it back. */}
+      <button
+        type="button"
+        onClick={() => void remove()}
+        disabled={deleting}
+        aria-label={`Delete ${entry.category}`}
+        className="absolute inset-y-0 right-0 flex items-center justify-center disabled:opacity-60"
+        style={{ width: ACTION_W, background: 'var(--color-loss)', color: 'var(--color-on-fill)' }}
       >
-        <input type="hidden" name="id" value={entry.id} />
-        <button
-          type="submit"
-          aria-label={`Delete ${entry.category}`}
-          className="flex h-full w-full items-center justify-center"
-          style={{ background: 'var(--color-loss)', color: 'var(--color-on-fill)' }}
-        >
-          <TrashIcon />
-        </button>
-      </form>
+        <TrashIcon />
+      </button>
 
       {/* Foreground — the entry; opaque so it hides the actions when closed. */}
       <div
