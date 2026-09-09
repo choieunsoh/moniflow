@@ -11,12 +11,25 @@ import { formatDayHeading } from '@shared/date';
 import { Money } from '@shared/ui/Money';
 import type { EntryRow } from '../schema';
 
+// Date and category are two thirds of the grouping key, so every row in a group shares them by
+// construction — a label built from just those two is identical for every button in a pair. Account
+// is what actually tells the rows apart (it's excluded from the key on purpose, see duplicates.ts);
+// fold the note in too when there is one, since two rows can also share an account.
+function rowDeleteLabel(entry: EntryRow): string {
+  const note = entry.note?.trim();
+  const base = `Delete ${entry.category} on ${formatDayHeading(entry.date)}, ${entry.account}`;
+  return note ? `${base}, ${note}` : base;
+}
+
 // On demand, never on mount: the scan reads the entire ledger (the same read the backup export
 // performs) and a Settings visit is not a reason to pay for it. `null` groups means "not scanned",
 // `[]` means "scanned and clean" — collapsing those two would make the empty state indistinguishable
 // from the initial one, and the whole value of the surface is the sentence "No duplicates found".
 export function DuplicateScan() {
   const [groups, setGroups] = useState<EntryRow[][] | null>(null);
+  // Per-row, not a single boolean: this screen shows many candidate rows at once, and deleting one
+  // must not disable every other row's button — unlike SwipeRow, where one row IS the whole surface.
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
 
   function scan(): void {
     void withDb(async (db) => {
@@ -30,6 +43,8 @@ export function DuplicateScan() {
   // deleted id rather than re-reading the whole ledger — every other row's group membership is
   // unaffected by one deletion, so this is exactly what a second read would produce.
   async function remove(entry: EntryRow): Promise<void> {
+    if (deletingIds.has(entry.id)) return;
+    setDeletingIds((current) => new Set(current).add(entry.id));
     try {
       const snapshot = await deleteEntryAction(entry.id);
       if (!snapshot) {
@@ -49,6 +64,12 @@ export function DuplicateScan() {
       });
     } catch {
       toast.error('Couldn’t delete — try again');
+    } finally {
+      setDeletingIds((current) => {
+        const next = new Set(current);
+        next.delete(entry.id);
+        return next;
+      });
     }
   }
 
@@ -92,9 +113,10 @@ export function DuplicateScan() {
                     </span>
                     <button
                       type="button"
-                      className="btn btn-ghost shrink-0"
+                      className="btn btn-ghost shrink-0 disabled:opacity-60"
                       style={{ color: 'var(--color-loss)' }}
-                      aria-label={`Delete ${entry.category} on ${formatDayHeading(entry.date)}`}
+                      aria-label={rowDeleteLabel(entry)}
+                      disabled={deletingIds.has(entry.id)}
                       onClick={() => void remove(entry)}
                     >
                       Delete

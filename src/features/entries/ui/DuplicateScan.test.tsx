@@ -107,6 +107,61 @@ describe('DuplicateScan', () => {
     expect(undoDeleteEntry).toHaveBeenCalledWith(cash);
   });
 
+  it('gives each Delete button in a pair a distinct accessible name naming its account', async () => {
+    const cash = row({ id: 1, account: 'Cash' });
+    const card = row({ id: 2, account: 'Card' });
+    getEntries.mockResolvedValue([cash, card]);
+
+    render(<DuplicateScan />);
+    clickScan();
+
+    const buttons = await screen.findAllByRole('button', { name: /Delete Coffee/ });
+    expect(buttons).toHaveLength(2);
+    const names = buttons.map((b) => b.getAttribute('aria-label'));
+    // The date and category are two thirds of the grouping key, so a label built from just those is
+    // identical for both buttons — the account is what actually tells the two rows apart.
+    expect(names[0]).not.toBe(names[1]);
+    expect(names[0]).toContain('Cash');
+    expect(names[1]).toContain('Card');
+  });
+
+  it('disables only the row being deleted, and guards it against a second activation in flight', async () => {
+    const cash = row({ id: 1, account: 'Cash' });
+    const card = row({ id: 2, account: 'Card' });
+    getEntries.mockResolvedValue([cash, card]);
+    let resolveDelete: (snapshot: EntryRow) => void = () => {};
+    deleteEntryAction.mockImplementation(
+      () =>
+        new Promise<EntryRow>((resolve) => {
+          resolveDelete = resolve;
+        }),
+    );
+
+    render(<DuplicateScan />);
+    clickScan();
+    const [cashButton, cardButton] = await screen.findAllByRole('button', {
+      name: /Delete Coffee/,
+    });
+
+    fireEvent.click(cashButton);
+    // A second activation before the first delete has resolved must not fire a second call — and
+    // must not touch the OTHER row's button, since this screen shows many rows at once.
+    fireEvent.click(cashButton);
+
+    expect(cashButton).toBeDisabled();
+    expect(cardButton).not.toBeDisabled();
+    expect(deleteEntryAction).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveDelete(cash);
+      await Promise.resolve();
+    });
+
+    // The pair is down to one row, so the group (and both its buttons) drops out of the list — the
+    // in-flight set clearing in `finally` must not throw or leave anything stuck mid-update.
+    expect(await screen.findByText('No duplicates found')).toBeInTheDocument();
+  });
+
   it('drops a group from the list once it is down to one row', async () => {
     const cash = row({ id: 1, account: 'Cash' });
     const card = row({ id: 2, account: 'Card' });
