@@ -350,9 +350,11 @@ export function Keypad({
             }}
           >
             {isIncome ? '+' : ''}
-            <Money>
-              {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
-            </Money>
+            {/* Exempt from privacy by owner decision: this is the amount you are keying RIGHT NOW,
+                not history — the one figure on screen you already know, so blurring it would mean
+                entering an expense blind. formatBahtKeyed already means "a figure the user is
+                typing" (see money.ts). Do not re-wrap in <Money>. */}
+            {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
           </span>
 
           {/* Rate line — only for a non-THB currency. Rate is editable (per-entry override, shown to
@@ -726,9 +728,12 @@ export function Keypad({
             ‹ Back
           </button>
           {/* Same figure, either provenance: for THB it IS the keyed amount, for a foreign currency
-              it's the converted one — so it formats by whichever it is. */}
+              it's the converted one — so it formats by whichever it is. Only the THB branch is
+              exempt from privacy (same reasoning as the hero above, this is that same in-progress
+              figure echoed here); the foreign-currency branch is our FX arithmetic, not the user's
+              keystrokes, so it stays behind the blur like any other computed figure. */}
           <span className="tnum text-sm font-semibold">
-            <Money>{isThb ? formatBahtKeyed(thbValue) : formatBaht(thbValue)}</Money>
+            {isThb ? formatBahtKeyed(thbValue) : <Money>{formatBaht(thbValue)}</Money>}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">

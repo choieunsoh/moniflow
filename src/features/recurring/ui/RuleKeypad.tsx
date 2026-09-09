@@ -226,9 +226,11 @@ export function RuleKeypad({
             className="tnum text-4xl font-semibold"
             style={{ color: validAmount ? 'var(--color-text)' : 'var(--color-faint)' }}
           >
-            <Money>
-              {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
-            </Money>
+            {/* Exempt from privacy by owner decision: this is the amount you are keying RIGHT NOW,
+                not history — the one figure on screen you already know, so blurring it would mean
+                entering a rule blind. formatBahtKeyed already means "a figure the user is typing"
+                (see money.ts). Do not re-wrap in <Money>. */}
+            {isThb ? formatBahtKeyed(amount ?? 0) : formatCurrency(amount ?? 0, currency)}
           </span>
 
           {/* Rate line — non-THB only. Blank pins nothing: each post prices at the live ECB rate for
@@ -574,14 +576,17 @@ export function RuleKeypad({
           >
             ‹ Back
           </button>
+          {/* Exempt from privacy, both branches — same reasoning as the hero above, this echoes the
+              amount you just keyed, not a computed figure. THB uses the keyed formatter directly;
+              foreign currency shows the keyed figure in ITS OWN currency (never converted to THB
+              here), so it's your keystrokes either way. String-built rather than JSX so the
+              formatter calls don't land in JSX text position — <Money>'s scan can't see behind a
+              ternary, but a bare `<>{format...}` fragment WOULD trip it (the fragment's own closing
+              `>` reads the same as any element's). */}
           <span className="tnum text-sm font-semibold">
-            {isThb ? (
-              <Money>{formatBahtKeyed(amount ?? 0)}</Money>
-            ) : (
-              <>
-                <Money>{formatCurrency(amount ?? 0, currency)}</Money> · {ordinal(day)}
-              </>
-            )}
+            {isThb
+              ? formatBahtKeyed(amount ?? 0)
+              : `${formatCurrency(amount ?? 0, currency)} · ${ordinal(day)}`}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">

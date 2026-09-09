@@ -523,3 +523,11 @@ input[type='checkbox'] {
 [data-privacy='on'][data-peek] .money {
   filter: none;
 }
+
+/* A money-classed input (the /budgets limit field) stays usable while you're actually typing in
+   it — press-and-hold peek still works via the delegated pointerdown handler (it targets
+   `.closest('.money')`, which an input matches), but focus is the ordinary way you'd use the
+   field, and blurring the thing you're editing serves privacy no purpose. */
+[data-privacy='on'] .money:focus {
+  filter: none;
+}

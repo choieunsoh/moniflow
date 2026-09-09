@@ -47,7 +47,11 @@ export function BudgetField({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         aria-label={category ? `${category} monthly limit` : 'Total monthly limit'}
-        className="tnum min-h-11 w-24 rounded-[var(--radius-md)] px-3 text-center text-base transition-opacity placeholder:[color:var(--color-muted)]"
+        // `money` so privacy mode blurs the stored limit AND the suggested-limit placeholder — an
+        // <input>'s value/placeholder are not JSX text, so <Money> can't wrap them, but .money is a
+        // plain class selector and works on any element. globals.css exempts a FOCUSED .money from
+        // the blur so the field stays editable while you're actually typing in it.
+        className="money tnum min-h-11 w-24 rounded-[var(--radius-md)] px-3 text-center text-base transition-opacity placeholder:[color:var(--color-muted)]"
         style={{
           border: '1px solid var(--color-border-strong)',
           background: 'var(--color-surface-2)',
