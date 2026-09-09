@@ -22,6 +22,12 @@ export default function manifest(): MetadataRoute.Manifest {
     // palette landed — the same stale value layout.tsx carried.
     background_color: '#0c0f16',
     theme_color: '#0c0f16',
+    // Long-press the installed icon → straight to the keypad. The app's whole point is catching a
+    // purchase at the counter, and every other route is reachable from the tab bar once you are in;
+    // this is the one journey where the launcher itself can save two taps. Reuses the app icon —
+    // Android renders a shortcut without its own icon perfectly well, and a second glyph would only
+    // be another thing to keep in sync.
+    shortcuts: [{ name: 'New entry', short_name: 'New', url: '/entries/new' }],
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },

@@ -1,10 +1,12 @@
 import { getBrowserDb } from '@db/browser';
 import { parseEntryForm } from './entry-form';
+import type { Entry } from './schema';
 import { tripId } from './trips';
 import {
   insertEntry,
   updateEntry,
   deleteEntry,
+  restoreEntry,
   getEntryById,
   renameCategory,
   deleteCategory,
@@ -56,10 +58,21 @@ export async function editEntryAction(formData: FormData): Promise<void> {
   // TODO(Plan 2b): navigate to '/records' from the caller.
 }
 
-export async function deleteEntryAction(formData: FormData): Promise<void> {
-  const id = Number(formData.get('id'));
+// Returns the deleted row so the caller can offer Undo, and takes a plain id: the only call site is
+// SwipeRow's Delete button, which stopped being a <form> the moment it had a return value to use.
+// Undefined means the row was already gone — there is nothing to offer back.
+export async function deleteEntryAction(id: number): Promise<Entry | undefined> {
   const db = await getBrowserDb();
-  await deleteEntry(db, id);
+  const snapshot = await deleteEntry(db, id);
+  bumpDataVersion();
+  return snapshot;
+}
+
+// Reverse a delete from its snapshot. Called by the Undo toast; a failure surfaces there as an error
+// toast rather than being swallowed.
+export async function undoDeleteEntry(snapshot: Entry): Promise<void> {
+  const db = await getBrowserDb();
+  await restoreEntry(db, snapshot);
   bumpDataVersion();
 }
 

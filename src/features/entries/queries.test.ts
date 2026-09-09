@@ -18,6 +18,7 @@ import {
   insertEntry,
   updateEntry,
   deleteEntry,
+  restoreEntry,
   getEntryById,
   getDistinctCategories,
   getDistinctNotes,
@@ -782,5 +783,55 @@ describe('refunds in the read surfaces', () => {
     const d = await db();
     await addEntries(d, [{ date: '2026-08-14', account: 'Cash', category: 'Food', amount: 500 }]);
     expect(await getEntriesByCategory(d, 'Food')).toHaveLength(1);
+  });
+});
+
+// A swipe-delete on a phone is one stray gesture away from losing a row for good: the ledger lives
+// only in this browser's OPFS, so there is no server copy to ask for it back. deleteEntry therefore
+// hands the caller everything needed to put the row back, the same shape mergeAccountInto already
+// uses for its Undo toast.
+describe('deleteEntry / restoreEntry round trip', () => {
+  it('returns the deleted row so the caller can put it back', async () => {
+    const d = await db();
+    await insertEntry(d, {
+      date: '2026-07-06',
+      time: '08:15',
+      account: 'cash',
+      category: 'coffee',
+      amount: -80,
+      note: 'morning latte',
+    });
+    const [row] = await getEntries(d);
+    const snapshot = await deleteEntry(d, row.id);
+    expect(snapshot?.id).toBe(row.id);
+    expect(snapshot?.amount).toBe(-80);
+    expect(snapshot?.note).toBe('morning latte');
+  });
+
+  it('restores every column, under the same id', async () => {
+    const d = await db();
+    await insertEntry(d, {
+      date: '2026-07-06',
+      time: '08:15',
+      account: 'visa',
+      category: 'coffee',
+      amount: -80,
+      currency: 'JPY',
+      originalAmount: -350,
+      note: 'morning latte',
+      offBudget: 1,
+    });
+    const [before] = await getEntries(d);
+    const snapshot = await deleteEntry(d, before.id);
+    expect(snapshot).toBeDefined();
+    if (!snapshot) return;
+    await restoreEntry(d, snapshot);
+    const [after] = await getEntries(d);
+    expect(after).toEqual(before);
+  });
+
+  it('returns undefined for a missing id — nothing to undo', async () => {
+    const d = await db();
+    expect(await deleteEntry(d, 999)).toBeUndefined();
   });
 });

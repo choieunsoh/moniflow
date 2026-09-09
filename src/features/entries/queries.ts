@@ -13,7 +13,7 @@ import {
   type AnyColumn,
 } from 'drizzle-orm';
 import type { Db } from '@db/client';
-import { entries, tripTitles, type EntryRow, type EntryInput } from './schema';
+import { entries, tripTitles, type Entry, type EntryRow, type EntryInput } from './schema';
 import { categories } from '@features/categories/schema';
 import { categoryIdFor } from '@features/categories/queries';
 import { budgets } from '@features/budgets/schema';
@@ -193,8 +193,22 @@ export async function updateEntry(db: Db, id: number, entry: EntryInput): Promis
     .run();
 }
 
-export async function deleteEntry(db: Db, id: number): Promise<void> {
+// Delete a row, handing back the raw record so the caller can put it back verbatim — the Undo toast
+// on a swipe-delete. Undefined when the id matched nothing: there is nothing to undo. The same
+// snapshot shape mergeAccountInto returns, for the same reason: this ledger lives only in one
+// browser's OPFS, so a mis-swipe has no server copy to be restored from.
+export async function deleteEntry(db: Db, id: number): Promise<Entry | undefined> {
+  const row = await db.select().from(entries).where(eq(entries.id, id)).get();
+  if (!row) return undefined;
   await db.delete(entries).where(eq(entries.id, id)).run();
+  return row;
+}
+
+// Put a deleted row back exactly as it was, id included, so a link the UI is still holding
+// (/entries/edit?id=) keeps pointing at the same entry. onConflictDoNothing leaves whatever is there
+// if that id was somehow taken meanwhile — an undo must never overwrite a live row.
+export async function restoreEntry(db: Db, row: Entry): Promise<void> {
+  await db.insert(entries).values(row).onConflictDoNothing({ target: entries.id }).run();
 }
 
 export async function getEntryById(db: Db, id: number): Promise<EntryRow | undefined> {
