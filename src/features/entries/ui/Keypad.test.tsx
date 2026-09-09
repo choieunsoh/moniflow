@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Keypad } from './Keypad';
 import type { EntryRow } from '../schema';
@@ -202,5 +202,97 @@ describe('Keypad currency chip', () => {
     );
     const chip = screen.getByRole('button', { name: 'Currency: JPY' });
     expect(chip.textContent).toContain('JPY');
+  });
+});
+
+const someEntry: EntryRow = {
+  id: 42,
+  date: '2026-08-14',
+  time: '08:15',
+  accountId: 1,
+  categoryId: 1,
+  amount: -10,
+  currency: 'THB',
+  originalAmount: null,
+  note: 'ทิป grab food',
+  source: 'manual',
+  offBudget: null,
+  category: 'Grab Food',
+  account: 'Cash',
+};
+
+function renderWith(props: Partial<React.ComponentProps<typeof Keypad>>) {
+  return render(
+    <Keypad
+      categories={[]}
+      accounts={[]}
+      currencies={[{ code: 'THB', symbol: '฿' }]}
+      currencyCodes={new Set(['THB'])}
+      notes={[]}
+      rates={{}}
+      ratesAsOf={{}}
+      defaultAccount="Cash"
+      today="2026-09-09"
+      iconSet="emoji"
+      keypadLayout="calc"
+      action={async () => {}}
+      offBudgetCategories={new Set()}
+      travelCurrencies={new Set()}
+      {...props}
+    />,
+  );
+}
+
+// The same ฿10 tip is keyed several times a week. Duplicate is a LABELLED control on the edit
+// screen, deliberately not a second swipe: the row already hides Delete behind a leftward swipe, and
+// a second invisible gesture in the opposite direction on a destructive neighbour is how you press
+// the wrong one.
+describe('Keypad duplicate', () => {
+  it('offers Duplicate on an existing entry, pointing at a pre-filled new entry', () => {
+    renderWith({ entry: someEntry });
+    expect(screen.getByRole('link', { name: /Duplicate/i })).toHaveAttribute(
+      'href',
+      '/entries/new?copy=42',
+    );
+  });
+
+  it('offers no Duplicate on a blank new entry', () => {
+    renderWith({});
+    expect(screen.queryByRole('link', { name: /Duplicate/i })).toBeNull();
+  });
+
+  // On the copy screen the form must post a NEW row, not an edit of the row it came from, so the
+  // id (which is what tells editEntryAction which row to overwrite) must not ride along.
+  it('posts no id while duplicating, and does not offer to duplicate the duplicate', () => {
+    const { container } = renderWith({ entry: someEntry, isCopy: true });
+    expect(container.querySelector('input[name="id"]')).toBeNull();
+    expect(screen.queryByRole('link', { name: /Duplicate/i })).toBeNull();
+  });
+});
+
+// The keypad is the one screen used standing at a counter, one-handed, without looking closely. A
+// short pulse is what tells a thumb the key registered.
+describe('Keypad haptics', () => {
+  function stubVibrate() {
+    const spy = vi.fn(() => true);
+    Object.defineProperty(navigator, 'vibrate', { value: spy, configurable: true, writable: true });
+    return spy;
+  }
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'vibrate');
+  });
+
+  it('pulses on a digit key', () => {
+    const spy = stubVibrate();
+    renderWith({});
+    fireEvent.click(screen.getByRole('button', { name: '7' }));
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('pulses when a category tile saves the entry', () => {
+    const spy = stubVibrate();
+    renderWith({ categories: [{ name: 'Food', emoji: '🍜' }] });
+    fireEvent.click(screen.getByRole('button', { name: 'Food' }));
+    expect(spy).toHaveBeenCalled();
   });
 });
