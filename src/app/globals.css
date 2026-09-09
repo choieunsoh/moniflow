@@ -511,3 +511,15 @@ input[type='checkbox'] {
     transform: translateY(0);
   }
 }
+
+/* Privacy mode. `data-privacy` on <html> is stamped by use-privacy.ts (and, before first paint, by
+   the inline script in layout.tsx); `data-peek` is stamped for as long as a figure is held down.
+   Blur is in `em` so it scales with the figure it hides — a 12px caption and a 36px hero need
+   different radii to be equally unreadable. */
+[data-privacy='on'] .money {
+  filter: blur(0.3em);
+  transition: filter 120ms ease;
+}
+[data-privacy='on'][data-peek] .money {
+  filter: none;
+}
