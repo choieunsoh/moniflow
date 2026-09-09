@@ -32,6 +32,11 @@ describe('usePrivacy', () => {
   });
 
   it('REMOVES the attribute for the default, rather than stamping off', async () => {
+    // Simulate a stale attribute from an earlier session (or localStorage/OPFS having drifted
+    // apart): the stamp is already 'on' before the hook ever runs, so this only passes if the
+    // hook actively tears it down for the default setting, not merely if nothing writes 'off'.
+    document.documentElement.dataset.privacy = 'on';
+
     renderHook(() => usePrivacy());
 
     await waitFor(() => expect(localStorage.getItem(PRIVACY_STORAGE_KEY)).toBe('off'));
@@ -68,6 +73,29 @@ describe('usePrivacy', () => {
     renderHook(() => usePrivacy());
 
     document.getElementById('plain')?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(document.documentElement.dataset.peek).toBeUndefined();
+  });
+
+  it('clears data-peek when the window loses focus mid-hold (app switch, notification shade)', () => {
+    document.body.innerHTML = '<div id="chart" class="money"><span id="figure">฿100</span></div>';
+    renderHook(() => usePrivacy());
+
+    document.getElementById('figure')?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(document.documentElement.dataset.peek).toBe('');
+
+    window.dispatchEvent(new Event('blur'));
+    expect(document.documentElement.dataset.peek).toBeUndefined();
+  });
+
+  it('clears data-peek when the tab is backgrounded mid-hold (visibilitychange)', () => {
+    document.body.innerHTML = '<div id="chart" class="money"><span id="figure">฿100</span></div>';
+    renderHook(() => usePrivacy());
+
+    document.getElementById('figure')?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(document.documentElement.dataset.peek).toBe('');
+
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
     expect(document.documentElement.dataset.peek).toBeUndefined();
   });
 });

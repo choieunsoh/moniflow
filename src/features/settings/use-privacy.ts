@@ -39,13 +39,25 @@ export function usePrivacy(): void {
     function up(): void {
       delete document.documentElement.dataset.peek;
     }
+    // pointerup/pointercancel only cover a press that ends ON the page. A hold interrupted by the
+    // pointer leaving the window, an OS app switch, or a notification shade pulled down mid-hold
+    // on a phone doesn't reliably deliver pointercancel — so a stuck data-peek would leave every
+    // figure unblurred after the phone was put down. A privacy mode has to fail toward hidden, so
+    // window blur and the document going non-visible are ALSO clear points, not just belt-and-braces.
+    function clearIfHidden(): void {
+      if (document.visibilityState !== 'visible') up();
+    }
     document.addEventListener('pointerdown', down);
     document.addEventListener('pointerup', up);
     document.addEventListener('pointercancel', up);
+    window.addEventListener('blur', up);
+    document.addEventListener('visibilitychange', clearIfHidden);
     return () => {
       document.removeEventListener('pointerdown', down);
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
+      window.removeEventListener('blur', up);
+      document.removeEventListener('visibilitychange', clearIfHidden);
     };
   }, []);
 }
