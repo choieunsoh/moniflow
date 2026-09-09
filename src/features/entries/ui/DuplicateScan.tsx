@@ -1,0 +1,111 @@
+'use client';
+
+import { useState } from 'react';
+import { withDb } from '@shared/db-effect';
+import { getEntries } from '../queries';
+import { deleteEntryAction, undoDeleteEntry } from '../actions';
+import { findDuplicateGroups } from '../duplicates';
+import { toast } from '@shared/ui/toast';
+import { formatLedgerSpend } from '@shared/money';
+import { formatDayHeading } from '@shared/date';
+import { Money } from '@shared/ui/Money';
+import type { EntryRow } from '../schema';
+
+// On demand, never on mount: the scan reads the entire ledger (the same read the backup export
+// performs) and a Settings visit is not a reason to pay for it. `null` groups means "not scanned",
+// `[]` means "scanned and clean" — collapsing those two would make the empty state indistinguishable
+// from the initial one, and the whole value of the surface is the sentence "No duplicates found".
+export function DuplicateScan() {
+  const [groups, setGroups] = useState<EntryRow[][] | null>(null);
+
+  function scan(): void {
+    void withDb(async (db) => {
+      const rows = await getEntries(db);
+      setGroups(findDuplicateGroups(rows));
+    });
+  }
+
+  // Delete, then offer the same Undo the Records swipe does (deleteEntryAction/undoDeleteEntry are
+  // the same pairing, same snapshot). Re-run the scan over the rows already on screen minus the
+  // deleted id rather than re-reading the whole ledger — every other row's group membership is
+  // unaffected by one deletion, so this is exactly what a second read would produce.
+  async function remove(entry: EntryRow): Promise<void> {
+    try {
+      const snapshot = await deleteEntryAction(entry.id);
+      if (!snapshot) {
+        toast('Entry deleted');
+      } else {
+        toast.action('Entry deleted', {
+          label: 'Undo',
+          onClick: () => {
+            undoDeleteEntry(snapshot).catch(() => toast.error('Failed to undo — try again'));
+          },
+        });
+      }
+      setGroups((current) => {
+        if (current === null) return current;
+        const remaining = current.flat().filter((row) => row.id !== entry.id);
+        return findDuplicateGroups(remaining);
+      });
+    } catch {
+      toast.error('Couldn’t delete — try again');
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <button type="button" className="btn btn-ghost w-fit" onClick={scan}>
+        Scan for duplicates
+      </button>
+      {groups === null ? null : groups.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+          No duplicates found
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {groups.map((group) => (
+            <li
+              key={group.map((row) => row.id).join('-')}
+              className="flex flex-col gap-2 rounded-[var(--radius-sm)] border p-3"
+              style={{ borderColor: 'var(--color-border)' }}
+            >
+              <ul className="flex flex-col gap-2">
+                {group.map((entry) => (
+                  <li key={entry.id} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate">
+                        {formatDayHeading(entry.date)} · {entry.category} · {entry.account}
+                      </span>
+                      {entry.note ? (
+                        <span className="truncate text-xs" style={{ color: 'var(--color-muted)' }}>
+                          {entry.note}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span
+                      className="tnum shrink-0"
+                      style={{
+                        color: entry.amount < 0 ? 'var(--color-text)' : 'var(--color-gain)',
+                      }}
+                    >
+                      <Money>{formatLedgerSpend(entry.amount)}</Money>
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost shrink-0"
+                      style={{ color: 'var(--color-loss)' }}
+                      aria-label={`Delete ${entry.category} on ${formatDayHeading(entry.date)}`}
+                      onClick={() => void remove(entry)}
+                    >
+                      Delete
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
