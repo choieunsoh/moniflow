@@ -1,6 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useNewEntry } from '@features/entries/use-new-entry';
 import { addEntryAction } from '@features/entries/actions';
 import { Keypad } from '@features/entries/ui/Keypad';
@@ -11,9 +12,15 @@ import { toast } from '@shared/ui/toast';
 // The keypad-feeding lists load client-side via useNewEntry against the browser OPFS db. The write
 // itself (addEntryAction) no longer redirects server-side (Plan 2b dropped it), so this page navigates
 // home after a successful submit instead.
-export default function NewEntryPage() {
+//
+// ?copy=<id> opens the keypad pre-filled from an existing row (the Duplicate control on the edit
+// screen). Same shape as /entries/edit?id=: a static export cannot prerender a per-id route, so the
+// id rides in the query string — which means useSearchParams, which means a Suspense boundary.
+function NewEntryInner() {
   const router = useRouter();
-  const { ready, data } = useNewEntry();
+  const copyParam = Number(useSearchParams().get('copy'));
+  const copyId = Number.isInteger(copyParam) && copyParam > 0 ? copyParam : undefined;
+  const { ready, data } = useNewEntry(copyId);
 
   if (!ready || data === null) {
     return (
@@ -41,6 +48,7 @@ export default function NewEntryPage() {
     keypadLayout,
     offBudgetCategories,
     travelCurrencies,
+    template,
   } = data;
 
   async function handleSubmit(formData: FormData): Promise<void> {
@@ -70,9 +78,30 @@ export default function NewEntryPage() {
         iconSet={iconSet}
         keypadLayout={keypadLayout}
         action={handleSubmit}
+        entry={template ?? undefined}
+        isCopy={template !== null}
         offBudgetCategories={offBudgetCategories}
         travelCurrencies={travelCurrencies}
       />
     </PageContainer>
+  );
+}
+
+export default function NewEntryPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageContainer size="full">
+          <div
+            className="grid h-32 place-items-center text-sm"
+            style={{ color: 'var(--color-muted)' }}
+          >
+            …
+          </div>
+        </PageContainer>
+      }
+    >
+      <NewEntryInner />
+    </Suspense>
   );
 }

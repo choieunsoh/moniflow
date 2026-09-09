@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useId, useState, useTransition } from 'react';
 import { formatBaht, formatBahtKeyed, formatCurrency } from '@shared/money';
 import { formatDayHeading } from '@shared/date';
@@ -11,6 +12,7 @@ import type { Currency } from '../entry-form';
 import { CategoryIcon } from '@features/categories/ui/CategoryIcon';
 import { AccountIcon } from '@features/accounts/ui/AccountIcon';
 import { CloseButton } from './CloseButton';
+import { buzz } from '@shared/haptics';
 import { refreshFxRatesAction } from '@features/settings/actions';
 import { seedStarterSetAction } from '@features/categories/actions';
 import type { IconSet, KeypadLayout } from '@features/settings/queries';
@@ -97,6 +99,7 @@ export function Keypad({
   keypadLayout,
   action = addEntryAction,
   entry,
+  isCopy = false,
   offBudgetCategories,
   travelCurrencies,
 }: {
@@ -113,6 +116,11 @@ export function Keypad({
   keypadLayout: KeypadLayout;
   action?: (formData: FormData) => Promise<void>;
   entry?: EntryRow;
+  // `entry` is being DUPLICATED, not edited: pre-fill from it, but save a new row. Every difference
+  // between the two lives here rather than in the route, so a caller cannot half-copy an entry —
+  // no id (that is what names the row an edit overwrites), no inherited time, and today's date
+  // instead of the original's, because a copy is something you are spending now.
+  isCopy?: boolean;
   offBudgetCategories: Set<string>;
   travelCurrencies: Set<string>; // off-budget toggle's travel-currency tier — mirrors isOffBudget
 }) {
@@ -139,7 +147,7 @@ export function Keypad({
 
   const [expr, setExpr] = useState(initialForeign);
   const [view, setView] = useState<'keypad' | 'account' | 'currency' | 'category'>('keypad');
-  const [date, setDate] = useState(entry?.date ?? today);
+  const [date, setDate] = useState(isCopy ? today : (entry?.date ?? today));
   const [account, setAccount] = useState(entry?.account ?? defaultAccount);
   const [currency, setCurrency] = useState<Currency>(initialCurrency);
   // `null` = follow the cached rate (shown to 4 dp); a string = the value the user typed/edited.
@@ -205,8 +213,8 @@ export function Keypad({
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      {entry ? <input type="hidden" name="id" value={entry.id} /> : null}
-      {entry ? <input type="hidden" name="time" value={entry.time ?? ''} /> : null}
+      {entry && !isCopy ? <input type="hidden" name="id" value={entry.id} /> : null}
+      {entry && !isCopy ? <input type="hidden" name="time" value={entry.time ?? ''} /> : null}
       <input type="hidden" name="currency" value={currency} />
       <input type="hidden" name="direction" value={isIncome ? 'income' : 'expense'} />
       <input type="hidden" name="amount" value={validAmount ? String(amount) : ''} />
@@ -410,7 +418,10 @@ export function Keypad({
               <button
                 key={key}
                 type="button"
-                onClick={() => setExpr((p) => nextExpr(p, key))}
+                onClick={() => {
+                  buzz();
+                  setExpr((p) => nextExpr(p, key));
+                }}
                 aria-label={key === '⌫' ? 'Backspace' : key}
                 className="tnum h-14 rounded-[var(--radius-md)] text-xl font-medium transition-colors active:opacity-70"
                 style={{
@@ -491,14 +502,36 @@ export function Keypad({
           ))}
         </datalist>
 
-        <button
-          type="button"
-          onClick={() => setView('category')}
-          disabled={!canSubmit}
-          className="btn btn-primary w-full disabled:opacity-40"
-        >
-          Choose category
-        </button>
+        {/* Duplicate rides BESIDE the primary action, not under it. Stacked, it landed at y=895 on a
+            915px frame — underneath the bottom tab bar, invisible to everything except a test that
+            asked whether the element existed. This screen has no vertical room to give, so the one
+            row it already spends is where a second control has to live. It is a labelled button and
+            NOT a second swipe on the row: the row already hides Delete behind a leftward swipe, that
+            gesture is hard enough to remember on its own, and an opposite invisible swipe next to a
+            destructive one is how you press the wrong thing. */}
+        <div className="flex items-stretch gap-2">
+          <button
+            type="button"
+            onClick={() => setView('category')}
+            disabled={!canSubmit}
+            className="btn btn-primary flex-1 disabled:opacity-40"
+          >
+            Choose category
+          </button>
+          {entry && !isCopy ? (
+            <Link
+              href={`/entries/new?copy=${entry.id}`}
+              className="btn shrink-0"
+              style={{
+                background: 'var(--color-surface-2)',
+                color: 'var(--color-text)',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              Duplicate
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       {/* Currency picker — a grid of every currency (most-used first, THB pinned). Sets state and
@@ -662,6 +695,7 @@ export function Keypad({
                 type="submit"
                 name="category"
                 value={c.name}
+                onClick={() => buzz(18)}
                 aria-current={on ? 'true' : undefined}
                 className="panel flex flex-col items-center gap-1 px-2 py-3 text-center transition-colors active:opacity-70"
                 style={

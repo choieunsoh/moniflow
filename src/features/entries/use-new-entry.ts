@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { withDb } from '@shared/db-effect';
-import { getLatestAccount, getDistinctNotes } from './queries';
+import { getLatestAccount, getDistinctNotes, getEntryById } from './queries';
+import type { EntryRow } from './schema';
 import { getKeypadCategories, getKeypadAccounts, getKeypadCurrencies } from './keypad-lists';
 import type { KeypadCategory, KeypadAccount, KeypadCurrency } from './ui/Keypad';
 import {
@@ -31,11 +32,17 @@ export type NewEntryData = {
   keypadLayout: KeypadLayout;
   offBudgetCategories: Set<string>; // the Keypad's off-budget toggle default
   travelCurrencies: Set<string>; // the Keypad's off-budget toggle default, travel-currency tier
+  // The row being duplicated, when the route was opened with ?copy=. null for an ordinary new entry
+  // AND for a stale id whose row is gone — a dead copy link still opens a usable blank keypad.
+  template: EntryRow | null;
 };
 
 // New-entry page's keypad-feeding lists, read once via the browser OPFS db after mount — mirrors the
 // server computation the page used to run in a Server Component, just moved client-side + async.
-export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
+// `copyId` duplicates an existing row: the same keypad, pre-filled from that entry. The caller
+// decides what carries over — this only fetches the row (see the new-entry route, which re-dates it
+// to today).
+export function useNewEntry(copyId?: number): { ready: boolean; data: NewEntryData | null } {
   const [data, setData] = useState<NewEntryData | null>(null);
   const [ready, setReady] = useState(false);
   const version = useDataVersion();
@@ -76,6 +83,7 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
         getOffBudgetCategories(db),
         getTravelCurrencies(db),
       ]);
+      const template = copyId === undefined ? undefined : await getEntryById(db, copyId);
 
       const rates: Record<string, number> = {};
       const ratesAsOf: Record<string, string> = {};
@@ -99,10 +107,11 @@ export function useNewEntry(): { ready: boolean; data: NewEntryData | null } {
         keypadLayout,
         offBudgetCategories,
         travelCurrencies,
+        template: template ?? null,
       });
       setReady(true);
     });
-  }, [version]);
+  }, [version, copyId]);
 
   return { ready, data };
 }
