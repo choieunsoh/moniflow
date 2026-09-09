@@ -14,11 +14,14 @@ import type { EntryRow } from '../schema';
 // Date and category are two thirds of the grouping key, so every row in a group shares them by
 // construction — a label built from just those two is identical for every button in a pair. Account
 // is what actually tells the rows apart (it's excluded from the key on purpose, see duplicates.ts);
-// fold the note in too when there is one, since two rows can also share an account.
-function rowDeleteLabel(entry: EntryRow): string {
+// fold the note in too when there is one, since two rows can also share an account. A genuine
+// double-post matches on every field, so the position within the group must be included to
+// distinguish two identical rows.
+function rowDeleteLabel(entry: EntryRow, index: number, groupSize: number): string {
   const note = entry.note?.trim();
   const base = `Delete ${entry.category} on ${formatDayHeading(entry.date)}, ${entry.account}`;
-  return note ? `${base}, ${note}` : base;
+  const withNote = note ? `${base}, ${note}` : base;
+  return `${withNote}, ${index + 1} of ${groupSize}`;
 }
 
 // Module-scope, not component state: deleting a row runs through deleteEntryAction, which ends in
@@ -129,7 +132,7 @@ export function DuplicateScan() {
               style={{ borderColor: 'var(--color-border)' }}
             >
               <ul className="flex flex-col gap-2">
-                {group.map((entry) => (
+                {group.map((entry, index) => (
                   <li key={entry.id} className="flex items-center justify-between gap-3 text-sm">
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate">
@@ -153,7 +156,7 @@ export function DuplicateScan() {
                       type="button"
                       className="btn btn-ghost shrink-0 disabled:opacity-60"
                       style={{ color: 'var(--color-loss)' }}
-                      aria-label={rowDeleteLabel(entry)}
+                      aria-label={rowDeleteLabel(entry, index, group.length)}
                       disabled={deletingIds.has(entry.id)}
                       onClick={() => void remove(entry)}
                     >

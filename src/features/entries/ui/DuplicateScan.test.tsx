@@ -128,6 +128,25 @@ describe('DuplicateScan', () => {
     expect(names[1]).toContain('Card');
   });
 
+  it('distinguishes two identical duplicate rows by their position in the group', async () => {
+    // A genuine double-post matches on every field (account and note included), so the position
+    // must break the tie for screen-reader users to tell them apart.
+    const first = row({ id: 1, account: 'KTC X VISA', note: 'Claude Code Pro' });
+    const second = row({ id: 2, account: 'KTC X VISA', note: 'Claude Code Pro' });
+    getEntries.mockResolvedValue([first, second]);
+
+    render(<DuplicateScan />);
+    clickScan();
+
+    const buttons = await screen.findAllByRole('button', { name: /Delete Coffee/ });
+    expect(buttons).toHaveLength(2);
+    const names = buttons.map((b) => b.getAttribute('aria-label'));
+    // Even though both rows are identical in account and note, the position must make them distinct.
+    expect(names[0]).not.toBe(names[1]);
+    expect(names[0]).toContain('1 of 2');
+    expect(names[1]).toContain('2 of 2');
+  });
+
   it('disables only the row being deleted, and guards it against a second activation in flight', async () => {
     const cash = row({ id: 1, account: 'Cash' });
     const card = row({ id: 2, account: 'Card' });
