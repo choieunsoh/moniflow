@@ -13,7 +13,7 @@ const { deleteEntryAction, undoDeleteEntry } = vi.hoisted(() => ({
 }));
 vi.mock('../actions', () => ({ deleteEntryAction, undoDeleteEntry }));
 
-import { DuplicateScan, __resetDuplicateScanCacheForTests } from './DuplicateScan';
+import { DuplicateScan } from './DuplicateScan';
 import { getToasts, resetToasts } from '@shared/ui/toast';
 import type { EntryRow } from '../schema';
 
@@ -47,9 +47,6 @@ describe('DuplicateScan', () => {
     getEntries.mockReset();
     deleteEntryAction.mockReset();
     undoDeleteEntry.mockReset().mockResolvedValue(undefined);
-    // The scan cache is module-scope (that's the point of the fix — it survives the remount a
-    // delete triggers), so it survives across tests too unless cleared here.
-    __resetDuplicateScanCacheForTests();
   });
 
   it('reads nothing until the scan button is pressed', () => {
@@ -57,6 +54,25 @@ describe('DuplicateScan', () => {
     expect(screen.getByRole('button', { name: 'Scan for duplicates' })).toBeInTheDocument();
     expect(getEntries).not.toHaveBeenCalled();
     expect(screen.queryByText('No duplicates found')).not.toBeInTheDocument();
+  });
+
+  it('starts unscanned on a fresh mount', async () => {
+    // Two rows sharing date+amount+category, so a scan produces one group with two Delete buttons.
+    getEntries.mockResolvedValue([
+      row({ id: 1, account: 'Cash' }),
+      row({ id: 2, account: 'Card' }),
+    ]);
+
+    const first = render(<DuplicateScan />);
+    clickScan();
+    expect(await screen.findAllByRole('button', { name: /Delete Coffee/ })).toHaveLength(2);
+    first.unmount();
+
+    // A second mount is a fresh visit to /checkup. It must show the button, not a result carried
+    // over in module scope from the last visit — the ledger may have changed in between.
+    render(<DuplicateScan />);
+    expect(screen.getByRole('button', { name: 'Scan for duplicates' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Delete Coffee/ })).not.toBeInTheDocument();
   });
 
   it('renders one group per duplicate set, oldest row first', async () => {
@@ -108,6 +124,39 @@ describe('DuplicateScan', () => {
     // Copies the exact Records-swipe pairing: the toast's own Undo button, not a second call site.
     t?.action?.onClick();
     expect(undoDeleteEntry).toHaveBeenCalledWith(cash);
+  });
+
+  it('puts the row back on screen when Undo restores it, by re-running the scan', async () => {
+    const cash = row({ id: 1, account: 'Cash' });
+    const card = row({ id: 2, account: 'Card' });
+    // First read is the initial scan; second is the re-scan the Undo handler must trigger once the
+    // row is back in the ledger.
+    getEntries.mockResolvedValueOnce([cash, card]).mockResolvedValueOnce([cash, card]);
+    deleteEntryAction.mockResolvedValue(cash);
+
+    render(<DuplicateScan />);
+    clickScan();
+    const [first] = await screen.findAllByRole('button', { name: /Delete Coffee/ });
+
+    await act(async () => {
+      fireEvent.click(first);
+      await Promise.resolve();
+    });
+
+    // The pair is down to one row on screen — the group no longer reads as a duplicate.
+    expect(screen.queryByRole('button', { name: /Delete Coffee/ })).not.toBeInTheDocument();
+
+    const t = getToasts().find((x) => x.message === 'Entry deleted');
+    await act(async () => {
+      t?.action?.onClick();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // undoDeleteEntry restored the row in the database — the on-screen list must reflect it again,
+    // not keep showing the pair as resolved.
+    expect(await screen.findAllByRole('button', { name: /Delete Coffee/ })).toHaveLength(2);
+    expect(getEntries).toHaveBeenCalledTimes(2);
   });
 
   it('gives each Delete button in a pair a distinct accessible name naming its account', async () => {
@@ -203,27 +252,6 @@ describe('DuplicateScan', () => {
     // button) must be gone, settled from state alone, with no second call to getEntries.
     expect(screen.queryByRole('button', { name: /Delete Coffee/ })).not.toBeInTheDocument();
     expect(await screen.findByText('No duplicates found')).toBeInTheDocument();
-    expect(getEntries).toHaveBeenCalledTimes(1);
-  });
-
-  // The bug this guards: deleteEntryAction ends in bumpDataVersion(), which remounts the WHOLE
-  // Settings page (useSettings sets ready=false while it re-reads) — DuplicateScan unmounts along
-  // with it. Before the fix, `groups` was plain useState(null), so every delete silently dropped the
-  // user back to the bare "Scan for duplicates" button. This proves the scanned list survives that
-  // remount without a second read.
-  it('keeps the scanned groups across an unmount+remount, with no second getEntries call', async () => {
-    const cash = row({ id: 1, account: 'Cash' });
-    const card = row({ id: 2, account: 'Card' });
-    getEntries.mockResolvedValue([cash, card]);
-
-    const { unmount } = render(<DuplicateScan />);
-    clickScan();
-    expect(await screen.findAllByRole('button', { name: /Delete Coffee/ })).toHaveLength(2);
-
-    unmount();
-    render(<DuplicateScan />);
-
-    expect(await screen.findAllByRole('button', { name: /Delete Coffee/ })).toHaveLength(2);
     expect(getEntries).toHaveBeenCalledTimes(1);
   });
 
