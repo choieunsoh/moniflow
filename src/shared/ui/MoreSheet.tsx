@@ -22,20 +22,33 @@ import { cycleHref } from './cycle-href';
 // App-launcher grid for the overflow nav — one icon tile per destination, matching the 2×2 grid glyph
 // on the "More" tab that opens this sheet. lucide icons (a dependency since the icon-set feature).
 //
-// GROUPED BY WHAT YOU CAME FOR, three to a row. A flat list of eight in destination order made you
-// read every label to find one; the captions let you skip to a third of the sheet. "Review" leads
-// because those are the pages you open to look at something — Plan and Set up are visited
-// deliberately and less often.
+// GROUPED BY WHAT YOU CAME FOR, three to a row, and ordered by how often the owner actually opens
+// them. Lists leads: Categories, Accounts and Currency are the three most-visited destinations in
+// the app, and they fill one row exactly. Review is the "look back" set, Plan the forward-looking
+// one, and App the pages you open rarely and deliberately.
 //
-// Twelve tiles across three columns: Review holds four (wraps to a row of three plus one on its
-// own), Set up holds six (two clean rows of three), Plan holds two. That is why the captions earn
-// their space — under a heading a short row or an orphan tile reads as the end of a group, and
-// unlabelled it just reads as a hole.
+// Checkup sits in App, not with the lists it superficially resembles. It configures nothing — it
+// scans the ledger for duplicate rows and deletes them — but its VISIT CADENCE is Settings',
+// not Categories'. It previously sat in a "Set up" group it joined for a layout reason (six tiles
+// filled two clean rows), which is not a reason.
+//
+// Twelve tiles across three columns: Lists and App fill a row each, Review wraps to a row of three
+// plus one, Plan is a short row of two. That is why the captions earn their space — under a heading
+// a short row or an orphan tile reads as the end of a group, and unlabelled it just reads as a hole.
 //
 // `cycle: true` marks a destination that READS the selected cycle, so its href carries ?cycle= the
-// same way BottomBar's primary tabs do. Budgets landed here when Analytics took its tab slot, and
-// without this it would silently drop the cycle on every tap.
+// same way BottomBar's primary tabs do. Budgets is the only one, and it landed here when Analytics
+// took its tab slot — without this it would silently drop the cycle on every tap.
 const GROUPS = [
+  {
+    id: 'lists',
+    caption: 'Lists',
+    links: [
+      { href: '/categories', label: 'Categories', Icon: Tags, cycle: false },
+      { href: '/accounts', label: 'Accounts', Icon: Wallet, cycle: false },
+      { href: '/currency', label: 'Currency', Icon: Coins, cycle: false },
+    ],
+  },
   {
     id: 'review',
     caption: 'Review',
@@ -59,17 +72,14 @@ const GROUPS = [
     ],
   },
   {
-    id: 'set-up',
-    caption: 'Set up',
+    id: 'app',
+    caption: 'App',
     links: [
-      { href: '/categories', label: 'Categories', Icon: Tags, cycle: false },
-      { href: '/accounts', label: 'Accounts', Icon: Wallet, cycle: false },
-      { href: '/currency', label: 'Currency', Icon: Coins, cycle: false },
       { href: '/settings', label: 'Settings', Icon: Settings, cycle: false },
-      { href: '/about', label: 'About', Icon: Info, cycle: false },
       // cycle: false — the scan reads the WHOLE ledger, not a cycle, so a ?cycle= riding along
-      // would be inert noise in the URL. Six tiles fill two clean rows of the three-column grid.
+      // would be inert noise in the URL.
       { href: '/checkup', label: 'Checkup', Icon: Stethoscope, cycle: false },
+      { href: '/about', label: 'About', Icon: Info, cycle: false },
     ],
   },
 ] as const;
