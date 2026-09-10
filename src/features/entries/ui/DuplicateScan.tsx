@@ -25,7 +25,7 @@ function rowDeleteLabel(entry: EntryRow, index: number, groupSize: number): stri
 }
 
 // On demand, never on mount: the scan reads the entire ledger (the same read the backup export
-// performs) and a Settings visit is not a reason to pay for it. `null` groups means "not scanned",
+// performs) and opening this page is not a reason to pay for it. `null` groups means "not scanned",
 // `[]` means "scanned and clean" — collapsing those two would make the empty state indistinguishable
 // from the initial one, and the whole value of the surface is the sentence "No duplicates found".
 export function DuplicateScan() {
@@ -65,7 +65,14 @@ export function DuplicateScan() {
         toast.action('Entry deleted', {
           label: 'Undo',
           onClick: () => {
-            undoDeleteEntry(snapshot).catch(() => toast.error('Failed to undo — try again'));
+            // A successful undo puts the row back in the ledger, but `groups` was already re-derived
+            // without it — a list that still shows the pair as resolved is lying. Undo is rare enough
+            // that a full re-scan is the cheap, honest fix, cheaper than reconciling the restored row
+            // back into state by hand.
+            undoDeleteEntry(snapshot).then(
+              () => scan(),
+              () => toast.error('Failed to undo — try again'),
+            );
           },
         });
       }

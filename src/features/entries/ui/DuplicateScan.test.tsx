@@ -126,6 +126,39 @@ describe('DuplicateScan', () => {
     expect(undoDeleteEntry).toHaveBeenCalledWith(cash);
   });
 
+  it('puts the row back on screen when Undo restores it, by re-running the scan', async () => {
+    const cash = row({ id: 1, account: 'Cash' });
+    const card = row({ id: 2, account: 'Card' });
+    // First read is the initial scan; second is the re-scan the Undo handler must trigger once the
+    // row is back in the ledger.
+    getEntries.mockResolvedValueOnce([cash, card]).mockResolvedValueOnce([cash, card]);
+    deleteEntryAction.mockResolvedValue(cash);
+
+    render(<DuplicateScan />);
+    clickScan();
+    const [first] = await screen.findAllByRole('button', { name: /Delete Coffee/ });
+
+    await act(async () => {
+      fireEvent.click(first);
+      await Promise.resolve();
+    });
+
+    // The pair is down to one row on screen — the group no longer reads as a duplicate.
+    expect(screen.queryByRole('button', { name: /Delete Coffee/ })).not.toBeInTheDocument();
+
+    const t = getToasts().find((x) => x.message === 'Entry deleted');
+    await act(async () => {
+      t?.action?.onClick();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // undoDeleteEntry restored the row in the database — the on-screen list must reflect it again,
+    // not keep showing the pair as resolved.
+    expect(await screen.findAllByRole('button', { name: /Delete Coffee/ })).toHaveLength(2);
+    expect(getEntries).toHaveBeenCalledTimes(2);
+  });
+
   it('gives each Delete button in a pair a distinct accessible name naming its account', async () => {
     const cash = row({ id: 1, account: 'Cash' });
     const card = row({ id: 2, account: 'Card' });

@@ -27,8 +27,8 @@ import { cycleHref } from './cycle-href';
 // because those are the pages you open to look at something — Plan and Set up are visited
 // deliberately and less often.
 //
-// Eleven tiles across three columns: Review holds four (wraps to a row of three plus one on its
-// own), Set up holds five (wraps to three plus two), Plan holds two. That is why the captions earn
+// Twelve tiles across three columns: Review holds four (wraps to a row of three plus one on its
+// own), Set up holds six (two clean rows of three), Plan holds two. That is why the captions earn
 // their space — under a heading a short row or an orphan tile reads as the end of a group, and
 // unlabelled it just reads as a hole.
 //
