@@ -39,10 +39,10 @@ plain async functions rather than Server Actions. The app is scoped to a monthly
   the window, a this-cycle-vs-last comparison, and a breakdown below it — **By category** or **By
   account** — that narrows to that category's own per-cycle breakdown when filtered. Anomalies stay
   category-based either way.
-- **More** — a sheet of three captioned groups rather than a flat list: **Review** (Year, Month,
-  Report, Trips), **Plan** (Budgets, Recurring), and **Set up** (Categories, Accounts, Currency,
-  Settings, About). Budgets carries the selected cycle in its href; the rest key off windows of
-  their own.
+- **More** — a sheet of four captioned groups rather than a flat list: **Lists** (Categories,
+  Accounts, Currency), **Review** (Year, Month, Report, Trips), **Plan** (Budgets, Recurring), and
+  **App** (Settings, Checkup, About). Budgets carries the selected cycle in its href; the rest key
+  off windows of their own.
 - Entries are added on a Monefy-style calculator keypad or bulk-imported from a **Monefy CSV**
   (THB home currency; non-THB rows surface in Trips).
 
