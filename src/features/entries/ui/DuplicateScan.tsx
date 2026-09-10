@@ -16,16 +16,16 @@ import { formatDayHeading } from '@shared/date';
 import { Money } from '@shared/ui/Money';
 import type { EntryRow } from '../schema';
 
-// This label's whole job is telling apart several Delete buttons sitting in one group. Under the
-// default rule the rows share date and category, so neither alone distinguishes them — that's why
-// account and the note (when there is one) get folded in too. But which fields a group actually
-// shares is no longer something this function can assume: the caller picks the matching fields now,
-// so the label carries everything it can rather than just the parts known to vary. Even that isn't
+// This label's whole job is telling apart several Delete buttons sitting in one group. Which fields
+// a group actually shares is no longer something this function can assume — the caller picks the
+// matching fields now, so any field (amount included) may be the one that varies within a group.
+// Amount is folded in unconditionally rather than only when it's not one of the chosen fields: that
+// keeps the label independent of `fields`, which this function never receives. Even that isn't
 // enough for a genuine double-post, which matches on every field — the position within the group
 // (`index + 1` of `groupSize`) is the one thing that's always guaranteed to differ.
 function rowDeleteLabel(entry: EntryRow, index: number, groupSize: number): string {
   const note = entry.note?.trim();
-  const base = `Delete ${entry.category} on ${formatDayHeading(entry.date)}, ${entry.account}`;
+  const base = `Delete ${entry.category} on ${formatDayHeading(entry.date)}, ${formatLedgerSpend(entry.amount)}, ${entry.account}`;
   const withNote = note ? `${base}, ${note}` : base;
   return `${withNote}, ${index + 1} of ${groupSize}`;
 }
@@ -122,14 +122,19 @@ export function DuplicateScan() {
         <legend className="pb-1 text-sm font-semibold">Must match</legend>
         {DUPLICATE_FIELDS.map((field) => {
           const checked = fields.includes(field);
+          const isLastChecked = checked && fields.length === 1;
           return (
-            <label key={field} className="tap flex items-center gap-1.5 text-sm">
+            <label
+              key={field}
+              className="tap flex items-center gap-1.5 text-sm"
+              title={isLastChecked ? 'At least one condition must match' : undefined}
+            >
               <input
                 type="checkbox"
                 checked={checked}
                 // The last checked box can't be cleared: with nothing to key on every row shares a key
                 // and the whole ledger would read as one duplicate group.
-                disabled={checked && fields.length === 1}
+                disabled={isLastChecked}
                 onChange={(e) => {
                   const next = e.currentTarget.checked;
                   // Rebuild from DUPLICATE_FIELDS so the list stays in its canonical order however it
@@ -160,7 +165,12 @@ export function DuplicateScan() {
         <ul className="flex flex-col gap-3">
           {groups.map((group) => (
             <li
-              key={group.map((row) => row.id).join('-')}
+              // findDuplicateGroups partitions rows into buckets, so no two groups share a row, and
+              // each group is sorted id-ascending — so no two groups share a minimum id either. That
+              // makes the first row's id unique per group without building an O(n) string out of
+              // every id in it, which matters once one bucket (e.g. every row with no note) holds
+              // most of the ledger.
+              key={group[0].id}
               className="flex flex-col gap-2 rounded-[var(--radius-sm)] border p-3"
               style={{ borderColor: 'var(--color-border)' }}
             >
