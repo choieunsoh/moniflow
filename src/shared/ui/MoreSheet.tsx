@@ -15,6 +15,7 @@ import {
   PieChart,
   Info,
   Coins,
+  Stethoscope,
 } from 'lucide-react';
 import { cycleHref } from './cycle-href';
 
@@ -66,6 +67,9 @@ const GROUPS = [
       { href: '/currency', label: 'Currency', Icon: Coins, cycle: false },
       { href: '/settings', label: 'Settings', Icon: Settings, cycle: false },
       { href: '/about', label: 'About', Icon: Info, cycle: false },
+      // cycle: false — the scan reads the WHOLE ledger, not a cycle, so a ?cycle= riding along
+      // would be inert noise in the URL. Six tiles fill two clean rows of the three-column grid.
+      { href: '/checkup', label: 'Checkup', Icon: Stethoscope, cycle: false },
     ],
   },
 ] as const;
