@@ -24,34 +24,12 @@ function rowDeleteLabel(entry: EntryRow, index: number, groupSize: number): stri
   return `${withNote}, ${index + 1} of ${groupSize}`;
 }
 
-// Module-scope, not component state: deleting a row runs through deleteEntryAction, which ends in
-// bumpDataVersion(). That bumps useSettings, which sets ready=false while it re-reads, and the
-// Settings page renders a whole-page placeholder for that beat — DuplicateScan unmounts and its
-// `groups` state is gone, so the very re-derivation `remove` does below (cheap: filter + re-group
-// the rows already in hand, no second getEntries) was unreachable in production; the user just
-// landed back on the bare "Scan for duplicates" button after every single delete. Seeding useState
-// from this module-level cache survives that remount.
-//
-// ponytail: this is a cache with no invalidation — it goes stale if the ledger changes some OTHER
-// way while it sits here (an edit, an import, another tab). The Scan button is the only way to force
-// a fresh read; that ceiling is accepted because a stale duplicate LIST is harmless (worst case you
-// see a pair that's no longer a dupe, or miss one that's now a dupe — Delete itself still operates
-// on live ids either way) and the alternative is re-reading 10k+ rows after every remount.
-let cachedGroups: EntryRow[][] | null = null;
-
-// Test-only: the module cache above is process-lifetime, so without a reset one test's scan leaks
-// into the next test's initial render. Not exported for anything else — production never needs to
-// clear it.
-export function __resetDuplicateScanCacheForTests(): void {
-  cachedGroups = null;
-}
-
 // On demand, never on mount: the scan reads the entire ledger (the same read the backup export
 // performs) and a Settings visit is not a reason to pay for it. `null` groups means "not scanned",
 // `[]` means "scanned and clean" — collapsing those two would make the empty state indistinguishable
 // from the initial one, and the whole value of the surface is the sentence "No duplicates found".
 export function DuplicateScan() {
-  const [groups, setGroups] = useState<EntryRow[][] | null>(cachedGroups);
+  const [groups, setGroups] = useState<EntryRow[][] | null>(null);
   // Per-row, not a single boolean: this screen shows many candidate rows at once, and deleting one
   // must not disable every other row's button — unlike SwipeRow, where one row IS the whole surface.
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
@@ -66,16 +44,16 @@ export function DuplicateScan() {
     setScanning(true);
     void withDb(async (db) => {
       const rows = await getEntries(db);
-      const next = findDuplicateGroups(rows);
-      cachedGroups = next;
-      setGroups(next);
+      setGroups(findDuplicateGroups(rows));
     }).finally(() => setScanning(false));
   }
 
   // Delete, then offer the same Undo the Records swipe does (deleteEntryAction/undoDeleteEntry are
   // the same pairing, same snapshot). Re-run the scan over the rows already on screen minus the
   // deleted id rather than re-reading the whole ledger — every other row's group membership is
-  // unaffected by one deletion, so this is exactly what a second read would produce.
+  // unaffected by one deletion, so this is exactly what a second read would produce. This path was
+  // unreachable while the component lived on /settings, whose ready gate unmounted it on every
+  // delete; on /checkup nothing above it un-mounts, so this is the update the user actually sees.
   async function remove(entry: EntryRow): Promise<void> {
     if (deletingIds.has(entry.id)) return;
     setDeletingIds((current) => new Set(current).add(entry.id));
@@ -94,9 +72,7 @@ export function DuplicateScan() {
       setGroups((current) => {
         if (current === null) return current;
         const remaining = current.flat().filter((row) => row.id !== entry.id);
-        const next = findDuplicateGroups(remaining);
-        cachedGroups = next;
-        return next;
+        return findDuplicateGroups(remaining);
       });
     } catch {
       toast.error('Couldn’t delete — try again');
