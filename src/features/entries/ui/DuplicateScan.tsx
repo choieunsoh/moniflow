@@ -132,8 +132,8 @@ export function DuplicateScan() {
               <input
                 type="checkbox"
                 checked={checked}
-                // The last checked box can't be cleared: with nothing to key on every row shares a key
-                // and the whole ledger would read as one duplicate group.
+                // The last checked box can't be cleared: with nothing left to key on, every row keys
+                // alike and "which fields must match" stops meaning anything.
                 disabled={isLastChecked}
                 onChange={(e) => {
                   const next = e.currentTarget.checked;

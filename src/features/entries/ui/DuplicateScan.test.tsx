@@ -308,6 +308,31 @@ describe('DuplicateScan', () => {
     expect(getEntries).toHaveBeenCalledTimes(1);
   });
 
+  it('tells two rows apart by amount when Amount is not a matching condition', async () => {
+    // Same date, category, account and note — only the amounts differ. With "Amount" unticked they
+    // group, and the amount is the only thing left that can distinguish their Delete labels.
+    getEntries.mockResolvedValue([
+      row({ id: 1, amount: -80, account: 'Cash' }),
+      row({ id: 2, amount: -50, account: 'Cash' }),
+    ]);
+    render(<DuplicateScan />);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Amount' }));
+    await act(async () => {
+      clickScan();
+      await Promise.resolve();
+    });
+
+    const names = screen
+      .getAllByRole('button', { name: /^Delete Coffee/ })
+      .map((b) => b.getAttribute('aria-label') ?? '');
+    expect(names).toHaveLength(2);
+    expect(names[0]).toContain('฿80.00');
+    expect(names[1]).toContain('฿50.00');
+    // Strip the position suffix: the labels must stand apart on their own, not only by "N of M".
+    const strip = (n: string) => n.replace(/, \d+ of \d+$/, '');
+    expect(strip(names[0])).not.toBe(strip(names[1]));
+  });
+
   it('refuses to clear the last remaining condition', () => {
     render(<DuplicateScan />);
     for (const name of ['Amount', 'Category']) {
