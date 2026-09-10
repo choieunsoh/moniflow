@@ -14,8 +14,8 @@ export default function CheckupPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Checkup</h1>
         <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-          Rows sharing a date, an amount and a category. Three things write to the ledger and none
-          of them checks the others.
+          Rows the ledger holds more than once. Three things write to it and none of them checks the
+          others. Choose below what has to match.
         </p>
       </header>
       <DuplicateScan />

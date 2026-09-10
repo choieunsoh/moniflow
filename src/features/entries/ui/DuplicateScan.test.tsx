@@ -287,4 +287,36 @@ describe('DuplicateScan', () => {
 
     expect(screen.getByRole('button', { name: 'Scan for duplicates' })).not.toBeDisabled();
   });
+
+  it('re-groups on a condition change without re-reading the ledger', async () => {
+    // Two rows alike but for the account: one group under the default rule, none once account counts.
+    getEntries.mockResolvedValue([
+      row({ id: 1, accountId: 1, account: 'Cash' }),
+      row({ id: 2, accountId: 2, account: 'Card' }),
+    ]);
+    render(<DuplicateScan />);
+    await act(async () => {
+      clickScan();
+      await Promise.resolve();
+    });
+    expect(screen.getAllByRole('button', { name: /^Delete / })).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Account' }));
+
+    expect(screen.getByText('No duplicates found')).toBeInTheDocument();
+    // The whole point of holding rows instead of groups: no second read.
+    expect(getEntries).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses to clear the last remaining condition', () => {
+    render(<DuplicateScan />);
+    for (const name of ['Amount', 'Category']) {
+      fireEvent.click(screen.getByRole('checkbox', { name }));
+    }
+    const last = screen.getByRole('checkbox', { name: 'Date' });
+    expect(last).toBeChecked();
+    expect(last).toBeDisabled();
+    // The unchecked ones stay usable, so the choice is recoverable.
+    expect(screen.getByRole('checkbox', { name: 'Amount' })).not.toBeDisabled();
+  });
 });
