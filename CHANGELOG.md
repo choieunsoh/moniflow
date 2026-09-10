@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.0] - 2026-09-10
+
+### Added
+
+- give the duplicate scan its own page
+
+### Fixed
+
+- re-scan after an undo, and correct two stale comments
+
+### Other
+
+- merge feat/checkup-page (the duplicate scan gets its own page)
+- drop the duplicate scan's module cache
+- plan the Checkup page extraction
+- design the Checkup page
+
 ## [1.24.0] - 2026-09-09
 
 ### Added
