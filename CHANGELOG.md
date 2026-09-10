@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.26.0] - 2026-09-10
+
+### Added
+
+- pick the Checkup duplicate conditions on the page
+- let the duplicate scan choose which fields must match
+
+### Fixed
+
+- key groups cheaply, label deletes by amount, explain the disabled checkbox
+- correct stale comments and use functional setFields update
+
+### Other
+
+- merge feat/more-regroup-checkup-conditions (More sheet regroup + configurable Checkup conditions)
+- render the amount-collision the Delete label fix was for
+- describe the four-group More sheet
+- regroup the More sheet into Lists, Review, Plan and App
+- plan the More regrouping and Checkup conditions
+- spec the More regrouping and configurable Checkup conditions
+
 ## [1.25.0] - 2026-09-10
 
 ### Added
