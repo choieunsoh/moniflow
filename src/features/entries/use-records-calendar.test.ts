@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { makeNodeProxyDb } from '@db/client';
+import { makeNodeProxyDb, type Db } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { ensureRecurrencesTable } from '@features/recurring/schema';
@@ -8,6 +8,7 @@ import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addEntries } from './queries';
 import { addRule } from '@features/recurring/queries';
 import { categoryIdFor } from '@features/categories/queries';
+import { accountIdFor } from '@features/accounts/queries';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 vi.mock('@shared/date', async (importOriginal) => ({
@@ -21,8 +22,10 @@ import { useRecords, type RecordsParams } from './use-records';
 // Cutoff defaults to 18 and today is pinned to 2026-07-05, so the current cycle is '2026-06'
 // (18 Jun – 17 Jul, 30 days).
 describe('useRecords — calendar view', () => {
+  let db: Db;
+
   beforeEach(async () => {
-    const db = makeNodeProxyDb();
+    db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     await ensureSettingsTable(db);
     await ensureRecurrencesTable(db);
@@ -135,6 +138,95 @@ describe('useRecords — calendar view', () => {
       category: 'Bills',
     });
     expect(bills.calendar?.dayBills.map((b) => b.name)).toEqual(['Netflix']);
+  });
+
+  it('lists no upcoming bills in a past cycle', async () => {
+    // Cycle '2026-05' runs 18 May – 17 Jun, wholly before today (5 Jul). Gym is due the 10th from
+    // 10 Jun and has NEVER posted — the sweep simply hasn't run — so its 10 Jun due date sits inside
+    // that past cycle. Two things keep it off the calendar: the current-cycle gate (a past cycle's
+    // rules aren't read) and postsBetween's after-today lower bound. They are redundant for a past
+    // cycle (its every day is before today), so this goes red only when BOTH give way — e.g. the
+    // gate dropped and the bound widened to the cycle start to "show this cycle's bills".
+    await addRule(db, {
+      name: 'Gym',
+      day: 10,
+      intervalMonths: 1,
+      amount: 900,
+      categoryId: await categoryIdFor(db, 'Bills'),
+      startDate: '2026-06-10',
+      lastPosted: null,
+    });
+    const data = await load({ cycle: '2026-05', view: 'calendar', day: '2026-06-10' });
+    const cal = data.calendar;
+    if (cal === null) throw new Error('calendar view should build a calendar');
+    expect(cal.selectedDay).toBe('2026-06-10');
+    expect(cal.dayBills).toEqual([]);
+    expect([...cal.marks.values()].some((m) => m.upcoming)).toBe(false);
+  });
+
+  it('converts a pinned-rate foreign bill to baht', async () => {
+    await addRule(db, {
+      name: 'iCloud',
+      day: 10,
+      intervalMonths: 1,
+      amount: 10,
+      currency: 'USD',
+      rate: 35,
+      categoryId: await categoryIdFor(db, 'Bills'),
+      startDate: '2026-07-10',
+      lastPosted: null,
+    });
+    const data = await load({ cycle: '2026-06', view: 'calendar', day: '2026-07-10' });
+    const bill = data.calendar?.dayBills.find((b) => b.name === 'iCloud');
+    expect(bill).toMatchObject({ amount: 350, currency: 'THB' });
+  });
+
+  it('keeps a blank-rate foreign bill in its own currency', async () => {
+    // No pinned rate means the live ECB rate on the due date, which a preview cannot know yet.
+    await addRule(db, {
+      name: 'GitHub',
+      day: 10,
+      intervalMonths: 1,
+      amount: 15,
+      currency: 'USD',
+      rate: null,
+      categoryId: await categoryIdFor(db, 'Bills'),
+      startDate: '2026-07-10',
+      lastPosted: null,
+    });
+    const data = await load({ cycle: '2026-06', view: 'calendar', day: '2026-07-10' });
+    const bill = data.calendar?.dayBills.find((b) => b.name === 'GitHub');
+    expect(bill).toMatchObject({ amount: 15, currency: 'USD' });
+  });
+
+  it('narrows upcoming bills by the account filter', async () => {
+    // Spotify is charged to Card; Netflix (the 10th) has no account, so a Card filter drops it.
+    await addRule(db, {
+      name: 'Spotify',
+      day: 12,
+      intervalMonths: 1,
+      amount: 149,
+      accountId: await accountIdFor(db, 'Card'),
+      categoryId: await categoryIdFor(db, 'Bills'),
+      startDate: '2026-07-12',
+      lastPosted: null,
+    });
+    const card = await load({
+      cycle: '2026-06',
+      view: 'calendar',
+      day: '2026-07-12',
+      account: 'Card',
+    });
+    expect(card.calendar?.dayBills.map((b) => b.name)).toEqual(['Spotify']);
+    expect(card.calendar?.marks.has('2026-07-10')).toBe(false);
+    const cash = await load({
+      cycle: '2026-06',
+      view: 'calendar',
+      day: '2026-07-12',
+      account: 'Cash',
+    });
+    expect(cash.calendar?.dayBills).toEqual([]);
+    expect(cash.calendar?.marks.get('2026-07-12')?.upcoming ?? false).toBe(false);
   });
 
   it('keeps date grouping and no calendar in search mode', async () => {
