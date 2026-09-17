@@ -28,7 +28,7 @@ upcoming (a rule date not yet posted).
 ### Route and tab
 
 - `/records?view=calendar&cycle=<key>[&day=YYYY-MM-DD][&category=…][&account=…]`.
-- The group-by tabs become `By date · By category · By account · Calendar`. The Calendar tab is
+- The group-by tabs become `Date · Category · Account · Calendar`. The Calendar tab is
   offered only in the plain cycle view: it is not shown in search, trip, or all-category mode
   (`spanAll`), and `?view=calendar` in those modes falls back to `date`. Hidden under `sort=amount`
   exactly as the other tabs already are.

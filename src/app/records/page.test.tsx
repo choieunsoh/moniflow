@@ -141,6 +141,16 @@ describe('/records money frames', () => {
 });
 
 describe('/records calendar view', () => {
+  // With a 4th tab added, "By category" wrapped to two lines at 412px and doubled the strip's
+  // height. The group-by words are dropped from all four tabs so each fits on one line.
+  it('names the four group-by tabs without the "By" prefix', () => {
+    renderPage();
+    expect(screen.getByRole('link', { name: 'Date' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Category' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Calendar' })).toBeInTheDocument();
+  });
+
   it('renders the calendar and the selected day in place of the day sections', () => {
     vi.mocked(useRecords).mockReturnValue({
       ready: true,

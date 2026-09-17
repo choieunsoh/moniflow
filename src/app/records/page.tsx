@@ -191,17 +191,13 @@ export default function RecordsPage() {
               grouping signal, and these links don't carry sort forward anyway. */}
           {sort !== 'amount' ? (
             <div className="panel flex gap-1 p-1">
-              <ViewLink label="By date" active={groupBy === 'date'} href={viewHref('date')} />
+              <ViewLink label="Date" active={groupBy === 'date'} href={viewHref('date')} />
               <ViewLink
-                label="By category"
+                label="Category"
                 active={groupBy === 'category'}
                 href={viewHref('category')}
               />
-              <ViewLink
-                label="By account"
-                active={groupBy === 'account'}
-                href={viewHref('account')}
-              />
+              <ViewLink label="Account" active={groupBy === 'account'} href={viewHref('account')} />
               {/* The calendar is a cycle view, so search/trip/all-category don't offer it. */}
               {!spanAll ? (
                 <ViewLink
