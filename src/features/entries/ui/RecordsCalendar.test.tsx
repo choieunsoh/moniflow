@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import type { EntryRow } from '../schema';
 import type { RecordsCalendar as CalendarData } from '../use-records';
 import { CategoryPickerProvider } from '@features/categories/ui/CategoryPicker';
@@ -59,8 +59,15 @@ function renderCalendar(data: CalendarData): void {
 describe('RecordsCalendar', () => {
   it('heads the list with the selected day and its total', () => {
     renderCalendar(calendar());
-    expect(screen.getByRole('heading', { name: /Fri 10 Jul/ })).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: /Fri 10 Jul/ });
+    expect(heading).toBeInTheDocument();
     expect(screen.getByText('Lunch')).toBeInTheDocument();
+    // dayTotal is -240 (one ฿240 spend). Scoped to the heading's own row (not the section, which
+    // also has a ฿240.00 row for the entry itself) so it can't accidentally match another figure.
+    const headerRow = heading.closest('div');
+    expect(headerRow).not.toBeNull();
+    if (headerRow === null) throw new Error('unreachable — checked above');
+    expect(within(headerRow).getByText('฿240.00')).toBeInTheDocument();
   });
 
   it('lists upcoming bills as links to their rule, in baht or their own currency', () => {

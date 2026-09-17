@@ -182,7 +182,7 @@ export default function RecordsPage() {
         </div>
       )}
 
-      {calendar !== null || sections.length > 0 ? (
+      {sections.length > 0 ? (
         <div className="flex flex-col gap-5">
           {/* Group-by tabs — flip the same entries between day, category and account sections. Text,
               not icons: a tag vs a wallet isn't self-evident the way the BottomBar's home/search

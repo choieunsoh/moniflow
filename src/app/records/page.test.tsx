@@ -176,4 +176,30 @@ describe('/records calendar view', () => {
     renderPage();
     expect(screen.queryByRole('link', { name: 'Calendar' })).toBeNull();
   });
+
+  it('falls back to the Clear filter state when a filter leaves the calendar cycle empty', () => {
+    vi.mocked(useRecords).mockReturnValue({
+      ready: true,
+      data: {
+        ...data(),
+        groupBy: 'calendar',
+        filtered: true,
+        entries: [],
+        sections: [],
+        total: 0,
+        calendar: {
+          cells: [{ date: SPEND.date, total: 0, intensity: 0 }],
+          marks: new Map(),
+          selectedDay: SPEND.date,
+          dayEntries: [],
+          dayTotal: 0,
+          dayBills: [],
+        },
+      },
+    });
+    renderPage();
+    expect(screen.getByText('No entries match this filter in this cycle.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Clear filter' })).toBeInTheDocument();
+    expect(screen.queryByText('Nothing on this day')).toBeNull();
+  });
 });
