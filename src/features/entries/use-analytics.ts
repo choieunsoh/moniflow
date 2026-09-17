@@ -13,13 +13,14 @@ import type { EntryRow } from './schema';
 import { lastCycles, currentCycleKey } from './cycle';
 import { TREND_CYCLES, toTrendBars, monthLabel, type TrendBar } from './trend';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
-import { getEmojiMap, getHueMap } from '@features/categories/queries';
+import { getEmojiMap, getHueMap, getOffBudgetCategories } from '@features/categories/queries';
+import { getTravelCurrencies } from '@features/currencies/queries';
 import { getAccountIconMap, getAccountHueMap } from '@features/accounts/queries';
 import { getBudgets } from '@features/budgets/queries';
 import { cycleDelta, type CycleDelta } from './dashboard';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
-import { groupByDate } from './by-date';
+import { discretionaryByDate } from './off-budget';
 import { topNotes, type NoteRow } from './by-note';
 import { toHeatmapCells, type HeatmapCell } from './heatmap';
 import { anomalies, type Anomaly } from './anomaly';
@@ -114,13 +115,24 @@ export function useAnalytics(
     const grouping: 'account' | 'category' = by === 'account' ? 'account' : 'category';
     void withDb(async (db) => {
       setReady(false);
-      const [cutoff, emojiMap, hueMap, iconSet, accountIconMap, accountHueMap] = await Promise.all([
+      const [
+        cutoff,
+        emojiMap,
+        hueMap,
+        iconSet,
+        accountIconMap,
+        accountHueMap,
+        offBudgetCategories,
+        travelCurrencies,
+      ] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
         getHueMap(db),
         getIconSet(db),
         getAccountIconMap(db),
         getAccountHueMap(db),
+        getOffBudgetCategories(db),
+        getTravelCurrencies(db),
       ]);
 
       const currentKey = currentCycleKey(todayIso(), cutoff);
@@ -152,7 +164,12 @@ export function useAnalytics(
       const active = cycles[cycles.length - 1];
       const cycleEntries = await getEntriesInRange(db, active.start, active.end);
       const notes = topNotes(cycleEntries);
-      const heatmapCells = toHeatmapCells(groupByDate(cycleEntries), active);
+      // Discretionary only, the same money the budget meter counts: a posted bill or an off-budget
+      // purchase would otherwise pin the busiest day and flatten the rest of the grid.
+      const heatmapCells = toHeatmapCells(
+        discretionaryByDate(cycleEntries, offBudgetCategories, travelCurrencies),
+        active,
+      );
       const weekday = byWeekday(cycleEntries);
       const flagged = anomalies(matrix, activeKey);
       const inCategory =

@@ -1,19 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { toHeatmapCells, toCalendarLayout, type HeatmapCell } from './heatmap';
-import type { DayGroup } from './by-date';
 import type { Cycle } from './cycle';
 
 // Cycle is exactly `{ key: string; start: string; end: string; label: string }` (from cycle.ts).
 // Fully-typed literal — NO `as` (lint bans it).
 const cycle: Cycle = { key: '2026-07', start: '2026-07-01', end: '2026-07-05', label: 'Jul' };
 
-function group(date: string, total: number): DayGroup {
-  return { date, total, entries: [] };
+// Per-date spend, positive = spend — discretionaryByDate's shape.
+function spend(...days: [string, number][]): Map<string, number> {
+  return new Map(days);
 }
 
 describe('toHeatmapCells', () => {
   it('emits one cell per day in the cycle, empty days as zero', () => {
-    const cells = toHeatmapCells([group('2026-07-02', -100)], cycle);
+    const cells = toHeatmapCells(spend(['2026-07-02', 100]), cycle);
     expect(cells.map((c) => c.date)).toEqual([
       '2026-07-01',
       '2026-07-02',
@@ -22,14 +22,15 @@ describe('toHeatmapCells', () => {
       '2026-07-05',
     ]);
     expect(cells[0]).toEqual({ date: '2026-07-01', total: 0, intensity: 0 });
+    expect(cells[1]).toEqual({ date: '2026-07-02', total: 100, intensity: 4 });
   });
 
   it("buckets intensity 1..4 against the cycle's busiest day, 0 for empty", () => {
     const cells = toHeatmapCells(
-      [group('2026-07-01', -100), group('2026-07-02', -25), group('2026-07-03', -50)],
+      spend(['2026-07-01', 100], ['2026-07-02', 25], ['2026-07-03', 50]),
       cycle,
     );
-    const byDate = new Map(cells.map((c) => [c.date, c.intensity]));
+    const byDate = new Map(cells.map((c) => [c.date, c.intensity] as const));
     expect(byDate.get('2026-07-01')).toBe(4); // busiest
     expect(byDate.get('2026-07-02')).toBe(1); // 25% of max
     expect(byDate.get('2026-07-03')).toBe(2); // 50% of max
@@ -38,7 +39,7 @@ describe('toHeatmapCells', () => {
 
   it('crosses a month boundary, both endpoints inclusive', () => {
     const c: Cycle = { key: '2026-01', start: '2026-01-30', end: '2026-02-02', label: 'Jan' };
-    const cells = toHeatmapCells([group('2026-01-31', -50)], c);
+    const cells = toHeatmapCells(spend(['2026-01-31', 50]), c);
     expect(cells.map((x) => x.date)).toEqual([
       '2026-01-30',
       '2026-01-31',
@@ -50,16 +51,20 @@ describe('toHeatmapCells', () => {
   it('rounds a non-quarter ratio UP (Math.ceil, not floor/round)', () => {
     const c: Cycle = { key: '2026-03', start: '2026-03-01', end: '2026-03-02', label: 'Mar' };
     // busiest day 100 → intensity 4; a day at 30% of max → 0.3×4 = 1.2 → ceil = 2 (floor/round = 1)
-    const cells = toHeatmapCells([group('2026-03-01', -100), group('2026-03-02', -30)], c);
-    const byDate = new Map(cells.map((x) => [x.date, x.intensity]));
+    const cells = toHeatmapCells(spend(['2026-03-01', 100], ['2026-03-02', 30]), c);
+    const byDate = new Map(cells.map((x) => [x.date, x.intensity] as const));
     expect(byDate.get('2026-03-01')).toBe(4);
     expect(byDate.get('2026-03-02')).toBe(2);
   });
 
-  it('clamps a net-positive day (refunds exceeding spend) to zero, not negative', () => {
-    const cells = toHeatmapCells([group('2026-07-02', 500)], cycle);
-    const cell2 = cells.find((c) => c.date === '2026-07-02');
-    expect(cell2).toEqual({ date: '2026-07-02', total: 0, intensity: 0 });
+  it('clamps a net-refund day (negative spend) to zero, and it never sets the max', () => {
+    const cells = toHeatmapCells(spend(['2026-07-02', -500], ['2026-07-03', 10]), cycle);
+    expect(cells.find((c) => c.date === '2026-07-02')).toEqual({
+      date: '2026-07-02',
+      total: 0,
+      intensity: 0,
+    });
+    expect(cells.find((c) => c.date === '2026-07-03')?.intensity).toBe(4);
   });
 });
 
