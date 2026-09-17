@@ -52,14 +52,15 @@ const LEGEND: Record<keyof DayMarks, string> = {
   refund: 'Refund',
 };
 
-// A 6px CSS shape in currentColor — filled dot, ring, diamond, plus — rather than a ●○◆+ text glyph,
+// A small CSS shape in currentColor — filled dot, ring, diamond, plus — rather than a ●○◆+ text glyph,
 // whose size and even presence vary by font fallback. Inherits the cell ink, so it carries the ramp's
-// contrast guarantee for free. The plus is two 2px bars on whole pixels (6px box: bars at 2px–4px), so
-// it stays crisp instead of smearing across half-pixels; it echoes how the ledger prints a refund, +฿.
+// contrast guarantee for free. The plus echoes how the ledger prints a refund, +฿. Its box is a fixed
+// 6px, not the rem-based size-1.5 the others use: its two 2px bars sit at 2px–4px, and a rem box grows
+// with the font-scale setting (6.75px at 112.5%), which would push the bars off-centre.
 export function DayMark({ kind }: { kind: keyof DayMarks }) {
   if (kind === 'refund') {
     return (
-      <span aria-hidden="true" className="relative block size-1.5 shrink-0">
+      <span aria-hidden="true" className="relative block size-[6px] shrink-0">
         <span className="absolute inset-x-0 top-[2px] block h-[2px] bg-current" />
         <span className="absolute inset-y-0 left-[2px] block w-[2px] bg-current" />
       </span>
