@@ -82,6 +82,7 @@ export default function RecordsPage() {
     filtered,
     allCategory,
     spanAll,
+    sortByAmount,
     groupBy,
     entries,
     sections,
@@ -102,8 +103,9 @@ export default function RecordsPage() {
     return `/records?${p.toString()}`;
   };
 
-  // Mirrors the hook's own gate: sort=amount only collapses the plain cycle view to one section.
-  const sortByAmount = sort === 'amount' && !spanAll;
+  // Render gates read `data`, never a live param: useRecords keeps the previous data on screen while a
+  // param change loads, so the URL can already be ahead of the sections below. Gating the 'amount'
+  // section on the live `sort` sent its key through formatDayHeading and crashed the page.
 
   // Tap a section header to filter to just that bucket (staying grouped); tap the active one to
   // clear. Mirrors the row chips — preserves the cycle, the grouping, and the other axis's filter,
@@ -184,12 +186,13 @@ export default function RecordsPage() {
 
       {sections.length > 0 ? (
         <div className="flex flex-col gap-5">
-          {/* Group-by tabs — flip the same entries between day, category and account sections. Text,
-              not icons: a tag vs a wallet isn't self-evident the way the BottomBar's home/search
-              glyphs are, and this is a control you read once rather than hit blind. Hidden in
-              sort=amount mode: that view's own "Largest first" heading is a different, single-section
-              grouping signal, and these links don't carry sort forward anyway. */}
-          {sort !== 'amount' ? (
+          {/* Group-by tabs — flip the same entries between day, category and account sections and
+              the cycle calendar. Text, not icons: a tag vs a wallet isn't self-evident the way the
+              BottomBar's home/search glyphs are, and this is a control you read once rather than hit
+              blind. Hidden in sort=amount mode: that view's own "Largest first" heading is a
+              different, single-section grouping signal, and these links don't carry sort forward
+              anyway. */}
+          {!sortByAmount ? (
             <div className="panel flex gap-1 p-1">
               <ViewLink label="Date" active={groupBy === 'date'} href={viewHref('date')} />
               <ViewLink
@@ -221,7 +224,10 @@ export default function RecordsPage() {
                     ? 'entry'
                     : 'entries'}
               </span>
-              {calendar === null && sections.length > 1 ? <CollapseAllButton /> : null}
+              {/* Keyed by cycle so its label resets with the sections it drives (see below). */}
+              {calendar === null && sections.length > 1 ? (
+                <CollapseAllButton key={activeKey} />
+              ) : null}
             </span>
             <span className="flex items-baseline gap-2">
               {currencySums.map((c) => (
@@ -250,9 +256,15 @@ export default function RecordsPage() {
             />
           ) : (
             sections.map((section) => (
-              // Native <details> = tap the header to collapse/expand, no JS. Expanded by default;
-              // the open/closed state is DOM-local and resets when a param re-renders the page.
-              <details open key={section.key} data-records-section className="flex flex-col gap-2">
+              // Native <details> = tap the header to collapse/expand, no JS. Expanded by default; the
+              // open/closed state is DOM-local, so the key carries the cycle: stepping to another
+              // cycle remounts every section open, while a refetch of the same cycle keeps it.
+              <details
+                open
+                key={`${activeKey}:${section.key}`}
+                data-records-section
+                className="flex flex-col gap-2"
+              >
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
                   <div className="flex min-w-0 items-center gap-1.5">
                     <Chevron />
@@ -345,9 +357,12 @@ export default function RecordsPage() {
           {pageCount > 1 ? (
             <Pager page={activePage} pageCount={pageCount} hrefFor={pageHref} />
           ) : null}
-          <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
-            Tap a row to edit · swipe left to delete
-          </p>
+          {/* A calendar day with no rows has nothing to tap or swipe. */}
+          {calendar !== null && calendar.dayEntries.length === 0 ? null : (
+            <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
+              Tap a row to edit · swipe left to delete
+            </p>
+          )}
         </div>
       ) : searching ? (
         <div className="panel flex flex-col items-center gap-3 px-6 py-12 text-center">

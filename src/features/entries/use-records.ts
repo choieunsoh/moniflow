@@ -90,6 +90,10 @@ export type RecordsData = {
   filtered: boolean;
   allCategory: boolean;
   spanAll: boolean;
+  // ?sort=amount as the hook applied it (the plain cycle view only). The page gates on THIS, never on
+  // the live param: `data` survives a refetch, so the URL can already have dropped `sort` while the
+  // single 'amount' section is still what is on screen.
+  sortByAmount: boolean;
   groupBy: RecordsGroupBy;
   // The WHOLE matched set, never the page — the count line and `total` below describe the category,
   // which is what the /report row that linked here promised. `sections` alone holds the page.
@@ -287,6 +291,7 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
         filtered,
         allCategory,
         spanAll,
+        sortByAmount,
         groupBy,
         entries,
         sections,
