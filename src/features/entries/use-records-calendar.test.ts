@@ -77,18 +77,40 @@ describe('useRecords — calendar view', () => {
       posted: true,
       upcoming: false,
       offBudget: false,
+      refund: false,
     });
     expect(cal.marks.get('2026-07-03')).toEqual({
       posted: false,
       upcoming: false,
       offBudget: true,
+      refund: false,
     });
     expect(cal.marks.get('2026-07-10')).toEqual({
       posted: false,
       upcoming: true,
       offBudget: false,
+      refund: false,
     });
     expect(cal.marks.has('2026-07-01')).toBe(false);
+  });
+
+  it('marks a refund day without darkening it', async () => {
+    await addEntries(db, [{ date: '2026-07-04', account: 'Cash', category: 'Food', amount: 200 }]);
+    const data = await load({ cycle: '2026-06', view: 'calendar' });
+    const cal = data.calendar;
+    if (cal === null) throw new Error('calendar view should build a calendar');
+    expect(cal.marks.get('2026-07-04')).toEqual({
+      posted: false,
+      upcoming: false,
+      offBudget: false,
+      refund: true,
+    });
+    // A refund nets against the day, and a net-refund day clamps to 0.
+    expect(cal.cells.find((c) => c.date === '2026-07-04')).toEqual({
+      date: '2026-07-04',
+      total: 0,
+      intensity: 0,
+    });
   });
 
   it('opens on today by default', async () => {

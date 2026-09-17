@@ -72,7 +72,7 @@ Each ledger row earns at most ONE mark, checked in this order: refund, then off-
   cycle. Today's due bills were already posted by the app-open sweep, so they show as `●`.
 - A one-line legend under the grid lists only the mark kinds that appear in this cycle.
 - In a cell the marks sit in the order `● ○ ◆ +` (four 6px shapes + gaps = 30px, inside a ~42px
-  cell). All four are CSS shapes in `currentColor` (the `+` is two 1px bars), never font glyphs.
+  cell). All four are CSS shapes in `currentColor` (the `+` is two 2px bars on whole pixels, so it stays crisp at 6px), never font glyphs.
   Screen-reader words: `bill posted`, `bill due`, `off-budget`, `refund`; legend: `Bill posted`,
   `Bill due`, `Off-budget`, `Refund`.
 

@@ -38,22 +38,33 @@ function dayOfMonth(date: string): number {
   return Number(date.split('-')[2]);
 }
 
-const KINDS = ['posted', 'upcoming', 'offBudget'] as const;
+const KINDS = ['posted', 'upcoming', 'offBudget', 'refund'] as const;
 const WORDS: Record<keyof DayMarks, string> = {
   posted: 'bill posted',
   upcoming: 'bill due',
   offBudget: 'off-budget',
+  refund: 'refund',
 };
 const LEGEND: Record<keyof DayMarks, string> = {
   posted: 'Bill posted',
   upcoming: 'Bill due',
   offBudget: 'Off-budget',
+  refund: 'Refund',
 };
 
-// A 6px CSS shape in currentColor — filled dot, ring, diamond — rather than a ●○◆ text glyph, whose
-// size and even presence vary by font fallback. Inherits the cell ink, so it carries the ramp's
-// contrast guarantee for free.
+// A 6px CSS shape in currentColor — filled dot, ring, diamond, plus — rather than a ●○◆+ text glyph,
+// whose size and even presence vary by font fallback. Inherits the cell ink, so it carries the ramp's
+// contrast guarantee for free. The plus is two 2px bars on whole pixels (6px box: bars at 2px–4px), so
+// it stays crisp instead of smearing across half-pixels; it echoes how the ledger prints a refund, +฿.
 export function DayMark({ kind }: { kind: keyof DayMarks }) {
+  if (kind === 'refund') {
+    return (
+      <span aria-hidden="true" className="relative block size-1.5 shrink-0">
+        <span className="absolute inset-x-0 top-[2px] block h-[2px] bg-current" />
+        <span className="absolute inset-y-0 left-[2px] block w-[2px] bg-current" />
+      </span>
+    );
+  }
   const shape =
     kind === 'posted'
       ? 'rounded-full bg-current'
@@ -64,8 +75,9 @@ export function DayMark({ kind }: { kind: keyof DayMarks }) {
 }
 
 // A real month-calendar of a billing cycle: weekday columns, each day under its own weekday, darker =
-// more discretionary spend, glyph marks for bills and off-budget. Days run continuously across the
-// month boundary (…31, 1…) because the cycle is a billing cycle, not a calendar month.
+// more discretionary spend, glyph marks for bills, off-budget spend and refunds. Days run
+// continuously across the month boundary (…31, 1…) because the cycle is a billing cycle, not a
+// calendar month.
 //
 // Two modes. Without `hrefFor` (Trends) it is a non-interactive glance, as it always was: empty days
 // are aria-hidden. With `hrefFor` (Records) every day is a link that selects it — `replace` so tapping

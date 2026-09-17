@@ -5,13 +5,15 @@ import { isFixed, isOffBudget } from './off-budget';
 
 // Which kinds of money moved on a day, for the Records calendar's glyph marks. Colour is not used:
 // hue already means category, the accent means action, and cell darkness means discretionary spend.
-export type DayMarks = { posted: boolean; upcoming: boolean; offBudget: boolean };
+export type DayMarks = { posted: boolean; upcoming: boolean; offBudget: boolean; refund: boolean };
 
-const NONE: DayMarks = { posted: false, upcoming: false, offBudget: false };
+const NONE: DayMarks = { posted: false, upcoming: false, offBudget: false, refund: false };
 
-// Marks per day, keyed 'YYYY-MM-DD'; a day with no mark is absent. Off-budget is checked before fixed,
-// the same precedence as splitBudgetSpend, so a recurring bill in an off-budget category shows ◆ only
-// and one row never earns two marks. `upcomingDates` are the not-yet-posted rule dates the caller got
+// Marks per day, keyed 'YYYY-MM-DD'; a day with no mark is absent. Each row earns ONE mark, checked
+// refund first (a positive amount is money handed back, whatever its category), then off-budget, then
+// fixed: the same off-budget-before-fixed precedence as splitBudgetSpend. A refund leaves darkness
+// alone: it already nets against the day in discretionaryByDate, so a refund-only day is otherwise
+// indistinguishable from a quiet one. `upcomingDates` are the not-yet-posted rule dates the caller got
 // from postsBetween — passed in as plain dates so this module never needs the recurring rule shape.
 export function dayMarks(
   entries: EntryRow[],
@@ -23,7 +25,9 @@ export function dayMarks(
   const mark = (date: string, patch: Partial<DayMarks>) =>
     out.set(date, { ...(out.get(date) ?? NONE), ...patch });
   for (const e of entries) {
-    if (isOffBudget(e, offBudgetCategories, travelCurrencies)) mark(e.date, { offBudget: true });
+    if (e.amount > 0) mark(e.date, { refund: true });
+    else if (isOffBudget(e, offBudgetCategories, travelCurrencies))
+      mark(e.date, { offBudget: true });
     else if (isFixed(e)) mark(e.date, { posted: true });
   }
   for (const date of upcomingDates) mark(date, { upcoming: true });

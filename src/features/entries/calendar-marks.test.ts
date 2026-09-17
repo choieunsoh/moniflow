@@ -24,10 +24,13 @@ function entry(date: string, amount: number, over: Partial<EntryRow> = {}): Entr
 
 const NO_SETS = [new Set<string>(), new Set<string>()] as const;
 
+// Every mark key, false; tests spread in the ones they expect set so a new key can't be forgotten.
+const NONE = { posted: false, upcoming: false, offBudget: false, refund: false };
+
 describe('dayMarks', () => {
   it('marks a posted recurring bill', () => {
     const marks = dayMarks([entry('2026-07-02', -1000, { source: 'recurring' })], [], ...NO_SETS);
-    expect(marks.get('2026-07-02')).toEqual({ posted: true, upcoming: false, offBudget: false });
+    expect(marks.get('2026-07-02')).toEqual({ ...NONE, posted: true });
   });
 
   it('marks off-budget spend, from the entry flag or the category default', () => {
@@ -40,8 +43,8 @@ describe('dayMarks', () => {
       new Set(['Gifts']),
       new Set<string>(),
     );
-    expect(marks.get('2026-07-03')).toEqual({ posted: false, upcoming: false, offBudget: true });
-    expect(marks.get('2026-07-04')).toEqual({ posted: false, upcoming: false, offBudget: true });
+    expect(marks.get('2026-07-03')).toEqual({ ...NONE, offBudget: true });
+    expect(marks.get('2026-07-04')).toEqual({ ...NONE, offBudget: true });
   });
 
   it('gives a recurring row in an off-budget category the off-budget mark only', () => {
@@ -51,7 +54,7 @@ describe('dayMarks', () => {
       [],
       ...NO_SETS,
     );
-    expect(marks.get('2026-07-05')).toEqual({ posted: false, upcoming: false, offBudget: true });
+    expect(marks.get('2026-07-05')).toEqual({ ...NONE, offBudget: true });
   });
 
   it('marks upcoming bill dates and merges kinds on the same day', () => {
@@ -60,12 +63,40 @@ describe('dayMarks', () => {
       ['2026-07-10', '2026-07-12'],
       ...NO_SETS,
     );
-    expect(marks.get('2026-07-10')).toEqual({ posted: false, upcoming: true, offBudget: true });
-    expect(marks.get('2026-07-12')).toEqual({ posted: false, upcoming: true, offBudget: false });
+    expect(marks.get('2026-07-10')).toEqual({ ...NONE, upcoming: true, offBudget: true });
+    expect(marks.get('2026-07-12')).toEqual({ ...NONE, upcoming: true });
   });
 
   it('leaves an ordinary spending day unmarked', () => {
     expect(dayMarks([entry('2026-07-01', -100)], [], ...NO_SETS).has('2026-07-01')).toBe(false);
+  });
+
+  it('marks a refund (a positive row)', () => {
+    const marks = dayMarks([entry('2026-07-06', 405)], [], ...NO_SETS);
+    expect(marks.get('2026-07-06')).toEqual({ ...NONE, refund: true });
+  });
+
+  it('gives an off-budget refund and a recurring refund the refund mark only', () => {
+    // Refund is checked first: one row, one mark.
+    const marks = dayMarks(
+      [
+        entry('2026-07-07', 200, { offBudget: 1 }),
+        entry('2026-07-08', 99, { source: 'recurring' }),
+      ],
+      [],
+      ...NO_SETS,
+    );
+    expect(marks.get('2026-07-07')).toEqual({ ...NONE, refund: true });
+    expect(marks.get('2026-07-08')).toEqual({ ...NONE, refund: true });
+  });
+
+  it("keeps a spend's mark beside a refund on the same day", () => {
+    const marks = dayMarks(
+      [entry('2026-07-09', -1000, { source: 'recurring' }), entry('2026-07-09', 50)],
+      [],
+      ...NO_SETS,
+    );
+    expect(marks.get('2026-07-09')).toEqual({ ...NONE, posted: true, refund: true });
   });
 });
 

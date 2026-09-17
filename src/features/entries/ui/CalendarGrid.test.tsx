@@ -7,8 +7,9 @@ const cells = [
   { date: '2026-07-16', total: 0, intensity: 0 },
   { date: '2026-07-17', total: 240, intensity: 4 },
 ];
+const NONE: DayMarks = { posted: false, upcoming: false, offBudget: false, refund: false };
 const marks = new Map<string, DayMarks>([
-  ['2026-07-17', { posted: true, upcoming: false, offBudget: true }],
+  ['2026-07-17', { ...NONE, posted: true, offBudget: true }],
 ]);
 
 describe('CalendarGrid', () => {
@@ -42,12 +43,43 @@ describe('CalendarGrid', () => {
     render(
       <CalendarGrid
         cells={cells}
-        marks={new Map([['2026-07-16', { posted: true, upcoming: false, offBudget: false }]])}
+        marks={new Map([['2026-07-16', { ...NONE, posted: true }]])}
         hrefFor={(d) => d}
       />,
     );
     expect(screen.getByRole('link', { name: 'Thu 16 Jul: bill posted' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /no spending/ })).toBeNull();
+  });
+
+  it('names a refund in the label and lists it in the legend only when present', () => {
+    render(
+      <CalendarGrid
+        cells={cells}
+        marks={new Map([['2026-07-16', { ...NONE, refund: true }]])}
+        hrefFor={(d) => d}
+      />,
+    );
+    // A refund-only day nets to zero discretionary spend, so it names only its mark.
+    expect(screen.getByRole('link', { name: 'Thu 16 Jul: refund' })).toBeInTheDocument();
+    expect(screen.getByText('Refund')).toBeInTheDocument();
+  });
+
+  it('draws no Refund legend entry when no day has a refund', () => {
+    render(<CalendarGrid cells={cells} marks={marks} hrefFor={(d) => d} />);
+    expect(screen.queryByText('Refund')).toBeNull();
+  });
+
+  it("orders a busy day's marks posted, off-budget, refund in its label", () => {
+    render(
+      <CalendarGrid
+        cells={cells}
+        marks={new Map([['2026-07-17', { ...NONE, posted: true, offBudget: true, refund: true }]])}
+        hrefFor={(d) => d}
+      />,
+    );
+    expect(
+      screen.getByRole('link', { name: 'Fri 17 Jul: ฿240, bill posted, off-budget, refund' }),
+    ).toBeInTheDocument();
   });
 
   it('lists only the mark kinds that appear in the legend', () => {
