@@ -235,15 +235,18 @@ describe('useRecords', () => {
     seen.length = 0; // only the refetch below is under test
 
     const realGetEntriesInRange = recordsQueries.getEntriesInRange;
-    vi.spyOn(recordsQueries, 'getEntriesInRange').mockImplementationOnce(
+    const spy = vi.spyOn(recordsQueries, 'getEntriesInRange').mockImplementationOnce(
       (...args: Parameters<typeof recordsQueries.getEntriesInRange>) =>
         new Promise((resolve) => {
           setTimeout(() => resolve(realGetEntriesInRange(...args)), 0);
         }),
     );
-
-    rerender({ cycle: '2026-06', category: 'Food' });
-    await waitFor(() => expect(result.current.data?.filtered).toBe(true));
+    try {
+      rerender({ cycle: '2026-06', category: 'Food' });
+      await waitFor(() => expect(result.current.data?.filtered).toBe(true));
+    } finally {
+      spy.mockRestore();
+    }
 
     expect(seen.some((s) => s.ready === false)).toBe(false);
     expect(seen.some((s) => s.data === null)).toBe(false);
@@ -273,10 +276,13 @@ describe('useRecords', () => {
     await waitFor(() => expect(result.current.data?.total).toBe(-120));
 
     // Releasing the stale run AFTER the newer one has already landed — it must not win the race.
-    // `act` (not a bare setTimeout) so React actually flushes the resulting state update into
-    // `result.current` before we assert on it.
-    act(() => {
+    // Releasing only resolves a promise: the stale run's queries and setData land on later
+    // microtasks, which a synchronous `act` returns before. So the async act waits a macrotask (the
+    // whole in-memory run settles inside it) and flushes whatever that run set. Without the wait the
+    // assertions below read the state BEFORE the stale run could clobber it, and pass either way.
+    await act(async () => {
       releaseFirst(db);
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     expect(result.current.data?.total).toBe(-120);
