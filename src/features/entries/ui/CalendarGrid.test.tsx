@@ -36,6 +36,20 @@ describe('CalendarGrid', () => {
     expect(empty).not.toHaveAttribute('aria-current');
   });
 
+  // A bill-only day has no discretionary spend, but "no spending, bill posted" reads as a
+  // contradiction — money did move. Such a day names only its marks.
+  it('names only the marks on a zero-discretionary day that has them', () => {
+    render(
+      <CalendarGrid
+        cells={cells}
+        marks={new Map([['2026-07-16', { posted: true, upcoming: false, offBudget: false }]])}
+        hrefFor={(d) => d}
+      />,
+    );
+    expect(screen.getByRole('link', { name: 'Thu 16 Jul: bill posted' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /no spending/ })).toBeNull();
+  });
+
   it('lists only the mark kinds that appear in the legend', () => {
     render(<CalendarGrid cells={cells} marks={marks} hrefFor={(d) => d} />);
     expect(screen.getByText('Bill posted')).toBeInTheDocument();

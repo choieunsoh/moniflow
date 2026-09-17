@@ -103,11 +103,15 @@ export function CalendarGrid({
           const step = RAMP[c.intensity] ?? RAMP[0];
           const kinds = KINDS.filter((k) => marks?.get(c.date)?.[k] === true);
           const spent = c.total > 0;
-          const figure = spent ? formatBahtWhole(c.total) : 'no spending';
-          const label = [
-            `${formatDayHeading(c.date)}: ${figure}`,
-            ...kinds.map((k) => WORDS[k]),
-          ].join(', ');
+          // A day names what moved: its figure, then its marks. "no spending" only when neither —
+          // beside a mark it would read as a contradiction ("no spending, bill posted").
+          const words = kinds.map((k) => WORDS[k]);
+          const parts = spent
+            ? [formatBahtWhole(c.total), ...words]
+            : words.length > 0
+              ? words
+              : ['no spending'];
+          const label = `${formatDayHeading(c.date)}: ${parts.join(', ')}`;
           const selected = c.date === selectedDay;
           const className = `tnum flex aspect-square flex-col items-center justify-center gap-0.5 rounded text-[11px]${
             selected ? ' outline-2 outline-offset-1' : ''
