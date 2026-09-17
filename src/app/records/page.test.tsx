@@ -72,6 +72,7 @@ function data(): RecordsData {
     currencySums: [],
     page: 1,
     pageCount: 1,
+    calendar: null,
   };
 }
 
