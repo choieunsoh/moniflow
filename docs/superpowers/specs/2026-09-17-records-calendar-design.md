@@ -57,14 +57,24 @@ upcoming (a rule date not yet posted).
 
 ### Marks, per day
 
-- `●` **posted**: at least one entry that is `isFixed` **and not** `isOffBudget` (off-budget is
-  checked first, same precedence as `splitBudgetSpend`, so a recurring row in an off-budget category
-  marks `◆` only).
-- `◆` **off-budget**: at least one entry that is `isOffBudget`.
+Each ledger row earns at most ONE mark, checked in this order: refund, then off-budget, then posted.
+
+- `+` **refund** (added after the first build, owner's request): at least one entry with
+  `amount > 0`. A refund row marks `+` only, even when it is also off-budget or recurring. It does
+  not change darkness: a refund already nets against the day's discretionary spend, and a net-refund
+  day clamps to 0. The `+` echoes how the ledger prints a refund (`+฿405`).
+- `●` **posted**: at least one non-refund entry that is `isFixed` **and not** `isOffBudget`
+  (off-budget is checked first, same precedence as `splitBudgetSpend`, so a recurring row in an
+  off-budget category marks `◆` only).
+- `◆` **off-budget**: at least one non-refund entry that is `isOffBudget`.
 - `○` **upcoming**: at least one active rule with a `postsBetween(rule, today, cycle.end)` date on
   that day. So `○` appears only for days **after today** in the **current** cycle, never in a past
   cycle. Today's due bills were already posted by the app-open sweep, so they show as `●`.
 - A one-line legend under the grid lists only the mark kinds that appear in this cycle.
+- In a cell the marks sit in the order `● ○ ◆ +` (four 6px shapes + gaps = 30px, inside a ~42px
+  cell). All four are CSS shapes in `currentColor` (the `+` is two 1px bars), never font glyphs.
+  Screen-reader words: `bill posted`, `bill due`, `off-budget`, `refund`; legend: `Bill posted`,
+  `Bill due`, `Off-budget`, `Refund`.
 
 ### Selected-day list (under the grid)
 
@@ -103,7 +113,7 @@ No schema, migration, or backup change.
   (positive = spend) in place of `DayGroup[]`; negative values clamp to 0. `eachDay` and
   `toCalendarLayout` are unchanged.
 - **new** `calendar-marks.ts`:
-  - `type DayMarks = { posted: boolean; upcoming: boolean; offBudget: boolean }`
+  - `type DayMarks = { posted: boolean; upcoming: boolean; offBudget: boolean; refund: boolean }`
   - `dayMarks(entries, upcomingDates: string[], offBudgetCategories, travelCurrencies) → Map<string, DayMarks>`
   - Upcoming dates are computed by the caller from `postsBetween` so this stays free of the recurring feature's
     rule shape (entries → recurring is already an allowed feature-to-feature import in `use-home`,
@@ -134,7 +144,11 @@ No schema, migration, or backup change.
 
 - `calendar-marks.test.ts`: posted / off-budget / upcoming each set; a recurring row in an
   off-budget category → `◆` only; a refund-only day; `resolveSelectedDay` in-cycle, out-of-cycle,
-  past cycle.
+  past cycle. Refund: a positive row → `refund` only; an off-budget refund and a recurring refund →
+  `refund` only; a day with both a spend and a refund carries the refund alongside the spend's mark.
+- `use-records-calendar.test.ts`: a positive row in the cycle sets `refund` on its day.
+- `CalendarGrid.test.tsx` (refund): the aria-label says `refund`; the legend lists `Refund` only when
+  a refund is present.
 - `heatmap.test.ts`: updated to the map input; a negative day → intensity 0.
 - `use-records.test.ts` (`renderHook`): `view=calendar` returns cells/marks/selectedDay/dayEntries;
   a past cycle has no upcoming bills; a category filter narrows both entries and bills; `spanAll`
@@ -146,7 +160,7 @@ No schema, migration, or backup change.
   both themes, using the resolved token values the same way `globals.test.ts` does.
 - **Browser at 412px, both themes:** grid legibility; tap day → list; edit a row → back lands on
   the same `?day=`; swipe-delete + Undo refresh the marks; a cycle step drops `?day=`; Trends card is
-  still non-interactive.
+  still non-interactive. Refund `+` checked read-only on a real refund day (+฿405 on 3 Sep 2026).
 
 ## Out of scope
 
