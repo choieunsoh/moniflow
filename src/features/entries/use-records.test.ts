@@ -1,19 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { makeNodeProxyDb } from '@db/client';
+import { makeNodeProxyDb, type Db } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { addEntries } from './queries';
+import * as recordsQueries from './queries';
 import { bumpDataVersion } from '@shared/data-version';
 
 vi.mock('@db/browser', () => ({ getBrowserDb: vi.fn() }));
 
 import { getBrowserDb } from '@db/browser';
-import { useRecords } from './use-records';
+import { useRecords, type RecordsParams, type RecordsData } from './use-records';
+
+// renderHook infers its Props generic from `initialProps`, so a bare object literal there narrows
+// to `{ cycle: string }` and a later `rerender({ ..., category: 'Food' })` fails to typecheck. This
+// widens it to the full RecordsParams instead of an `as` cast.
+function initialCycleProps(): RecordsParams {
+  return { cycle: '2026-06' };
+}
 
 describe('useRecords', () => {
+  let db: Db;
+
   beforeEach(async () => {
-    const db = makeNodeProxyDb();
+    db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     await ensureSettingsTable(db);
     // Cutoff defaults to 18, so 2026-07-01..03 fall in the cycle keyed '2026-06'.
@@ -201,6 +211,76 @@ describe('useRecords', () => {
       expect(result.current.data?.pageCount).toBe(1);
       expect(rowsOnPage(result.current.data?.sections ?? [])).toBe(105);
     });
+  });
+
+  it('keeps ready and the previous data on screen while a param change is loading', async () => {
+    // Records every render's {ready, data} so a transient dip to ready:false or data:null — the
+    // placeholder flash a calendar day tap used to cause — shows up even if it lasts only one
+    // commit, which a single post-rerender assertion could step right over. A real macrotask delay
+    // (setTimeout, not just a chain of microtasks) is inserted mid-fetch so that IF the effect still
+    // called setReady(false) first, it would land as its own separate, observable commit — exactly
+    // how a real OPFS/worker round trip (not this in-memory db) exposed the bug in the browser.
+    const seen: { ready: boolean; data: RecordsData | null }[] = [];
+    const { result, rerender } = renderHook(
+      (props: RecordsParams) => {
+        const state = useRecords(props);
+        seen.push({ ready: state.ready, data: state.data });
+        return state;
+      },
+      { initialProps: initialCycleProps() },
+    );
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const firstData = result.current.data;
+    expect(firstData?.filtered).toBe(false);
+    seen.length = 0; // only the refetch below is under test
+
+    const realGetEntriesInRange = recordsQueries.getEntriesInRange;
+    vi.spyOn(recordsQueries, 'getEntriesInRange').mockImplementationOnce(
+      (...args: Parameters<typeof recordsQueries.getEntriesInRange>) =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve(realGetEntriesInRange(...args)), 0);
+        }),
+    );
+
+    rerender({ cycle: '2026-06', category: 'Food' });
+    await waitFor(() => expect(result.current.data?.filtered).toBe(true));
+
+    expect(seen.some((s) => s.ready === false)).toBe(false);
+    expect(seen.some((s) => s.data === null)).toBe(false);
+    expect(result.current.ready).toBe(true);
+    expect(result.current.data?.entries).toHaveLength(2);
+  });
+
+  it('ignores a superseded run when an earlier param change resolves after a later one', async () => {
+    const { result, rerender } = renderHook((props: RecordsParams) => useRecords(props), {
+      initialProps: initialCycleProps(),
+    });
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    // First rerender (category=Food, total -150) is held open; a second rerender (account=Cash,
+    // total -120) races ahead and resolves first. When the stale Food run finally resolves, it must
+    // not overwrite Cash's result — the two totals are distinct so a mix-up is detectable.
+    let releaseFirst: (db: Db) => void = () => {};
+    vi.mocked(getBrowserDb).mockReturnValueOnce(
+      new Promise<Db>((resolve) => {
+        releaseFirst = resolve;
+      }),
+    );
+    rerender({ cycle: '2026-06', category: 'Food' });
+
+    vi.mocked(getBrowserDb).mockResolvedValueOnce(db);
+    rerender({ cycle: '2026-06', account: 'Cash' });
+    await waitFor(() => expect(result.current.data?.total).toBe(-120));
+
+    // Releasing the stale run AFTER the newer one has already landed — it must not win the race.
+    // `act` (not a bare setTimeout) so React actually flushes the resulting state update into
+    // `result.current` before we assert on it.
+    act(() => {
+      releaseFirst(db);
+    });
+
+    expect(result.current.data?.total).toBe(-120);
+    expect(result.current.data?.entries.every((e) => e.account === 'Cash')).toBe(true);
   });
 
   it('refetches when the data-version bumps after a write', async () => {

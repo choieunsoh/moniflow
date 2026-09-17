@@ -128,8 +128,13 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
   const version = useDataVersion();
 
   useEffect(() => {
+    // Deliberately no setReady(false) here — see use-categories-page / use-accounts-page. `?day=`
+    // moving on a calendar tap is a param change like any other, and dropping back to `ready: false`
+    // swapped the whole page for its `…` placeholder, shrinking the document and resetting scroll to
+    // the top. `alive` (same shape as use-edit-rule) guards the case that removing it exposes: tap day
+    // 25 then day 28 fast enough, and the 25 run must not win the race and overwrite 28's result.
+    let alive = true;
     void withDb(async (db) => {
-      setReady(false);
       const [cutoff, emojiMap, hueMap, accountIconMap, accountHueMap, iconSet] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
@@ -266,6 +271,7 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
         };
       }
 
+      if (!alive) return; // a newer run already landed — don't clobber it with a stale one
       setData({
         cutoff,
         activeKey,
@@ -292,6 +298,9 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
       });
       setReady(true);
     });
+    return () => {
+      alive = false;
+    };
   }, [
     cycleParam,
     category,
