@@ -139,3 +139,41 @@ describe('/records money frames', () => {
     expect(screen.queryByText('−฿800.00')).toBeNull();
   });
 });
+
+describe('/records calendar view', () => {
+  it('renders the calendar and the selected day in place of the day sections', () => {
+    vi.mocked(useRecords).mockReturnValue({
+      ready: true,
+      data: {
+        ...data(),
+        groupBy: 'calendar',
+        calendar: {
+          cells: [{ date: SPEND.date, total: 1200, intensity: 4 }],
+          marks: new Map(),
+          selectedDay: SPEND.date,
+          dayEntries: [SPEND],
+          dayTotal: SPEND.amount,
+          dayBills: [],
+        },
+      },
+    });
+    renderPage();
+    expect(screen.getByRole('link', { name: 'Calendar' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /Thu 2 Jul: ฿1,200/ })).toHaveAttribute(
+      'aria-current',
+      'date',
+    );
+    expect(screen.getByText('Lunch')).toBeInTheDocument();
+    // The day sections are replaced, so the other day's refund row is not on screen.
+    expect(screen.queryByText('Dinner split repaid')).toBeNull();
+  });
+
+  it('offers no Calendar tab in search mode', () => {
+    vi.mocked(useRecords).mockReturnValue({
+      ready: true,
+      data: { ...data(), searching: true, spanAll: true, query: 'lunch' },
+    });
+    renderPage();
+    expect(screen.queryByRole('link', { name: 'Calendar' })).toBeNull();
+  });
+});
