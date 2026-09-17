@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { SLICE_COLORS } from '@features/entries/donut';
+import { RAMP } from '@features/entries/ui/CalendarGrid';
 
 // The palette is the one part of the design system that looks untestable and is not. Two properties
 // are machine-checkable from the token values themselves, so a future edit that drops a colour below
@@ -333,4 +334,24 @@ describe('accent palette structure', () => {
   it('has a block for every accent the picker offers', () => {
     for (const name of ACCENT_NAMES) expect(() => accentBlock(name)).not.toThrow();
   });
+});
+
+// The calendar heatmap draws its day number (and mark glyphs) ON a mix of --color-text into
+// --color-surface-2, so each step's ink must clear AA against its own background in both themes.
+// The old ramp painted --color-text on --color-text at the busiest step, an invisible number.
+describe('calendar heatmap ramp', () => {
+  it.each(RAMP.map((step, level) => ({ level, ...step })))(
+    'level $level ($ink on $mix%) clears 4.5:1 in both themes',
+    ({ mix, ink }) => {
+      for (const theme of THEMES) {
+        const bg = composite(
+          token('color-text', theme),
+          token('color-surface-2', theme),
+          mix / 100,
+        );
+        const fg = token(`color-${ink}`, theme);
+        expect(contrast(fg, bg), `${ink} on ${mix}% (${theme})`).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
 });
