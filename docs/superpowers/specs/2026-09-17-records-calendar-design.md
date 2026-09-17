@@ -82,7 +82,10 @@ upcoming (a rule date not yet posted).
 `category` / `account` filters apply to the calendar too: to the entries (already filtered as
 `visible`), therefore to intensity and to `●`/`◆`, and to upcoming bills by matching the rule's
 resolved names from `listRuleMeta` (`categoryName`, `accountName`). The summary row and "Clear
-filter" empty state behave as in the other views.
+filter" empty state behave as in the other views. When the cycle (after filters) has no rows,
+Records shows its normal empty state (Clear filter, or the first-run panel) in place of the
+calendar, same as the other views — so on a fresh cycle's first day upcoming bills are not
+reachable through the calendar (Home shows them).
 
 ### Trends
 
