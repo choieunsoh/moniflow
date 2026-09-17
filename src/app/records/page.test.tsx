@@ -62,6 +62,7 @@ function data(): RecordsData {
     filtered: false,
     allCategory: false,
     spanAll: false,
+    sortByAmount: false,
     groupBy: 'date',
     entries: [SPEND, REFUND],
     sections: [
@@ -72,6 +73,7 @@ function data(): RecordsData {
     currencySums: [],
     page: 1,
     pageCount: 1,
+    calendar: null,
   };
 }
 
@@ -136,5 +138,175 @@ describe('/records money frames', () => {
     renderPage();
     expect(screen.getByText('+฿800.00')).toBeDefined();
     expect(screen.queryByText('−฿800.00')).toBeNull();
+  });
+});
+
+describe('/records calendar view', () => {
+  // With a 4th tab added, "By category" wrapped to two lines at 412px and doubled the strip's
+  // height. The group-by words are dropped from all four tabs so each fits on one line.
+  it('names the four group-by tabs without the "By" prefix', () => {
+    renderPage();
+    expect(screen.getByRole('link', { name: 'Date' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Category' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Calendar' })).toBeInTheDocument();
+  });
+
+  it('renders the calendar and the selected day in place of the day sections', () => {
+    vi.mocked(useRecords).mockReturnValue({
+      ready: true,
+      data: {
+        ...data(),
+        groupBy: 'calendar',
+        calendar: {
+          cells: [{ date: SPEND.date, total: 1200, intensity: 4 }],
+          marks: new Map(),
+          selectedDay: SPEND.date,
+          dayEntries: [SPEND],
+          dayTotal: SPEND.amount,
+          dayBills: [],
+        },
+      },
+    });
+    renderPage();
+    expect(screen.getByRole('link', { name: 'Calendar' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /Thu 2 Jul: ฿1,200/ })).toHaveAttribute(
+      'aria-current',
+      'date',
+    );
+    expect(screen.getByText('Lunch')).toBeInTheDocument();
+    // The day sections are replaced, so the other day's refund row is not on screen.
+    expect(screen.queryByText('Dinner split repaid')).toBeNull();
+  });
+
+  it('offers no Calendar tab in search mode', () => {
+    vi.mocked(useRecords).mockReturnValue({
+      ready: true,
+      data: { ...data(), searching: true, spanAll: true, query: 'lunch' },
+    });
+    renderPage();
+    expect(screen.queryByRole('link', { name: 'Calendar' })).toBeNull();
+  });
+
+  it('falls back to the Clear filter state when a filter leaves the calendar cycle empty', () => {
+    vi.mocked(useRecords).mockReturnValue({
+      ready: true,
+      data: {
+        ...data(),
+        groupBy: 'calendar',
+        filtered: true,
+        entries: [],
+        sections: [],
+        total: 0,
+        calendar: {
+          cells: [{ date: SPEND.date, total: 0, intensity: 0 }],
+          marks: new Map(),
+          selectedDay: SPEND.date,
+          dayEntries: [],
+          dayTotal: 0,
+          dayBills: [],
+        },
+      },
+    });
+    renderPage();
+    expect(screen.getByText('No entries match this filter in this cycle.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Clear filter' })).toBeInTheDocument();
+    expect(screen.queryByText('Nothing on this day')).toBeNull();
+  });
+
+  it('hides the edit/delete hint when the selected day has no rows to swipe', () => {
+    vi.mocked(useRecords).mockReturnValue({
+      ready: true,
+      data: {
+        ...data(),
+        groupBy: 'calendar',
+        calendar: {
+          cells: [{ date: SPEND.date, total: 1200, intensity: 4 }],
+          marks: new Map(),
+          selectedDay: '2026-07-03',
+          dayEntries: [],
+          dayTotal: 0,
+          dayBills: [],
+        },
+      },
+    });
+    renderPage();
+    expect(screen.queryByText(/Tap a row to edit/)).toBeNull();
+  });
+
+  it('keeps the edit/delete hint under a calendar day that has rows', () => {
+    vi.mocked(useRecords).mockReturnValue({
+      ready: true,
+      data: {
+        ...data(),
+        groupBy: 'calendar',
+        calendar: {
+          cells: [{ date: SPEND.date, total: 1200, intensity: 4 }],
+          marks: new Map(),
+          selectedDay: SPEND.date,
+          dayEntries: [SPEND],
+          dayTotal: SPEND.amount,
+          dayBills: [],
+        },
+      },
+    });
+    renderPage();
+    expect(screen.getByText(/Tap a row to edit/)).toBeInTheDocument();
+  });
+});
+
+describe('/records while a refetch is in flight', () => {
+  // useRecords keeps the PREVIOUS data on screen until the new run lands, so `data` can lag the URL.
+  // Stepping a cycle from ?sort=amount drops `sort` from the URL while the loaded data is still the
+  // single 'amount' section — gating on the live param sent that key through formatDayHeading and
+  // crashed the page (RangeError: Invalid time value). The mocked params here are EMPTY, which is
+  // exactly that lag.
+  it('renders stale sort=amount data by its own gate, not the live params', () => {
+    vi.mocked(useRecords).mockReturnValue({
+      ready: true,
+      data: {
+        ...data(),
+        sortByAmount: true,
+        groupBy: 'date',
+        entries: [SPEND, REFUND],
+        sections: [
+          {
+            key: 'amount',
+            entries: [REFUND, SPEND],
+            total: SPEND.amount + REFUND.amount,
+            foreign: [],
+          },
+        ],
+      },
+    });
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Largest first' })).toBeInTheDocument();
+    // sort=amount's own heading replaces the tab strip, whose links would not carry sort forward.
+    expect(screen.queryByRole('link', { name: 'Date' })).toBeNull();
+  });
+
+  // The page no longer drops to its placeholder between cycles, so nothing remounts the sections for
+  // free: a <details> collapsed in one cycle would stay collapsed in the next unless its key moves.
+  it('reopens a collapsed section when the cycle steps', () => {
+    const view = render(
+      <CategoryPickerProvider iconSet="emoji">
+        <RecordsPage />
+      </CategoryPickerProvider>,
+    );
+    const first = document.querySelector('details');
+    if (!(first instanceof HTMLDetailsElement)) throw new Error('missing a section');
+    first.open = false;
+
+    vi.mocked(useRecords).mockReturnValue({
+      ready: true,
+      data: { ...data(), activeKey: '2026-06' },
+    });
+    view.rerender(
+      <CategoryPickerProvider iconSet="emoji">
+        <RecordsPage />
+      </CategoryPickerProvider>,
+    );
+    const sections = [...document.querySelectorAll('details')];
+    expect(sections.every((d) => d.open)).toBe(true);
   });
 });

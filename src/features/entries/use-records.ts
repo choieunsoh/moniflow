@@ -8,9 +8,16 @@ import { groupByDate } from './by-date';
 import { groupBySpend } from './by-spend';
 import { cycleFromKey, currentCycleKey } from './cycle';
 import { sumByCurrency, type CurrencySum } from './trips';
+import { toHeatmapCells, type HeatmapCell } from './heatmap';
+import { dayMarks, resolveSelectedDay, type DayMarks } from './calendar-marks';
+import { discretionaryByDate } from './off-budget';
 import { getCutoff, getIconSet, type IconSet } from '@features/settings/queries';
-import { getEmojiMap, getHueMap } from '@features/categories/queries';
+import { getEmojiMap, getHueMap, getOffBudgetCategories } from '@features/categories/queries';
 import { getAccountIconMap, getAccountHueMap } from '@features/accounts/queries';
+import { getTravelCurrencies } from '@features/currencies/queries';
+import { listRules, listRuleMeta, type RuleMeta } from '@features/recurring/queries';
+import type { Recurrence } from '@features/recurring/schema';
+import { postsBetween } from '@features/recurring/schedule';
 import { todayIso } from '@shared/date';
 import { useDataVersion } from '@shared/data-version';
 
@@ -26,6 +33,7 @@ export type RecordsParams = {
   to?: string;
   sort?: string;
   page?: string;
+  day?: string;
 };
 
 // The all-category view is the one records list with no window bounding it: /report links here for a
@@ -41,9 +49,31 @@ export type RecordsSection = {
   foreign: CurrencySum[];
 };
 
-// The Records group-by tab. One three-way value rather than a pair of booleans, which would admit an
-// illegal "both" state; `?view=` carries it in the URL and anything unrecognised falls back to 'date'.
-export type RecordsGroupBy = 'date' | 'category' | 'account';
+// The Records group-by tab. One value rather than a set of booleans, which would admit illegal
+// combinations; `?view=` carries it in the URL and anything unrecognised falls back to 'date'.
+// 'calendar' exists only in the plain cycle view (not search/trip/all-category, not sort=amount).
+export type RecordsGroupBy = 'date' | 'category' | 'account' | 'calendar';
+
+// A recurring bill that has not posted yet, shown under its due day. `amount` is a positive magnitude:
+// baht for a THB or pinned-rate rule (currency 'THB'), or the rule's own currency for a blank-rate
+// foreign rule, which a pure preview cannot convert (committedThisCycle's byCurrency rule).
+export type UpcomingBill = {
+  id: number;
+  name: string;
+  category: string | null;
+  amount: number;
+  currency: string;
+};
+
+export type RecordsCalendar = {
+  cells: HeatmapCell[];
+  marks: Map<string, DayMarks>;
+  selectedDay: string;
+  // The selected day's entries, newest first, and their plain sum (the rows' own frame).
+  dayEntries: EntryRow[];
+  dayTotal: number;
+  dayBills: UpcomingBill[];
+};
 
 export type RecordsData = {
   cutoff: number;
@@ -60,6 +90,10 @@ export type RecordsData = {
   filtered: boolean;
   allCategory: boolean;
   spanAll: boolean;
+  // ?sort=amount as the hook applied it (the plain cycle view only). The page gates on THIS, never on
+  // the live param: `data` survives a refetch, so the URL can already have dropped `sort` while the
+  // single 'amount' section is still what is on screen.
+  sortByAmount: boolean;
   groupBy: RecordsGroupBy;
   // The WHOLE matched set, never the page — the count line and `total` below describe the category,
   // which is what the /report row that linked here promised. `sections` alone holds the page.
@@ -71,6 +105,8 @@ export type RecordsData = {
   // can gate its pager on `pageCount > 1` without knowing which modes those are.
   page: number;
   pageCount: number;
+  // Built only for the calendar view; null for every other view, so their reads cost nothing extra.
+  calendar: RecordsCalendar | null;
 };
 
 // Records page's ledger view, read once via the browser OPFS db after mount — mirrors the server
@@ -89,14 +125,20 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
     to,
     sort,
     page: pageParam,
+    day,
   } = params;
   const [data, setData] = useState<RecordsData | null>(null);
   const [ready, setReady] = useState(false);
   const version = useDataVersion();
 
   useEffect(() => {
+    // Deliberately no setReady(false) here — see use-categories-page / use-accounts-page. `?day=`
+    // moving on a calendar tap is a param change like any other, and dropping back to `ready: false`
+    // swapped the whole page for its `…` placeholder, shrinking the document and resetting scroll to
+    // the top. `alive` (same shape as use-edit-rule) guards the case that removing it exposes: tap day
+    // 25 then day 28 fast enough, and the 25 run must not win the race and overwrite 28's result.
+    let alive = true;
     void withDb(async (db) => {
-      setReady(false);
       const [cutoff, emojiMap, hueMap, accountIconMap, accountHueMap, iconSet] = await Promise.all([
         getCutoff(db),
         getEmojiMap(db),
@@ -152,10 +194,18 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
         ? ordered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
         : ordered;
       const groupBy: RecordsGroupBy =
-        view === 'category' ? 'category' : view === 'account' ? 'account' : 'date';
+        view === 'category'
+          ? 'category'
+          : view === 'account'
+            ? 'account'
+            : view === 'calendar' && !spanAll && !sortByAmount
+              ? 'calendar'
+              : 'date';
       // Each section carries its own foreign-currency subtotals so any header — a day, a category, or
       // an account — can read "¥12,000  ฿2,800" when it holds foreign spending; empty otherwise.
       // Date ranks chronologically; category and account both rank by spend, so they share groupBySpend.
+      // The calendar renders its own day list, but keeps day sections so `sections.length` still means
+      // "this cycle has rows".
       const grouped = sortByAmount
         ? [
             {
@@ -164,7 +214,7 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
               total: cycleEntries.reduce((sum, e) => sum + e.amount, 0),
             },
           ]
-        : groupBy === 'date'
+        : groupBy === 'date' || groupBy === 'calendar'
           ? groupByDate(visible).map((g) => ({ key: g.date, entries: g.entries, total: g.total }))
           : groupBySpend(visible, groupBy === 'category' ? (e) => e.category : (e) => e.account);
       const sections = grouped.map((g) => ({
@@ -176,6 +226,56 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
       const total = entries.reduce((sum, e) => sum + e.amount, 0);
       const currencySums = sumByCurrency(entries);
 
+      let calendar: RecordsCalendar | null = null;
+      if (groupBy === 'calendar') {
+        const today = todayIso();
+        const [offBudgetCategories, travelCurrencies] = await Promise.all([
+          getOffBudgetCategories(db),
+          getTravelCurrencies(db),
+        ]);
+        // Only the current cycle has days after today; a past cycle's bills have all posted, so its
+        // rules aren't read at all.
+        const isCurrent = activeKey === currentKey;
+        const rules: Recurrence[] = isCurrent ? await listRules(db) : [];
+        const ruleMeta: RuleMeta[] = isCurrent ? await listRuleMeta(db) : [];
+        const metaById = new Map(ruleMeta.map((m) => [m.id, m] as const));
+        const bills = rules.flatMap((rule) => {
+          const meta = metaById.get(rule.id);
+          const categoryName = meta?.categoryName ?? null;
+          // The same chips as the ledger rows, matched on the rule's resolved names.
+          if (category && categoryName !== category) return [];
+          if (account && (meta?.accountName ?? null) !== account) return [];
+          const inBaht = rule.currency === null || rule.currency === 'THB' || rule.rate !== null;
+          const bill: UpcomingBill = {
+            id: rule.id,
+            name: rule.name,
+            category: categoryName,
+            amount: inBaht ? rule.amount * (rule.rate ?? 1) : rule.amount,
+            currency: inBaht ? 'THB' : (rule.currency ?? 'THB'),
+          };
+          return postsBetween(rule, today, cycle.end).map((due) => ({ date: due.date, bill }));
+        });
+        const selectedDay = resolveSelectedDay(day, cycle, today);
+        const dayEntries = ordered.filter((e) => e.date === selectedDay);
+        calendar = {
+          cells: toHeatmapCells(
+            discretionaryByDate(cycleEntries, offBudgetCategories, travelCurrencies),
+            cycle,
+          ),
+          marks: dayMarks(
+            cycleEntries,
+            bills.map((b) => b.date),
+            offBudgetCategories,
+            travelCurrencies,
+          ),
+          selectedDay,
+          dayEntries,
+          dayTotal: dayEntries.reduce((sum, e) => sum + e.amount, 0),
+          dayBills: bills.filter((b) => b.date === selectedDay).map((b) => b.bill),
+        };
+      }
+
+      if (!alive) return; // a newer run already landed — don't clobber it with a stale one
       setData({
         cutoff,
         activeKey,
@@ -191,6 +291,7 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
         filtered,
         allCategory,
         spanAll,
+        sortByAmount,
         groupBy,
         entries,
         sections,
@@ -198,10 +299,28 @@ export function useRecords(params: RecordsParams): { ready: boolean; data: Recor
         currencySums,
         page,
         pageCount,
+        calendar,
       });
       setReady(true);
     });
-  }, [cycleParam, category, account, q, view, all, currency, from, to, sort, pageParam, version]);
+    return () => {
+      alive = false;
+    };
+  }, [
+    cycleParam,
+    category,
+    account,
+    q,
+    view,
+    all,
+    currency,
+    from,
+    to,
+    sort,
+    pageParam,
+    day,
+    version,
+  ]);
 
   return { ready, data };
 }

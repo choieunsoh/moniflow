@@ -4,6 +4,7 @@ import { makeNodeProxyDb } from '@db/client';
 import { ensureEntriesTable } from './schema';
 import { ensureSettingsTable } from '@features/settings/schema';
 import { ensureBudgetsTable } from '@features/budgets/schema';
+import { ensureCurrenciesTable } from '@features/currencies/schema';
 import { addEntries } from './queries';
 import { setBudget } from '@features/budgets/queries';
 
@@ -29,6 +30,7 @@ describe('useAnalytics', () => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     await ensureSettingsTable(db);
+    await ensureCurrenciesTable(db);
     await ensureBudgetsTable(db);
     await addEntries(db, [
       // cycle 2026-05 (18 May – 17 Jun) — Food 900
@@ -90,6 +92,7 @@ describe('useAnalytics', () => {
     const db = makeNodeProxyDb();
     await ensureEntriesTable(db);
     await ensureSettingsTable(db);
+    await ensureCurrenciesTable(db);
     await ensureBudgetsTable(db);
     await addEntries(
       db,
@@ -179,6 +182,30 @@ describe('useAnalytics', () => {
     expect(result.current.data?.topNotes).toEqual([{ note: 'No note', total: -49600, count: 2 }]);
   });
 
+  it('darkens the heatmap by discretionary spend only — bills and off-budget rows do not count', async () => {
+    const db = await getBrowserDb();
+    await addEntries(db, [
+      // A posted bill and an off-budget purchase, both far bigger than the seeded Food ฿400.
+      {
+        date: '2026-07-22',
+        account: 'Cash',
+        category: 'Bills',
+        amount: -9000,
+        source: 'recurring',
+      },
+      { date: '2026-07-23', account: 'Cash', category: 'Gifts', amount: -5000, offBudget: 1 },
+    ]);
+    const { result } = renderHook(() => useAnalytics('2026-07', null));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const byDate = new Map(
+      (result.current.data?.heatmapCells ?? []).map((c) => [c.date, c] as const),
+    );
+    expect(byDate.get('2026-07-22')).toEqual({ date: '2026-07-22', total: 0, intensity: 0 });
+    expect(byDate.get('2026-07-23')).toEqual({ date: '2026-07-23', total: 0, intensity: 0 });
+    // With the bill out of the max, the Food ฿400 day is the busiest again.
+    expect(byDate.get('2026-07-20')).toEqual({ date: '2026-07-20', total: 400, intensity: 4 });
+  });
+
   it('scopes biggest transactions and note rollup to the filtered category', async () => {
     // Active cycle (2026-07) already has one Food entry (400, no note) from the shared seed. Add
     // more Food entries with varied amounts + notes, plus a bigger Travel entry that must NOT leak
@@ -230,6 +257,7 @@ describe('useAnalytics', () => {
       const db = makeNodeProxyDb();
       await ensureEntriesTable(db);
       await ensureSettingsTable(db);
+      await ensureCurrenciesTable(db);
       await ensureBudgetsTable(db);
       await addEntries(db, [
         { date: '2026-07-20', account: 'Cash', category: 'Food', amount: -100 },

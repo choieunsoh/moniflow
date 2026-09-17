@@ -18,6 +18,7 @@ import { AccountIcon } from '@features/accounts/ui/AccountIcon';
 import { HeaderFilterChip } from '@features/entries/ui/HeaderFilterChip';
 import { ChevronLeft, ChevronRight } from '@shared/ui/Chevron';
 import { EmptyLedger } from '@features/entries/ui/EmptyLedger';
+import { RecordsCalendar as RecordsCalendarView } from '@features/entries/ui/RecordsCalendar';
 
 // Records = the cycle's expenses grouped by day, newest first. Each day is a light header (date +
 // day total) over a panel of rows; each row swipes to reveal Edit / Delete. Cycle/filter/search data
@@ -36,6 +37,7 @@ export default function RecordsPage() {
   const to = params.get('to') ?? undefined;
   const sort = params.get('sort') ?? undefined;
   const page = params.get('page') ?? undefined;
+  const day = params.get('day') ?? undefined;
 
   const { ready, data } = useRecords({
     cycle: cycleParam,
@@ -49,6 +51,7 @@ export default function RecordsPage() {
     to,
     sort,
     page,
+    day,
   });
 
   if (!ready || data === null) {
@@ -79,6 +82,7 @@ export default function RecordsPage() {
     filtered,
     allCategory,
     spanAll,
+    sortByAmount,
     groupBy,
     entries,
     sections,
@@ -86,6 +90,7 @@ export default function RecordsPage() {
     currencySums,
     page: activePage,
     pageCount,
+    calendar,
   } = data;
 
   // Only ?page= moves; every other param rides along, so paging never quietly drops the category
@@ -98,8 +103,9 @@ export default function RecordsPage() {
     return `/records?${p.toString()}`;
   };
 
-  // Mirrors the hook's own gate: sort=amount only collapses the plain cycle view to one section.
-  const sortByAmount = sort === 'amount' && !spanAll;
+  // Render gates read `data`, never a live param: useRecords keeps the previous data on screen while a
+  // param change loads, so the URL can already be ahead of the sections below. Gating the 'amount'
+  // section on the live `sort` sent its key through formatDayHeading and crashed the page.
 
   // Tap a section header to filter to just that bucket (staying grouped); tap the active one to
   // clear. Mirrors the row chips — preserves the cycle, the grouping, and the other axis's filter,
@@ -131,6 +137,17 @@ export default function RecordsPage() {
     if (category) p.set('category', category);
     if (account) p.set('account', account);
     if (next !== 'date') p.set('view', next);
+    return `/records?${p.toString()}`;
+  };
+
+  // A calendar day link keeps the cycle, the view and both chip filters; only ?day= moves.
+  const dayHref = (d: string) => {
+    const p = new URLSearchParams();
+    p.set('cycle', activeKey);
+    p.set('view', 'calendar');
+    if (category) p.set('category', category);
+    if (account) p.set('account', account);
+    p.set('day', d);
     return `/records?${p.toString()}`;
   };
 
@@ -169,24 +186,29 @@ export default function RecordsPage() {
 
       {sections.length > 0 ? (
         <div className="flex flex-col gap-5">
-          {/* Group-by tabs — flip the same entries between day, category and account sections. Text,
-              not icons: a tag vs a wallet isn't self-evident the way the BottomBar's home/search
-              glyphs are, and this is a control you read once rather than hit blind. Hidden in
-              sort=amount mode: that view's own "Largest first" heading is a different, single-section
-              grouping signal, and these links don't carry sort forward anyway. */}
-          {sort !== 'amount' ? (
+          {/* Group-by tabs — flip the same entries between day, category and account sections and
+              the cycle calendar. Text, not icons: a tag vs a wallet isn't self-evident the way the
+              BottomBar's home/search glyphs are, and this is a control you read once rather than hit
+              blind. Hidden in sort=amount mode: that view's own "Largest first" heading is a
+              different, single-section grouping signal, and these links don't carry sort forward
+              anyway. */}
+          {!sortByAmount ? (
             <div className="panel flex gap-1 p-1">
-              <ViewLink label="By date" active={groupBy === 'date'} href={viewHref('date')} />
+              <ViewLink label="Date" active={groupBy === 'date'} href={viewHref('date')} />
               <ViewLink
-                label="By category"
+                label="Category"
                 active={groupBy === 'category'}
                 href={viewHref('category')}
               />
-              <ViewLink
-                label="By account"
-                active={groupBy === 'account'}
-                href={viewHref('account')}
-              />
+              <ViewLink label="Account" active={groupBy === 'account'} href={viewHref('account')} />
+              {/* The calendar is a cycle view, so search/trip/all-category don't offer it. */}
+              {!spanAll ? (
+                <ViewLink
+                  label="Calendar"
+                  active={groupBy === 'calendar'}
+                  href={viewHref('calendar')}
+                />
+              ) : null}
             </div>
           ) : null}
           {/* Summary of the current view (respects the active filter / search). */}
@@ -202,7 +224,10 @@ export default function RecordsPage() {
                     ? 'entry'
                     : 'entries'}
               </span>
-              {sections.length > 1 ? <CollapseAllButton /> : null}
+              {/* Keyed by cycle so its label resets with the sections it drives (see below). */}
+              {calendar === null && sections.length > 1 ? (
+                <CollapseAllButton key={activeKey} />
+              ) : null}
             </span>
             <span className="flex items-baseline gap-2">
               {currencySums.map((c) => (
@@ -221,104 +246,123 @@ export default function RecordsPage() {
               </span>
             </span>
           </div>
-          {sections.map((section) => (
-            // Native <details> = tap the header to collapse/expand, no JS. Expanded by default;
-            // the open/closed state is DOM-local and resets when a param re-renders the page.
-            <details open key={section.key} data-records-section className="flex flex-col gap-2">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <Chevron />
-                  {sortByAmount ? (
-                    <h2 className="truncate text-sm font-semibold">Largest first</h2>
-                  ) : groupBy === 'date' ? (
-                    <h2 className="truncate text-sm font-semibold">
-                      {spanAll
-                        ? formatDayHeadingWithYear(section.key)
-                        : formatDayHeading(section.key)}
-                    </h2>
-                  ) : (
-                    <h2 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
-                      {/* Category markers double as the icon/colour editor; account markers don't —
-                          accounts are edited on their own page, so this stays a plain marker. */}
-                      {groupBy === 'category' ? (
-                        <CategoryIconButton
-                          category={section.key}
-                          emoji={emojiFor(emojiMap, section.key)}
-                          iconSet={iconSet}
-                          hue={hueFor(hueMap, section.key)}
-                          size="sm"
-                        />
-                      ) : (
-                        <AccountIcon
-                          icon={iconForAccount(accountIconMap, section.key)}
-                          name={section.key}
-                          hue={hueForAccount(accountHueMap, section.key)}
-                          size="sm"
-                        />
-                      )}
-                      {/* Cycle view: the header filters to its own bucket. spanAll modes (search,
-                          trip, all-category) ignore these params, so they keep a plain label. */}
-                      {spanAll ? (
-                        <span className="truncate">{section.key}</span>
-                      ) : (
-                        <HeaderFilterChip
-                          href={headerFilterHref(section.key)}
-                          active={(groupBy === 'account' ? account : category) === section.key}
-                          label={section.key}
-                        />
-                      )}
-                    </h2>
-                  )}
-                  {/* Entry count sits next to the title (date or category); total stays right. */}
-                  <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
-                    ({section.entries.length})
-                  </span>
-                </div>
-                {/* THB in the default ink; foreign currencies muted so THB stays the anchor figure. */}
-                <span className="tnum flex shrink-0 items-baseline gap-2 text-sm">
-                  {section.foreign.map((c) => (
-                    <span key={c.currency} style={{ color: 'var(--color-muted)' }}>
-                      <Money>{formatForeign(c.total, c.currency)}</Money>
+          {calendar !== null ? (
+            <RecordsCalendarView
+              calendar={calendar}
+              hrefFor={dayHref}
+              emojiMap={emojiMap}
+              hueMap={hueMap}
+              iconSet={iconSet}
+            />
+          ) : (
+            sections.map((section) => (
+              // Native <details> = tap the header to collapse/expand, no JS. Expanded by default; the
+              // open/closed state is DOM-local, so the key carries the cycle: stepping to another
+              // cycle remounts every section open, while a refetch of the same cycle keeps it.
+              <details
+                open
+                key={`${activeKey}:${section.key}`}
+                data-records-section
+                className="flex flex-col gap-2"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-1 [&::-webkit-details-marker]:hidden">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <Chevron />
+                    {sortByAmount ? (
+                      <h2 className="truncate text-sm font-semibold">Largest first</h2>
+                    ) : groupBy === 'date' ? (
+                      <h2 className="truncate text-sm font-semibold">
+                        {spanAll
+                          ? formatDayHeadingWithYear(section.key)
+                          : formatDayHeading(section.key)}
+                      </h2>
+                    ) : (
+                      <h2 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                        {/* Category markers double as the icon/colour editor; account markers don't —
+                            accounts are edited on their own page, so this stays a plain marker. */}
+                        {groupBy === 'category' ? (
+                          <CategoryIconButton
+                            category={section.key}
+                            emoji={emojiFor(emojiMap, section.key)}
+                            iconSet={iconSet}
+                            hue={hueFor(hueMap, section.key)}
+                            size="sm"
+                          />
+                        ) : (
+                          <AccountIcon
+                            icon={iconForAccount(accountIconMap, section.key)}
+                            name={section.key}
+                            hue={hueForAccount(accountHueMap, section.key)}
+                            size="sm"
+                          />
+                        )}
+                        {/* Cycle view: the header filters to its own bucket. spanAll modes (search,
+                            trip, all-category) ignore these params, so they keep a plain label. */}
+                        {spanAll ? (
+                          <span className="truncate">{section.key}</span>
+                        ) : (
+                          <HeaderFilterChip
+                            href={headerFilterHref(section.key)}
+                            active={(groupBy === 'account' ? account : category) === section.key}
+                            label={section.key}
+                          />
+                        )}
+                      </h2>
+                    )}
+                    {/* Entry count sits next to the title (date or category); total stays right. */}
+                    <span className="tnum shrink-0 text-sm" style={{ color: 'var(--color-muted)' }}>
+                      ({section.entries.length})
                     </span>
-                  ))}
-                  <span>
-                    <Money>{formatLedgerSpend(section.total)}</Money>
+                  </div>
+                  {/* THB in the default ink; foreign currencies muted so THB stays the anchor figure. */}
+                  <span className="tnum flex shrink-0 items-baseline gap-2 text-sm">
+                    {section.foreign.map((c) => (
+                      <span key={c.currency} style={{ color: 'var(--color-muted)' }}>
+                        <Money>{formatForeign(c.total, c.currency)}</Money>
+                      </span>
+                    ))}
+                    <span>
+                      <Money>{formatLedgerSpend(section.total)}</Money>
+                    </span>
                   </span>
-                </span>
-              </summary>
-              <ul className="panel flex flex-col divide-y overflow-hidden">
-                {section.entries.map((entry) => (
-                  <SwipeRow
-                    key={entry.id}
-                    entry={entry}
-                    emoji={emojiFor(emojiMap, entry.category)}
-                    iconSet={iconSet}
-                    hue={hueFor(hueMap, entry.category)}
-                    foreignLeads={tripMode}
-                    // Each row states what its header doesn't: the date under a category/account
-                    // header, and the axis the header already names is dropped.
-                    dateLabel={
-                      groupBy !== 'date'
-                        ? spanAll
-                          ? formatDayHeadingWithYear(entry.date)
-                          : formatDayHeading(entry.date)
-                        : undefined
-                    }
-                    hideCategory={groupBy === 'category'}
-                    hideAccount={groupBy === 'account'}
-                  />
-                ))}
-              </ul>
-            </details>
-          ))}
+                </summary>
+                <ul className="panel flex flex-col divide-y overflow-hidden">
+                  {section.entries.map((entry) => (
+                    <SwipeRow
+                      key={entry.id}
+                      entry={entry}
+                      emoji={emojiFor(emojiMap, entry.category)}
+                      iconSet={iconSet}
+                      hue={hueFor(hueMap, entry.category)}
+                      foreignLeads={tripMode}
+                      // Each row states what its header doesn't: the date under a category/account
+                      // header, and the axis the header already names is dropped.
+                      dateLabel={
+                        groupBy !== 'date'
+                          ? spanAll
+                            ? formatDayHeadingWithYear(entry.date)
+                            : formatDayHeading(entry.date)
+                          : undefined
+                      }
+                      hideCategory={groupBy === 'category'}
+                      hideAccount={groupBy === 'account'}
+                    />
+                  ))}
+                </ul>
+              </details>
+            ))
+          )}
           {/* Only the all-time category view paginates, and the hook reports pageCount 1 everywhere
               else — so this one condition covers it without the page knowing which mode is which. */}
           {pageCount > 1 ? (
             <Pager page={activePage} pageCount={pageCount} hrefFor={pageHref} />
           ) : null}
-          <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
-            Tap a row to edit · swipe left to delete
-          </p>
+          {/* A calendar day with no rows has nothing to tap or swipe. */}
+          {calendar !== null && calendar.dayEntries.length === 0 ? null : (
+            <p className="px-1 text-center text-xs" style={{ color: 'var(--color-faint)' }}>
+              Tap a row to edit · swipe left to delete
+            </p>
+          )}
         </div>
       ) : searching ? (
         <div className="panel flex flex-col items-center gap-3 px-6 py-12 text-center">
