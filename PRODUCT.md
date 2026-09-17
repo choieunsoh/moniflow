@@ -34,7 +34,9 @@ plain async functions rather than Server Actions. The app is scoped to a monthly
   ledger but don't distort the budget meter, pace, or safe-to-spend; Home discloses the off-budget total
   beneath the headline.
 - **Records** — the cycle's expenses grouped by day, each a swipe-to-edit/delete row, with live
-  cross-cycle search.
+  cross-cycle search. A **Calendar** view lays the cycle out as a month grid (darker = more
+  discretionary spend, with marks for a posted bill, a bill still due, and off-budget spend); tap a
+  day to list its entries and upcoming bills beneath it.
 - **Trends** — the six-cycle spending trend, with a dashed line marking your own average across
   the window, a this-cycle-vs-last comparison, and a breakdown below it — **By category** or **By
   account** — that narrows to that category's own per-cycle breakdown when filtered. Anomalies stay
