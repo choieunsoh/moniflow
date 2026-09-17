@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.27.0] - 2026-09-17
+
+### Added
+
+- mark refund days on the Records calendar
+- add a Calendar view to Records
+- load a calendar payload for the Records view
+- derive per-day calendar marks
+- darken the spend heatmap by discretionary spend
+
+### Fixed
+
+- keep the refund plus centred at every font scale
+- name only what moved in a calendar day's label
+- gate Records rendering on loaded data, not live params
+- keep Records on screen while a new view loads
+- fit the four Records tabs on one line
+- keep Records empty states reachable from the Calendar tab
+- keep heatmap day numbers readable on every step
+
+### Other
+
+- merge feat/records-calendar (Records calendar view + refund mark)
+- plan the Records calendar refund mark
+- spec a refund mark for the Records calendar
+- note the calendar's empty-cycle fallback in the spec
+- cover past-cycle, foreign and account-filtered bills
+- make the Records refetch-race tests able to fail
+- describe the Records calendar view
+- plan the Records calendar view
+- spec the Records calendar view
+
 ## [1.26.0] - 2026-09-10
 
 ### Added
