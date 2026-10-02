@@ -14,6 +14,13 @@ describe('defaultEmojiFor', () => {
     expect(defaultEmojiFor('Gifts')).toBe('🎁');
   });
 
+  it('reads donations and merit-making as giving', () => {
+    expect(defaultEmojiFor('Donation')).toBe('🙏');
+    expect(defaultEmojiFor('Charity')).toBe('🙏');
+    expect(defaultEmojiFor('บริจาค')).toBe('🙏');
+    expect(defaultEmojiFor('ทำบุญ')).toBe('🙏');
+  });
+
   it('matches on a keyword inside a longer, punctuated name', () => {
     // Real names off the reference ledger — the match has to survive an ampersand and a second noun.
     expect(defaultEmojiFor('Food & Groceries')).toBe('🛒');
