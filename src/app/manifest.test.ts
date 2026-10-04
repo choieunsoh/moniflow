@@ -10,6 +10,11 @@ describe('manifest shortcuts', () => {
     expect(shortcut?.name).toBe('New entry');
   });
 
+  it('offers a Convert shortcut for the counter abroad', () => {
+    const shortcut = manifest().shortcuts?.find((s) => s.url === '/convert');
+    expect(shortcut?.short_name).toBe('Convert');
+  });
+
   it('keeps every shortcut inside the manifest scope', () => {
     const { scope, shortcuts } = manifest();
     expect(shortcuts?.length).toBeGreaterThan(0);

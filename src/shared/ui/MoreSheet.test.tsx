@@ -27,6 +27,7 @@ describe('MoreSheet', () => {
       '/trips',
       '/budgets?cycle=2026-08',
       '/recurring',
+      '/convert',
       '/settings',
       '/checkup',
       '/about',
