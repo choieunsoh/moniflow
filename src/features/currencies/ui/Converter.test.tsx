@@ -77,15 +77,13 @@ describe('Converter', () => {
   it('wraps every figure cell in .money for privacy blur', () => {
     setup();
     const rows = bodyRows();
+    expect(rows).toHaveLength(4);
     for (const row of rows) {
-      const cells = [...row.querySelectorAll('td')];
-      for (let i = 0; i < cells.length; i++) {
-        // Skip first cell (fee label, not a figure)
-        if (i > 0) {
-          const money = cells[i].querySelector('span.money');
-          expect(money).not.toBeNull();
-        }
+      for (const cell of [...row.querySelectorAll('td')].slice(1)) {
+        expect(cell.querySelector('span.money')).not.toBeNull();
       }
     }
+    const amountHeader = [...document.querySelectorAll('thead th')][2];
+    expect(amountHeader?.querySelector('span.money')).not.toBeNull();
   });
 });

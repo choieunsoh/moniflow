@@ -35,8 +35,6 @@ describe('useConvert', () => {
   });
 
   it('leaves out archived currencies', async () => {
-    const first = renderHook(() => useConvert());
-    await waitFor(() => expect(first.result.current.ready).toBe(true)); // seeds the catalog
     await setCurrencyArchived(db, 'MOP', true);
     const { result } = renderHook(() => useConvert());
     await waitFor(() => expect(result.current.ready).toBe(true));
