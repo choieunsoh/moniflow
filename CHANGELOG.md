@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.29.0] - 2026-10-04
+
+### Added
+
+- add the /convert page
+- add the Converter view
+- add the useConvert read hook
+- add the pure FX converter arithmetic
+
+### Fixed
+
+- blur every converter figure in privacy mode
+
+### Other
+
+- merge feat/fx-converter (FX converter page)
+- tighten the converter privacy and archive tests
+- move the Convert tile to the Plan group in the spec
+- converter figures follow privacy blur
+- plan the /convert FX converter
+- spec the /convert FX converter
+
 ## [1.28.0] - 2026-10-02
 
 ### Added
