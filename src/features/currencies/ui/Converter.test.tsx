@@ -73,4 +73,19 @@ describe('Converter', () => {
     expect(screen.getByText('No rate for KRW yet')).toBeTruthy();
     expect(bodyRows()).toHaveLength(0);
   });
+
+  it('wraps every figure cell in .money for privacy blur', () => {
+    setup();
+    const rows = bodyRows();
+    for (const row of rows) {
+      const cells = [...row.querySelectorAll('td')];
+      for (let i = 0; i < cells.length; i++) {
+        // Skip first cell (fee label, not a figure)
+        if (i > 0) {
+          const money = cells[i].querySelector('span.money');
+          expect(money).not.toBeNull();
+        }
+      }
+    }
+  });
 });

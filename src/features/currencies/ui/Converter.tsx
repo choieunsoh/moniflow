@@ -152,6 +152,7 @@ export function Converter(props: ConverterProps) {
                     +{feeFmt.format(row.feePct)}%
                     {row.feePct === cardFeePct && result.rows.length > 1 && (
                       <span
+                        role="img"
                         aria-label="your card fee"
                         title="Your card fee (Settings)"
                         className="ml-1"
@@ -161,7 +162,9 @@ export function Converter(props: ConverterProps) {
                       </span>
                     )}
                   </td>
-                  <td className="py-2 text-right">{formatPerUnit(row.perUnit, to)}</td>
+                  <td className="py-2 text-right">
+                    <Money>{formatPerUnit(row.perUnit, to)}</Money>
+                  </td>
                   {row.total !== null && (
                     <td className="py-2 text-right font-medium">
                       <Money>{formatCurrency(row.total, to)}</Money>
