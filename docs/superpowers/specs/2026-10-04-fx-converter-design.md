@@ -86,7 +86,7 @@ otherwise show just the +0% row. That one rule covers the cross pair and the sam
   - Total column: the destination currency's own minor units, via
     `Intl.NumberFormat(..., { style: 'currency', currency: to })`.
   - THB figures keep the app's `฿` look. Use `formatBaht` when `to === 'THB'`.
-- **No privacy blur.** The page shows no ledger data, only public rates and a typed amount.
+- **Privacy blur applies to every figure** (header amount, per-1 rate, totals), like the rest of the app — each goes through `<Money>`. The typed amount input is not blurred.
 
 ## State
 
