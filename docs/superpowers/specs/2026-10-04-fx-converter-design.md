@@ -110,7 +110,7 @@ URL search params, following the app's convention: `?from=JPY&to=THB&amt=1200`.
 | `src/features/currencies/ui/Converter.tsx` | Thin component: inputs, swap, table, ★. |
 | `src/features/currencies/ui/Converter.test.tsx` | Swap exchanges codes; ★ follows the card fee; cross pair shows one row. |
 | `src/app/convert/page.tsx` | `'use client'` route; reads search params, delegates to `Converter`. |
-| `src/shared/ui/MoreSheet.tsx` | Add `{ href: '/convert', label: 'Convert', Icon: ArrowLeftRight }` right after Currency. |
+| `src/shared/ui/MoreSheet.tsx` | Add `{ href: '/convert', label: 'Convert', Icon: ArrowLeftRight }` to the **Plan** group after Recurring — it fills Plan's short row; a fourth tile under Lists would orphan. |
 | `src/app/manifest.ts` | Add `{ name: 'Convert currency', short_name: 'Convert', url: '/convert' }` to `shortcuts`. |
 
 The feature lives in `features/currencies/` because it consumes only currency data.
@@ -126,7 +126,7 @@ read, the same one `use-currencies.ts` already makes.
   - swap to THB→JPY, where the totals now **decrease** with the fee;
   - a cross pair, which shows one row and the note;
   - empty amount;
-  - the More sheet entry.
+  - the More sheet entry (Plan group).
   - Also check the manifest shortcut in the manifest output. A launcher shortcut can only be
     exercised on an installed PWA.
 
