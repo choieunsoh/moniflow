@@ -27,7 +27,10 @@ export default function manifest(): MetadataRoute.Manifest {
     // this is the one journey where the launcher itself can save two taps. Reuses the app icon —
     // Android renders a shortcut without its own icon perfectly well, and a second glyph would only
     // be another thing to keep in sync.
-    shortcuts: [{ name: 'New entry', short_name: 'New', url: '/entries/new' }],
+    shortcuts: [
+      { name: 'New entry', short_name: 'New', url: '/entries/new' },
+      { name: 'Convert currency', short_name: 'Convert', url: '/convert' },
+    ],
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },

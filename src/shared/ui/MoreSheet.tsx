@@ -16,6 +16,7 @@ import {
   Info,
   Coins,
   Stethoscope,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { cycleHref } from './cycle-href';
 
@@ -32,8 +33,8 @@ import { cycleHref } from './cycle-href';
 // not Categories'. It previously sat in a "Set up" group it joined for a layout reason (six tiles
 // filled two clean rows), which is not a reason.
 //
-// Twelve tiles across three columns: Lists and App fill a row each, Review wraps to a row of three
-// plus one, Plan is a short row of two. That is why the captions earn their space — under a heading
+// Thirteen tiles across three columns: Lists, Plan and App fill a row each, Review wraps to a row of
+// three plus one. That is why the captions earn their space — under a heading
 // a short row or an orphan tile reads as the end of a group, and unlabelled it just reads as a hole.
 //
 // `cycle: true` marks a destination that READS the selected cycle, so its href carries ?cycle= the
@@ -69,6 +70,9 @@ const GROUPS = [
     links: [
       { href: '/budgets', label: 'Budgets', Icon: Target, cycle: true },
       { href: '/recurring', label: 'Recurring', Icon: Repeat, cycle: false },
+      // Convert fills Plan's short row instead of orphaning a fourth tile under Lists: checking what
+      // ¥1,200 costs before you pay is forward-looking, like the other two.
+      { href: '/convert', label: 'Convert', Icon: ArrowLeftRight, cycle: false },
     ],
   },
   {
