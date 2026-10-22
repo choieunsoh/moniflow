@@ -42,6 +42,8 @@ There is no server layer. Every page is a client component that loads its own da
 
 ## Getting started
 
+[![Launch on PicoRunner](https://picorunner.com/badges/launch.svg)](https://picorunner.com/launch/?repository=https%3A%2F%2Fgithub.com%2Fchoieunsoh%2Fmoniflow)
+
 Requires Node 24+.
 
 ```bash
