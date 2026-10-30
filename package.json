@@ -24,7 +24,6 @@
     "release": "node scripts/release.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:generate": "drizzle-kit generate",
     "gen:sw": "node scripts/stamp-sw.ts"
   },
   "dependencies": {
@@ -57,7 +56,6 @@
     "@types/react-dom": "^19.2.3",
     "@types/semver": "^7.7.1",
     "@vitejs/plugin-react": "^6.0.3",
-    "drizzle-kit": "^0.31.10",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",

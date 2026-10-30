@@ -7,7 +7,8 @@ import type { Db } from '@db/client';
 // the display string (UNIQUE — two categories can't share a name). `emoji`/`hue` are the display meta
 // that used to live in `category_meta` (hue null = auto, name-derived color). `sort_order` + `archived`
 // back a category-management UI (manual order, hide-without-delete) that is a later slice — the columns
-// ship now, inert until that UI lands. This file is the schema source of truth; drizzle.config globs it.
+// ship now, inert until that UI lands. This file is the schema source of truth, kept in lockstep with
+// BOOTSTRAP_SQL in src/db/worker.ts.
 export const categories = sqliteTable('categories', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull().unique(),

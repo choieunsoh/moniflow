@@ -13,8 +13,8 @@ export const settings = sqliteTable('settings', {
 export type Setting = typeof settings.$inferSelect;
 
 // ponytail: CREATE TABLE IF NOT EXISTS bootstrap, same pattern as ensureEntriesTable — no
-// migration runner yet. Upgrade path: `npm run db:generate` + replay at the composition root once
-// the schema stops being trivial.
+// migration runner. A new column goes through src/db/column-migrations.ts, never a generated
+// migration: the only live database is in the browser.
 export async function ensureSettingsTable(db: Db): Promise<void> {
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS settings (
