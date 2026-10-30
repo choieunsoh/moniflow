@@ -85,6 +85,45 @@ describe('catalog v2 with recurrences', () => {
     expect(parseCatalogJson(bad)).toBeNull();
   });
 
+  // A restored rule must satisfy the same domain rules parseRuleForm enforces — the schedule loops
+  // assume them (intervalMonths 0 never advances past today, so duePosts never terminates).
+  it.each([
+    ['intervalMonths 0', { intervalMonths: 0 }],
+    ['intervalMonths -1', { intervalMonths: -1 }],
+    ['intervalMonths 3', { intervalMonths: 3 }],
+    ['day 0', { day: 0 }],
+    ['day 32', { day: 32 }],
+    ['fractional day', { day: 1.5 }],
+    ['zero amount', { amount: 0 }],
+    ['negative amount', { amount: -5 }],
+    ['zero rate', { rate: 0 }],
+    ['totalCount 0', { totalCount: 0 }],
+    ['fractional totalCount', { totalCount: 2.5 }],
+    ['yearly with no month', { intervalMonths: 12, month: null }],
+    ['month 13', { intervalMonths: 12, month: 13 }],
+    ['malformed currency', { currency: 'US$' }],
+  ])('rejects the whole file for a rule with %s', (_, patch) => {
+    const bad = JSON.stringify({
+      version: 2,
+      categories: [],
+      accounts: [],
+      recurrences: [{ ...sampleRule, ...patch }],
+    });
+    expect(parseCatalogJson(bad)).toBeNull();
+  });
+
+  it('accepts a THB or null rule currency and a pinned positive rate', () => {
+    for (const patch of [{ currency: 'THB' }, { currency: null }, { rate: 35.2 }]) {
+      const ok = JSON.stringify({
+        version: 2,
+        categories: [],
+        accounts: [],
+        recurrences: [{ ...sampleRule, ...patch }],
+      });
+      expect(parseCatalogJson(ok)).not.toBeNull();
+    }
+  });
+
   it('rejects a version outside 1–4', () => {
     expect(
       parseCatalogJson(JSON.stringify({ version: 5, categories: [], accounts: [] })),
@@ -144,6 +183,25 @@ describe('catalog v3 combined backup', () => {
       settings: [{ key: 'font_scale', value: 5 }],
     });
     expect(parseCatalogJson(badSetting)).toBeNull();
+  });
+
+  // saveBudget refuses these; restore used to write them straight through setBudget.
+  it('rejects a v3 file with a negative budget amount', () => {
+    const bad = JSON.stringify({
+      version: 3,
+      categories: [],
+      accounts: [],
+      recurrences: [],
+      budgets: [{ category: 'Food', amount: -100 }],
+    });
+    expect(parseCatalogJson(bad)).toBeNull();
+  });
+
+  // JSON.parse turns an out-of-range literal into Infinity, which typeof still calls a number.
+  it('rejects a non-finite hue', () => {
+    const bad =
+      '{"version":1,"categories":[{"name":"Food","emoji":"🍔","hue":1e999,"sortOrder":0,"archived":false}],"accounts":[]}';
+    expect(parseCatalogJson(bad)).toBeNull();
   });
 });
 
@@ -205,6 +263,19 @@ describe('catalog v4 currency catalog', () => {
       accounts: [],
       recurrences: [],
       currencies: [{ code: 'JPY' }],
+    });
+    expect(parseCatalogJson(text)).toBeNull();
+  });
+
+  // Intl.NumberFormat throws a RangeError for anything that isn't three ASCII letters, and every
+  // formatter that labels the catalog would then take its page down with it.
+  it.each(['X', 'usd', 'US$', 'EURO', ''])('rejects a malformed currency code %j', (code) => {
+    const text = JSON.stringify({
+      version: 4,
+      categories: [],
+      accounts: [],
+      recurrences: [],
+      currencies: [{ code, offBudget: false, sortOrder: 9, archived: false }],
     });
     expect(parseCatalogJson(text)).toBeNull();
   });

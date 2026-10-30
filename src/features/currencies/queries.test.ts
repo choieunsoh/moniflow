@@ -94,6 +94,16 @@ describe('currency catalog backup', () => {
     expect(await getTravelCurrencies(db)).toContain('VND');
   });
 
+  // The /currency page never offers archive or off-budget for the home currency, so a restored file
+  // must not be able to set them either — there would be no way back in the UI.
+  it('keeps THB active and on-budget whatever the restored row says', async () => {
+    await restoreCurrencyCatalog(db, [
+      { code: 'THB', offBudget: true, sortOrder: 0, archived: true },
+    ]);
+    expect(await getCurrencyCodes(db)).toContain('THB');
+    expect(await getTravelCurrencies(db)).not.toContain('THB');
+  });
+
   // restoreCurrencyCatalog is a write path against a table that, on a fresh device, may never have
   // been read — the same shape as the setCurrencyOffBudget/setCurrencyArchived gotcha from Task 2.
   // Those are bare UPDATEs and no-op silently against a table with zero rows; restoreCurrencyCatalog

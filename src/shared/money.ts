@@ -72,6 +72,12 @@ export function formatLedgerSpend(amount: number): string {
 // foreign-currency entry display on the keypad; THB rollups keep formatBaht above.
 const currencyFormatters = new Map<string, Intl.NumberFormat>();
 
+// Exactly the currency grammar Intl.NumberFormat accepts without a RangeError. Untrusted input (a
+// restore file, a Monefy CSV) must pass this before it can reach a formatter below.
+export function isWellFormedCurrencyCode(v: unknown): v is string {
+  return typeof v === 'string' && /^[A-Z]{3}$/.test(v);
+}
+
 function formatterFor(currency: string): Intl.NumberFormat {
   const existing = currencyFormatters.get(currency);
   if (existing !== undefined) return existing;

@@ -1,4 +1,5 @@
 import type { EntryInput, EntryRow } from './schema';
+import { isWellFormedCurrencyCode } from '@shared/money';
 
 // Pure Monefy-CSV → entries mapping. No DB, no fs — the CLI reads the file and calls this, which
 // is what makes it unit-testable. The parser handles Monefy's quoting: fields with commas (money
@@ -98,9 +99,16 @@ export function parseMonefyCsv(text: string, opts?: { keepInflows?: boolean }): 
     // ponytail: sign is the whole test — Monefy marks outflows negative; if a real export ever ships
     // a 0-amount expense, revisit this bound.
     const amount = cleanAmount(cols[5]);
+    const originalAmount = cleanAmount(cols[3]);
+    if (!Number.isFinite(amount) || !Number.isFinite(originalAmount)) {
+      throw new Error(`Row ${entries.length + skipped + 2}: bad amount`);
+    }
     if (amount >= 0 && opts?.keepInflows !== true) {
       skipped += 1;
       continue;
+    }
+    if (!isWellFormedCurrencyCode(cols[4])) {
+      throw new Error(`Row ${entries.length + skipped + 2}: bad currency`);
     }
     const note = cols[7] ?? '';
     entries.push({
@@ -109,7 +117,7 @@ export function parseMonefyCsv(text: string, opts?: { keepInflows?: boolean }): 
       category,
       amount,
       currency: cols[4],
-      originalAmount: cleanAmount(cols[3]),
+      originalAmount,
       note: note === '' ? null : note,
       // A moniflow backup carries the row's real provenance in the 10th column; a genuine Monefy
       // export (and any pre-source moniflow backup) has no such column and is an import, so it keeps
