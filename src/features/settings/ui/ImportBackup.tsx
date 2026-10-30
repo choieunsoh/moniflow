@@ -8,11 +8,31 @@ import { ConfirmDialog } from '@shared/ui/ConfirmDialog';
 import { toast } from '@shared/ui/toast';
 
 // The one Restore button, for every backup shape. classifyBackup sniffs the picked file's CONTENT
-// (never its extension): a v3 combined JSON, a v1/v2 catalog JSON, or a raw Monefy CSV. A catalog-only
-// file merges metadata and never deletes, so it applies straight away. Anything that REPLACES the
-// ledger (the combined JSON, or a bare Monefy CSV) confirms first — the destructive replace becomes
-// actionable only once a valid file is in hand, so a cancelled picker costs nothing.
-type Pending = { kind: 'monefy-csv'; text: string } | { kind: 'combined'; data: CatalogData };
+// (never its extension): a v3 combined JSON, a v1/v2 catalog JSON, or a raw Monefy CSV. Every shape
+// confirms first, and the confirm becomes actionable only once a valid file is in hand, so a
+// cancelled picker costs nothing. Anything that REPLACES the ledger (the combined JSON, or a bare
+// Monefy CSV) gets the destructive dialog. A catalog-only file never deletes, but it can still
+// rewrite settings, recurring rules, budgets and currencies — none of which the picker shows — so it
+// gets a plain merge confirm rather than applying silently.
+type Pending =
+  | { kind: 'monefy-csv'; text: string }
+  | { kind: 'combined'; data: CatalogData }
+  | { kind: 'catalog'; data: CatalogData };
+
+const DIALOG = {
+  replace: {
+    title: 'Replace everything with this backup?',
+    body: "This deletes all current entries and loads the backup's in their place. Categories and accounts are merged in, never deleted. It cannot be undone.",
+    confirmLabel: 'Replace everything',
+    destructive: true,
+  },
+  merge: {
+    title: 'Merge this backup?',
+    body: 'Adds or updates the categories, accounts, currencies, recurring rules, budgets and settings in the file. Your entries are untouched and nothing is deleted.',
+    confirmLabel: 'Merge',
+    destructive: false,
+  },
+} as const;
 
 async function applyBackup(data: CatalogData): Promise<void> {
   try {
@@ -52,30 +72,23 @@ export function ImportBackup() {
       toast.error("Couldn't read that file — is it a moniflow backup or a Monefy CSV?");
       return;
     }
-    if (kind.kind === 'catalog') {
-      await applyBackup(kind.data); // merge-only, non-destructive → no confirm
-      return;
-    }
-    // combined | monefy-csv both replace the ledger → gate on a confirm.
-    setPending(
-      kind.kind === 'combined'
-        ? { kind: 'combined', data: kind.data }
-        : { kind: 'monefy-csv', text },
-    );
+    setPending(kind.kind === 'monefy-csv' ? { kind: 'monefy-csv', text } : kind);
   }
 
   async function handleConfirm(): Promise<void> {
     if (pending === null) return;
     try {
-      if (pending.kind === 'combined') {
-        await applyBackup(pending.data);
-      } else {
+      if (pending.kind === 'monefy-csv') {
         await applyCsv(pending.text);
+      } else {
+        await applyBackup(pending.data);
       }
     } finally {
       setPending(null);
     }
   }
+
+  const dialog = pending?.kind === 'catalog' ? DIALOG.merge : DIALOG.replace;
 
   return (
     <>
@@ -101,10 +114,10 @@ export function ImportBackup() {
       />
       <ConfirmDialog
         open={pending !== null}
-        title="Replace everything with this backup?"
-        body="This deletes all current entries and loads the backup's in their place. Categories and accounts are merged in, never deleted. It cannot be undone."
-        confirmLabel="Replace everything"
-        destructive
+        title={dialog.title}
+        body={dialog.body}
+        confirmLabel={dialog.confirmLabel}
+        destructive={dialog.destructive}
         onConfirm={() => {
           void handleConfirm();
         }}
