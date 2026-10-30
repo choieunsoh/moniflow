@@ -18,6 +18,9 @@ const version =
 const config: NextConfig = {
   output: 'export',
   env: { NEXT_PUBLIC_APP_VERSION: version },
+  // Since 16.4, `next dev` writes a generic AGENTS.md whenever it detects an AI agent and restores it
+  // if deleted. Project rules for agents live in CLAUDE.md; this keeps the tree free of the duplicate.
+  agentRules: false,
 };
 
 export default config;
