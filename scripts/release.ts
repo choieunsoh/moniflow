@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, writeSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import semver from 'semver';
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 
 export type VersionType = 'patch' | 'minor' | 'major';
 
