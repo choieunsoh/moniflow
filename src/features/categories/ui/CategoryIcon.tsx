@@ -31,7 +31,8 @@ export function CategoryIcon({
   // Picked disc hue; undefined falls back to the name-derived color.
   hue?: number;
 }) {
-  const Icon = iconMapFor(iconSet)?.[emoji];
+  const icons = iconMapFor(iconSet);
+  const Icon = icons && Object.hasOwn(icons, emoji) ? icons[emoji] : undefined;
 
   if (Icon) {
     return (

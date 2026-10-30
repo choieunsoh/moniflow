@@ -5,6 +5,7 @@ import { ensureSettingsTable, settings } from './schema';
 import {
   getCutoff,
   setCutoff,
+  restoreSettings,
   isValidCutoffDay,
   getIconSet,
   setIconSet,
@@ -47,6 +48,15 @@ describe('getCutoff / setCutoff', () => {
     await setCutoff(db, 25);
     await setCutoff(db, 5);
     expect(await getCutoff(db)).toBe(5);
+  });
+
+  // restoreSettings writes any key/value a backup carries. Every other getter re-validates its value;
+  // this one fed Number('x') = NaN into the cycle math, which throws on every cycle page.
+  it.each(['x', '0', '29', '2.5', ''])('falls back to 18 for a stored %j', async (value) => {
+    const db = makeNodeProxyDb();
+    await ensureSettingsTable(db);
+    await restoreSettings(db, [{ key: 'cutoff_day', value }]);
+    expect(await getCutoff(db)).toBe(18);
   });
 });
 

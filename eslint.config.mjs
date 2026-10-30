@@ -18,7 +18,6 @@ export default defineConfig([
     'out/**',
     'dist/**',
     'next-env.d.ts',
-    'drizzle/**', // generated migrations + meta — drizzle-kit owns these
     'data/**', // private financial data (git-ignored)
     'public/**', // static assets served verbatim (incl. the generated sw.js)
     // The service worker's source. It lives here rather than in public/ because it has to be

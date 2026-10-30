@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, writeSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import semver from 'semver';
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 
 export type VersionType = 'patch' | 'minor' | 'major';
 
@@ -519,9 +519,10 @@ export function deployToVercel(version: string): void {
     // Through runNpm, never a bare `npx`: on Windows the binary is npx.cmd and execFileSync does no
     // PATHEXT resolution, so spawning 'npx' dies with ENOENT before the deploy is even attempted.
     // runNpm already resolves this (npm_execpath, else npm.cmd), so `npm exec` inherits the fix for
-    // free rather than growing a second copy of it. --yes so a missing local vercel installs rather
-    // than stopping on a prompt no one is watching.
-    runNpm(['exec', '--yes', '--', ...args], { stdio: 'inherit' });
+    // free rather than growing a second copy of it. --no: vercel is a pinned devDependency, so this
+    // runs the lockfile's copy, and a missing install fails loudly instead of quietly fetching
+    // whatever the registry serves today and handing it the production deploy credentials.
+    runNpm(['exec', '--no', '--', ...args], { stdio: 'inherit' });
   } catch (cause) {
     // A non-zero exit here is NOT proof the deploy failed — the CLI has been seen taking a SIGTERM
     // (exit 143) mid-build while the deployment went on to finish READY. So this reports rather than
@@ -530,7 +531,7 @@ export function deployToVercel(version: string): void {
     error(`\n⚠ Deploy did not report success. v${version} is tagged and released either way.`);
     error('  A non-zero exit is not proof of failure — check the real state before retrying:');
     error(`    npx vercel inspect <deployment-url> --scope ${scope}`);
-    error(`  Retry with:\n    npm exec --yes -- ${args.join(' ')}`);
+    error(`  Retry with:\n    npm exec --no -- ${args.join(' ')}`);
     if (cause instanceof Error && cause.message) error(`  CLI said: ${cause.message}`);
     return;
   }

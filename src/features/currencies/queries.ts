@@ -147,11 +147,14 @@ export async function getCurrencyCatalog(db: Db): Promise<CurrencyCatalogRow[]> 
 export async function restoreCurrencyCatalog(db: Db, rows: CurrencyCatalogRow[]): Promise<void> {
   if (rows.length === 0) return;
   const mk = (r: CurrencyCatalogRow) => {
+    // THB is the home currency: the /currency page offers neither flag for it, so a restored file
+    // that sets one would leave a state the UI can't undo. Same rule as the page, enforced here.
+    const home = r.code === 'THB';
     const values = {
       code: r.code,
-      offBudget: r.offBudget ? 1 : 0,
+      offBudget: r.offBudget && !home ? 1 : 0,
       sortOrder: r.sortOrder,
-      archived: r.archived ? 1 : 0,
+      archived: r.archived && !home ? 1 : 0,
     };
     return db
       .insert(currencies)

@@ -33,6 +33,8 @@ next-env.d.ts
 
 # Claude Code — personal/local overrides stay out of git; settings.json (shared) is committed
 .claude/settings.local.json
+# autoharness plugin state — local, and an untracked file here trips release.ts's clean-tree gate
+.claude/autoharness/
 
 # Impeccable design-critique snapshots — local backlog for /impeccable polish. Durable findings
 # belong in a spec under docs/superpowers/specs/, not here.

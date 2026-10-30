@@ -95,7 +95,9 @@ describe('ImportBackup', () => {
     expect(importBackupAction).not.toHaveBeenCalled();
   });
 
-  it('a v1/v2 catalog file merges immediately with NO confirm dialog', async () => {
+  // Merge-only never deletes, but it still rewrites settings, recurring rules and budgets the user
+  // can't see in the file picker — so it asks first, like every other restore.
+  it('a v1/v2 catalog file asks before merging, then merges on confirm', async () => {
     vi.mocked(restoreBackupAction).mockResolvedValueOnce({
       entries: null,
       categories: 1,
@@ -106,9 +108,22 @@ describe('ImportBackup', () => {
     fireEvent.change(screen.getByTestId('backup-file'), {
       target: { files: [textFile(CATALOG_V2, 'catalog.txt')] },
     });
+    await waitFor(() => expect(dialogOpen()).toBe(true));
+    expect(restoreBackupAction).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
     await waitFor(() => expect(restoreBackupAction).toHaveBeenCalled());
-    expect(dialogOpen()).toBe(false); // never gated — merge-only is non-destructive
     await waitFor(() => expect(toast).toHaveBeenCalledWith('Restored 1 categories & 0 accounts'));
+  });
+
+  it('cancelling the catalog confirm merges nothing', async () => {
+    render(<ImportBackup />);
+    fireEvent.change(screen.getByTestId('backup-file'), {
+      target: { files: [textFile(CATALOG_V2, 'catalog.txt')] },
+    });
+    await waitFor(() => expect(dialogOpen()).toBe(true));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(dialogOpen()).toBe(false));
+    expect(restoreBackupAction).not.toHaveBeenCalled();
   });
 
   it('error-toasts an unrecognized file', async () => {

@@ -187,8 +187,10 @@ export async function setCategoryEmoji(db: Db, category: string, emoji: string):
     .run();
 }
 
+// Own keys only (here and in hueFor): category names come from restore files too, and '__proto__'
+// or 'constructor' would otherwise read an Object.prototype member instead of falling back.
 export function emojiFor(map: Record<string, string>, category: string): string {
-  return map[category] ?? FALLBACK_EMOJI;
+  return Object.hasOwn(map, category) ? map[category] : FALLBACK_EMOJI;
 }
 
 // Create an empty category (no entries yet), seeding its icon from the name — it shows on the list
@@ -224,7 +226,7 @@ export async function setCategoryHue(db: Db, category: string, hue: number | nul
 }
 
 export function hueFor(map: Record<string, number>, category: string): number | undefined {
-  return map[category];
+  return Object.hasOwn(map, category) ? map[category] : undefined;
 }
 
 // The set of category NAMES flagged off-budget — loaded like getEmojiMap/getHueMap and used by

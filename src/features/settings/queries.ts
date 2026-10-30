@@ -39,10 +39,12 @@ const CUTOFF_KEY = 'cutoff_day';
 const DEFAULT_CUTOFF = 18;
 
 // Falls back to DEFAULT_CUTOFF for a fresh DB, or one that predates this feature — upgrading is
-// invisible until the user opts into changing it via /settings.
+// invisible until the user opts into changing it via /settings. Also for a value the setter would
+// refuse: restoreSettings writes whatever a backup carries, like every other getter here re-checks.
 export async function getCutoff(db: Db): Promise<number> {
   const [row] = await db.select().from(settings).where(eq(settings.key, CUTOFF_KEY)).all();
-  return row === undefined ? DEFAULT_CUTOFF : Number(row.value);
+  const day = row === undefined ? NaN : Number(row.value);
+  return isValidCutoffDay(day) ? day : DEFAULT_CUTOFF;
 }
 
 // Upsert via delete-then-insert in one batch — mirrors the replaceEntries pattern already used in

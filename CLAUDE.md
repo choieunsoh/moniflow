@@ -94,10 +94,10 @@ All must pass before committing.
   `CREATE TABLE` names equal its `TABLES` array exactly. A table added to `worker.ts` without a
   `TABLES` entry fails that assertion; one added to `TABLES` without a matching `featureDb()` line
   fails on an empty column fingerprint. Both are red — neither is silent.
-- **`drizzle-kit` is effectively vestigial.** `drizzle.config.ts` has no `dbCredentials` and there is
-  no `drizzle/migrations` output — there is no reachable database for it to touch, since the only
-  live one is in a browser. Schema changes go through the three places above, not a
-  migration.
+- **There is no `drizzle-kit`.** It was removed (it never produced a migration, and every version
+  ships a vulnerable esbuild): there is no reachable database for it to touch, since the only live
+  one is in a browser. Schema changes go through the three places above, not a generated migration.
+  `drizzle-orm` — the query builder — stays.
 
 ## Architecture — feature-based
 

@@ -1,3 +1,5 @@
+import { isWellFormedCurrencyCode } from '@shared/money';
+
 // Supplementary JSON backup for the display metadata the entries CSV can't carry — category
 // emoji/hue/order/archived and account icon/hue/order, plus zero-entry rows. Pure: no DB, no fs, so
 // it's unit-testable; the settings page composes the DB reads and the download around it.
@@ -69,8 +71,16 @@ export function serializeCatalogJson(data: CatalogData): string {
   return JSON.stringify(data, null, 2);
 }
 
+// A restore file is untrusted input, so the guards below re-apply the domain rules the UI enforces —
+// not just the JS types. Anything the forms would refuse rejects the whole file (all-or-nothing).
 function isNumOrNull(v: unknown): v is number | null {
-  return v === null || typeof v === 'number';
+  return v === null || (typeof v === 'number' && Number.isFinite(v));
+}
+function isIntIn(v: unknown, min: number, max: number): v is number {
+  return typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
+}
+function isPositive(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0;
 }
 function isCategoryRow(v: unknown): v is CategoryCatalogRow {
   return (
@@ -118,19 +128,20 @@ function isRuleRow(v: unknown): v is RuleCatalogRow {
     'account' in v &&
     typeof v.account === 'string' &&
     'amount' in v &&
-    typeof v.amount === 'number' &&
+    isPositive(v.amount) &&
     'currency' in v &&
-    isStrOrNull(v.currency) &&
+    (v.currency === null || isWellFormedCurrencyCode(v.currency)) &&
     'rate' in v &&
-    isNumOrNull(v.rate) &&
+    (v.rate === null || isPositive(v.rate)) &&
     'day' in v &&
-    typeof v.day === 'number' &&
+    isIntIn(v.day, 1, 31) &&
     'intervalMonths' in v &&
-    typeof v.intervalMonths === 'number' &&
+    (v.intervalMonths === 1 || v.intervalMonths === 12) &&
     'month' in v &&
-    isNumOrNull(v.month) &&
+    // A yearly rule needs its renewal month; a monthly one ignores it.
+    (v.intervalMonths === 12 ? isIntIn(v.month, 1, 12) : isNumOrNull(v.month)) &&
     'totalCount' in v &&
-    isNumOrNull(v.totalCount)
+    (v.totalCount === null || isIntIn(v.totalCount, 1, Number.MAX_SAFE_INTEGER))
   );
 }
 
@@ -141,7 +152,9 @@ function isBudgetRow(v: unknown): v is BudgetCatalogRow {
     'category' in v &&
     isStrOrNull(v.category) &&
     'amount' in v &&
-    typeof v.amount === 'number'
+    typeof v.amount === 'number' &&
+    Number.isFinite(v.amount) &&
+    v.amount >= 0
   );
 }
 function isCurrencyRow(v: unknown): v is CurrencyCatalogRow {
@@ -149,7 +162,7 @@ function isCurrencyRow(v: unknown): v is CurrencyCatalogRow {
     typeof v === 'object' &&
     v !== null &&
     'code' in v &&
-    typeof v.code === 'string' &&
+    isWellFormedCurrencyCode(v.code) &&
     'offBudget' in v &&
     typeof v.offBudget === 'boolean' &&
     'sortOrder' in v &&

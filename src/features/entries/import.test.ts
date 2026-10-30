@@ -41,6 +41,18 @@ describe('parseMonefyCsv', () => {
     ]);
   });
 
+  // A restore file is untrusted: an entry currency outside Intl's grammar makes every formatter that
+  // renders the row throw, and a NaN amount poisons every sum. Refuse the file rather than store them.
+  it('rejects a row whose currency is not a three-letter code', () => {
+    const csv = `${header}\n15/01/2016,cash,food,-637,US$,-637,THB,lunch`;
+    expect(() => parseMonefyCsv(csv, { keepInflows: true })).toThrow(/currency/);
+  });
+
+  it('rejects a row whose amount is not a number', () => {
+    const csv = `${header}\n15/01/2016,cash,food,lots,THB,-637,THB,lunch`;
+    expect(() => parseMonefyCsv(csv, { keepInflows: true })).toThrow(/amount/);
+  });
+
   it('strips thousands commas and leaves an empty note as null', () => {
     const csv = `${header}\n16/01/2016,#KTC X VISA,รักษาพยาบาล,"-3,960",THB,"-3,960",THB,`;
     const [row] = parseMonefyCsv(csv).entries;

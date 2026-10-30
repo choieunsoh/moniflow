@@ -8,7 +8,7 @@ import type { Db } from '@db/client';
 // 'amex' | 'qr') resolved to a bundled brand SVG by AccountGlyph — NOT a free emoji char (the deliberate
 // divergence from categories). `hue` (null = auto, name-derived) tints the account disc/chips. `sort_order`
 // + `archived` ride along inert (parity with categories) for a later slice. This file is the schema
-// source of truth; drizzle.config globs it.
+// source of truth, kept in lockstep with BOOTSTRAP_SQL in src/db/worker.ts.
 export const accounts = sqliteTable('accounts', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull().unique(),
