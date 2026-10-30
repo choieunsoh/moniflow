@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.30.0] - 2026-10-30
+
+### Added
+
+- confirm before merging a catalog-only backup
+
+### Fixed
+
+- fall back when the stored cutoff day is invalid
+- resolve icon, emoji and hue lookups by own key only
+- validate restored rules, currencies and budgets
+
+### Other
+
+- merge fix/restore-validation-and-hardening (security audit fixes)
+- ignore the autoharness plugin state
+- upgrade simple-git to 4.0.2
+- bump vitest to 4.1.12
+- remove vestigial drizzle-kit
+- stop next dev from writing AGENTS.md
+- apply non-breaking npm audit fixes
+- pin the Vercel CLI the release script deploys with
+- add anti-framing headers and mirror ignores into .vercelignore
+
 ## [1.29.0] - 2026-10-04
 
 ### Added
