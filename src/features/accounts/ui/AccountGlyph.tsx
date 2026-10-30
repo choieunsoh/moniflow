@@ -137,6 +137,7 @@ const GLYPHS: Record<string, (p: GlyphProps) => ReactElement> = {
 };
 
 export function AccountGlyph({ icon, size = 24 }: { icon: string; size?: number }) {
-  const Glyph = GLYPHS[icon] ?? GLYPHS[FALLBACK_ICON];
+  // Own keys only: a restored icon like 'constructor' would otherwise resolve to Object itself.
+  const Glyph = Object.hasOwn(GLYPHS, icon) ? GLYPHS[icon] : GLYPHS[FALLBACK_ICON];
   return <Glyph size={size} />;
 }

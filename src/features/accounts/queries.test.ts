@@ -55,6 +55,12 @@ describe('accounts queries', () => {
     expect(iconForAccount(await getAccountIconMap(d), 'Wallet')).toBe('qr');
   });
 
+  it('falls back for an account named after an Object.prototype key', () => {
+    expect(iconForAccount({}, 'constructor')).toBe(FALLBACK_ICON);
+    expect(iconForAccount({}, '__proto__')).toBe(FALLBACK_ICON);
+    expect(hueForAccount({}, 'constructor')).toBeUndefined();
+  });
+
   it('setAccountHue upserts hue and null resets to auto (undefined lookup)', async () => {
     const d = await db();
     await addAccount(d, 'Visa');

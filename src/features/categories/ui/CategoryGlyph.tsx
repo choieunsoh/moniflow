@@ -15,6 +15,7 @@ export function CategoryGlyph({
   iconSet?: IconSet;
   size?: number;
 }) {
-  const Icon = iconMapFor(iconSet)?.[emoji];
+  const icons = iconMapFor(iconSet);
+  const Icon = icons && Object.hasOwn(icons, emoji) ? icons[emoji] : undefined;
   return Icon ? <Icon size={size} /> : <span className="leading-none">{emoji}</span>;
 }

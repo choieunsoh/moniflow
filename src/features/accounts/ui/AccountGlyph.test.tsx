@@ -17,6 +17,17 @@ describe('AccountGlyph', () => {
     expect(unknown.container.innerHTML).toBe(card.container.innerHTML);
   });
 
+  // A restored icon string is untrusted: an Object.prototype key must not resolve to an inherited
+  // member (Object itself for 'constructor') and get rendered as a component.
+  it.each(['constructor', '__proto__', 'toString'])(
+    'falls back for the inherited key %s',
+    (key) => {
+      const inherited = render(<AccountGlyph icon={key} size={24} />);
+      const card = render(<AccountGlyph icon="card" size={24} />);
+      expect(inherited.container.innerHTML).toBe(card.container.innerHTML);
+    },
+  );
+
   it('applies the requested size to the svg', () => {
     const { container } = render(<AccountGlyph icon="visa" size={40} />);
     const svg = container.querySelector('svg');

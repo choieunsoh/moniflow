@@ -10,6 +10,9 @@ export type MarkerIcon = LucideIcon | PhosphorIcon;
 // component — `iconMapFor(set)?.[emoji]` — which keeps the render-time value a member access into a
 // map of static components (not a factory call), satisfying react-hooks/static-components. Shared by
 // CategoryIcon (the disc) and the picker grid so both stay in sync with the icon set.
+//
+// Index it by OWN key only (`Object.hasOwn`): an emoji is stored text a restore file can set, and on
+// these plain object literals 'constructor' would index Object itself and render it as a component.
 export function iconMapFor(iconSet: IconSet): Record<string, MarkerIcon> | undefined {
   if (iconSet === 'lucide') return LUCIDE_ICONS;
   if (iconSet === 'phosphor') return PHOSPHOR_ICONS;

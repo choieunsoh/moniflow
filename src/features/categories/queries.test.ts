@@ -74,6 +74,13 @@ describe('emoji + hue maps read/write categories', () => {
     expect(emojiFor(await getEmojiMap(d), 'unknown')).toBe(FALLBACK_EMOJI);
   });
 
+  // Category names arrive from restore files; '__proto__' must not resolve to Object.prototype.
+  it('falls back for a category named after an Object.prototype key', () => {
+    expect(emojiFor({}, '__proto__')).toBe(FALLBACK_EMOJI);
+    expect(emojiFor({}, 'constructor')).toBe(FALLBACK_EMOJI);
+    expect(hueFor({}, 'constructor')).toBeUndefined();
+  });
+
   it('sets and clears a hue (null = auto) without disturbing the emoji', async () => {
     const d = await db();
     await setCategoryEmoji(d, 'rent', '🏠');

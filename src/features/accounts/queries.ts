@@ -29,7 +29,7 @@ export async function getAccountIconMap(db: Db): Promise<Record<string, string>>
 }
 
 export function iconForAccount(map: Record<string, string>, name: string): string {
-  return map[name] ?? FALLBACK_ICON;
+  return Object.hasOwn(map, name) ? map[name] : FALLBACK_ICON;
 }
 
 // Upsert: assigning an icon replaces any prior one. Creates the account row if the name is new.
@@ -49,8 +49,10 @@ export async function getAccountHueMap(db: Db): Promise<Record<string, number>> 
   return map;
 }
 
+// Own keys only (here and in iconForAccount): account names come from restore files too, and
+// 'constructor' or '__proto__' would otherwise read an Object.prototype member.
 export function hueForAccount(map: Record<string, number>, name: string): number | undefined {
-  return map[name];
+  return Object.hasOwn(map, name) ? map[name] : undefined;
 }
 
 // Upsert the hue. `null` resets to auto. A new name gets the fallback icon to satisfy NOT NULL; an
